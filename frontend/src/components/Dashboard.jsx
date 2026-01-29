@@ -1902,38 +1902,56 @@ export default function Dashboard() {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
-  };
+  }; 
 
   const transcribeAudio = async (audioBlob) => {
-    setIsTranscribing(true);
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+  setIsTranscribing(true);
+  try {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
 
-      const response = await fetch('/api/chat/speech-to-text', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer demo-token' },
-        body: formData
-      });
+    const response = await fetch('https://resumate-2vad.onrender.com/api/chat/speech-to-text', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer demo-token' },
+      body: formData
+    });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || 'Transcription failed');
-      }
-
-      const data = await response.json();
-      if (data.text && data.text.trim()) {
-        // Use voice send (will auto-speak response)
-        handleVoiceSend(data.text);
-      }
-    } catch (err) {
-      console.error('Transcription error:', err);
-      alert('Voice transcription failed: ' + err.message);
-    } finally {
-      setIsTranscribing(false);
+    // Check if response is ok
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('STT Response error:', errorText);
+      throw new Error(`Server error: ${response.status}`);
     }
-  };
 
+    // Try to parse JSON
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      throw new Error('Invalid response from server');
+    }
+
+    // Check for error in response
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    if (data.text && data.text.trim()) {
+      handleVoiceSend(data.text);
+    } else {
+      alert('No speech detected. Please try again.');
+    }
+  } catch (err) {
+    console.error('Transcription error:', err);
+    alert('Voice transcription failed: ' + err.message);
+  } finally {
+    setIsTranscribing(false);
+  }
+};
+
+
+ 
   const stopSpeaking = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -1979,7 +1997,7 @@ export default function Dashboard() {
         cleanText = cleanText.substring(0, 4000) + '...';
       }
       
-      const response = await fetch('/api/chat/text-to-speech', {
+      const response = await fetch('https://resumate-2vad.onrender.com/api/chat/text-to-speech', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer demo-token',
