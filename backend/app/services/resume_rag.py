@@ -1770,7 +1770,7 @@ class ResumeRAGService:
             self.llm = ChatOpenAI(
                 model=settings.openai_model,
                 temperature=0.2,
-                api_key=settings.openai_api_key  # Changed from openai_api_key
+                openai_api_key=settings.openai_api_key  # Changed from openai_api_key
             )
             
             self._init_vectordb()
@@ -1780,6 +1780,8 @@ class ResumeRAGService:
             print(f"❌ Error initializing services: {e}")
             self.embeddings = None
             self.llm = None
+
+
     
     def _init_vectordb(self):
         """Initialize ChromaDB vector store"""
