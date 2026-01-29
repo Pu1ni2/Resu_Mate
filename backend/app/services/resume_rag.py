@@ -1710,7 +1710,7 @@
 # resume_rag = ResumeRAGService()
 
 """
-Resume RAG Service with Anonymization Support - FIXED
+Resume RAG Service with Anonymization Support - FIXED FOR DEPLOYMENT
 """
 import os
 import shutil
@@ -1754,32 +1754,51 @@ class ResumeRAGService:
         self._init_services()
     
     def _init_services(self):
+        """Initialize OpenAI and ChromaDB services"""
         if not settings.openai_api_key:
             print("Warning: OpenAI API key not set")
             return
         
-        self.embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small",
-            openai_api_key=settings.openai_api_key
-        )
-        
-        self.llm = ChatOpenAI(
-            model=settings.openai_model,
-            temperature=0.2,
-            openai_api_key=settings.openai_api_key
-        )
-        
-        self._init_vectordb()
+        try:
+            # Initialize embeddings with correct parameters
+            self.embeddings = OpenAIEmbeddings(
+                model="text-embedding-3-small",
+                api_key=settings.openai_api_key  # Changed from openai_api_key
+            )
+            
+            # Initialize LLM
+            self.llm = ChatOpenAI(
+                model=settings.openai_model,
+                temperature=0.2,
+                api_key=settings.openai_api_key  # Changed from openai_api_key
+            )
+            
+            self._init_vectordb()
+            print("✅ OpenAI services initialized successfully")
+            
+        except Exception as e:
+            print(f"❌ Error initializing services: {e}")
+            self.embeddings = None
+            self.llm = None
     
     def _init_vectordb(self):
+        """Initialize ChromaDB vector store"""
         if not self.embeddings:
             return
-        os.makedirs(self.chroma_dir, exist_ok=True)
-        self.vectordb = Chroma(
-            collection_name=self.collection_name,
-            persist_directory=self.chroma_dir,
-            embedding_function=self.embeddings
-        )
+        
+        try:
+            os.makedirs(self.chroma_dir, exist_ok=True)
+            self.vectordb = Chroma(
+                collection_name=self.collection_name,
+                persist_directory=self.chroma_dir,
+                embedding_function=self.embeddings
+            )
+            print(f"✅ ChromaDB initialized at {self.chroma_dir}")
+        except Exception as e:
+            print(f"❌ Error initializing ChromaDB: {e}")
+            self.vectordb = None
+    
+    # ... rest of the file remains the same ...
     
     def _get_file_hash(self, content: bytes) -> str:
         return hashlib.sha256(content).hexdigest()
