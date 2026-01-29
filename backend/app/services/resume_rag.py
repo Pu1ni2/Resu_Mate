@@ -1763,7 +1763,7 @@ class ResumeRAGService:
             # Initialize embeddings with correct parameters
             self.embeddings = OpenAIEmbeddings(
                 model="text-embedding-3-small",
-                api_key=settings.openai_api_key  # Changed from openai_api_key
+                openai_api_key=settings.openai_api_key  # Changed from openai_api_key
             )
             
             # Initialize LLM

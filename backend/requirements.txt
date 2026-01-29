@@ -1,27 +1,35 @@
 # FastAPI & Server
 fastapi==0.115.0
-uvicorn[standard]==0.30.0
+uvicorn==0.30.0
 python-multipart==0.0.9
 pydantic==2.8.0
 pydantic-settings==2.4.0
 aiofiles==24.1.0
 
-# LangChain & AI (Latest stable versions)
-langchain>=0.3.0
-langchain-openai>=0.2.0
-langchain-chroma>=0.1.0
-langchain-community>=0.3.0
-langchain-text-splitters>=0.3.0
-openai>=1.50.0
-chromadb>=0.5.0
+# LangChain & AI - EXACT versions from your build
+langchain==0.2.14
+langchain-openai==0.1.22
+langchain-chroma==0.1.2
+langchain-community==0.2.12
+langchain-text-splitters==0.2.4
+langchain-core==0.2.43
+openai==1.40.0
+chromadb==0.5.5
 
 # Document Processing
-pypdf>=4.0.0
-docx2txt>=0.8
+pypdf==4.3.1
+docx2txt==0.8
 
 # Authentication
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==5.0.0
 
 # Utilities
-python-dotenv>=1.0.0
+python-dotenv==1.0.0
+PyYAML==6.0.3
+
+# Additional dependencies that were installed
+httpx==0.28.1
+tiktoken==0.12.0
+numpy==1.26.4
