@@ -2158,6 +2158,17 @@ export default function Dashboard() {
                     <div className="candidates-actions">
                       <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
                       <button onClick={clearSelection} className="btn btn-ghost btn-sm">Clear</button>
+                    <button
+                     onClick={async () => {
+            if (window.confirm('Delete ALL candidates? This cannot be undone.')) {
+              await clearAllCandidates();
+            }
+          }} 
+          className="btn btn-danger btn-sm"
+        >
+          Delete All
+        </button>
+                    
                     </div>
                   </div>
 
@@ -2489,3 +2500,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

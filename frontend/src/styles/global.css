@@ -695,3 +695,12 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
     opacity: 1;
   }
 }
+
+.btn-danger {
+  background: #EF4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #DC2626;
+}

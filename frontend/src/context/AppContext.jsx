@@ -420,3 +420,17 @@ export const AppProvider = ({ children }) => {
     </AppContext.Provider>
   );
 };
+
+const clearAllCandidates = useCallback(async () => {
+  try {
+    // Clear backend data (hashes, vectors, etc.)
+    await candidatesAPI.deleteAll();
+  } catch (err) {
+    console.error('Failed to clear backend:', err);
+  }
+  
+  // Clear frontend data
+  setCandidates([]);
+  setSelectedIds([]);
+  localStorage.removeItem('resumate_candidates');
+}, []);

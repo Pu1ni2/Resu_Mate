@@ -66,10 +66,94 @@
 #     resume_rag.clear_all()
 #     return {"message": "All candidates deleted"}
 
-"""Candidates API with duplicate & size checks"""
+# """Candidates API with duplicate & size checks"""
+# import os
+# import aiofiles
+# from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+# from app.services.auth import get_current_user
+# from app.services.resume_rag import resume_rag, MAX_FILE_SIZE
+
+# router = APIRouter(prefix="/candidates", tags=["Candidates"])
+
+# UPLOAD_DIR = "uploads"
+# os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+# @router.post("/upload")
+# async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user)):
+#     allowed = {'.pdf', '.docx', '.doc', '.txt'}
+#     ext = os.path.splitext(file.filename)[1].lower()
+    
+#     if ext not in allowed:
+#         raise HTTPException(400, f"File type not supported. Allowed: {', '.join(allowed)}")
+    
+#     content = await file.read()
+    
+#     # Check size
+#     size_error = resume_rag.check_file_size(len(content))
+#     if size_error:
+#         raise HTTPException(400, size_error)
+    
+#     # Check duplicate
+#     dup_error = resume_rag.check_duplicate(content)
+#     if dup_error:
+#         raise HTTPException(400, dup_error)
+    
+#     file_id = resume_rag.candidate_counter + 1
+#     file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
+    
+#     async with aiofiles.open(file_path, 'wb') as f:
+#         await f.write(content)
+    
+#     try:
+#         result = await resume_rag.add_resume(file_path, file.filename)
+        
+#         if "error" in result:
+#             os.remove(file_path)
+#             raise HTTPException(400, result["error"])
+        
+#         resume_rag.register_file(content)
+#         return result
+        
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         if os.path.exists(file_path):
+#             os.remove(file_path)
+#         raise HTTPException(500, f"Error: {str(e)}")
+
+
+# @router.get("")
+# async def get_candidates(user=Depends(get_current_user)):
+#     return {"candidates": resume_rag.get_all_candidates(), "total": len(resume_rag.candidates)}
+
+
+# @router.get("/{candidate_id}")
+# async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
+#     candidate = resume_rag.get_candidate(candidate_id)
+#     if not candidate:
+#         raise HTTPException(404, "Candidate not found")
+#     return candidate
+
+
+# @router.delete("/{candidate_id}")
+# async def delete_candidate(candidate_id: int, user=Depends(get_current_user)):
+#     resume_rag.delete_candidate(candidate_id)
+#     return {"message": "Deleted"}
+
+
+# @router.delete("")
+# async def delete_all(user=Depends(get_current_user)):
+#     resume_rag.clear_all()
+#     return {"message": "All deleted"}
+
+
+"""Candidates API"""
 import os
-import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+import shutil
+from typing import List
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+
 from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag, MAX_FILE_SIZE
 
@@ -81,55 +165,60 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user)):
-    allowed = {'.pdf', '.docx', '.doc', '.txt'}
-    ext = os.path.splitext(file.filename)[1].lower()
+    """Upload and analyze a resume"""
     
-    if ext not in allowed:
-        raise HTTPException(400, f"File type not supported. Allowed: {', '.join(allowed)}")
+    # Check file extension
+    allowed_extensions = ['.pdf', '.docx', '.doc', '.txt']
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(400, f"File type not allowed. Allowed: {', '.join(allowed_extensions)}")
     
+    # Read file content
     content = await file.read()
     
-    # Check size
+    # Check file size
     size_error = resume_rag.check_file_size(len(content))
     if size_error:
         raise HTTPException(400, size_error)
     
-    # Check duplicate
+    # Check for duplicate
     dup_error = resume_rag.check_duplicate(content)
     if dup_error:
         raise HTTPException(400, dup_error)
     
-    file_id = resume_rag.candidate_counter + 1
-    file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
-    
-    async with aiofiles.open(file_path, 'wb') as f:
-        await f.write(content)
+    # Save file temporarily
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as f:
+        f.write(content)
     
     try:
+        # Register file hash
+        resume_rag.register_file(content)
+        
+        # Process resume
         result = await resume_rag.add_resume(file_path, file.filename)
         
         if "error" in result:
-            os.remove(file_path)
             raise HTTPException(400, result["error"])
         
-        resume_rag.register_file(content)
         return result
         
-    except HTTPException:
-        raise
-    except Exception as e:
+    finally:
+        # Clean up temp file
         if os.path.exists(file_path):
             os.remove(file_path)
-        raise HTTPException(500, f"Error: {str(e)}")
 
 
 @router.get("")
 async def get_candidates(user=Depends(get_current_user)):
-    return {"candidates": resume_rag.get_all_candidates(), "total": len(resume_rag.candidates)}
+    """Get all candidates"""
+    candidates = resume_rag.get_all_candidates()
+    return {"candidates": candidates}
 
 
 @router.get("/{candidate_id}")
 async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
+    """Get a specific candidate"""
     candidate = resume_rag.get_candidate(candidate_id)
     if not candidate:
         raise HTTPException(404, "Candidate not found")
@@ -138,11 +227,23 @@ async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
 
 @router.delete("/{candidate_id}")
 async def delete_candidate(candidate_id: int, user=Depends(get_current_user)):
+    """Delete a candidate"""
     resume_rag.delete_candidate(candidate_id)
-    return {"message": "Deleted"}
+    return {"message": "Candidate deleted"}
 
 
 @router.delete("")
-async def delete_all(user=Depends(get_current_user)):
+async def delete_all_candidates(user=Depends(get_current_user)):
+    """Delete ALL candidates and clear all data"""
     resume_rag.clear_all()
-    return {"message": "All deleted"}
+    
+    # Also clear uploads folder
+    if os.path.exists(UPLOAD_DIR):
+        for f in os.listdir(UPLOAD_DIR):
+            file_path = os.path.join(UPLOAD_DIR, f)
+            try:
+                os.remove(file_path)
+            except:
+                pass
+    
+    return {"message": "All candidates deleted"}
