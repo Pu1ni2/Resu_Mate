@@ -211,7 +211,6 @@
 //   );
 // };
 
-
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { candidatesAPI, chatAPI } from '../services/api';
 
@@ -223,8 +222,25 @@ export const useApp = () => {
   return context;
 };
 
+const getStoredCandidates = () => {
+  try {
+    const stored = localStorage.getItem('resumate_candidates');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const storeCandidates = (candidates) => {
+  try {
+    localStorage.setItem('resumate_candidates', JSON.stringify(candidates));
+  } catch (e) {
+    console.error('Failed to store candidates:', e);
+  }
+};
+
 export const AppProvider = ({ children }) => {
-  const [candidates, setCandidates] = useState([]);
+  const [candidates, setCandidates] = useState(() => getStoredCandidates());
   const [selectedIds, setSelectedIds] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [loading, setLoading] = useState(false);
@@ -234,6 +250,10 @@ export const AppProvider = ({ children }) => {
   const [isTyping, setIsTyping] = useState(false);
 
   const [anonymize, setAnonymize] = useState(false);
+
+  useEffect(() => {
+    storeCandidates(candidates);
+  }, [candidates]);
 
   const selectedCandidates = useMemo(
     () => candidates.filter(c => selectedIds.includes(c.id)),
@@ -283,15 +303,7 @@ export const AppProvider = ({ children }) => {
   }, [selectedCandidates]);
 
   const loadCandidates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await candidatesAPI.getAll();
-      setCandidates(res.data.candidates || []);
-    } catch (err) {
-      console.error('Failed to load candidates:', err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   }, []);
 
   const uploadResume = useCallback(async (file) => {
@@ -329,18 +341,28 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const deleteCandidate = useCallback(async (id) => {
-    await candidatesAPI.delete(id);
     setCandidates(prev => prev.filter(c => c.id !== id));
     setSelectedIds(prev => prev.filter(x => x !== id));
+  }, []);
+
+  const clearAllCandidates = useCallback(async () => {
+    try {
+      await candidatesAPI.deleteAll();
+    } catch (err) {
+      console.error('Failed to clear backend:', err);
+    }
+    setCandidates([]);
+    setSelectedIds([]);
+    localStorage.removeItem('resumate_candidates');
   }, []);
 
   const toggleSelection = useCallback((id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }, []);
+  
   const selectAll = useCallback(() => setSelectedIds(candidates.map(c => c.id)), [candidates]);
   const clearSelection = useCallback(() => setSelectedIds([]), []);
 
-  // Clear chat when anonymize changes
   useEffect(() => {
     setMessages([]);
     setSuggestions([]);
@@ -411,7 +433,7 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{
       candidates, selectedIds, selectedCandidates, uploadProgress, loading,
-      loadCandidates, uploadResume, deleteCandidate, toggleSelection, selectAll, clearSelection,
+      loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
       anonymize, setAnonymize, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,
       getDisplayName, getAvatarGradient
@@ -421,16 +443,3 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-const clearAllCandidates = useCallback(async () => {
-  try {
-    // Clear backend data (hashes, vectors, etc.)
-    await candidatesAPI.deleteAll();
-  } catch (err) {
-    console.error('Failed to clear backend:', err);
-  }
-  
-  // Clear frontend data
-  setCandidates([]);
-  setSelectedIds([]);
-  localStorage.removeItem('resumate_candidates');
-}, []);
