@@ -1803,6 +1803,7 @@ class ResumeRAGService:
     # ... rest of the file remains the same ...
     
     def _get_file_hash(self, content: bytes) -> str:
+        """Generate hash of file content"""
         return hashlib.sha256(content).hexdigest()
     
     def check_file_size(self, file_size: int) -> Optional[str]:
@@ -1819,7 +1820,42 @@ class ResumeRAGService:
     def register_file(self, content: bytes):
         file_hash = self._get_file_hash(content)
         self.uploaded_file_hashes.add(file_hash)
+        return file_hash
     
+    def unregister_file(self, file_hash: str):
+        """Remove file hash when candidate is deleted"""
+        if file_hash in self.uploaded_file_hashes:
+            self.uploaded_file_hashes.discard(file_hash)
+    
+    def delete_candidate(self, candidate_id: int):
+        """Delete a candidate and remove their file hash"""
+        if candidate_id in self.candidates:
+            candidate = self.candidates[candidate_id]
+        
+        # Remove file hash if stored
+            if 'file_hash' in candidate:
+              self.unregister_file(candidate['file_hash'])
+        
+        # Remove from candidates
+        del self.candidates[candidate_id]
+
+    def clear_all(self):
+        """Clear ALL data"""
+        self.candidates = {}
+        self.candidate_counter = 0
+        self.recently_discussed = []
+        self.uploaded_file_hashes = set()  # Clear ALL hashes
+    
+    # Clear ChromaDB
+        if os.path.exists(self.chroma_dir):
+            try:
+                shutil.rmtree(self.chroma_dir)
+            except Exception as e:
+                print(f"Error clearing ChromaDB: {e}")
+    
+        self._init_vectordb()
+        print("✅ All data cleared")
+
     def _extract_text(self, file_path: str, file_name: str) -> str:
         ext = Path(file_name).suffix.lower()
         try:
@@ -1879,24 +1915,70 @@ class ResumeRAGService:
         name = ' '.join(word.capitalize() for word in name.split() if word)
         return name.strip() or "Unknown Candidate"
     
-    async def add_resume(self, file_path: str, file_name: str) -> Dict:
+    # async def add_resume(self, file_path: str, file_name: str) -> Dict:
+    #     if not self.vectordb:
+    #         return {"error": "Service not initialized. Check OpenAI API key."}
+        
+    #     text = self._extract_text(file_path, file_name)
+        
+    #     if not text or len(text) < 50:
+    #         return {"error": "Could not extract text from file"}
+        
+    #     is_resume = self._is_valid_resume(text)
+    #     name = self._extract_candidate_name(text, file_name)
+        
+    #     self.candidate_counter += 1
+    #     candidate_id = self.candidate_counter
+        
+    #     chunks = self.text_splitter.split_text(text)
+    #     documents = []
+        
+    #     for i, chunk in enumerate(chunks):
+    #         doc = Document(
+    #             page_content=chunk,
+    #             metadata={
+    #                 "candidate_id": candidate_id,
+    #                 "candidate_name": name,
+    #                 "file_name": file_name,
+    #                 "chunk_index": i,
+    #                 "is_resume": is_resume,
+    #             }
+    #         )
+    #         documents.append(doc)
+        
+    #     self.vectordb.add_documents(documents)
+    #     summary_data = await self._analyze_resume(text, name, is_resume)
+        
+    #     candidate_data = {
+    #         "id": candidate_id,
+    #         "name": name,
+    #         "file_name": file_name,
+    #         "is_resume": is_resume,
+    #         "raw_text": text[:1500],
+    #         **summary_data
+    #     }
+        
+    #     self.candidates[candidate_id] = candidate_data
+    #     return candidate_data
+    async def add_resume(self, file_path: str, file_name: str, file_hash: str = None) -> Dict:
+        """Add a resume and store its hash"""
         if not self.vectordb:
             return {"error": "Service not initialized. Check OpenAI API key."}
-        
+    
         text = self._extract_text(file_path, file_name)
-        
+    
         if not text or len(text) < 50:
-            return {"error": "Could not extract text from file"}
-        
+          return {"error": "Could not extract text from file"}
+    
         is_resume = self._is_valid_resume(text)
         name = self._extract_candidate_name(text, file_name)
-        
+    
         self.candidate_counter += 1
         candidate_id = self.candidate_counter
-        
+    
         chunks = self.text_splitter.split_text(text)
         documents = []
-        
+    
         for i, chunk in enumerate(chunks):
             doc = Document(
                 page_content=chunk,
@@ -1909,19 +1991,20 @@ class ResumeRAGService:
                 }
             )
             documents.append(doc)
-        
+    
         self.vectordb.add_documents(documents)
         summary_data = await self._analyze_resume(text, name, is_resume)
-        
+    
         candidate_data = {
             "id": candidate_id,
             "name": name,
             "file_name": file_name,
+            "file_hash": file_hash,  # Store hash with candidate
             "is_resume": is_resume,
             "raw_text": text[:1500],
             **summary_data
         }
-        
+    
         self.candidates[candidate_id] = candidate_data
         return candidate_data
     
@@ -2032,6 +2115,7 @@ BADGES (pick 2-3):
     
     def delete_candidate(self, candidate_id: int):
         if candidate_id in self.candidates:
+            candidate=self.candidates[candidate_id]
             del self.candidates[candidate_id]
     
     def clear_all(self):
@@ -2040,8 +2124,12 @@ BADGES (pick 2-3):
         self.recently_discussed = []
         self.uploaded_file_hashes = set()
         if os.path.exists(self.chroma_dir):
-            shutil.rmtree(self.chroma_dir)
+            try:
+                shutil.rmtree(self.chroma_dir)
+            except Exception as e:
+                print(f"Error removing chromaDB: {e}")
         self._init_vectordb()
+        print("✅ All data cleared successfully")
     
     def _create_name_mapping(self, candidate_ids: List[int]) -> Tuple[Dict[str, str], Dict[str, str]]:
         """Create mapping between real names and anonymous names"""
