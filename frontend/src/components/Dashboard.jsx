@@ -1718,9 +1718,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { marked } from 'marked';
+import CandidateFocus from './CandidateFocus';
 import { 
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles, 
-  Eye, EyeOff, Briefcase, MapPin, Award, Trash2, 
+  Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
   Mic, MicOff, Volume2, VolumeX, Loader, Square
 } from 'lucide-react';
@@ -2072,7 +2073,8 @@ export default function Dashboard() {
             {[
               { id: 'upload', icon: <Upload size={18} />, label: 'Upload' },
               { id: 'analytics', icon: <BarChart2 size={18} />, label: 'Analytics' },
-              { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' }
+              { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
+              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus' }
             ].map(item => (
               <div
                 key={item.id}
@@ -2103,7 +2105,7 @@ export default function Dashboard() {
         <header className="main-header">
           <div className="header-left">
             <h1 className="main-title">
-              {tab === 'upload' ? 'Upload Resumes' : tab === 'analytics' ? 'Analytics' : 'AI Chat'}
+              {tab === 'upload' ? 'Upload Resumes' : tab === 'analytics' ? 'Analytics' : tab === 'chat' ? 'AI Chat' : 'Candidate Focus'}
             </h1>
             {candidates.length > 0 && <span className="badge badge-orange">{candidates.length}</span>}
             {selectedIds.length > 0 && <span className="badge badge-green">{selectedIds.length} selected</span>}
@@ -2494,6 +2496,11 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* CANDIDATE FOCUS TAB */}
+          {tab === 'focus' && (
+            <CandidateFocus />
           )}
         </div>
       </main>

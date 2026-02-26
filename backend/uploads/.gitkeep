@@ -1,3 +1,0 @@
-# In backend folder
-mkdir uploads
-echo. > uploads/.gitkeep
