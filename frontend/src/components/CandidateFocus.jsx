@@ -5,7 +5,8 @@ import {
   User, MessageSquare, Globe, Search, Send, ArrowLeft, Check,
   AlertCircle, Briefcase, Award, MapPin, ExternalLink, Loader,
   ChevronRight, Sparkles, X, Volume2, Mic, MicOff, Square, Bot, Users,
-  ClipboardList, Target, ChevronDown, FileText, UserCheck, Mail, Copy, Clipboard
+  ClipboardList, Target, ChevronDown, FileText, UserCheck, Mail, Copy, Clipboard,
+  Github, Calendar
 } from 'lucide-react';
 
 const AIAvatar = () => (
@@ -20,7 +21,7 @@ const API_BASE = import.meta.env.PROD
 
 export default function CandidateFocus() {
   const {
-    candidates, anonymize, getDisplayName, getAvatarGradient
+    candidates, selectedIds, anonymize, getDisplayName, getAvatarGradient
   } = useApp();
 
   // State
@@ -77,6 +78,18 @@ export default function CandidateFocus() {
   const [emailType, setEmailType] = useState('');
   const [emailDrafting, setEmailDrafting] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
+
+  // ═══════ GITHUB STATE ═══════
+  const [ghLoading, setGhLoading] = useState(false);
+  const [ghProfile, setGhProfile] = useState(null);
+  const [ghError, setGhError] = useState('');
+  const [ghUsername, setGhUsername] = useState('');
+  const [ghNeedsInput, setGhNeedsInput] = useState(false);
+
+  // ═══════ CALENDLY STATE ═══════
+  const [calLoading, setCalLoading] = useState(false);
+  const [calData, setCalData] = useState(null);
+  const [calError, setCalError] = useState('');
 
   // Helpers
   const getSkills = (c) => {
@@ -140,6 +153,7 @@ export default function CandidateFocus() {
   // ─── Candidate Selection ───
   const handleCandidateSelect = useCallback((candidate) => {
     if (focusCandidate && focusCandidate.id === candidate.id) {
+      // Deselect - just clear focus, don't duplicate
       setFocusCandidate(null);
       setFocusMessages([]);
       setFocusSuggestions([]);
@@ -149,12 +163,15 @@ export default function CandidateFocus() {
       return;
     }
 
+    // Clear previous state
     setFocusMessages([]);
     setFocusSuggestions([]);
     setSearchResults([]);
     setSearchHistory([]);
     resetAgent();
-    setFocusCandidate(candidate);
+    
+    // Set new focus candidate (make a copy to avoid reference issues)
+    setFocusCandidate({ ...candidate });
 
     const name = anonymize ? 'this candidate' : (candidate.name || 'this candidate');
     setFocusMessages([{
@@ -253,6 +270,33 @@ export default function CandidateFocus() {
     navigator.clipboard.writeText(text);
     setEmailCopied(true);
     setTimeout(() => setEmailCopied(false), 2000);
+  };
+
+  // ═══════ GITHUB FUNCTIONS ═══════
+  const fetchGitHub = async (username) => {
+    setGhLoading(true); setGhError(''); setGhProfile(null); setGhNeedsInput(false);
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/github-analyze`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        body: JSON.stringify({ candidate_id: focusCandidate.id, github_username: username || null, anonymize })
+      });
+      const data = await resp.json();
+      if (data.error) { setGhError(data.error); if (data.needs_username) setGhNeedsInput(true); }
+      else setGhProfile(data.profile);
+    } catch (e) { setGhError('Failed to connect to server'); }
+    finally { setGhLoading(false); }
+  };
+
+  // ═══════ CALENDLY FUNCTIONS ═══════
+  const fetchCalendly = async () => {
+    setCalLoading(true); setCalError(''); setCalData(null);
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/calendly-link`, { headers: { 'Authorization': 'Bearer demo-token' } });
+      const data = await resp.json();
+      if (data.error) setCalError(data.error);
+      else setCalData(data);
+    } catch (e) { setCalError('Failed to connect to server'); }
+    finally { setCalLoading(false); }
   };
 
   // ─── Chat Send (typed) ───
@@ -464,6 +508,15 @@ export default function CandidateFocus() {
     return (
       <div className="focus-container">
         {showWarning && <div className="focus-toast"><AlertCircle size={16} /><span>{warningMsg}</span></div>}
+
+        {/* Warning if multiple selected in Upload tab */}
+        {selectedIds.length > 1 && (
+          <div className="focus-multi-warning glass-card">
+            <AlertCircle size={18} />
+            <span>You have <strong>{selectedIds.length} candidates selected</strong> in the Upload tab. Candidate Focus works with <strong>one candidate at a time</strong>. Select one below.</span>
+          </div>
+        )}
+
         <div className="focus-select-header">
           <div className="focus-select-icon"><User size={32} /></div>
           <h2 className="focus-select-title">Candidate Focus</h2>
@@ -473,7 +526,8 @@ export default function CandidateFocus() {
           <div className="focus-empty"><div className="focus-empty-icon"><User size={48} /></div><h3>No candidates uploaded yet</h3><p>Go to the Upload tab to add resumes first.</p></div>
         ) : (
           <div className="focus-candidates-grid">
-            {candidates.map((c, i) => (
+            {/* Deduplicate candidates by ID */}
+            {candidates.filter((c, index, self) => index === self.findIndex(t => t.id === c.id)).map((c, i) => (
               <div key={c.id} className="focus-candidate-card glass-card" onClick={() => handleCandidateSelect(c)}>
                 <div className="focus-card-header">
                   <div className="candidate-avatar" style={{ background: getAvatarGradient(c.name) }}>{getDisplayName(c, i)[0]?.toUpperCase()}</div>
@@ -528,6 +582,8 @@ export default function CandidateFocus() {
         <button className={`focus-tab ${activeTool === 'chat' ? 'active' : ''}`} onClick={() => setActiveTool('chat')}><MessageSquare size={16} /><span>AI Chat</span></button>
         <button className={`focus-tab ${activeTool === 'websearch' ? 'active' : ''}`} onClick={() => setActiveTool('websearch')}><Globe size={16} /><span>Web Search</span></button>
         <button className={`focus-tab ${activeTool === 'agent' ? 'active' : ''}`} onClick={() => setActiveTool('agent')}><UserCheck size={16} /><span>Hiring Agent</span></button>
+        <button className={`focus-tab ${activeTool === 'github' ? 'active' : ''}`} onClick={() => { setActiveTool('github'); if (!ghProfile && !ghLoading && !ghError) fetchGitHub(); }}><Github size={16} /><span>GitHub</span></button>
+        <button className={`focus-tab ${activeTool === 'calendly' ? 'active' : ''}`} onClick={() => { setActiveTool('calendly'); if (!calData && !calLoading && !calError) fetchCalendly(); }}><Calendar size={16} /><span>Schedule</span></button>
       </div>
 
       {/* ════════ AI CHAT ════════ */}
@@ -856,6 +912,105 @@ export default function CandidateFocus() {
           )}
         </div>
       )}
+      {/* ════════ GITHUB ════════ */}
+      {activeTool === 'github' && (
+        <div className="tool-panel">
+          {/* Search bar - always visible */}
+          <div className="gh-search-bar glass-card">
+            <Github size={18} />
+            <input type="text" className="input gh-search-input" value={ghUsername} onChange={e => setGhUsername(e.target.value)} placeholder="Enter GitHub username..." onKeyDown={e => { if (e.key === 'Enter' && ghUsername.trim()) fetchGitHub(ghUsername.trim()); }} />
+            <button className="btn btn-primary btn-sm" onClick={() => fetchGitHub(ghUsername.trim())} disabled={!ghUsername.trim() || ghLoading}>
+              {ghLoading ? <Loader size={14} className="spin" /> : <Search size={14} />}
+              <span>Analyze</span>
+            </button>
+          </div>
+
+          {ghLoading && <div className="tool-loading"><Loader size={28} className="spin" /><p>Fetching GitHub profile...</p></div>}
+          {ghNeedsInput && !ghProfile && (
+            <div className="tool-input-section glass-card">
+              <h3><Github size={20} /> GitHub Profile Analyzer</h3>
+              <p>Could not auto-detect username from resume. Enter a GitHub username above to analyze.</p>
+            </div>
+          )}
+          {ghError && !ghNeedsInput && <div className="tool-error glass-card"><AlertCircle size={20} /><p>{ghError}</p><button className="btn btn-secondary" onClick={() => { setGhNeedsInput(true); setGhError(''); setGhUsername(''); }}>Try Another Username</button></div>}
+          {ghProfile && (
+            <div className="gh-profile">
+              <div className="gh-header glass-card">
+                <img src={ghProfile.avatar_url} alt="" className="gh-avatar" />
+                <div className="gh-info">
+                  <h3>{ghProfile.name || ghProfile.username}</h3>
+                  <a href={ghProfile.profile_url} target="_blank" rel="noopener noreferrer" className="gh-link">@{ghProfile.username} <ExternalLink size={12} /></a>
+                  {ghProfile.bio && <p className="gh-bio">{ghProfile.bio}</p>}
+                </div>
+                <div className="gh-stats">
+                  <div className="gh-stat"><span className="gh-stat-val">{ghProfile.public_repos}</span><span className="gh-stat-label">Repos</span></div>
+                  <div className="gh-stat"><span className="gh-stat-val">{ghProfile.followers}</span><span className="gh-stat-label">Followers</span></div>
+                  <div className="gh-stat"><span className="gh-stat-val">{ghProfile.recent_pushes}</span><span className="gh-stat-label">Recent Pushes</span></div>
+                </div>
+              </div>
+              {ghProfile.ai_analysis && <div className="tool-ai-analysis glass-card"><Sparkles size={16} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(ghProfile.ai_analysis) }} /></div>}
+              {Object.keys(ghProfile.languages || {}).length > 0 && (
+                <div className="gh-languages glass-card">
+                  <h4>Languages</h4>
+                  <div className="gh-lang-chips">{Object.entries(ghProfile.languages).map(([lang, count]) => <span key={lang} className="agent-chip active">{lang} ({count})</span>)}</div>
+                </div>
+              )}
+              {ghProfile.top_repos?.length > 0 && (
+                <div className="gh-repos">
+                  <h4>Top Repositories</h4>
+                  {ghProfile.top_repos.map((repo, i) => (
+                    <div key={i} className="gh-repo glass-card">
+                      <div className="gh-repo-header"><a href={repo.url} target="_blank" rel="noopener noreferrer">{repo.name} <ExternalLink size={12} /></a><span className="badge badge-blue">{repo.language}</span></div>
+                      <p className="gh-repo-desc">{repo.description}</p>
+                      <div className="gh-repo-stats"><span>⭐ {repo.stars}</span><span>🍴 {repo.forks}</span><span>Updated: {repo.updated}</span></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════ CALENDLY ════════ */}
+      {activeTool === 'calendly' && (
+        <div className="tool-panel">
+          {calLoading && <div className="tool-loading"><Loader size={28} className="spin" /><p>Loading Calendly...</p></div>}
+          {calError && <div className="tool-error glass-card"><AlertCircle size={20} /><p>{calError}</p></div>}
+          {calData && (
+            <div className="cal-container">
+              <div className="cal-header glass-card">
+                <Calendar size={24} />
+                <div>
+                  <h3>Schedule Interview with {anonymize ? 'Candidate' : focusCandidate.name?.split(' ')[0]}</h3>
+                  <p>Select an event type to share your scheduling link</p>
+                </div>
+              </div>
+              {calData.event_types?.length > 0 ? (
+                <div className="cal-events">
+                  {calData.event_types.map((ev, i) => (
+                    <div key={i} className="cal-event glass-card" onClick={() => window.open(ev.scheduling_url, '_blank')}>
+                      <div className="cal-event-info">
+                        <h4>{ev.name}</h4>
+                        <p>{ev.duration} minutes{ev.description ? ` — ${ev.description}` : ''}</p>
+                      </div>
+                      <div className="cal-event-actions">
+                        <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(ev.scheduling_url); showToast('Link copied!'); }}>Copy Link</button>
+                        <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); window.open(ev.scheduling_url, '_blank'); }}>Open <ExternalLink size={12} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="cal-fallback glass-card">
+                  <p>No event types found. Share your main scheduling link:</p>
+                  <a href={calData.scheduling_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">{calData.scheduling_url} <ExternalLink size={14} /></a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-}
+}4

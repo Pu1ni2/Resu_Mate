@@ -784,3 +784,234 @@ BODY:
     except Exception as e:
         print(f"Email draft error: {e}")
         return {"subject": "Regarding Your Application", "body": f"Hi,\n\nThank you for your application.\n\nBest regards,\n[Your Name]"}
+
+
+# ============ GITHUB PROFILE ANALYZER ============
+
+class GitHubRequest(BaseModel):
+    candidate_id: int
+    github_username: Optional[str] = None
+    anonymize: bool = False
+
+
+@router.post("/github-analyze")
+async def github_analyze(req: GitHubRequest, user=Depends(get_current_user)):
+    """Fetch and analyze a candidate's GitHub profile"""
+    try:
+        import httpx
+        import re
+        
+        candidate = resume_rag.candidates.get(req.candidate_id)
+        
+        # Try to find GitHub username
+        username = req.github_username
+        
+        if not username and candidate:
+            # Search resume text for GitHub URL
+            resume_text = candidate.get('text', '') or candidate.get('raw_text', '')
+            gh_match = re.search(r'github\.com/([a-zA-Z0-9_-]+)', resume_text)
+            if gh_match:
+                username = gh_match.group(1)
+        
+        if not username and candidate:
+            # Try Tavily to find their GitHub
+            try:
+                tavily_key = getattr(settings, 'tavily_api_key', '')
+                if tavily_key:
+                    from tavily import TavilyClient
+                    tavily = TavilyClient(api_key=tavily_key)
+                    name = candidate.get('name', '')
+                    search = tavily.search(query=f"{name} github.com profile", max_results=3)
+                    for r in search.get('results', []):
+                        url = r.get('url', '')
+                        gh_match = re.search(r'github\.com/([a-zA-Z0-9_-]+)', url)
+                        if gh_match:
+                            username = gh_match.group(1)
+                            break
+            except:
+                pass
+        
+        if not username:
+            return {"error": "Could not find GitHub username. Please enter it manually.", "needs_username": True}
+        
+        # Fetch GitHub data
+        github_token = getattr(settings, 'github_token', '') or os.environ.get('GITHUB_TOKEN', '')
+        headers = {"Accept": "application/vnd.github.v3+json"}
+        if github_token:
+            headers["Authorization"] = f"token {github_token}"
+        
+        async with httpx.AsyncClient() as client:
+            # User profile
+            user_resp = await client.get(f"https://api.github.com/users/{username}", headers=headers)
+            if user_resp.status_code != 200:
+                return {"error": f"GitHub user '{username}' not found"}
+            user_data = user_resp.json()
+            
+            # Repos
+            repos_resp = await client.get(f"https://api.github.com/users/{username}/repos?sort=updated&per_page=10", headers=headers)
+            repos_data = repos_resp.json() if repos_resp.status_code == 200 else []
+            
+            # Events (contributions)
+            events_resp = await client.get(f"https://api.github.com/users/{username}/events?per_page=30", headers=headers)
+            events_data = events_resp.json() if events_resp.status_code == 200 else []
+        
+        # Process data
+        languages = {}
+        top_repos = []
+        for repo in repos_data[:10]:
+            if repo.get('fork'):
+                continue
+            lang = repo.get('language')
+            if lang:
+                languages[lang] = languages.get(lang, 0) + 1
+            top_repos.append({
+                "name": repo.get('name', ''),
+                "description": repo.get('description', '') or 'No description',
+                "language": lang or 'N/A',
+                "stars": repo.get('stargazers_count', 0),
+                "forks": repo.get('forks_count', 0),
+                "url": repo.get('html_url', ''),
+                "updated": repo.get('updated_at', '')[:10]
+            })
+        
+        # Count recent contributions
+        push_events = sum(1 for e in events_data if e.get('type') == 'PushEvent')
+        pr_events = sum(1 for e in events_data if e.get('type') == 'PullRequestEvent')
+        
+        profile = {
+            "username": username,
+            "name": user_data.get('name', username),
+            "bio": user_data.get('bio', ''),
+            "avatar_url": user_data.get('avatar_url', ''),
+            "profile_url": user_data.get('html_url', ''),
+            "public_repos": user_data.get('public_repos', 0),
+            "followers": user_data.get('followers', 0),
+            "following": user_data.get('following', 0),
+            "location": user_data.get('location', ''),
+            "company": user_data.get('company', ''),
+            "blog": user_data.get('blog', ''),
+            "created_at": user_data.get('created_at', '')[:10],
+            "languages": dict(sorted(languages.items(), key=lambda x: x[1], reverse=True)),
+            "top_repos": top_repos[:6],
+            "recent_pushes": push_events,
+            "recent_prs": pr_events
+        }
+        
+        # Generate AI analysis
+        if resume_rag.llm:
+            from langchain_core.messages import HumanMessage, SystemMessage
+            analysis_prompt = f"""Analyze this GitHub profile for hiring purposes:
+
+Profile: {username} ({user_data.get('name', '')})
+Bio: {user_data.get('bio', 'N/A')}
+Public Repos: {user_data.get('public_repos', 0)}
+Followers: {user_data.get('followers', 0)}
+Languages: {', '.join(languages.keys())}
+Top Repos: {', '.join(r['name'] for r in top_repos[:5])}
+Recent Activity: {push_events} pushes, {pr_events} PRs in last 30 events
+Account Created: {user_data.get('created_at', '')[:10]}
+
+Provide a brief 3-4 sentence hiring-focused analysis of this GitHub profile. Focus on activity level, technical breadth, and notable projects."""
+
+            ai_resp = await resume_rag.llm.ainvoke([
+                SystemMessage(content="You are a technical recruiter analyzing GitHub profiles. Be concise and insightful."),
+                HumanMessage(content=analysis_prompt)
+            ])
+            profile["ai_analysis"] = ai_resp.content
+        
+        return {"profile": profile}
+    
+    except Exception as e:
+        print(f"GitHub analysis error: {e}")
+        return {"error": f"GitHub analysis failed: {str(e)}"}
+
+
+# ============ CALENDLY INTEGRATION ============
+
+class CalendlyRequest(BaseModel):
+    candidate_id: int
+    anonymize: bool = False
+
+
+@router.get("/calendly-link")
+async def get_calendly_link(user=Depends(get_current_user)):
+    """Get the user's Calendly scheduling link"""
+    try:
+        import httpx
+        
+        calendly_token = getattr(settings, 'calendly_token', '') or os.environ.get('CALENDLY_TOKEN', '')
+        if not calendly_token:
+            return {"error": "Calendly token not configured. Add CALENDLY_TOKEN to your .env file.", "event_types": [], "scheduling_url": ""}
+        
+        print(f"🔍 Calendly token found: {calendly_token[:20]}...")
+        
+        async with httpx.AsyncClient(timeout=15) as client:
+            # Get current user
+            user_resp = await client.get(
+                "https://api.calendly.com/users/me",
+                headers={"Authorization": f"Bearer {calendly_token}", "Content-Type": "application/json"}
+            )
+            
+            print(f"🔍 Calendly /users/me status: {user_resp.status_code}")
+            
+            if user_resp.status_code != 200:
+                error_text = user_resp.text[:200]
+                print(f"❌ Calendly error response: {error_text}")
+                return {"error": f"Calendly auth failed (status {user_resp.status_code}). Check your token.", "event_types": [], "scheduling_url": ""}
+            
+            resp_json = user_resp.json()
+            print(f"🔍 Calendly response keys: {list(resp_json.keys())}")
+            
+            # Handle both response formats
+            user_data = resp_json.get("resource") or resp_json
+            if not user_data:
+                return {"error": "Unexpected Calendly response format", "event_types": [], "scheduling_url": ""}
+            
+            user_uri = user_data.get("uri", "")
+            scheduling_url = user_data.get("scheduling_url", "")
+            user_name = user_data.get("name", "")
+            
+            print(f"✅ Calendly user: {user_name}, URI: {user_uri}")
+            
+            # Get event types
+            event_types = []
+            if user_uri:
+                events_resp = await client.get(
+                    f"https://api.calendly.com/event_types?user={user_uri}&active=true",
+                    headers={"Authorization": f"Bearer {calendly_token}", "Content-Type": "application/json"}
+                )
+                
+                print(f"🔍 Calendly event_types status: {events_resp.status_code}")
+                
+                if events_resp.status_code == 200:
+                    events_json = events_resp.json()
+                    for ev in events_json.get("collection", []):
+                        event_types.append({
+                            "name": ev.get("name", "Meeting"),
+                            "duration": ev.get("duration", 30),
+                            "slug": ev.get("slug", ""),
+                            "scheduling_url": ev.get("scheduling_url", scheduling_url),
+                            "description": (ev.get("description_plain") or ev.get("description_html") or "")[:100]
+                        })
+            
+            # If no event types found but we have scheduling URL
+            if not event_types and scheduling_url:
+                event_types.append({
+                    "name": "Schedule a Meeting",
+                    "duration": 30,
+                    "slug": "",
+                    "scheduling_url": scheduling_url,
+                    "description": "Book a time on my calendar"
+                })
+            
+            return {
+                "scheduling_url": scheduling_url,
+                "event_types": event_types,
+                "user_name": user_name,
+                "error": None
+            }
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Calendly integration failed: {str(e)}", "event_types": [], "scheduling_url": ""}

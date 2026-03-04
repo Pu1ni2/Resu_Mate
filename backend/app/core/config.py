@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     # Tavily
     tavily_api_key: str = ""
     
+    # GitHub
+    github_token: str = ""
+    
+    # Calendly
+    calendly_token: str = ""
+    
     # ChromaDB
     chroma_dir: str = "chroma_db"
     chroma_collection: str = "resumes"

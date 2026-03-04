@@ -957,3 +957,160 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
   .email-send-actions{flex-direction:column}
   .email-send-btn{width:100%;justify-content:center}
 }
+
+/* ========================================
+   HIRING AGENT
+   ======================================== */
+.agent-container{padding:24px;display:flex;flex-direction:column;gap:20px;height:calc(100vh - 280px);overflow-y:auto}
+.agent-intro{display:flex;align-items:flex-start;gap:16px;padding:20px;background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(217,119,6,0.04));border:1px solid rgba(245,158,11,0.15);border-radius:16px}
+.agent-intro-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(217,119,6,0.1));display:flex;align-items:center;justify-content:center;color:#F59E0B;flex-shrink:0}
+.agent-intro-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.agent-intro-desc{font-size:14px;color:var(--text2);line-height:1.5}
+.agent-choose{display:flex;flex-direction:column;gap:12px}
+.agent-option{display:flex;align-items:center;gap:16px;padding:20px;cursor:pointer;transition:all .3s ease}
+.agent-option:hover{border-color:var(--glass-hover);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+.agent-option-icon{width:48px;height:48px;border-radius:12px;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
+.agent-option h4{font-size:16px;font-weight:600;margin-bottom:4px}
+.agent-option p{font-size:13px;color:var(--text2);line-height:1.4}
+.agent-option>svg:last-child{color:var(--text3);margin-left:auto;flex-shrink:0;transition:transform .2s}
+.agent-option:hover>svg:last-child{color:#F59E0B;transform:translateX(3px)}
+.agent-jd,.agent-quick{display:flex;flex-direction:column;gap:20px}
+.agent-label{font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.agent-textarea{resize:vertical;min-height:200px;font-family:inherit;font-size:14px;line-height:1.6;background:var(--bg3);border:1px solid var(--glass-border);border-radius:14px;padding:16px;color:var(--text);transition:border-color .2s}
+.agent-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(245,158,11,0.1)}
+.agent-textarea::placeholder{color:var(--text3)}
+.agent-section{margin-bottom:4px}
+.agent-chips{display:flex;flex-wrap:wrap;gap:8px}
+.agent-chip{padding:10px 18px;border-radius:12px;background:var(--bg3);border:1px solid var(--glass-border);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+.agent-chip:hover{background:var(--bg4);border-color:var(--glass-hover);color:var(--text)}
+.agent-chip.active{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.4);color:#F59E0B}
+.agent-input{margin-top:10px}
+.agent-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:8px;flex-wrap:wrap}
+.agent-actions .btn{display:flex;align-items:center;gap:8px}
+.agent-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:16px;text-align:center}
+.agent-loading h3{font-size:18px;font-weight:600}
+.agent-loading-steps{display:flex;flex-direction:column;gap:10px;margin-top:12px;text-align:left}
+.agent-step-item{font-size:14px;color:var(--text3);transition:color .3s}
+.agent-step-item.active{color:var(--text)}
+.agent-result{display:flex;flex-direction:column;gap:16px}
+.agent-report{padding:24px;background:var(--bg2);border:1px solid var(--glass-border);border-radius:16px;line-height:1.7}
+.agent-report .md h2{font-size:18px;color:#F59E0B;margin-top:20px;margin-bottom:10px}
+.agent-report .md h3{font-size:16px;color:var(--text);margin-top:16px;margin-bottom:8px}
+.agent-report .md p{margin-bottom:10px;color:var(--text2)}
+.agent-report .md strong{color:var(--text)}
+.agent-report .md ul,.agent-report .md ol{padding-left:20px;margin-bottom:12px}
+.agent-report .md li{margin-bottom:6px;color:var(--text2)}
+.agent-report .md hr{border:none;border-top:1px solid var(--glass-border);margin:20px 0}
+.agent-report .md a{color:#60A5FA;text-decoration:none}
+.agent-report .md a:hover{text-decoration:underline}
+.agent-error{display:flex;align-items:center;gap:14px;padding:20px;color:#F87171}
+
+/* ========================================
+   EMAIL COMPOSER
+   ======================================== */
+.email-composer{margin-top:16px;padding:0;border-radius:16px;overflow:hidden}
+.email-composer-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--glass-border)}
+.email-composer-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--text2)}
+.email-composer-actions{display:flex;gap:6px}
+.email-action-btn{width:34px;height:34px;border-radius:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.email-action-btn:hover{background:var(--bg3);color:var(--text);border-color:var(--glass-hover)}
+.email-type-select{padding:20px}
+.email-type-label{font-size:14px;font-weight:500;color:var(--text2);margin-bottom:12px}
+.email-type-chips{display:flex;flex-wrap:wrap;gap:8px}
+.email-drafting{display:flex;align-items:center;gap:10px;padding:24px 20px;color:var(--text2);font-size:14px}
+.email-fields{padding:4px 20px 0}
+.email-field{display:flex;align-items:center;gap:0;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.email-field label{font-size:13px;font-weight:600;color:var(--text3);min-width:60px}
+.email-input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit;padding:6px 8px;outline:none}
+.email-input::placeholder{color:var(--text3)}
+.email-ccbcc-toggle{background:none;border:none;color:var(--text3);font-size:12px;font-weight:500;cursor:pointer;padding:8px 0;text-align:left;font-family:inherit;transition:color .2s}
+.email-ccbcc-toggle:hover{color:#F59E0B}
+.email-divider{height:1px;background:var(--glass-border);margin:0 20px}
+.email-body{width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit;line-height:1.7;padding:16px 20px;resize:vertical;min-height:200px;outline:none;box-sizing:border-box}
+.email-body::placeholder{color:var(--text3)}
+.email-send-actions{display:flex;flex-wrap:wrap;gap:8px;padding:16px 20px;border-top:1px solid var(--glass-border)}
+.email-send-btn{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1px solid var(--glass-border);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+.email-send-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--glass-hover)}
+.email-send-btn.gmail{background:rgba(234,67,53,0.1);border-color:rgba(234,67,53,0.25);color:#EA4335}
+.email-send-btn.gmail:hover{background:rgba(234,67,53,0.2)}
+.email-send-btn.outlook{background:rgba(0,120,212,0.1);border-color:rgba(0,120,212,0.25);color:#0078D4}
+.email-send-btn.outlook:hover{background:rgba(0,120,212,0.2)}
+.email-send-btn.default{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.25);color:#F59E0B}
+.email-send-btn.default:hover{background:rgba(245,158,11,0.2)}
+
+/* ========================================
+   TOOL PANELS (GitHub, Calendly)
+   ======================================== */
+.tool-panel{padding:24px;display:flex;flex-direction:column;gap:16px;height:calc(100vh - 280px);overflow-y:auto}
+.tool-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 0;color:var(--text3)}
+.tool-error{display:flex;align-items:center;gap:14px;padding:20px;color:#F87171;flex-wrap:wrap}
+.tool-error .btn{margin-left:auto}
+.tool-input-section{padding:24px}
+.tool-input-section h3{display:flex;align-items:center;gap:10px;font-size:17px;margin-bottom:8px}
+.tool-input-section p{color:var(--text2);font-size:14px;margin-bottom:16px}
+.tool-input-row{display:flex;gap:10px}
+.tool-input-row .input{flex:1}
+.tool-ai-analysis{display:flex;gap:12px;padding:18px;color:var(--text2);font-size:14px;line-height:1.6}
+.tool-ai-analysis svg{color:#F59E0B;flex-shrink:0;margin-top:2px}
+
+/* GitHub */
+.gh-header{display:flex;align-items:flex-start;gap:16px;padding:20px;flex-wrap:wrap}
+.gh-avatar{width:64px;height:64px;border-radius:16px;flex-shrink:0}
+.gh-info{flex:1;min-width:200px}
+.gh-info h3{font-size:18px;font-weight:700;margin-bottom:2px}
+.gh-link{color:#60A5FA;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.gh-link:hover{text-decoration:underline}
+.gh-bio{color:var(--text2);font-size:14px;margin-top:6px;line-height:1.5}
+.gh-stats{display:flex;gap:20px;flex-shrink:0}
+.gh-stat{text-align:center}
+.gh-stat-val{display:block;font-size:20px;font-weight:700;color:var(--text)}
+.gh-stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.gh-languages{padding:18px}
+.gh-languages h4,.gh-repos h4{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--text2)}
+.gh-lang-chips{display:flex;flex-wrap:wrap;gap:8px}
+.gh-repos{display:flex;flex-direction:column;gap:10px}
+.gh-repo{padding:16px}
+.gh-repo-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px}
+.gh-repo-header a{color:#60A5FA;font-weight:600;font-size:15px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.gh-repo-header a:hover{text-decoration:underline}
+.gh-repo-desc{font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.4}
+.gh-repo-stats{display:flex;gap:16px;font-size:12px;color:var(--text3)}
+
+/* Calendly */
+.cal-container{display:flex;flex-direction:column;gap:16px}
+.cal-header{display:flex;align-items:center;gap:16px;padding:20px}
+.cal-header svg{color:#F59E0B;flex-shrink:0}
+.cal-header h3{font-size:17px;font-weight:600;margin-bottom:4px}
+.cal-header p{font-size:13px;color:var(--text2)}
+.cal-events{display:flex;flex-direction:column;gap:10px}
+.cal-event{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;cursor:pointer;transition:all .2s;flex-wrap:wrap;gap:12px}
+.cal-event:hover{border-color:var(--glass-hover);transform:translateY(-1px)}
+.cal-event-info h4{font-size:15px;font-weight:600;margin-bottom:4px}
+.cal-event-info p{font-size:13px;color:var(--text2)}
+.cal-event-actions{display:flex;gap:8px}
+.cal-fallback{padding:20px;text-align:center}
+.cal-fallback p{color:var(--text2);margin-bottom:12px}
+
+@media(max-width:768px){
+  .agent-option{flex-direction:column;text-align:center}
+  .agent-option-icon{margin:0 auto}
+  .email-send-actions{flex-direction:column}
+  .email-send-btn{width:100%;justify-content:center}
+  .gh-header,.cal-event{flex-direction:column}
+  .gh-stats{justify-content:center}
+}
+
+/* GitHub search bar */
+.gh-search-bar{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.gh-search-bar svg:first-child{color:var(--text3);flex-shrink:0}
+.gh-search-input{flex:1;border:none !important;background:transparent !important;padding:8px !important}
+.gh-search-bar .btn{flex-shrink:0}
+
+/* Multi-select warning in Candidate Focus */
+.focus-multi-warning{display:flex;align-items:center;gap:12px;padding:14px 20px;margin:0 24px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;color:var(--text2);font-size:14px}
+.focus-multi-warning svg{color:#F59E0B;flex-shrink:0}
+.focus-multi-warning strong{color:#F59E0B}
+
+/* Multi-select warning in Candidate Focus */
+.focus-multi-warning{display:flex;align-items:center;gap:12px;padding:14px 20px;margin:16px 24px 0;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:12px;color:#F59E0B;font-size:14px;line-height:1.5}
+.focus-multi-warning strong{color:#FCD34D}
