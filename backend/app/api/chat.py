@@ -186,6 +186,9 @@ class FocusChatRequest(BaseModel):
     candidate_id: int
     conversation_history: list = []
     anonymize: bool = False
+    candidate_data: Optional[dict] = None
+    scan_data: Optional[dict] = None
+    scan_contact: Optional[dict] = None
 
 
 class WebSearchRequest(BaseModel):
@@ -198,11 +201,12 @@ class WebSearchRequest(BaseModel):
 async def focus_chat(req: FocusChatRequest, user=Depends(get_current_user)):
     """1-on-1 focused chat about a single candidate"""
     try:
-        # Verify candidate exists
-        if req.candidate_id not in resume_rag.candidates:
-            return {"response": "Candidate not found. Please select a valid candidate.", "suggestions": []}
-
-        candidate = resume_rag.candidates[req.candidate_id]
+        # Verify candidate exists - try backend first, fall back to frontend data
+        candidate = resume_rag.candidates.get(req.candidate_id)
+        if not candidate and req.candidate_data:
+            candidate = req.candidate_data
+        if not candidate:
+            return {"response": "Candidate not found. Please re-upload the resume.", "suggestions": []}
         candidate_name = candidate.get('name', 'Unknown')
 
         # Build context from candidate data
@@ -326,29 +330,80 @@ WHEN USING WEB DATA:
 - If web results contradict resume, mention both and note the discrepancy
 - Web data supplements but doesn't replace resume analysis"""
 
-        focus_system_prompt = f"""You are an expert resume analyst with web search capabilities, similar to Perplexity AI.
+        # ═══ BUILD SCAN DATA CONTEXT ═══
+        scan_context = ""
+        if req.scan_data:
+            scan_context += "\n\n═══ SCANNED ONLINE PROFILES ═══\n"
+            
+            gh = req.scan_data.get("github")
+            if gh:
+                scan_context += f"\n🐙 GITHUB PROFILE (@{gh.get('username', '')}):\n"
+                scan_context += f"- Name: {gh.get('name', '')}\n"
+                scan_context += f"- Bio: {gh.get('bio', '')}\n"
+                scan_context += f"- Public Repos: {gh.get('public_repos', '0')}\n"
+                scan_context += f"- Followers: {gh.get('followers', '0')}\n"
+                scan_context += f"- Location: {gh.get('location', '')}\n"
+                scan_context += f"- Company: {gh.get('company', '')}\n"
+                scan_context += f"- Website: {gh.get('website', '')}\n"
+                scan_context += f"- Profile URL: {gh.get('url', '')}\n"
+                pinned = gh.get('pinned_repos', [])
+                if pinned:
+                    scan_context += "- Pinned Repositories:\n"
+                    for repo in pinned:
+                        scan_context += f"  • {repo.get('name', '')} ({repo.get('language', 'N/A')}): {repo.get('description', '')}\n"
+            
+            li = req.scan_data.get("linkedin")
+            if li:
+                scan_context += f"\n💼 LINKEDIN PROFILE:\n"
+                scan_context += f"- Name: {li.get('name', '')}\n"
+                scan_context += f"- Headline: {li.get('headline', '')}\n"
+                scan_context += f"- Location: {li.get('location', '')}\n"
+                scan_context += f"- About: {li.get('about', '')}\n"
+                scan_context += f"- Profile URL: {li.get('url', '')}\n"
+                if li.get('note'):
+                    scan_context += f"- Note: {li.get('note')}\n"
+            
+            port = req.scan_data.get("portfolio")
+            if port:
+                scan_context += f"\n🌐 PORTFOLIO:\n"
+                scan_context += f"- URL: {port.get('url', '')}\n"
+                scan_context += f"- Title: {port.get('title', '')}\n"
+                scan_context += f"- Description: {port.get('description', '')}\n"
+        
+        if req.scan_contact:
+            if req.scan_contact.get('email') or req.scan_contact.get('phone'):
+                scan_context += f"\n📧 CONTACT INFO:\n"
+                if req.scan_contact.get('email'):
+                    scan_context += f"- Email: {req.scan_contact['email']}\n"
+                if req.scan_contact.get('phone'):
+                    scan_context += f"- Phone: {req.scan_contact['phone']}\n"
+
+        focus_system_prompt = f"""You are an expert resume analyst with access to multiple data sources about this candidate, similar to Perplexity AI.
 You are analyzing ONLY ONE candidate: {display_name}
 
-STRUCTURED CANDIDATE DATA:
+STRUCTURED CANDIDATE DATA (from resume):
 {ctx}
 
 RAW RESUME TEXT:
 {resume_text}
+{scan_context}
 {web_instructions}
 
 RULES:
-1. Answer using BOTH resume data AND web search results when available
-2. If info is NOT in resume AND no web results: "This information is not available in {display_name}'s resume or online sources"
-3. When web results are available, cite them with links
-4. NEVER hallucinate — only use provided data
-5. NEVER discuss anything unrelated to the candidate or hiring
-6. If asked about non-candidate topics: "I'm focused on analyzing {display_name}. I can help with questions about their skills, experience, online presence, and career fit."
-7. Be thorough — combine resume insights with web findings for comprehensive answers
-8. Format responses clearly with sections when mixing resume + web data
+1. Answer using ALL available data sources: resume, GitHub, LinkedIn, web search
+2. When referencing GitHub data, mention specific repos, languages, and activity
+3. When referencing LinkedIn data, mention their headline, connections, or career progression
+4. Cross-reference data across sources — note if GitHub skills match resume skills, if LinkedIn title matches resume role, etc.
+5. If info is NOT available in ANY source: "This information is not available from any of the sources I have"
+6. NEVER hallucinate — only use provided data
+7. NEVER discuss anything unrelated to the candidate or hiring
+8. If asked about a project, check BOTH resume AND GitHub pinned repos
+9. Be thorough — combine all sources for the most comprehensive answer
+10. Format responses clearly, indicating which source each piece of info comes from
 
-{"ANONYMIZATION ON: Use 'The Candidate' instead of real name. Do NOT perform web searches." if req.anonymize else "Use real candidate name. Web search is available."}
+{"ANONYMIZATION ON: Use 'The Candidate' instead of real name." if req.anonymize else "Use real candidate name."}
 
-Respond helpfully using **bold** for key points. Include source links when using web data."""
+Respond helpfully using **bold** for key points. Cite sources like [Resume], [GitHub], [LinkedIn] when relevant."""
 
         # Use resume_rag's LLM
         if not resume_rag.llm:
@@ -464,16 +519,19 @@ class HiringAgentRequest(BaseModel):
     level: Optional[str] = None
     job_description: Optional[str] = None
     anonymize: bool = False
+    candidate_data: Optional[dict] = None
 
 
 @router.post("/hiring-agent")
 async def hiring_agent(req: HiringAgentRequest, user=Depends(get_current_user)):
     """Hiring Manager Agent - evaluates candidate fit for a role"""
     try:
-        if req.candidate_id not in resume_rag.candidates:
-            return {"error": "Candidate not found. Please select a valid candidate."}
+        candidate = resume_rag.candidates.get(req.candidate_id)
+        if not candidate and req.candidate_data:
+            candidate = req.candidate_data
+        if not candidate:
+            return {"error": "Candidate not found. Please re-upload the resume."}
 
-        candidate = resume_rag.candidates[req.candidate_id]
         candidate_name = candidate.get('name', 'Unknown')
         display_name = "The Candidate" if req.anonymize else candidate_name
 
@@ -688,19 +746,22 @@ IMPORTANT RULES:
 
 class EmailDraftRequest(BaseModel):
     candidate_id: int
-    email_type: str  # 'interest' | 'interview' | 'offer' | 'pass' | 'followup'
+    email_type: str
     evaluation_report: Optional[str] = None
     anonymize: bool = False
+    candidate_data: Optional[dict] = None
 
 
 @router.post("/draft-email")
 async def draft_email(req: EmailDraftRequest, user=Depends(get_current_user)):
     """Draft an email to a candidate based on evaluation"""
     try:
-        if req.candidate_id not in resume_rag.candidates:
-            return {"subject": "", "body": "Candidate not found."}
+        candidate = resume_rag.candidates.get(req.candidate_id)
+        if not candidate and req.candidate_data:
+            candidate = req.candidate_data
+        if not candidate:
+            return {"subject": "", "body": "Candidate not found. Please re-upload the resume."}
 
-        candidate = resume_rag.candidates[req.candidate_id]
         candidate_name = candidate.get('name', 'Candidate')
         display_name = "Candidate" if req.anonymize else candidate_name
         first_name = "Candidate" if req.anonymize else candidate_name.split()[0]
@@ -789,6 +850,7 @@ BODY:
 # ============ GITHUB PROFILE ANALYZER ============
 
 class GitHubRequest(BaseModel):
+    candidate_data: Optional[dict] = None
     candidate_id: int
     github_username: Optional[str] = None
     anonymize: bool = False
@@ -802,6 +864,8 @@ async def github_analyze(req: GitHubRequest, user=Depends(get_current_user)):
         import re
         
         candidate = resume_rag.candidates.get(req.candidate_id)
+        if not candidate and req.candidate_data:
+            candidate = req.candidate_data
         
         # Try to find GitHub username
         username = req.github_username
@@ -1015,3 +1079,284 @@ async def get_calendly_link(user=Depends(get_current_user)):
         import traceback
         traceback.print_exc()
         return {"error": f"Calendly integration failed: {str(e)}", "event_types": [], "scheduling_url": ""}
+
+
+# ============ RESUME SCANNER AGENT ============
+
+class ScanRequest(BaseModel):
+    candidate_id: int
+    anonymize: bool = False
+    candidate_data: Optional[dict] = None
+
+
+@router.post("/scan-resume")
+async def scan_resume(req: ScanRequest, user=Depends(get_current_user)):
+    """AI Agent that scans resume for links, visits profiles, extracts data"""
+    import re
+    import json
+
+    # Try backend first, fall back to frontend data
+    candidate = resume_rag.candidates.get(req.candidate_id)
+    
+    if not candidate and req.candidate_data:
+        # Use data sent from frontend
+        candidate = req.candidate_data
+    
+    if not candidate:
+        return {"error": "Candidate not found", "logs": [], "profiles": {}}
+
+    logs = []
+    profiles = {"github": None, "linkedin": None, "portfolio": None, "other_links": []}
+    resume_text = candidate.get('text', '') or candidate.get('raw_text', '') or ''
+    candidate_name = candidate.get('name', 'Unknown')
+
+    # ═══════ LAYER 1: PDF Link Extraction ═══════
+    logs.append({"step": "scan_start", "msg": f"Initializing resume scanner for {candidate_name}..."})
+    logs.append({"step": "layer1_start", "msg": "LAYER 1: Extracting links from resume text..."})
+
+    # GitHub - match many PDF extraction formats
+    gh_patterns = [
+        r'github\.com/([a-zA-Z0-9_-]+)',
+        r'github:\s*@?([a-zA-Z0-9_-]+)',
+        r'GitHub:\s*([a-zA-Z0-9_-]+)',
+        r'/github\s*([a-zA-Z0-9_-]+)',          # PDF icon format: /github DB-25
+        r'github[^\w]*([a-zA-Z0-9_-]{2,})',     # github followed by any separator then username
+    ]
+    gh_username = None
+    for pattern in gh_patterns:
+        match = re.search(pattern, resume_text, re.IGNORECASE)
+        if match:
+            gh_username = match.group(1).strip()
+            if gh_username.lower() not in ['com', 'io', 'org', 'profile', 'settings', 'in', 'alt', '']:
+                logs.append({"step": "layer1_github", "msg": f"Found GitHub: github.com/{gh_username}", "status": "success"})
+                break
+            else:
+                gh_username = None
+
+    # LinkedIn - match many PDF extraction formats
+    li_patterns = [
+        r'linkedin\.com/in/([a-zA-Z0-9_-]+)',
+        r'linkedin:\s*([a-zA-Z0-9_-]+)',
+        r'LinkedIn:\s*([a-zA-Z0-9_/-]+)',
+        r'/linkedin-in\s*([a-zA-Z0-9_-]+)',     # PDF icon format: /linkedin-in username
+        r'/linkedin[^\w]*([a-zA-Z0-9_-]{2,})',   # linkedin followed by separator then username
+        r'linkedin[- ]*in[^\w]*([a-zA-Z0-9_-]{2,})',  # "linkedin in username" or "linkedin-in username"
+    ]
+    li_username = None
+    for pattern in li_patterns:
+        match = re.search(pattern, resume_text, re.IGNORECASE)
+        if match:
+            li_username = match.group(1).strip().rstrip('/')
+            if li_username.lower() not in ['in', 'com', 'profile', '']:
+                logs.append({"step": "layer1_linkedin", "msg": f"Found LinkedIn: linkedin.com/in/{li_username}", "status": "success"})
+                break
+            else:
+                li_username = None
+
+    # Portfolio/Website
+    web_patterns = [
+        r'(?:portfolio|website|blog|site)[\s:]*\s*(https?://[^\s,]+)',
+        r'(https?://(?!github\.com|linkedin\.com)[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}[^\s,]*)',
+    ]
+    portfolio_url = None
+    for pattern in web_patterns:
+        match = re.search(pattern, resume_text, re.IGNORECASE)
+        if match:
+            portfolio_url = match.group(1).rstrip('.')
+            logs.append({"step": "layer1_portfolio", "msg": f"Found portfolio: {portfolio_url}", "status": "success"})
+            break
+
+    # Email - handle PDF artifacts before the email address
+    email_match = re.search(r'([a-zA-Z0-9][\w.-]*@[\w.-]+\.\w{2,})', resume_text)
+    if email_match:
+        logs.append({"step": "layer1_email", "msg": f"Found email: {email_match.group(1)}", "status": "success"})
+
+    # Phone
+    phone_match = re.search(r'[\+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{7,15}', resume_text)
+    if phone_match:
+        logs.append({"step": "layer1_phone", "msg": f"Found phone: {phone_match.group().strip()}", "status": "success"})
+
+    if not gh_username and not li_username:
+        logs.append({"step": "layer1_none", "msg": "No GitHub/LinkedIn links found in resume text", "status": "warning"})
+
+    logs.append({"step": "layer1_done", "msg": f"Layer 1 complete. Found: {bool(gh_username)} GitHub, {bool(li_username)} LinkedIn, {bool(portfolio_url)} Portfolio"})
+
+    # ═══════ LAYER 3: Browser Agent (Playwright - sync in thread) ═══════
+    logs.append({"step": "layer3_start", "msg": "LAYER 3: Launching browser agent..."})
+
+    try:
+        import concurrent.futures
+
+        def run_browser_scraping(gh_user, li_user, port_url):
+            """Run Playwright sync API in a separate thread (Windows fix)"""
+            from playwright.sync_api import sync_playwright
+            
+            results = {"github": None, "linkedin": None, "portfolio": None, "browser_logs": []}
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                )
+                page = context.new_page()
+
+                # ── GitHub ──
+                if gh_user:
+                    results["browser_logs"].append({"step": "browser_github", "msg": f"Navigating to github.com/{gh_user}..."})
+                    try:
+                        page.goto(f"https://github.com/{gh_user}", timeout=15000)
+                        page.wait_for_load_state("domcontentloaded")
+
+                        gh_data = page.evaluate("""() => {
+                            const name = document.querySelector('.p-name, [itemprop="name"]')?.innerText?.trim() || '';
+                            const bio = document.querySelector('.p-note .user-profile-bio, [data-bio-text]')?.innerText?.trim() || '';
+                            const avatar = document.querySelector('.avatar-user')?.src || '';
+                            const followers = document.querySelector('a[href*="followers"] .text-bold, a[href*="followers"] span')?.innerText?.trim() || '0';
+                            const following = document.querySelector('a[href*="following"] .text-bold, a[href*="following"] span')?.innerText?.trim() || '0';
+                            const repos = document.querySelector('a[data-tab="repositories"] .Counter, nav a[href*="repositories"] .Counter')?.innerText?.trim() || '0';
+                            const location = document.querySelector('[itemprop="homeLocation"], li:has(.octicon-location) span')?.innerText?.trim() || '';
+                            const company = document.querySelector('[itemprop="worksFor"], li:has(.octicon-organization) span')?.innerText?.trim() || '';
+                            const website = document.querySelector('[itemprop="url"] a, li:has(.octicon-link) a')?.href || '';
+                            const pinned = [];
+                            document.querySelectorAll('.pinned-item-list-item-content, .js-pinned-item-list-item').forEach(el => {
+                                const repoName = el.querySelector('.repo')?.innerText?.trim() || el.querySelector('a span')?.innerText?.trim() || '';
+                                const desc = el.querySelector('.pinned-item-desc')?.innerText?.trim() || '';
+                                const lang = el.querySelector('[itemprop="programmingLanguage"]')?.innerText?.trim() || '';
+                                if (repoName) pinned.push({ name: repoName, description: desc, language: lang });
+                            });
+                            return { name, bio, avatar, followers, following, repos, location, company, website, pinned };
+                        }""")
+
+                        results["github"] = {
+                            "username": gh_user,
+                            "url": f"https://github.com/{gh_user}",
+                            "name": gh_data.get("name", gh_user),
+                            "bio": gh_data.get("bio", ""),
+                            "avatar": gh_data.get("avatar", ""),
+                            "followers": gh_data.get("followers", "0"),
+                            "following": gh_data.get("following", "0"),
+                            "public_repos": gh_data.get("repos", "0"),
+                            "location": gh_data.get("location", ""),
+                            "company": gh_data.get("company", ""),
+                            "website": gh_data.get("website", ""),
+                            "pinned_repos": gh_data.get("pinned", [])
+                        }
+                        results["browser_logs"].append({"step": "browser_github_done", "msg": f"GitHub profile scraped: {gh_data.get('name', gh_user)} | {gh_data.get('repos', '?')} repos | {gh_data.get('followers', '?')} followers", "status": "success"})
+                    except Exception as e:
+                        results["browser_logs"].append({"step": "browser_github_err", "msg": f"GitHub scrape failed: {str(e)[:100]}", "status": "error"})
+
+                # ── LinkedIn ──
+                if li_user:
+                    results["browser_logs"].append({"step": "browser_linkedin", "msg": f"Navigating to linkedin.com/in/{li_user}..."})
+                    try:
+                        page.goto(f"https://www.linkedin.com/in/{li_user}", timeout=15000)
+                        page.wait_for_load_state("domcontentloaded")
+                        page.wait_for_timeout(2000)
+
+                        li_data = page.evaluate("""() => {
+                            const name = document.querySelector('h1')?.innerText?.trim() || '';
+                            const headline = document.querySelector('.text-body-medium')?.innerText?.trim() || '';
+                            const location = document.querySelector('.text-body-small:not(.inline)')?.innerText?.trim() || '';
+                            const about = document.querySelector('#about ~ .display-flex .visually-hidden + span')?.innerText?.trim() || '';
+                            return { name, headline, location, about };
+                        }""")
+
+                        results["linkedin"] = {
+                            "username": li_user,
+                            "url": f"https://www.linkedin.com/in/{li_user}",
+                            "name": li_data.get("name", li_user),
+                            "headline": li_data.get("headline", ""),
+                            "location": li_data.get("location", ""),
+                            "about": li_data.get("about", "")[:300]
+                        }
+
+                        if li_data.get("name"):
+                            results["browser_logs"].append({"step": "browser_linkedin_done", "msg": f"LinkedIn profile found: {li_data.get('name', '')} | {li_data.get('headline', '')[:60]}", "status": "success"})
+                        else:
+                            results["browser_logs"].append({"step": "browser_linkedin_partial", "msg": "LinkedIn page loaded but data limited (login wall)", "status": "warning"})
+                            results["linkedin"]["note"] = "Limited data - LinkedIn requires login for full profiles"
+                    except Exception as e:
+                        results["browser_logs"].append({"step": "browser_linkedin_err", "msg": f"LinkedIn scrape failed: {str(e)[:100]}", "status": "error"})
+                        results["linkedin"] = {"username": li_user, "url": f"https://www.linkedin.com/in/{li_user}", "note": "Could not scrape - link is still valid."}
+
+                # ── Portfolio ──
+                if port_url:
+                    results["browser_logs"].append({"step": "browser_portfolio", "msg": f"Navigating to {port_url}..."})
+                    try:
+                        page.goto(port_url, timeout=10000)
+                        page.wait_for_load_state("domcontentloaded")
+
+                        port_data = page.evaluate("""() => {
+                            const title = document.title || '';
+                            const desc = document.querySelector('meta[name="description"]')?.content || '';
+                            const h1 = document.querySelector('h1')?.innerText?.trim() || '';
+                            return { title, description: desc, heading: h1 };
+                        }""")
+
+                        results["portfolio"] = {"url": port_url, "title": port_data.get("title", ""), "description": port_data.get("description", ""), "heading": port_data.get("heading", "")}
+                        results["browser_logs"].append({"step": "browser_portfolio_done", "msg": f"Portfolio loaded: {port_data.get('title', port_url)}", "status": "success"})
+                    except Exception as e:
+                        results["browser_logs"].append({"step": "browser_portfolio_err", "msg": f"Portfolio load failed: {str(e)[:80]}", "status": "error"})
+
+                browser.close()
+            
+            return results
+
+        # Run in thread to avoid Windows async event loop issues
+        loop = None
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_browser_scraping, gh_username, li_username, portfolio_url)
+            browser_results = future.result(timeout=60)
+
+        # Merge browser results
+        for blog in browser_results.get("browser_logs", []):
+            logs.append(blog)
+        if browser_results.get("github"):
+            profiles["github"] = browser_results["github"]
+        if browser_results.get("linkedin"):
+            profiles["linkedin"] = browser_results["linkedin"]
+        if browser_results.get("portfolio"):
+            profiles["portfolio"] = browser_results["portfolio"]
+
+    except ImportError:
+        logs.append({"step": "layer3_missing", "msg": "Playwright not installed. Run: pip install playwright && playwright install chromium", "status": "error"})
+    except Exception as e:
+        logs.append({"step": "layer3_error", "msg": f"Browser agent error: {str(e)[:150]}", "status": "error"})
+
+    # ═══════ AI SUMMARY ═══════
+    logs.append({"step": "ai_summary", "msg": "Generating AI summary of findings..."})
+
+    ai_summary = ""
+    if resume_rag.llm:
+        try:
+            from langchain_core.messages import HumanMessage, SystemMessage
+            summary_prompt = f"""Summarize what we found about {candidate_name} from their online profiles:
+
+GitHub: {json.dumps(profiles.get('github'), default=str) if profiles.get('github') else 'Not found'}
+LinkedIn: {json.dumps(profiles.get('linkedin'), default=str) if profiles.get('linkedin') else 'Not found'}
+Portfolio: {json.dumps(profiles.get('portfolio'), default=str) if profiles.get('portfolio') else 'Not found'}
+
+Resume Role: {candidate.get('predicted_role', 'N/A')}
+Resume Skills: {', '.join(candidate.get('skills', [])[:10]) if isinstance(candidate.get('skills'), list) else 'N/A'}
+
+Provide a brief 3-5 sentence summary for a hiring manager. Note any interesting findings or discrepancies between resume and online profiles."""
+
+            resp = await resume_rag.llm.ainvoke([
+                SystemMessage(content="You are a recruiter summarizing candidate online profiles. Be concise and insightful."),
+                HumanMessage(content=summary_prompt)
+            ])
+            ai_summary = resp.content
+        except:
+            pass
+
+    logs.append({"step": "done", "msg": "Scan complete!", "status": "success"})
+
+    return {
+        "logs": logs,
+        "profiles": profiles,
+        "ai_summary": ai_summary,
+        "contact": {
+            "email": email_match.group(1) if email_match else None,
+            "phone": phone_match.group().strip() if phone_match else None
+        }
+    }

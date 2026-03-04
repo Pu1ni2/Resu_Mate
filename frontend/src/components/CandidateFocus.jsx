@@ -91,6 +91,15 @@ export default function CandidateFocus() {
   const [calData, setCalData] = useState(null);
   const [calError, setCalError] = useState('');
 
+  // ═══════ SCANNER AGENT STATE ═══════
+  const [scanLogs, setScanLogs] = useState([]);
+  const [scanProfiles, setScanProfiles] = useState(null);
+  const [scanSummary, setScanSummary] = useState('');
+  const [scanContact, setScanContact] = useState(null);
+  const [scanRunning, setScanRunning] = useState(false);
+  const [scanDone, setScanDone] = useState(false);
+  const scanRef = useRef(null);
+
   // Helpers
   const getSkills = (c) => {
     if (!c?.skills) return [];
@@ -103,6 +112,26 @@ export default function CandidateFocus() {
     setShowWarning(true);
     setTimeout(() => setShowWarning(false), 3000);
   }, []);
+
+  // Helper: build candidate data payload for backend API calls
+  const getCandidatePayload = () => {
+    if (!focusCandidate) return {};
+    return {
+      name: focusCandidate.name || '',
+      text: focusCandidate.text || focusCandidate.raw_text || '',
+      raw_text: focusCandidate.raw_text || '',
+      predicted_role: focusCandidate.predicted_role || '',
+      skills: focusCandidate.skills || [],
+      total_experience_years: focusCandidate.total_experience_years,
+      experience_level: focusCandidate.experience_level || '',
+      location: focusCandidate.location || '',
+      work_experience: focusCandidate.work_experience || [],
+      education: focusCandidate.education || [],
+      key_strengths: focusCandidate.key_strengths || [],
+      summary: focusCandidate.summary || '',
+      badges: focusCandidate.badges || []
+    };
+  };
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -169,9 +198,14 @@ export default function CandidateFocus() {
     setSearchResults([]);
     setSearchHistory([]);
     resetAgent();
+    // Reset scanner
+    setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanRunning(false); setScanDone(false);
     
     // Set new focus candidate (make a copy to avoid reference issues)
     setFocusCandidate({ ...candidate });
+
+    // Auto-run scanner
+    setTimeout(() => runScanner(candidate.id), 500);
 
     const name = anonymize ? 'this candidate' : (candidate.name || 'this candidate');
     setFocusMessages([{
@@ -225,6 +259,7 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
+          candidate_data: getCandidatePayload(),
           email_type: type,
           evaluation_report: agentResult?.report || null,
           anonymize
@@ -278,7 +313,7 @@ export default function CandidateFocus() {
     try {
       const resp = await fetch(`${API_BASE}/api/chat/github-analyze`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-        body: JSON.stringify({ candidate_id: focusCandidate.id, github_username: username || null, anonymize })
+        body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), github_username: username || null, anonymize })
       });
       const data = await resp.json();
       if (data.error) { setGhError(data.error); if (data.needs_username) setGhNeedsInput(true); }
@@ -299,6 +334,92 @@ export default function CandidateFocus() {
     finally { setCalLoading(false); }
   };
 
+  // ═══════ SCANNER AGENT ═══════
+  const runScanner = async (candidateId) => {
+    if (scanRunning || scanDone) return;
+    setScanRunning(true);
+    setScanLogs([]);
+    setScanProfiles(null);
+    setScanSummary('');
+    setScanContact(null);
+    setScanDone(false);
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/scan-resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        body: JSON.stringify({ 
+          candidate_id: candidateId, 
+          anonymize,
+          candidate_data: {
+            name: focusCandidate?.name || '',
+            text: focusCandidate?.text || focusCandidate?.raw_text || '',
+            predicted_role: focusCandidate?.predicted_role || '',
+            skills: focusCandidate?.skills || []
+          }
+        })
+      });
+      const data = await resp.json();
+
+      // Animate logs one by one
+      const allLogs = data.logs || [];
+      for (let i = 0; i < allLogs.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        setScanLogs(prev => [...prev, allLogs[i]]);
+      }
+
+      const scannedProfiles = data.profiles || null;
+      const scannedSummary = data.ai_summary || '';
+      const scannedContact = data.contact || null;
+
+      setScanProfiles(scannedProfiles);
+      setScanSummary(scannedSummary);
+      setScanContact(scannedContact);
+
+      // ═══ FEED INTO AI CHAT ═══
+      // Show feeding animation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setScanLogs(prev => [...prev, { step: 'feeding', msg: 'Feeding collected data into AI Chat...', status: 'success' }]);
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Build enriched intro message with scan findings
+      const name = anonymize ? 'this candidate' : (focusCandidate?.name || 'this candidate');
+      let enrichedIntro = `**🧠 AI Chat Supercharged!** I now have data from multiple sources:\n\n`;
+      enrichedIntro += `📄 **Resume** — skills, experience, education\n`;
+      
+      if (scannedProfiles?.github) {
+        const gh = scannedProfiles.github;
+        enrichedIntro += `🐙 **GitHub** (@${gh.username}) — ${gh.public_repos} repos, ${gh.followers} followers\n`;
+      }
+      if (scannedProfiles?.linkedin) {
+        const li = scannedProfiles.linkedin;
+        enrichedIntro += `💼 **LinkedIn** — ${li.headline || li.name || 'Profile found'}\n`;
+      }
+      if (scannedContact?.email) {
+        enrichedIntro += `📧 **Contact** — ${scannedContact.email}\n`;
+      }
+      
+      enrichedIntro += `\n---\nAsk me anything about **${name}** — I'll use **all sources** to give you the most complete answer.\n\n`;
+      enrichedIntro += `Try asking:\n• "Tell me about their GitHub projects"\n• "What's their career trajectory?"\n• "Are they a good fit for a senior role?"`;
+
+      setFocusMessages([{ role: 'assistant', content: enrichedIntro }]);
+      setFocusSuggestions([
+        `What are ${name}'s GitHub projects about?`,
+        `Compare resume vs LinkedIn profile`,
+        `Summarize everything you know about ${name}`,
+        `Is ${name} a strong candidate?`
+      ]);
+
+      setScanLogs(prev => [...prev, { step: 'fed', msg: 'AI Chat is now powered with all collected data!', status: 'success' }]);
+
+    } catch (e) {
+      setScanLogs(prev => [...prev, { step: 'error', msg: 'Scanner failed to connect to server', status: 'error' }]);
+    } finally {
+      setScanRunning(false);
+      setScanDone(true);
+    }
+  };
+
   // ─── Chat Send (typed) ───
   const handleChatSend = async (msg) => {
     const text = msg || chatInput.trim();
@@ -317,6 +438,9 @@ export default function CandidateFocus() {
         body: JSON.stringify({
           message: text,
           candidate_id: focusCandidate.id,
+          candidate_data: getCandidatePayload(),
+          scan_data: scanProfiles || null,
+          scan_contact: scanContact || null,
           conversation_history: focusMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
           anonymize
         })
@@ -343,7 +467,7 @@ export default function CandidateFocus() {
     fetch(`${API_BASE}/api/chat/focus`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-      body: JSON.stringify({ message: text.trim(), candidate_id: focusCandidate.id, conversation_history: focusMessages.slice(-20).map(m => ({ role: m.role, content: m.content })), anonymize })
+      body: JSON.stringify({ message: text.trim(), candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), scan_data: scanProfiles || null, scan_contact: scanContact || null, conversation_history: focusMessages.slice(-20).map(m => ({ role: m.role, content: m.content })), anonymize })
     })
       .then(res => res.json())
       .then(data => {
@@ -456,6 +580,7 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
+          candidate_data: getCandidatePayload(),
           role: role,
           experience_required: selectedExperience,
           level: selectedLevel,
@@ -485,6 +610,7 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
+          candidate_data: getCandidatePayload(),
           job_description: jdText,
           role: null,
           experience_required: null,
@@ -576,6 +702,83 @@ export default function CandidateFocus() {
           {focusCandidate.location && <span className="badge badge-blue"><MapPin size={12} /> {focusCandidate.location}</span>}
         </div>
       </div>
+
+      {/* Scanner Agent Terminal */}
+      {(scanRunning || scanDone) && (
+        <div className="scanner-terminal" ref={scanRef}>
+          <div className="scanner-header">
+            <div className="scanner-title">
+              <span className="scanner-dot green" />
+              <span>ResuMate Scanner Agent</span>
+            </div>
+            <div className="scanner-actions">
+              {scanDone && <button className="scanner-btn" onClick={() => { setScanDone(false); setScanLogs([]); setScanProfiles(null); setScanRunning(false); runScanner(focusCandidate.id); }}>↻ Re-scan</button>}
+              <button className="scanner-btn" onClick={() => { setScanDone(false); setScanLogs([]); }}>✕</button>
+            </div>
+          </div>
+          <div className="scanner-body">
+            {scanLogs.map((log, i) => (
+              <div key={i} className={`scanner-log ${log.status || ''}`}>
+                <span className="scanner-prefix">{log.status === 'success' ? '✓' : log.status === 'error' ? '✗' : log.status === 'warning' ? '⚠' : '›'}</span>
+                <span>{log.msg}</span>
+              </div>
+            ))}
+            {scanRunning && <div className="scanner-log blink"><span className="scanner-prefix">›</span><span>Processing...</span></div>}
+          </div>
+
+          {/* Scan Results Summary */}
+          {scanDone && scanProfiles && (
+            <div className="scanner-results">
+              {scanProfiles.github && (
+                <div className="scanner-result-card">
+                  <Github size={16} />
+                  <div>
+                    <strong>{scanProfiles.github.name || scanProfiles.github.username}</strong>
+                    <span>{scanProfiles.github.public_repos} repos · {scanProfiles.github.followers} followers</span>
+                  </div>
+                  <a href={scanProfiles.github.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a>
+                </div>
+              )}
+              {scanProfiles.linkedin && (
+                <div className="scanner-result-card">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                  <div>
+                    <strong>{scanProfiles.linkedin.name || scanProfiles.linkedin.username}</strong>
+                    <span>{scanProfiles.linkedin.headline || scanProfiles.linkedin.note || ''}</span>
+                  </div>
+                  <a href={scanProfiles.linkedin.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a>
+                </div>
+              )}
+              {scanProfiles.portfolio && (
+                <div className="scanner-result-card">
+                  <Globe size={16} />
+                  <div>
+                    <strong>{scanProfiles.portfolio.title || 'Portfolio'}</strong>
+                    <span>{scanProfiles.portfolio.description || scanProfiles.portfolio.url}</span>
+                  </div>
+                  <a href={scanProfiles.portfolio.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a>
+                </div>
+              )}
+              {scanContact && (scanContact.email || scanContact.phone) && (
+                <div className="scanner-result-card">
+                  <Mail size={16} />
+                  <div>
+                    <strong>Contact</strong>
+                    <span>{[scanContact.email, scanContact.phone].filter(Boolean).join(' · ')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {scanSummary && (
+            <div className="scanner-ai-summary">
+              <Sparkles size={14} />
+              <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(scanSummary) }} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="focus-tabs">
@@ -1013,4 +1216,4 @@ export default function CandidateFocus() {
       )}
     </div>
   );
-}4
+}
