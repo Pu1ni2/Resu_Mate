@@ -851,114 +851,6 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 }
 
 /* ========================================
-   HIRING AGENT - Append to global.css
-   ======================================== */
-.agent-container{padding:24px;display:flex;flex-direction:column;gap:20px;height:calc(100vh - 280px);overflow-y:auto}
-.agent-intro{display:flex;align-items:flex-start;gap:16px;padding:20px;background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(217,119,6,0.04));border:1px solid rgba(245,158,11,0.15);border-radius:16px}
-.agent-intro-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(217,119,6,0.1));display:flex;align-items:center;justify-content:center;color:#F59E0B;flex-shrink:0}
-.agent-intro-title{font-size:18px;font-weight:700;margin-bottom:4px}
-.agent-intro-desc{font-size:14px;color:var(--text2);line-height:1.5}
-
-.agent-choose{display:flex;flex-direction:column;gap:12px}
-.agent-option{display:flex;align-items:center;gap:16px;padding:20px;cursor:pointer;transition:all .3s ease}
-.agent-option:hover{border-color:var(--glass-hover);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2)}
-.agent-option-icon{width:48px;height:48px;border-radius:12px;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
-.agent-option h4{font-size:16px;font-weight:600;margin-bottom:4px}
-.agent-option p{font-size:13px;color:var(--text2);line-height:1.4}
-.agent-option>svg:last-child{color:var(--text3);margin-left:auto;flex-shrink:0;transition:transform .2s}
-.agent-option:hover>svg:last-child{color:#F59E0B;transform:translateX(3px)}
-
-.agent-jd,.agent-quick{display:flex;flex-direction:column;gap:20px}
-.agent-label{font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.agent-textarea{resize:vertical;min-height:200px;font-family:inherit;font-size:14px;line-height:1.6;background:var(--bg3);border:1px solid var(--glass-border);border-radius:14px;padding:16px;color:var(--text);transition:border-color .2s}
-.agent-textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(245,158,11,0.1)}
-.agent-textarea::placeholder{color:var(--text3)}
-
-.agent-section{margin-bottom:4px}
-.agent-chips{display:flex;flex-wrap:wrap;gap:8px}
-.agent-chip{padding:10px 18px;border-radius:12px;background:var(--bg3);border:1px solid var(--glass-border);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
-.agent-chip:hover{background:var(--bg4);border-color:var(--glass-hover);color:var(--text)}
-.agent-chip.active{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.4);color:#F59E0B}
-.agent-input{margin-top:10px}
-
-.agent-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:8px}
-.agent-actions .btn{display:flex;align-items:center;gap:8px}
-
-.agent-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:16px;text-align:center}
-.agent-loading h3{font-size:18px;font-weight:600}
-.agent-loading-steps{display:flex;flex-direction:column;gap:10px;margin-top:12px;text-align:left}
-.agent-step-item{font-size:14px;color:var(--text3);transition:color .3s}
-.agent-step-item.active{color:var(--text)}
-
-.agent-result{display:flex;flex-direction:column;gap:16px}
-.agent-report{padding:24px;background:var(--bg2);border:1px solid var(--glass-border);border-radius:16px;line-height:1.7}
-.agent-report .md h1,.agent-report .md h2,.agent-report .md h3{margin-top:20px;margin-bottom:10px}
-.agent-report .md h2{font-size:18px;color:#F59E0B}
-.agent-report .md h3{font-size:16px;color:var(--text)}
-.agent-report .md p{margin-bottom:10px;color:var(--text2)}
-.agent-report .md strong{color:var(--text)}
-.agent-report .md ul,.agent-report .md ol{padding-left:20px;margin-bottom:12px}
-.agent-report .md li{margin-bottom:6px;color:var(--text2)}
-.agent-report .md hr{border:none;border-top:1px solid var(--glass-border);margin:20px 0}
-.agent-report .md a{color:#60A5FA;text-decoration:none}
-.agent-report .md a:hover{text-decoration:underline}
-
-.agent-error{display:flex;align-items:center;gap:14px;padding:20px;color:#F87171}
-
-@media(max-width:768px){
-  .agent-option{flex-direction:column;text-align:center}
-  .agent-option-icon{margin:0 auto}
-  .agent-option>svg:last-child{display:none}
-}
-
-/* ========================================
-   EMAIL COMPOSER - Append to global.css
-   ======================================== */
-.email-composer{margin-top:16px;padding:0;border-radius:16px;overflow:hidden}
-.email-composer-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--glass-border)}
-.email-composer-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--text2)}
-.email-composer-actions{display:flex;gap:6px}
-.email-action-btn{width:34px;height:34px;border-radius:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
-.email-action-btn:hover{background:var(--bg3);color:var(--text);border-color:var(--glass-hover)}
-
-.email-type-select{padding:20px}
-.email-type-label{font-size:14px;font-weight:500;color:var(--text2);margin-bottom:12px}
-.email-type-chips{display:flex;flex-wrap:wrap;gap:8px}
-
-.email-drafting{display:flex;align-items:center;gap:10px;padding:24px 20px;color:var(--text2);font-size:14px}
-
-.email-fields{padding:4px 20px 0}
-.email-field{display:flex;align-items:center;gap:0;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
-.email-field label{font-size:13px;font-weight:600;color:var(--text3);min-width:60px}
-.email-input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit;padding:6px 8px;outline:none}
-.email-input::placeholder{color:var(--text3)}
-.email-input:focus{color:var(--text)}
-
-.email-ccbcc-toggle{background:none;border:none;color:var(--text3);font-size:12px;font-weight:500;cursor:pointer;padding:8px 0;text-align:left;font-family:inherit;transition:color .2s}
-.email-ccbcc-toggle:hover{color:#F59E0B}
-
-.email-divider{height:1px;background:var(--glass-border);margin:0 20px}
-
-.email-body{width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit;line-height:1.7;padding:16px 20px;resize:vertical;min-height:200px;outline:none}
-.email-body::placeholder{color:var(--text3)}
-
-.email-send-actions{display:flex;flex-wrap:wrap;gap:8px;padding:16px 20px;border-top:1px solid var(--glass-border)}
-.email-send-btn{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1px solid var(--glass-border);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
-.email-send-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--glass-hover)}
-.email-send-btn.gmail{background:rgba(234,67,53,0.1);border-color:rgba(234,67,53,0.25);color:#EA4335}
-.email-send-btn.gmail:hover{background:rgba(234,67,53,0.2);border-color:rgba(234,67,53,0.4)}
-.email-send-btn.outlook{background:rgba(0,120,212,0.1);border-color:rgba(0,120,212,0.25);color:#0078D4}
-.email-send-btn.outlook:hover{background:rgba(0,120,212,0.2);border-color:rgba(0,120,212,0.4)}
-.email-send-btn.default{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.25);color:#F59E0B}
-.email-send-btn.default:hover{background:rgba(245,158,11,0.2);border-color:rgba(245,158,11,0.4)}
-.email-send-btn.copy{background:var(--bg3)}
-
-@media(max-width:768px){
-  .email-send-actions{flex-direction:column}
-  .email-send-btn{width:100%;justify-content:center}
-}
-
-/* ========================================
    HIRING AGENT
    ======================================== */
 .agent-container{padding:24px;display:flex;flex-direction:column;gap:20px;height:calc(100vh - 280px);overflow-y:auto}
@@ -1156,3 +1048,22 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .scanner-ai-summary svg{color:#f59e0b;flex-shrink:0;margin-top:3px}
 .scanner-ai-summary .md{font-family:inherit}
 .scanner-ai-summary .md p{margin:0;color:#8b8b9a}
+
+/* ========================================
+   SCANNER FULLSCREEN + MATRIX RAIN
+   ======================================== */
+.scanner-fullscreen{position:relative;min-height:calc(100vh - 200px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow:hidden}
+.matrix-canvas{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.3;pointer-events:none;z-index:0}
+.scanner-fullscreen .scanner-terminal{position:relative;z-index:1;width:100%;max-width:700px;margin:0 auto}
+
+/* Tools reveal overlay */
+.tools-reveal-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);z-index:10;animation:revealFlash 0.8s ease forwards}
+.tools-reveal-text{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:700;color:#22c55e;animation:revealPulse 0.8s ease}
+.tools-reveal-text svg{color:#F59E0B}
+@keyframes revealFlash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+@keyframes revealPulse{0%{transform:scale(0.5);opacity:0}50%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:1}}
+
+/* Tools container with fade-in-scale */
+.tools-container{animation:toolsFadeIn 0.6s ease forwards}
+@keyframes toolsFadeIn{from{opacity:0;transform:scale(0.95) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.tools-visible{opacity:1}

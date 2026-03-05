@@ -15,6 +15,39 @@ const AIAvatar = () => (
   </div>
 );
 
+// ─── Matrix Rain Background ───
+const MatrixRain = () => {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const resize = () => { canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth; canvas.height = canvas.parentElement?.offsetHeight || 500; };
+    resize(); window.addEventListener('resize', resize);
+    const chars = 'アイウエオカキクケコサシスセソタチツテト01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef{}[]<>/=+*&#';
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(1);
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = `${fontSize}px monospace`;
+      for (let i = 0; i < drops.length; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize; const y = drops[i] * fontSize;
+        ctx.fillStyle = `rgba(34, 197, 94, ${Math.random() * 0.5 + 0.3})`;
+        ctx.fillText(char, x, y);
+        if (Math.random() > 0.95) { ctx.fillStyle = 'rgba(134, 239, 172, 0.9)'; ctx.fillText(char, x, y); }
+        if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+    };
+    const interval = setInterval(draw, 50);
+    return () => { clearInterval(interval); window.removeEventListener('resize', resize); };
+  }, []);
+  return <canvas ref={canvasRef} className="matrix-canvas" />;
+};
+
 const API_BASE = import.meta.env.PROD
   ? 'https://resumate-2vad.onrender.com'
   : '';
@@ -99,6 +132,11 @@ export default function CandidateFocus() {
   const [scanRunning, setScanRunning] = useState(false);
   const [scanDone, setScanDone] = useState(false);
   const scanRef = useRef(null);
+  const [toolsReady, setToolsReady] = useState(false);
+  const [toolsRevealing, setToolsRevealing] = useState(false);
+
+  // ═══════ CACHE: Store scan results + chat per candidate ═══════
+  const candidateCache = useRef({});
 
   // Helpers
   const getSkills = (c) => {
@@ -182,47 +220,76 @@ export default function CandidateFocus() {
   // ─── Candidate Selection ───
   const handleCandidateSelect = useCallback((candidate) => {
     if (focusCandidate && focusCandidate.id === candidate.id) {
-      // Deselect - just clear focus, don't duplicate
+      // Deselect - save current state to cache first
+      if (focusCandidate) {
+        candidateCache.current[focusCandidate.id] = {
+          scanProfiles, scanSummary, scanContact, scanLogs,
+          messages: focusMessages, suggestions: focusSuggestions,
+          searchResults, searchHistory
+        };
+      }
       setFocusCandidate(null);
+      return;
+    }
+
+    // Save previous candidate's state to cache
+    if (focusCandidate) {
+      candidateCache.current[focusCandidate.id] = {
+        scanProfiles, scanSummary, scanContact, scanLogs,
+        messages: focusMessages, suggestions: focusSuggestions,
+        searchResults, searchHistory
+      };
+    }
+
+    // Set new focus candidate
+    setFocusCandidate({ ...candidate });
+    resetAgent();
+
+    // Check if we have cached data for this candidate
+    const cached = candidateCache.current[candidate.id];
+    if (cached && cached.scanProfiles) {
+      // ─── RESTORE FROM CACHE (instant, no scanning) ───
+      setScanProfiles(cached.scanProfiles);
+      setScanSummary(cached.scanSummary || '');
+      setScanContact(cached.scanContact || null);
+      setScanLogs(cached.scanLogs || []);
+      setFocusMessages(cached.messages || []);
+      setFocusSuggestions(cached.suggestions || []);
+      setSearchResults(cached.searchResults || []);
+      setSearchHistory(cached.searchHistory || []);
+      setScanRunning(false);
+      setScanDone(true);
+      setToolsRevealing(false);
+      setToolsReady(true);
+    } else {
+      // ─── FRESH SCAN (first time for this candidate) ───
       setFocusMessages([]);
       setFocusSuggestions([]);
       setSearchResults([]);
       setSearchHistory([]);
-      resetAgent();
-      return;
+      setScanLogs([]);
+      setScanProfiles(null);
+      setScanSummary('');
+      setScanContact(null);
+      setScanRunning(false);
+      setScanDone(false);
+      setToolsReady(false);
+      setToolsRevealing(false);
+
+      // Auto-run scanner
+      setTimeout(() => runScanner(candidate.id), 500);
+
+      const name = anonymize ? 'this candidate' : (candidate.name || 'this candidate');
+      setFocusMessages([{
+        role: 'assistant',
+        content: `**Welcome to Candidate Focus!** 👋\n\nScanning **${name}**'s resume and online profiles...\n\nPlease wait while I gather data from all sources.`
+      }]);
+
+      if (candidate.name && !anonymize) {
+        setSearchQuery(candidate.name);
+      }
     }
-
-    // Clear previous state
-    setFocusMessages([]);
-    setFocusSuggestions([]);
-    setSearchResults([]);
-    setSearchHistory([]);
-    resetAgent();
-    // Reset scanner
-    setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanRunning(false); setScanDone(false);
-    
-    // Set new focus candidate (make a copy to avoid reference issues)
-    setFocusCandidate({ ...candidate });
-
-    // Auto-run scanner
-    setTimeout(() => runScanner(candidate.id), 500);
-
-    const name = anonymize ? 'this candidate' : (candidate.name || 'this candidate');
-    setFocusMessages([{
-      role: 'assistant',
-      content: `**Welcome to Candidate Focus!** 👋\n\nI'm ready to discuss **${name}**'s resume in detail. I can also **search the web** for more info when needed.\n\nYou can ask me about:\n• Their skills, experience & qualifications\n• Online presence (LinkedIn, GitHub, portfolio)\n• Role fit analysis & market insights\n\nWhat would you like to know?`
-    }]);
-    setFocusSuggestions([
-      `What are ${name}'s top strengths?`,
-      `Summarize ${name}'s experience`,
-      `Search for ${name} online`,
-      `What roles would ${name} be best for?`
-    ]);
-
-    if (candidate.name && !anonymize) {
-      setSearchQuery(candidate.name);
-    }
-  }, [focusCandidate, anonymize]);
+  }, [focusCandidate, anonymize, scanProfiles, scanSummary, scanContact, scanLogs, focusMessages, focusSuggestions, searchResults, searchHistory]);
 
   // ─── Reset Hiring Agent ───
   const resetAgent = () => {
@@ -411,6 +478,12 @@ export default function CandidateFocus() {
       ]);
 
       setScanLogs(prev => [...prev, { step: 'fed', msg: 'AI Chat is now powered with all collected data!', status: 'success' }]);
+
+      // Trigger tools reveal animation
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setToolsRevealing(true);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setToolsReady(true);
 
     } catch (e) {
       setScanLogs(prev => [...prev, { step: 'error', msg: 'Scanner failed to connect to server', status: 'error' }]);
@@ -686,9 +759,20 @@ export default function CandidateFocus() {
     <div className="focus-container">
       {showWarning && <div className="focus-toast"><AlertCircle size={16} /><span>{warningMsg}</span></div>}
 
-      {/* Header */}
+      {/* Header - always visible */}
       <div className="focus-header">
-        <button className="focus-back-btn" onClick={() => { stopSpeaking(); setFocusCandidate(null); }}><ArrowLeft size={18} /><span>Back</span></button>
+        <button className="focus-back-btn" onClick={() => {
+          stopSpeaking();
+          // Save to cache before leaving
+          if (focusCandidate) {
+            candidateCache.current[focusCandidate.id] = {
+              scanProfiles, scanSummary, scanContact, scanLogs,
+              messages: focusMessages, suggestions: focusSuggestions,
+              searchResults, searchHistory
+            };
+          }
+          setFocusCandidate(null);
+        }}><ArrowLeft size={18} /><span>Back</span></button>
         <div className="focus-profile">
           <div className="focus-avatar" style={{ background: getAvatarGradient(focusCandidate.name) }}>{getDisplayName(focusCandidate, candidates.indexOf(focusCandidate))[0]?.toUpperCase()}</div>
           <div className="focus-profile-info">
@@ -703,511 +787,216 @@ export default function CandidateFocus() {
         </div>
       </div>
 
-      {/* Scanner Agent Terminal */}
-      {(scanRunning || scanDone) && (
-        <div className="scanner-terminal" ref={scanRef}>
-          <div className="scanner-header">
-            <div className="scanner-title">
-              <span className="scanner-dot green" />
-              <span>ResuMate Scanner Agent</span>
-            </div>
-            <div className="scanner-actions">
-              {scanDone && <button className="scanner-btn" onClick={() => { setScanDone(false); setScanLogs([]); setScanProfiles(null); setScanRunning(false); runScanner(focusCandidate.id); }}>↻ Re-scan</button>}
-              <button className="scanner-btn" onClick={() => { setScanDone(false); setScanLogs([]); }}>✕</button>
-            </div>
-          </div>
-          <div className="scanner-body">
-            {scanLogs.map((log, i) => (
-              <div key={i} className={`scanner-log ${log.status || ''}`}>
-                <span className="scanner-prefix">{log.status === 'success' ? '✓' : log.status === 'error' ? '✗' : log.status === 'warning' ? '⚠' : '›'}</span>
-                <span>{log.msg}</span>
+      {/* ═══════ PHASE 1: SCANNER (Full screen when tools not ready) ═══════ */}
+      {!toolsReady && (
+        <div className="scanner-fullscreen">
+          {(scanRunning || (scanDone && !toolsRevealing)) && <MatrixRain />}
+          <div className="scanner-terminal" ref={scanRef}>
+            <div className="scanner-header">
+              <div className="scanner-title"><span className="scanner-dot green" /><span>ResuMate Scanner Agent</span></div>
+              <div className="scanner-actions">
+                {scanDone && !toolsRevealing && <button className="scanner-btn" onClick={() => { setScanDone(false); setScanLogs([]); setScanProfiles(null); setScanRunning(false); setToolsReady(false); setToolsRevealing(false); runScanner(focusCandidate.id); }}>↻ Re-scan</button>}
               </div>
-            ))}
-            {scanRunning && <div className="scanner-log blink"><span className="scanner-prefix">›</span><span>Processing...</span></div>}
-          </div>
-
-          {/* Scan Results Summary */}
-          {scanDone && scanProfiles && (
-            <div className="scanner-results">
-              {scanProfiles.github && (
-                <div className="scanner-result-card">
-                  <Github size={16} />
-                  <div>
-                    <strong>{scanProfiles.github.name || scanProfiles.github.username}</strong>
-                    <span>{scanProfiles.github.public_repos} repos · {scanProfiles.github.followers} followers</span>
-                  </div>
-                  <a href={scanProfiles.github.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a>
-                </div>
-              )}
-              {scanProfiles.linkedin && (
-                <div className="scanner-result-card">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                  <div>
-                    <strong>{scanProfiles.linkedin.name || scanProfiles.linkedin.username}</strong>
-                    <span>{scanProfiles.linkedin.headline || scanProfiles.linkedin.note || ''}</span>
-                  </div>
-                  <a href={scanProfiles.linkedin.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a>
-                </div>
-              )}
-              {scanProfiles.portfolio && (
-                <div className="scanner-result-card">
-                  <Globe size={16} />
-                  <div>
-                    <strong>{scanProfiles.portfolio.title || 'Portfolio'}</strong>
-                    <span>{scanProfiles.portfolio.description || scanProfiles.portfolio.url}</span>
-                  </div>
-                  <a href={scanProfiles.portfolio.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a>
-                </div>
-              )}
-              {scanContact && (scanContact.email || scanContact.phone) && (
-                <div className="scanner-result-card">
-                  <Mail size={16} />
-                  <div>
-                    <strong>Contact</strong>
-                    <span>{[scanContact.email, scanContact.phone].filter(Boolean).join(' · ')}</span>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
-
-          {scanSummary && (
-            <div className="scanner-ai-summary">
-              <Sparkles size={14} />
-              <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(scanSummary) }} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="focus-tabs">
-        <button className={`focus-tab ${activeTool === 'chat' ? 'active' : ''}`} onClick={() => setActiveTool('chat')}><MessageSquare size={16} /><span>AI Chat</span></button>
-        <button className={`focus-tab ${activeTool === 'websearch' ? 'active' : ''}`} onClick={() => setActiveTool('websearch')}><Globe size={16} /><span>Web Search</span></button>
-        <button className={`focus-tab ${activeTool === 'agent' ? 'active' : ''}`} onClick={() => setActiveTool('agent')}><UserCheck size={16} /><span>Hiring Agent</span></button>
-        <button className={`focus-tab ${activeTool === 'github' ? 'active' : ''}`} onClick={() => { setActiveTool('github'); if (!ghProfile && !ghLoading && !ghError) fetchGitHub(); }}><Github size={16} /><span>GitHub</span></button>
-        <button className={`focus-tab ${activeTool === 'calendly' ? 'active' : ''}`} onClick={() => { setActiveTool('calendly'); if (!calData && !calLoading && !calError) fetchCalendly(); }}><Calendar size={16} /><span>Schedule</span></button>
-      </div>
-
-      {/* ════════ AI CHAT ════════ */}
-      {activeTool === 'chat' && (
-        <div className="focus-chat-container">
-          <div className="focus-chat-messages">
-            {focusMessages.map((m, i) => (
-              <div key={i} className={`chat-message ${m.role}`}>
-                {m.role === 'assistant' && <AIAvatar />}
-                <div className={`chat-bubble ${m.role}`}>
-                  {m.role === 'user' ? <p>{m.content}</p> : <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(m.content) }} />}
-                </div>
-                {m.role === 'user' && <div className="avatar-sm" style={{ background: 'var(--bg3)' }}><Users size={16} /></div>}
-                {m.role === 'assistant' && (
-                  <button className={`msg-speak-btn ${speakingMsgIndex === i ? 'speaking' : ''} ${loadingMsgIndex === i ? 'loading' : ''}`} onClick={() => speakText(m.content, i)} title={speakingMsgIndex === i ? 'Stop' : 'Read aloud'} disabled={loadingMsgIndex !== null && loadingMsgIndex !== i}>
-                    {loadingMsgIndex === i ? <Loader size={16} className="spin" /> : speakingMsgIndex === i ? <Square size={14} /> : <Volume2 size={16} />}
-                  </button>
-                )}
-              </div>
-            ))}
-            {focusTyping && <div className="chat-message assistant"><AIAvatar /><div className="chat-bubble assistant"><div className="typing"><span /><span /><span /></div></div></div>}
-            <div ref={msgEndRef} />
-          </div>
-          {focusSuggestions.length > 0 && !focusTyping && (
-            <div className="chat-suggestions">{focusSuggestions.map((q, i) => <button key={i} className="chat-suggestion" onClick={() => handleChatSend(q)}>{q}</button>)}</div>
-          )}
-          <div className="chat-input-area">
-            <button className={`btn-icon voice-btn ${isRecording ? 'recording' : ''} ${isTranscribing ? 'transcribing' : ''}`} onClick={isRecording ? stopRecording : startRecording} disabled={isTranscribing || focusTyping} title={isRecording ? 'Stop recording' : 'Voice input'}>
-              {isTranscribing ? <Loader size={20} className="spin" /> : isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
-            <input type="text" className="input chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }} placeholder={isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : `Ask about ${anonymize ? 'this candidate' : (focusCandidate.name || 'this candidate')}...`} disabled={focusTyping || isRecording || isTranscribing} />
-            <button onClick={() => handleChatSend()} disabled={!chatInput.trim() || focusTyping} className="btn btn-primary send-btn"><Send size={18} /></button>
-          </div>
-        </div>
-      )}
-
-      {/* ════════ WEB SEARCH ════════ */}
-      {activeTool === 'websearch' && (
-        <div className="focus-websearch-container">
-          <div className="focus-search-bar">
-            <div className="focus-search-input-wrap">
-              <Search size={18} className="focus-search-icon" />
-              <input type="text" className="input focus-search-input" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleWebSearch(); }} placeholder={`Search the web...`} />
-              {searchQuery && <button className="focus-search-clear" onClick={() => setSearchQuery('')}><X size={14} /></button>}
-            </div>
-            <button onClick={() => handleWebSearch()} disabled={!searchQuery.trim() || searchLoading} className="btn btn-primary">
-              {searchLoading ? <Loader size={18} className="spin" /> : <Search size={18} />}<span>Search</span>
-            </button>
-          </div>
-          {searchResults.length === 0 && !searchLoading && (
-            <div className="focus-search-suggestions">
-              <p className="focus-search-suggestions-label">Quick searches:</p>
-              <div className="focus-search-chips">{getSearchSuggestions().map((s, i) => <button key={i} className="focus-search-chip" onClick={() => { setSearchQuery(s); handleWebSearch(s); }}><Search size={12} /> {s}</button>)}</div>
-            </div>
-          )}
-          {searchLoading && <div className="focus-search-loading"><Loader size={24} className="spin" /><p>Searching the web...</p></div>}
-          {searchResults.length > 0 && !searchLoading && (
-            <div className="focus-search-results">
-              <p className="focus-search-results-count">Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</p>
-              {searchResults.map((result, i) => (
-                <div key={i} className="focus-search-result glass-card">
-                  <div className="focus-result-header">
-                    <h3 className="focus-result-title">{result.url ? <a href={result.url} target="_blank" rel="noopener noreferrer">{result.title} <ExternalLink size={14} /></a> : result.title}</h3>
-                    {result.url && <span className="focus-result-url">{result.url}</span>}
-                  </div>
-                  <p className="focus-result-snippet">{result.snippet}</p>
+            <div className="scanner-body">
+              {scanLogs.map((log, i) => (
+                <div key={i} className={`scanner-log ${log.status || ''}`}>
+                  <span className="scanner-prefix">{log.status === 'success' ? '✓' : log.status === 'error' ? '✗' : log.status === 'warning' ? '⚠' : '›'}</span>
+                  <span>{log.msg}</span>
                 </div>
               ))}
+              {scanRunning && <div className="scanner-log blink"><span className="scanner-prefix">›</span><span>Processing...</span></div>}
             </div>
-          )}
-          {searchHistory.length > 0 && (
-            <div className="focus-search-history">
-              <p className="focus-search-history-label">Recent searches:</p>
-              <div className="focus-search-chips">{searchHistory.map((h, i) => <button key={i} className="focus-search-chip history" onClick={() => { setSearchQuery(h); handleWebSearch(h); }}>{h}</button>)}</div>
-            </div>
-          )}
+            {scanDone && scanProfiles && (
+              <div className="scanner-results">
+                {scanProfiles.github && (<div className="scanner-result-card"><Github size={16} /><div><strong>{scanProfiles.github.name || scanProfiles.github.username}</strong><span>{scanProfiles.github.public_repos} repos · {scanProfiles.github.followers} followers</span></div><a href={scanProfiles.github.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a></div>)}
+                {scanProfiles.linkedin && (<div className="scanner-result-card"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg><div><strong>{scanProfiles.linkedin.name || scanProfiles.linkedin.username}</strong><span>{scanProfiles.linkedin.headline || scanProfiles.linkedin.note || ''}</span></div><a href={scanProfiles.linkedin.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a></div>)}
+                {scanProfiles.portfolio && (<div className="scanner-result-card"><Globe size={16} /><div><strong>{scanProfiles.portfolio.title || 'Portfolio'}</strong><span>{scanProfiles.portfolio.description || scanProfiles.portfolio.url}</span></div><a href={scanProfiles.portfolio.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /></a></div>)}
+                {scanContact && (scanContact.email || scanContact.phone) && (<div className="scanner-result-card"><Mail size={16} /><div><strong>Contact</strong><span>{[scanContact.email, scanContact.phone].filter(Boolean).join(' · ')}</span></div></div>)}
+              </div>
+            )}
+            {scanSummary && (<div className="scanner-ai-summary"><Sparkles size={14} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(scanSummary) }} /></div>)}
+          </div>
+          {toolsRevealing && (<div className="tools-reveal-overlay"><div className="tools-reveal-text"><Sparkles size={24} /><span>Tools Unlocked</span></div></div>)}
         </div>
       )}
 
-      {/* ════════ HIRING AGENT ════════ */}
-      {activeTool === 'agent' && (
-        <div className="agent-container">
-          {/* Agent Header */}
-          <div className="agent-intro">
-            <div className="agent-intro-icon"><UserCheck size={28} /></div>
-            <div>
-              <h3 className="agent-intro-title">Hiring Manager Agent</h3>
-              <p className="agent-intro-desc">I'll evaluate this candidate's fit for your position using resume data, online research, and hiring best practices.</p>
-            </div>
+      {/* ═══════ PHASE 2: TOOLS (after scan complete) ═══════ */}
+      {toolsReady && (
+        <div className="tools-container tools-visible">
+          {/* Tabs */}
+          <div className="focus-tabs">
+            <button className={`focus-tab ${activeTool === 'chat' ? 'active' : ''}`} onClick={() => setActiveTool('chat')}><MessageSquare size={16} /><span>AI Chat</span></button>
+            <button className={`focus-tab ${activeTool === 'websearch' ? 'active' : ''}`} onClick={() => setActiveTool('websearch')}><Globe size={16} /><span>Web Search</span></button>
+            <button className={`focus-tab ${activeTool === 'agent' ? 'active' : ''}`} onClick={() => setActiveTool('agent')}><UserCheck size={16} /><span>Hiring Agent</span></button>
+            <button className={`focus-tab ${activeTool === 'github' ? 'active' : ''}`} onClick={() => { setActiveTool('github'); if (!ghProfile && !ghLoading && !ghError) fetchGitHub(); }}><Github size={16} /><span>GitHub</span></button>
+            <button className={`focus-tab ${activeTool === 'calendly' ? 'active' : ''}`} onClick={() => { setActiveTool('calendly'); if (!calData && !calLoading && !calError) fetchCalendly(); }}><Calendar size={16} /><span>Schedule</span></button>
           </div>
 
-          {/* Step: Choose Input Mode */}
-          {agentStep === 'choose' && (
-            <div className="agent-choose">
-              <div className="agent-option glass-card" onClick={() => { setAgentInputMode('jd'); setAgentStep('jd'); }}>
-                <div className="agent-option-icon"><FileText size={24} /></div>
-                <div>
-                  <h4>Paste Job Description</h4>
-                  <p>I'll extract the role, requirements, and evaluate the candidate against it</p>
-                </div>
-                <ChevronRight size={18} />
-              </div>
-              <div className="agent-option glass-card" onClick={() => { setAgentInputMode('quick'); setAgentStep('quick'); }}>
-                <div className="agent-option-icon"><Target size={24} /></div>
-                <div>
-                  <h4>Quick Setup</h4>
-                  <p>Select role, experience, and level — I'll do the rest</p>
-                </div>
-                <ChevronRight size={18} />
-              </div>
-            </div>
-          )}
-
-          {/* Step: Job Description Input */}
-          {agentStep === 'jd' && (
-            <div className="agent-jd">
-              <label className="agent-label">Paste the full Job Description:</label>
-              <textarea className="agent-textarea input" value={jdText} onChange={e => setJdText(e.target.value)} rows={10} placeholder="Paste the complete job description here... Include role title, requirements, qualifications, responsibilities, etc." />
-              <div className="agent-actions">
-                <button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button>
-                <button className="btn btn-primary" onClick={runJDAnalysis} disabled={!jdText.trim() || agentLoading}>
-                  {agentLoading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}
-                  <span>Evaluate Candidate</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step: Quick Setup */}
-          {agentStep === 'quick' && (
-            <div className="agent-quick">
-              {/* Role Selection */}
-              <div className="agent-section">
-                <label className="agent-label"><Target size={14} /> What role are you hiring for?</label>
-                <div className="agent-chips">
-                  {suggestedRoles.map((r, i) => (
-                    <button key={i} className={`agent-chip ${selectedRole === r ? 'active' : ''}`} onClick={() => { setSelectedRole(r); setCustomRole(''); }}>
-                      {r}
-                    </button>
-                  ))}
-                  <button className={`agent-chip ${selectedRole === 'other' ? 'active' : ''}`} onClick={() => setSelectedRole('other')}>
-                    Other...
-                  </button>
-                </div>
-                {selectedRole === 'other' && (
-                  <input type="text" className="input agent-input" value={customRole} onChange={e => setCustomRole(e.target.value)} placeholder="Enter the role title..." />
-                )}
-              </div>
-
-              {/* Experience */}
-              <div className="agent-section">
-                <label className="agent-label"><Briefcase size={14} /> Required experience:</label>
-                <div className="agent-chips">
-                  {['0-1 years', '1-3 years', '3-5 years', '5-8 years', '8+ years'].map((exp) => (
-                    <button key={exp} className={`agent-chip ${selectedExperience === exp ? 'active' : ''}`} onClick={() => setSelectedExperience(exp)}>
-                      {exp}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Level */}
-              <div className="agent-section">
-                <label className="agent-label"><Award size={14} /> Seniority level:</label>
-                <div className="agent-chips">
-                  {['Intern', 'Junior', 'Mid-Level', 'Senior', 'Lead / Principal'].map((lvl) => (
-                    <button key={lvl} className={`agent-chip ${selectedLevel === lvl ? 'active' : ''}`} onClick={() => setSelectedLevel(lvl)}>
-                      {lvl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="agent-actions">
-                <button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button>
-                <button className="btn btn-primary" onClick={runHiringAgent} disabled={agentLoading}>
-                  {agentLoading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}
-                  <span>Evaluate Candidate</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step: Loading */}
-          {agentStep === 'loading' && (
-            <div className="agent-loading">
-              <Loader size={36} className="spin" />
-              <h3>Evaluating candidate...</h3>
-              <div className="agent-loading-steps">
-                <p className="agent-step-item active">📄 Analyzing resume data...</p>
-                <p className="agent-step-item">🔍 Searching online presence...</p>
-                <p className="agent-step-item">🎯 Matching against requirements...</p>
-                <p className="agent-step-item">📊 Generating fit report...</p>
-              </div>
-            </div>
-          )}
-
-          {/* Step: Result */}
-          {agentStep === 'result' && agentResult && (
-            <div className="agent-result" ref={agentResultRef}>
-              {agentResult.error ? (
-                <div className="agent-error glass-card">
-                  <AlertCircle size={24} />
-                  <p>{agentResult.error}</p>
-                </div>
-              ) : (
-                <div className="agent-report">
-                  <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(agentResult.report || '') }} />
-                </div>
-              )}
-              <div className="agent-actions">
-                <button className="btn btn-ghost" onClick={resetAgent}>← Start Over</button>
-                <button className="btn btn-secondary" onClick={() => setActiveTool('chat')}>
-                  <MessageSquare size={16} /> Discuss in Chat
-                </button>
-                {!agentResult.error && !showEmailComposer && (
-                  <button className="btn btn-primary" onClick={() => setShowEmailComposer(true)}>
-                    <Mail size={16} /> Mail to {anonymize ? 'Candidate' : (focusCandidate.name?.split(' ')[0] || 'Candidate')}
-                  </button>
-                )}
-              </div>
-
-              {/* ═══════ EMAIL COMPOSER ═══════ */}
-              {showEmailComposer && (
-                <div className="email-composer glass-card">
-                  <div className="email-composer-header">
-                    <div className="email-composer-title">
-                      <Mail size={18} />
-                      <span>Email</span>
+          {/* ════════ AI CHAT ════════ */}
+          {activeTool === 'chat' && (
+            <div className="focus-chat-container">
+              <div className="focus-chat-messages">
+                {focusMessages.map((m, i) => (
+                  <div key={i} className={`chat-message ${m.role}`}>
+                    {m.role === 'assistant' && <AIAvatar />}
+                    <div className={`chat-bubble ${m.role}`}>
+                      {m.role === 'user' ? <p>{m.content}</p> : <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(m.content) }} />}
                     </div>
-                    <div className="email-composer-actions">
-                      <button className="email-action-btn" onClick={copyEmail} title="Copy to clipboard">
-                        {emailCopied ? <Check size={16} /> : <Clipboard size={16} />}
+                    {m.role === 'user' && <div className="avatar-sm" style={{ background: 'var(--bg3)' }}><Users size={16} /></div>}
+                    {m.role === 'assistant' && (
+                      <button className={`msg-speak-btn ${speakingMsgIndex === i ? 'speaking' : ''} ${loadingMsgIndex === i ? 'loading' : ''}`} onClick={() => speakText(m.content, i)} title={speakingMsgIndex === i ? 'Stop' : 'Read aloud'} disabled={loadingMsgIndex !== null && loadingMsgIndex !== i}>
+                        {loadingMsgIndex === i ? <Loader size={16} className="spin" /> : speakingMsgIndex === i ? <Square size={14} /> : <Volume2 size={16} />}
                       </button>
-                      <button className="email-action-btn" onClick={() => setShowEmailComposer(false)} title="Close">
-                        <X size={16} />
-                      </button>
-                    </div>
+                    )}
                   </div>
-
-                  {/* Email Type Selector */}
-                  {!emailType && !emailDrafting && (
-                    <div className="email-type-select">
-                      <p className="email-type-label">What type of email?</p>
-                      <div className="email-type-chips">
-                        <button className="agent-chip" onClick={() => draftEmail('interest')}>📩 Interest / Invitation</button>
-                        <button className="agent-chip" onClick={() => draftEmail('interview')}>📅 Interview Scheduling</button>
-                        <button className="agent-chip" onClick={() => draftEmail('offer')}>🎉 Offer Discussion</button>
-                        <button className="agent-chip" onClick={() => draftEmail('pass')}>🙏 Polite Pass</button>
-                        <button className="agent-chip" onClick={() => draftEmail('followup')}>🔄 Follow-up</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Drafting Loader */}
-                  {emailDrafting && (
-                    <div className="email-drafting">
-                      <Loader size={20} className="spin" />
-                      <span>Drafting email...</span>
-                    </div>
-                  )}
-
-                  {/* Email Form */}
-                  {emailType && !emailDrafting && (
-                    <>
-                      <div className="email-fields">
-                        <div className="email-field">
-                          <label>To</label>
-                          <input type="email" className="email-input" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="candidate@email.com" />
-                        </div>
-
-                        {!showCcBcc && (
-                          <button className="email-ccbcc-toggle" onClick={() => setShowCcBcc(true)}>+ Cc / Bcc</button>
-                        )}
-
-                        {showCcBcc && (
-                          <>
-                            <div className="email-field">
-                              <label>Cc</label>
-                              <input type="text" className="email-input" value={emailCc} onChange={e => setEmailCc(e.target.value)} placeholder="cc@email.com" />
-                            </div>
-                            <div className="email-field">
-                              <label>Bcc</label>
-                              <input type="text" className="email-input" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} placeholder="bcc@email.com" />
-                            </div>
-                          </>
-                        )}
-
-                        <div className="email-field">
-                          <label>Subject</label>
-                          <input type="text" className="email-input" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Email subject..." />
-                        </div>
-                      </div>
-
-                      <div className="email-divider" />
-
-                      <textarea
-                        className="email-body"
-                        value={emailBody}
-                        onChange={e => setEmailBody(e.target.value)}
-                        rows={12}
-                        placeholder="Email body..."
-                      />
-
-                      <div className="email-send-actions">
-                        <button className="email-send-btn gmail" onClick={openInGmail}>
-                          <span>Open in Gmail</span>
-                        </button>
-                        <button className="email-send-btn outlook" onClick={openInOutlook}>
-                          <span>Open in Outlook</span>
-                        </button>
-                        <button className="email-send-btn default" onClick={openMailto}>
-                          <Mail size={16} />
-                          <span>Default Mail</span>
-                        </button>
-                        <button className="email-send-btn copy" onClick={copyEmail}>
-                          {emailCopied ? <Check size={16} /> : <Clipboard size={16} />}
-                          <span>{emailCopied ? 'Copied!' : 'Copy All'}</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {/* ════════ GITHUB ════════ */}
-      {activeTool === 'github' && (
-        <div className="tool-panel">
-          {/* Search bar - always visible */}
-          <div className="gh-search-bar glass-card">
-            <Github size={18} />
-            <input type="text" className="input gh-search-input" value={ghUsername} onChange={e => setGhUsername(e.target.value)} placeholder="Enter GitHub username..." onKeyDown={e => { if (e.key === 'Enter' && ghUsername.trim()) fetchGitHub(ghUsername.trim()); }} />
-            <button className="btn btn-primary btn-sm" onClick={() => fetchGitHub(ghUsername.trim())} disabled={!ghUsername.trim() || ghLoading}>
-              {ghLoading ? <Loader size={14} className="spin" /> : <Search size={14} />}
-              <span>Analyze</span>
-            </button>
-          </div>
-
-          {ghLoading && <div className="tool-loading"><Loader size={28} className="spin" /><p>Fetching GitHub profile...</p></div>}
-          {ghNeedsInput && !ghProfile && (
-            <div className="tool-input-section glass-card">
-              <h3><Github size={20} /> GitHub Profile Analyzer</h3>
-              <p>Could not auto-detect username from resume. Enter a GitHub username above to analyze.</p>
-            </div>
-          )}
-          {ghError && !ghNeedsInput && <div className="tool-error glass-card"><AlertCircle size={20} /><p>{ghError}</p><button className="btn btn-secondary" onClick={() => { setGhNeedsInput(true); setGhError(''); setGhUsername(''); }}>Try Another Username</button></div>}
-          {ghProfile && (
-            <div className="gh-profile">
-              <div className="gh-header glass-card">
-                <img src={ghProfile.avatar_url} alt="" className="gh-avatar" />
-                <div className="gh-info">
-                  <h3>{ghProfile.name || ghProfile.username}</h3>
-                  <a href={ghProfile.profile_url} target="_blank" rel="noopener noreferrer" className="gh-link">@{ghProfile.username} <ExternalLink size={12} /></a>
-                  {ghProfile.bio && <p className="gh-bio">{ghProfile.bio}</p>}
-                </div>
-                <div className="gh-stats">
-                  <div className="gh-stat"><span className="gh-stat-val">{ghProfile.public_repos}</span><span className="gh-stat-label">Repos</span></div>
-                  <div className="gh-stat"><span className="gh-stat-val">{ghProfile.followers}</span><span className="gh-stat-label">Followers</span></div>
-                  <div className="gh-stat"><span className="gh-stat-val">{ghProfile.recent_pushes}</span><span className="gh-stat-label">Recent Pushes</span></div>
-                </div>
+                ))}
+                {focusTyping && <div className="chat-message assistant"><AIAvatar /><div className="chat-bubble assistant"><div className="typing"><span /><span /><span /></div></div></div>}
+                <div ref={msgEndRef} />
               </div>
-              {ghProfile.ai_analysis && <div className="tool-ai-analysis glass-card"><Sparkles size={16} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(ghProfile.ai_analysis) }} /></div>}
-              {Object.keys(ghProfile.languages || {}).length > 0 && (
-                <div className="gh-languages glass-card">
-                  <h4>Languages</h4>
-                  <div className="gh-lang-chips">{Object.entries(ghProfile.languages).map(([lang, count]) => <span key={lang} className="agent-chip active">{lang} ({count})</span>)}</div>
-                </div>
+              {focusSuggestions.length > 0 && !focusTyping && (
+                <div className="chat-suggestions">{focusSuggestions.map((q, i) => <button key={i} className="chat-suggestion" onClick={() => handleChatSend(q)}>{q}</button>)}</div>
               )}
-              {ghProfile.top_repos?.length > 0 && (
-                <div className="gh-repos">
-                  <h4>Top Repositories</h4>
-                  {ghProfile.top_repos.map((repo, i) => (
-                    <div key={i} className="gh-repo glass-card">
-                      <div className="gh-repo-header"><a href={repo.url} target="_blank" rel="noopener noreferrer">{repo.name} <ExternalLink size={12} /></a><span className="badge badge-blue">{repo.language}</span></div>
-                      <p className="gh-repo-desc">{repo.description}</p>
-                      <div className="gh-repo-stats"><span>⭐ {repo.stars}</span><span>🍴 {repo.forks}</span><span>Updated: {repo.updated}</span></div>
+              <div className="chat-input-area">
+                <button className={`btn-icon voice-btn ${isRecording ? 'recording' : ''} ${isTranscribing ? 'transcribing' : ''}`} onClick={isRecording ? stopRecording : startRecording} disabled={isTranscribing || focusTyping} title={isRecording ? 'Stop recording' : 'Voice input'}>
+                  {isTranscribing ? <Loader size={20} className="spin" /> : isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+                </button>
+                <input type="text" className="input chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }} placeholder={isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : `Ask about ${anonymize ? 'this candidate' : (focusCandidate.name || 'this candidate')}...`} disabled={focusTyping || isRecording || isTranscribing} />
+                <button onClick={() => handleChatSend()} disabled={!chatInput.trim() || focusTyping} className="btn btn-primary send-btn"><Send size={18} /></button>
+              </div>
+            </div>
+          )}
+
+          {/* ════════ WEB SEARCH ════════ */}
+          {activeTool === 'websearch' && (
+            <div className="focus-websearch-container">
+              <div className="focus-search-bar">
+                <div className="focus-search-input-wrap">
+                  <Search size={18} className="focus-search-icon" />
+                  <input type="text" className="input focus-search-input" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleWebSearch(); }} placeholder="Search the web..." />
+                  {searchQuery && <button className="focus-search-clear" onClick={() => setSearchQuery('')}><X size={14} /></button>}
+                </div>
+                <button onClick={() => handleWebSearch()} disabled={!searchQuery.trim() || searchLoading} className="btn btn-primary">
+                  {searchLoading ? <Loader size={18} className="spin" /> : <Search size={18} />}<span>Search</span>
+                </button>
+              </div>
+              {searchResults.length === 0 && !searchLoading && (
+                <div className="focus-search-suggestions"><p className="focus-search-suggestions-label">Quick searches:</p><div className="focus-search-chips">{getSearchSuggestions().map((s, i) => <button key={i} className="focus-search-chip" onClick={() => { setSearchQuery(s); handleWebSearch(s); }}><Search size={12} /> {s}</button>)}</div></div>
+              )}
+              {searchLoading && <div className="focus-search-loading"><Loader size={24} className="spin" /><p>Searching the web...</p></div>}
+              {searchResults.length > 0 && !searchLoading && (
+                <div className="focus-search-results">
+                  <p className="focus-search-results-count">Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</p>
+                  {searchResults.map((result, i) => (
+                    <div key={i} className="focus-search-result glass-card">
+                      <div className="focus-result-header">
+                        <h3 className="focus-result-title">{result.url ? <a href={result.url} target="_blank" rel="noopener noreferrer">{result.title} <ExternalLink size={14} /></a> : result.title}</h3>
+                        {result.url && <span className="focus-result-url">{result.url}</span>}
+                      </div>
+                      <p className="focus-result-snippet">{result.snippet}</p>
                     </div>
                   ))}
                 </div>
               )}
+              {searchHistory.length > 0 && (<div className="focus-search-history"><p className="focus-search-history-label">Recent searches:</p><div className="focus-search-chips">{searchHistory.map((h, i) => <button key={i} className="focus-search-chip history" onClick={() => { setSearchQuery(h); handleWebSearch(h); }}>{h}</button>)}</div></div>)}
             </div>
           )}
-        </div>
-      )}
 
-      {/* ════════ CALENDLY ════════ */}
-      {activeTool === 'calendly' && (
-        <div className="tool-panel">
-          {calLoading && <div className="tool-loading"><Loader size={28} className="spin" /><p>Loading Calendly...</p></div>}
-          {calError && <div className="tool-error glass-card"><AlertCircle size={20} /><p>{calError}</p></div>}
-          {calData && (
-            <div className="cal-container">
-              <div className="cal-header glass-card">
-                <Calendar size={24} />
-                <div>
-                  <h3>Schedule Interview with {anonymize ? 'Candidate' : focusCandidate.name?.split(' ')[0]}</h3>
-                  <p>Select an event type to share your scheduling link</p>
+          {/* ════════ HIRING AGENT ════════ */}
+          {activeTool === 'agent' && (
+            <div className="agent-container">
+              <div className="agent-intro"><div className="agent-intro-icon"><UserCheck size={28} /></div><div><h3 className="agent-intro-title">Hiring Manager Agent</h3><p className="agent-intro-desc">I'll evaluate this candidate's fit for your position using resume data, online research, and hiring best practices.</p></div></div>
+              {agentStep === 'choose' && (
+                <div className="agent-choose">
+                  <div className="agent-option glass-card" onClick={() => { setAgentInputMode('jd'); setAgentStep('jd'); }}><div className="agent-option-icon"><FileText size={24} /></div><div><h4>Paste Job Description</h4><p>I'll extract the role, requirements, and evaluate the candidate against it</p></div><ChevronRight size={18} /></div>
+                  <div className="agent-option glass-card" onClick={() => { setAgentInputMode('quick'); setAgentStep('quick'); }}><div className="agent-option-icon"><Target size={24} /></div><div><h4>Quick Setup</h4><p>Select role, experience, and level — I'll do the rest</p></div><ChevronRight size={18} /></div>
                 </div>
-              </div>
-              {calData.event_types?.length > 0 ? (
-                <div className="cal-events">
-                  {calData.event_types.map((ev, i) => (
-                    <div key={i} className="cal-event glass-card" onClick={() => window.open(ev.scheduling_url, '_blank')}>
-                      <div className="cal-event-info">
-                        <h4>{ev.name}</h4>
-                        <p>{ev.duration} minutes{ev.description ? ` — ${ev.description}` : ''}</p>
-                      </div>
-                      <div className="cal-event-actions">
-                        <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(ev.scheduling_url); showToast('Link copied!'); }}>Copy Link</button>
-                        <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); window.open(ev.scheduling_url, '_blank'); }}>Open <ExternalLink size={12} /></button>
-                      </div>
+              )}
+              {agentStep === 'jd' && (
+                <div className="agent-jd">
+                  <label className="agent-label">Paste the full Job Description:</label>
+                  <textarea className="agent-textarea input" value={jdText} onChange={e => setJdText(e.target.value)} rows={10} placeholder="Paste the complete job description here..." />
+                  <div className="agent-actions"><button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button><button className="btn btn-primary" onClick={runJDAnalysis} disabled={!jdText.trim() || agentLoading}>{agentLoading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}<span>Evaluate Candidate</span></button></div>
+                </div>
+              )}
+              {agentStep === 'quick' && (
+                <div className="agent-quick">
+                  <div className="agent-section"><label className="agent-label"><Target size={14} /> What role are you hiring for?</label><div className="agent-chips">{suggestedRoles.map((r, i) => <button key={i} className={`agent-chip ${selectedRole === r ? 'active' : ''}`} onClick={() => { setSelectedRole(r); setCustomRole(''); }}>{r}</button>)}<button className={`agent-chip ${selectedRole === 'other' ? 'active' : ''}`} onClick={() => setSelectedRole('other')}>Other...</button></div>{selectedRole === 'other' && <input type="text" className="input agent-input" value={customRole} onChange={e => setCustomRole(e.target.value)} placeholder="Enter the role title..." />}</div>
+                  <div className="agent-section"><label className="agent-label"><Briefcase size={14} /> Required experience:</label><div className="agent-chips">{['0-1 years', '1-3 years', '3-5 years', '5-8 years', '8+ years'].map(exp => <button key={exp} className={`agent-chip ${selectedExperience === exp ? 'active' : ''}`} onClick={() => setSelectedExperience(exp)}>{exp}</button>)}</div></div>
+                  <div className="agent-section"><label className="agent-label"><Award size={14} /> Seniority level:</label><div className="agent-chips">{['Intern', 'Junior', 'Mid-Level', 'Senior', 'Lead / Principal'].map(lvl => <button key={lvl} className={`agent-chip ${selectedLevel === lvl ? 'active' : ''}`} onClick={() => setSelectedLevel(lvl)}>{lvl}</button>)}</div></div>
+                  <div className="agent-actions"><button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button><button className="btn btn-primary" onClick={runHiringAgent} disabled={agentLoading}>{agentLoading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}<span>Evaluate Candidate</span></button></div>
+                </div>
+              )}
+              {agentStep === 'loading' && (<div className="agent-loading"><Loader size={36} className="spin" /><h3>Evaluating candidate...</h3><div className="agent-loading-steps"><p className="agent-step-item active">📄 Analyzing resume data...</p><p className="agent-step-item">🔍 Searching online presence...</p><p className="agent-step-item">🎯 Matching against requirements...</p><p className="agent-step-item">📊 Generating fit report...</p></div></div>)}
+              {agentStep === 'result' && agentResult && (
+                <div className="agent-result" ref={agentResultRef}>
+                  {agentResult.error ? (<div className="agent-error glass-card"><AlertCircle size={24} /><p>{agentResult.error}</p></div>) : (<div className="agent-report"><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(agentResult.report || '') }} /></div>)}
+                  <div className="agent-actions">
+                    <button className="btn btn-ghost" onClick={resetAgent}>← Start Over</button>
+                    <button className="btn btn-secondary" onClick={() => setActiveTool('chat')}><MessageSquare size={16} /> Discuss in Chat</button>
+                    {!agentResult.error && !showEmailComposer && (<button className="btn btn-primary" onClick={() => setShowEmailComposer(true)}><Mail size={16} /> Mail to {anonymize ? 'Candidate' : (focusCandidate.name?.split(' ')[0] || 'Candidate')}</button>)}
+                  </div>
+                  {showEmailComposer && (
+                    <div className="email-composer glass-card">
+                      <div className="email-composer-header"><div className="email-composer-title"><Mail size={18} /><span>Email</span></div><div className="email-composer-actions"><button className="email-action-btn" onClick={copyEmail} title="Copy">{emailCopied ? <Check size={16} /> : <Clipboard size={16} />}</button><button className="email-action-btn" onClick={() => setShowEmailComposer(false)} title="Close"><X size={16} /></button></div></div>
+                      {!emailType && !emailDrafting && (<div className="email-type-select"><p className="email-type-label">What type of email?</p><div className="email-type-chips"><button className="agent-chip" onClick={() => draftEmail('interest')}>📩 Interest</button><button className="agent-chip" onClick={() => draftEmail('interview')}>📅 Interview</button><button className="agent-chip" onClick={() => draftEmail('offer')}>🎉 Offer</button><button className="agent-chip" onClick={() => draftEmail('pass')}>🙏 Polite Pass</button><button className="agent-chip" onClick={() => draftEmail('followup')}>🔄 Follow-up</button></div></div>)}
+                      {emailDrafting && (<div className="email-drafting"><Loader size={20} className="spin" /><span>Drafting email...</span></div>)}
+                      {emailType && !emailDrafting && (
+                        <>
+                          <div className="email-fields">
+                            <div className="email-field"><label>To</label><input type="email" className="email-input" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="candidate@email.com" /></div>
+                            {!showCcBcc && <button className="email-ccbcc-toggle" onClick={() => setShowCcBcc(true)}>+ Cc / Bcc</button>}
+                            {showCcBcc && (<><div className="email-field"><label>Cc</label><input type="text" className="email-input" value={emailCc} onChange={e => setEmailCc(e.target.value)} placeholder="cc@email.com" /></div><div className="email-field"><label>Bcc</label><input type="text" className="email-input" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} placeholder="bcc@email.com" /></div></>)}
+                            <div className="email-field"><label>Subject</label><input type="text" className="email-input" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Email subject..." /></div>
+                          </div>
+                          <div className="email-divider" />
+                          <textarea className="email-body" value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={12} placeholder="Email body..." />
+                          <div className="email-send-actions">
+                            <button className="email-send-btn gmail" onClick={openInGmail}><span>Open in Gmail</span></button>
+                            <button className="email-send-btn outlook" onClick={openInOutlook}><span>Open in Outlook</span></button>
+                            <button className="email-send-btn default" onClick={openMailto}><Mail size={16} /><span>Default Mail</span></button>
+                            <button className="email-send-btn copy" onClick={copyEmail}>{emailCopied ? <Check size={16} /> : <Clipboard size={16} />}<span>{emailCopied ? 'Copied!' : 'Copy All'}</span></button>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  ))}
+                  )}
                 </div>
-              ) : (
-                <div className="cal-fallback glass-card">
-                  <p>No event types found. Share your main scheduling link:</p>
-                  <a href={calData.scheduling_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">{calData.scheduling_url} <ExternalLink size={14} /></a>
+              )}
+            </div>
+          )}
+
+          {/* ════════ GITHUB ════════ */}
+          {activeTool === 'github' && (
+            <div className="tool-panel">
+              <div className="gh-search-bar glass-card"><Github size={18} /><input type="text" className="input gh-search-input" value={ghUsername} onChange={e => setGhUsername(e.target.value)} placeholder="Enter GitHub username..." onKeyDown={e => { if (e.key === 'Enter' && ghUsername.trim()) fetchGitHub(ghUsername.trim()); }} /><button className="btn btn-primary btn-sm" onClick={() => fetchGitHub(ghUsername.trim())} disabled={!ghUsername.trim() || ghLoading}>{ghLoading ? <Loader size={14} className="spin" /> : <Search size={14} />}<span>Analyze</span></button></div>
+              {ghLoading && <div className="tool-loading"><Loader size={28} className="spin" /><p>Fetching GitHub profile...</p></div>}
+              {ghNeedsInput && !ghProfile && (<div className="tool-input-section glass-card"><h3><Github size={20} /> GitHub Profile Analyzer</h3><p>Could not auto-detect username from resume. Enter a GitHub username above to analyze.</p></div>)}
+              {ghError && !ghNeedsInput && <div className="tool-error glass-card"><AlertCircle size={20} /><p>{ghError}</p><button className="btn btn-secondary" onClick={() => { setGhNeedsInput(true); setGhError(''); setGhUsername(''); }}>Try Another Username</button></div>}
+              {ghProfile && (
+                <div className="gh-profile">
+                  <div className="gh-header glass-card"><img src={ghProfile.avatar_url} alt="" className="gh-avatar" /><div className="gh-info"><h3>{ghProfile.name || ghProfile.username}</h3><a href={ghProfile.profile_url} target="_blank" rel="noopener noreferrer" className="gh-link">@{ghProfile.username} <ExternalLink size={12} /></a>{ghProfile.bio && <p className="gh-bio">{ghProfile.bio}</p>}</div><div className="gh-stats"><div className="gh-stat"><span className="gh-stat-val">{ghProfile.public_repos}</span><span className="gh-stat-label">Repos</span></div><div className="gh-stat"><span className="gh-stat-val">{ghProfile.followers}</span><span className="gh-stat-label">Followers</span></div><div className="gh-stat"><span className="gh-stat-val">{ghProfile.recent_pushes}</span><span className="gh-stat-label">Recent Pushes</span></div></div></div>
+                  {ghProfile.ai_analysis && <div className="tool-ai-analysis glass-card"><Sparkles size={16} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(ghProfile.ai_analysis) }} /></div>}
+                  {Object.keys(ghProfile.languages || {}).length > 0 && (<div className="gh-languages glass-card"><h4>Languages</h4><div className="gh-lang-chips">{Object.entries(ghProfile.languages).map(([lang, count]) => <span key={lang} className="agent-chip active">{lang} ({count})</span>)}</div></div>)}
+                  {ghProfile.top_repos?.length > 0 && (<div className="gh-repos"><h4>Top Repositories</h4>{ghProfile.top_repos.map((repo, i) => (<div key={i} className="gh-repo glass-card"><div className="gh-repo-header"><a href={repo.url} target="_blank" rel="noopener noreferrer">{repo.name} <ExternalLink size={12} /></a><span className="badge badge-blue">{repo.language}</span></div><p className="gh-repo-desc">{repo.description}</p><div className="gh-repo-stats"><span>⭐ {repo.stars}</span><span>🍴 {repo.forks}</span><span>Updated: {repo.updated}</span></div></div>))}</div>)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ════════ CALENDLY ════════ */}
+          {activeTool === 'calendly' && (
+            <div className="tool-panel">
+              {calLoading && <div className="tool-loading"><Loader size={28} className="spin" /><p>Loading Calendly...</p></div>}
+              {calError && <div className="tool-error glass-card"><AlertCircle size={20} /><p>{calError}</p></div>}
+              {calData && (
+                <div className="cal-container">
+                  <div className="cal-header glass-card"><Calendar size={24} /><div><h3>Schedule Interview with {anonymize ? 'Candidate' : focusCandidate.name?.split(' ')[0]}</h3><p>Select an event type to share your scheduling link</p></div></div>
+                  {calData.event_types?.length > 0 ? (
+                    <div className="cal-events">{calData.event_types.map((ev, i) => (<div key={i} className="cal-event glass-card" onClick={() => window.open(ev.scheduling_url, '_blank')}><div className="cal-event-info"><h4>{ev.name}</h4><p>{ev.duration} minutes{ev.description ? ` — ${ev.description}` : ''}</p></div><div className="cal-event-actions"><button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(ev.scheduling_url); showToast('Link copied!'); }}>Copy Link</button><button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); window.open(ev.scheduling_url, '_blank'); }}>Open <ExternalLink size={12} /></button></div></div>))}</div>
+                  ) : (
+                    <div className="cal-fallback glass-card"><p>No event types found. Share your main scheduling link:</p><a href={calData.scheduling_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">{calData.scheduling_url} <ExternalLink size={14} /></a></div>
+                  )}
                 </div>
               )}
             </div>

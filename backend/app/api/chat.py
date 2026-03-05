@@ -1109,62 +1109,93 @@ async def scan_resume(req: ScanRequest, user=Depends(get_current_user)):
     profiles = {"github": None, "linkedin": None, "portfolio": None, "other_links": []}
     resume_text = candidate.get('text', '') or candidate.get('raw_text', '') or ''
     candidate_name = candidate.get('name', 'Unknown')
+    embedded_links = candidate.get('embedded_links', {}) or {}
 
-    # ═══════ LAYER 1: PDF Link Extraction ═══════
+    # ═══════ LAYER 0: Embedded PDF Links (highest priority) ═══════
     logs.append({"step": "scan_start", "msg": f"Initializing resume scanner for {candidate_name}..."})
-    logs.append({"step": "layer1_start", "msg": "LAYER 1: Extracting links from resume text..."})
+    logs.append({"step": "layer0_start", "msg": "LAYER 0: Checking embedded PDF hyperlinks..."})
 
-    # GitHub - match many PDF extraction formats
-    gh_patterns = [
-        r'github\.com/([a-zA-Z0-9_-]+)',
-        r'github:\s*@?([a-zA-Z0-9_-]+)',
-        r'GitHub:\s*([a-zA-Z0-9_-]+)',
-        r'/github\s*([a-zA-Z0-9_-]+)',          # PDF icon format: /github DB-25
-        r'github[^\w]*([a-zA-Z0-9_-]{2,})',     # github followed by any separator then username
-    ]
     gh_username = None
-    for pattern in gh_patterns:
-        match = re.search(pattern, resume_text, re.IGNORECASE)
-        if match:
-            gh_username = match.group(1).strip()
-            if gh_username.lower() not in ['com', 'io', 'org', 'profile', 'settings', 'in', 'alt', '']:
-                logs.append({"step": "layer1_github", "msg": f"Found GitHub: github.com/{gh_username}", "status": "success"})
-                break
-            else:
-                gh_username = None
-
-    # LinkedIn - match many PDF extraction formats
-    li_patterns = [
-        r'linkedin\.com/in/([a-zA-Z0-9_-]+)',
-        r'linkedin:\s*([a-zA-Z0-9_-]+)',
-        r'LinkedIn:\s*([a-zA-Z0-9_/-]+)',
-        r'/linkedin-in\s*([a-zA-Z0-9_-]+)',     # PDF icon format: /linkedin-in username
-        r'/linkedin[^\w]*([a-zA-Z0-9_-]{2,})',   # linkedin followed by separator then username
-        r'linkedin[- ]*in[^\w]*([a-zA-Z0-9_-]{2,})',  # "linkedin in username" or "linkedin-in username"
-    ]
     li_username = None
-    for pattern in li_patterns:
-        match = re.search(pattern, resume_text, re.IGNORECASE)
-        if match:
-            li_username = match.group(1).strip().rstrip('/')
-            if li_username.lower() not in ['in', 'com', 'profile', '']:
-                logs.append({"step": "layer1_linkedin", "msg": f"Found LinkedIn: linkedin.com/in/{li_username}", "status": "success"})
-                break
-            else:
-                li_username = None
-
-    # Portfolio/Website
-    web_patterns = [
-        r'(?:portfolio|website|blog|site)[\s:]*\s*(https?://[^\s,]+)',
-        r'(https?://(?!github\.com|linkedin\.com)[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}[^\s,]*)',
-    ]
     portfolio_url = None
-    for pattern in web_patterns:
-        match = re.search(pattern, resume_text, re.IGNORECASE)
-        if match:
-            portfolio_url = match.group(1).rstrip('.')
-            logs.append({"step": "layer1_portfolio", "msg": f"Found portfolio: {portfolio_url}", "status": "success"})
-            break
+
+    # Check embedded links first (these are the actual URLs from PDF metadata)
+    if embedded_links.get('github_url'):
+        gh_match = re.search(r'github\.com/([a-zA-Z0-9_-]+)', embedded_links['github_url'])
+        if gh_match:
+            gh_username = gh_match.group(1)
+            logs.append({"step": "layer0_github", "msg": f"Found embedded GitHub link: {embedded_links['github_url']}", "status": "success"})
+
+    if embedded_links.get('linkedin_url'):
+        li_match = re.search(r'linkedin\.com/in/([a-zA-Z0-9_-]+)', embedded_links['linkedin_url'])
+        if li_match:
+            li_username = li_match.group(1)
+            logs.append({"step": "layer0_linkedin", "msg": f"Found embedded LinkedIn link: {embedded_links['linkedin_url']}", "status": "success"})
+
+    if embedded_links.get('portfolio_url'):
+        portfolio_url = embedded_links['portfolio_url']
+        logs.append({"step": "layer0_portfolio", "msg": f"Found embedded portfolio link: {portfolio_url}", "status": "success"})
+
+    if embedded_links.get('email'):
+        logs.append({"step": "layer0_email", "msg": f"Found embedded email: {embedded_links['email']}", "status": "success"})
+
+    if embedded_links.get('all_urls'):
+        logs.append({"step": "layer0_total", "msg": f"Total embedded links found: {len(embedded_links['all_urls'])}"})
+
+    # ═══════ LAYER 1: Text Regex Extraction (fallback) ═══════
+    logs.append({"step": "layer1_start", "msg": "LAYER 1: Scanning resume text for links..."})
+
+    # GitHub - match many PDF extraction formats (only if Layer 0 didn't find it)
+    if not gh_username:
+        gh_patterns = [
+            r'github\.com/([a-zA-Z0-9_-]+)',
+            r'github:\s*@?([a-zA-Z0-9_-]+)',
+            r'GitHub:\s*([a-zA-Z0-9_-]+)',
+            r'/github\s*([a-zA-Z0-9_-]+)',
+            r'github[^\w]*([a-zA-Z0-9_-]{2,})',
+        ]
+        for pattern in gh_patterns:
+            match = re.search(pattern, resume_text, re.IGNORECASE)
+            if match:
+                gh_username = match.group(1).strip()
+                if gh_username.lower() not in ['com', 'io', 'org', 'profile', 'settings', 'in', 'alt', '']:
+                    logs.append({"step": "layer1_github", "msg": f"Found GitHub: github.com/{gh_username}", "status": "success"})
+                    break
+                else:
+                    gh_username = None
+
+    # LinkedIn - match many PDF extraction formats (only if Layer 0 didn't find it)
+    if not li_username:
+        li_patterns = [
+            r'linkedin\.com/in/([a-zA-Z0-9_-]+)',
+            r'linkedin:\s*([a-zA-Z0-9_-]+)',
+            r'LinkedIn:\s*([a-zA-Z0-9_/-]+)',
+            r'/linkedin-in\s*([a-zA-Z0-9_-]+)',
+            r'/linkedin[^\w]*([a-zA-Z0-9_-]{2,})',
+            r'linkedin[- ]*in[^\w]*([a-zA-Z0-9_-]{2,})',
+        ]
+        for pattern in li_patterns:
+            match = re.search(pattern, resume_text, re.IGNORECASE)
+            if match:
+                li_username = match.group(1).strip().rstrip('/')
+                if li_username.lower() not in ['in', 'com', 'profile', '']:
+                    logs.append({"step": "layer1_linkedin", "msg": f"Found LinkedIn: linkedin.com/in/{li_username}", "status": "success"})
+                    break
+                else:
+                    li_username = None
+
+    # Portfolio/Website (only if Layer 0 didn't find it)
+    if not portfolio_url:
+        web_patterns = [
+            r'(?:portfolio|website|blog|site)[\s:]*\s*(https?://[^\s,]+)',
+            r'(https?://(?!github\.com|linkedin\.com)[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}[^\s,]*)',
+        ]
+        for pattern in web_patterns:
+            match = re.search(pattern, resume_text, re.IGNORECASE)
+            if match:
+                portfolio_url = match.group(1).rstrip('.')
+                logs.append({"step": "layer1_portfolio", "msg": f"Found portfolio: {portfolio_url}", "status": "success"})
+                break
 
     # Email - handle PDF artifacts before the email address
     email_match = re.search(r'([a-zA-Z0-9][\w.-]*@[\w.-]+\.\w{2,})', resume_text)
@@ -1247,37 +1278,9 @@ async def scan_resume(req: ScanRequest, user=Depends(get_current_user)):
 
                 # ── LinkedIn ──
                 if li_user:
-                    results["browser_logs"].append({"step": "browser_linkedin", "msg": f"Navigating to linkedin.com/in/{li_user}..."})
-                    try:
-                        page.goto(f"https://www.linkedin.com/in/{li_user}", timeout=15000)
-                        page.wait_for_load_state("domcontentloaded")
-                        page.wait_for_timeout(2000)
-
-                        li_data = page.evaluate("""() => {
-                            const name = document.querySelector('h1')?.innerText?.trim() || '';
-                            const headline = document.querySelector('.text-body-medium')?.innerText?.trim() || '';
-                            const location = document.querySelector('.text-body-small:not(.inline)')?.innerText?.trim() || '';
-                            const about = document.querySelector('#about ~ .display-flex .visually-hidden + span')?.innerText?.trim() || '';
-                            return { name, headline, location, about };
-                        }""")
-
-                        results["linkedin"] = {
-                            "username": li_user,
-                            "url": f"https://www.linkedin.com/in/{li_user}",
-                            "name": li_data.get("name", li_user),
-                            "headline": li_data.get("headline", ""),
-                            "location": li_data.get("location", ""),
-                            "about": li_data.get("about", "")[:300]
-                        }
-
-                        if li_data.get("name"):
-                            results["browser_logs"].append({"step": "browser_linkedin_done", "msg": f"LinkedIn profile found: {li_data.get('name', '')} | {li_data.get('headline', '')[:60]}", "status": "success"})
-                        else:
-                            results["browser_logs"].append({"step": "browser_linkedin_partial", "msg": "LinkedIn page loaded but data limited (login wall)", "status": "warning"})
-                            results["linkedin"]["note"] = "Limited data - LinkedIn requires login for full profiles"
-                    except Exception as e:
-                        results["browser_logs"].append({"step": "browser_linkedin_err", "msg": f"LinkedIn scrape failed: {str(e)[:100]}", "status": "error"})
-                        results["linkedin"] = {"username": li_user, "url": f"https://www.linkedin.com/in/{li_user}", "note": "Could not scrape - link is still valid."}
+                    # Skip Playwright for LinkedIn (login wall blocks it)
+                    # We'll use Tavily instead — see below
+                    results["browser_logs"].append({"step": "browser_linkedin_skip", "msg": "Skipping browser for LinkedIn (login wall). Using Tavily search instead...", "status": "warning"})
 
                 # ── Portfolio ──
                 if port_url:
@@ -1322,6 +1325,60 @@ async def scan_resume(req: ScanRequest, user=Depends(get_current_user)):
         logs.append({"step": "layer3_missing", "msg": "Playwright not installed. Run: pip install playwright && playwright install chromium", "status": "error"})
     except Exception as e:
         logs.append({"step": "layer3_error", "msg": f"Browser agent error: {str(e)[:150]}", "status": "error"})
+
+    # ═══════ LINKEDIN VIA TAVILY (since Playwright gets blocked) ═══════
+    if li_username and (not profiles.get("linkedin") or profiles.get("linkedin", {}).get("headline") in [None, "", "Join LinkedIn"]):
+        logs.append({"step": "tavily_linkedin", "msg": f"Fetching LinkedIn data via Tavily for {li_username}..."})
+        try:
+            tavily_api_key = getattr(settings, 'tavily_api_key', '') or os.environ.get('TAVILY_API_KEY', '')
+            if tavily_api_key:
+                from tavily import TavilyClient
+                tavily = TavilyClient(api_key=tavily_api_key)
+
+                li_search = tavily.search(
+                    query=f"site:linkedin.com/in/{li_username} OR {candidate_name} linkedin profile",
+                    search_depth="basic",
+                    max_results=3,
+                    include_answer=True
+                )
+
+                li_profile = {
+                    "username": li_username,
+                    "url": f"https://www.linkedin.com/in/{li_username}",
+                    "name": candidate_name,
+                    "headline": "",
+                    "location": "",
+                    "about": ""
+                }
+
+                # Extract info from Tavily answer
+                if li_search.get("answer"):
+                    li_profile["about"] = li_search["answer"][:500]
+
+                # Extract from search results
+                for result in li_search.get("results", []):
+                    content = result.get("content", "")
+                    title = result.get("title", "")
+                    
+                    # LinkedIn titles often format as "Name - Title - Company | LinkedIn"
+                    if "linkedin" in result.get("url", "").lower():
+                        parts = title.split(" - ")
+                        if len(parts) >= 2:
+                            if not li_profile["name"] or li_profile["name"] == candidate_name:
+                                li_profile["name"] = parts[0].strip()
+                            li_profile["headline"] = " - ".join(parts[1:]).replace(" | LinkedIn", "").strip()
+                    
+                    if content and not li_profile["about"]:
+                        li_profile["about"] = content[:500]
+
+                profiles["linkedin"] = li_profile
+
+                if li_profile.get("headline"):
+                    logs.append({"step": "tavily_linkedin_done", "msg": f"LinkedIn found: {li_profile['name']} | {li_profile['headline'][:80]}", "status": "success"})
+                else:
+                    logs.append({"step": "tavily_linkedin_partial", "msg": f"LinkedIn partial data found for {li_username}", "status": "warning"})
+        except Exception as e:
+            logs.append({"step": "tavily_linkedin_err", "msg": f"Tavily LinkedIn search failed: {str(e)[:100]}", "status": "error"})
 
     # ═══════ AI SUMMARY ═══════
     logs.append({"step": "ai_summary", "msg": "Generating AI summary of findings..."})

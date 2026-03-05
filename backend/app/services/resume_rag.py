@@ -164,6 +164,57 @@ class ResumeRAGService:
             print(f"Error extracting text: {e}")
             return ""
     
+    def _extract_embedded_links(self, file_path: str, file_name: str) -> dict:
+        """Extract embedded hyperlinks from PDF using PyMuPDF"""
+        links = {
+            "all_urls": [],
+            "github_url": None,
+            "linkedin_url": None,
+            "portfolio_url": None,
+            "email": None
+        }
+        
+        ext = Path(file_name).suffix.lower()
+        if ext != '.pdf':
+            return links
+        
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(file_path)
+            
+            for page in doc:
+                # Get all links from the page
+                for link in page.get_links():
+                    uri = link.get("uri", "")
+                    if not uri:
+                        continue
+                    
+                    links["all_urls"].append(uri)
+                    print(f"📎 Found embedded link: {uri}")
+                    
+                    # Categorize the link
+                    uri_lower = uri.lower()
+                    if 'github.com' in uri_lower and not links["github_url"]:
+                        links["github_url"] = uri
+                    elif 'linkedin.com' in uri_lower and not links["linkedin_url"]:
+                        links["linkedin_url"] = uri
+                    elif uri_lower.startswith('mailto:') and not links["email"]:
+                        links["email"] = uri.replace('mailto:', '')
+                    elif uri_lower.startswith('http') and not links["portfolio_url"]:
+                        # Any other http link could be portfolio
+                        if not any(skip in uri_lower for skip in ['github.com', 'linkedin.com', 'google.com', 'mailto:']):
+                            links["portfolio_url"] = uri
+            
+            doc.close()
+            print(f"✅ Extracted {len(links['all_urls'])} embedded links from PDF")
+            
+        except ImportError:
+            print("⚠️ PyMuPDF not installed. Run: pip install PyMuPDF")
+        except Exception as e:
+            print(f"⚠️ Error extracting PDF links: {e}")
+        
+        return links
+    
     def _is_valid_resume(self, text: str) -> bool:
         resume_keywords = [
             'experience', 'education', 'skills', 'work', 'employment',
@@ -210,6 +261,9 @@ class ResumeRAGService:
     
         if not text or len(text) < 50:
           return {"error": "Could not extract text from file"}
+        
+        # Extract embedded hyperlinks from PDF
+        embedded_links = self._extract_embedded_links(file_path, file_name)
     
         is_resume = self._is_valid_resume(text)
         name = self._extract_candidate_name(text, file_name)
@@ -240,10 +294,11 @@ class ResumeRAGService:
             "id": candidate_id,
             "name": name,
             "file_name": file_name,
-            "file_hash": file_hash,  # Store hash with candidate
+            "file_hash": file_hash,
             "is_resume": is_resume,
             "raw_text": text[:1500],
             "text": text[:5000],
+            "embedded_links": embedded_links,
             **summary_data
         }
     
