@@ -386,6 +386,7 @@ export default function CandidateFocus() {
   // ═══════ CREATE INTERVIEW ═══════
   const createInterview = async () => {
     if (!focusCandidate || !interviewEmail.trim()) { showToast('Please enter candidate email'); return; }
+    console.log('Creating interview for:', interviewEmail, 'candidate:', focusCandidate.name);
     setInterviewCreating(true);
     try {
       const resp = await fetch(`${API_BASE}/api/chat/create-interview`, {
@@ -992,7 +993,7 @@ export default function CandidateFocus() {
 
                   {/* ═══════ CREATE INTERVIEW PANEL ═══════ */}
                   {showInterviewCreator && !interviewCreated && (
-                    <div className="interview-creator glass-card">
+                    <div className="interview-creator glass-card" ref={el => { if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }}>
                       <div className="email-composer-header">
                         <div className="email-composer-title"><Video size={18} /><span>Create AI Interview</span></div>
                         <button className="email-action-btn" onClick={() => setShowInterviewCreator(false)}><X size={16} /></button>
