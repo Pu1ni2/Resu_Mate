@@ -1417,3 +1417,122 @@ Provide a brief 3-5 sentence summary for a hiring manager. Note any interesting 
             "phone": phone_match.group().strip() if phone_match else None
         }
     }
+
+# ============ CANDIDATE PORTAL & INTERVIEW ============
+
+# In-memory store for interviews (use DB in production)
+interviews_store = {}  # email -> interview config
+candidate_access = {}  # email -> {name, candidate_id, access: True}
+
+
+class CreateInterviewRequest(BaseModel):
+    candidate_id: int
+    candidate_email: str
+    candidate_name: Optional[str] = None
+    role: Optional[str] = None
+    level: Optional[str] = None
+    experience_required: Optional[str] = None
+    num_questions: int = 8
+    focus_areas: Optional[list] = None
+
+
+class VerifyEmailRequest(BaseModel):
+    email: str
+
+
+@router.post("/create-interview")
+async def create_interview(req: CreateInterviewRequest, user=Depends(get_current_user)):
+    """Hiring manager creates an interview for a candidate"""
+    email = req.candidate_email.strip().lower()
+    
+    # Grant access to candidate
+    candidate_access[email] = {
+        "name": req.candidate_name or "",
+        "candidate_id": req.candidate_id,
+        "access": True
+    }
+    
+    # Store interview config
+    interviews_store[email] = {
+        "candidate_id": req.candidate_id,
+        "candidate_name": req.candidate_name or "",
+        "role": req.role or "General",
+        "level": req.level or "Mid-Level",
+        "experience_required": req.experience_required or "",
+        "num_questions": req.num_questions,
+        "focus_areas": req.focus_areas or [],
+        "status": "pending",
+        "results": None
+    }
+    
+    print(f"✅ Interview created for {email} | Role: {req.role} | Questions: {req.num_questions}")
+    
+    return {
+        "message": f"Interview created for {email}",
+        "interview_config": interviews_store[email]
+    }
+
+
+@router.post("/verify-email")
+async def verify_candidate_email(req: VerifyEmailRequest):
+    """Candidate verifies their email to access the portal"""
+    email = req.email.strip().lower()
+    
+    print(f"🔍 Candidate login attempt: {email}")
+    
+    # Check if email has access
+    if email in candidate_access:
+        access_data = candidate_access[email]
+        has_interview = email in interviews_store
+        interview_config = interviews_store.get(email) if has_interview else None
+        
+        print(f"✅ Access granted for {email}")
+        
+        return {
+            "access": True,
+            "name": access_data.get("name", ""),
+            "candidate_id": access_data.get("candidate_id"),
+            "has_interview": has_interview,
+            "interview_config": interview_config
+        }
+    
+    # Also check if any uploaded candidate has this email in their resume
+    for cid, candidate in resume_rag.candidates.items():
+        resume_text = candidate.get('text', '') or candidate.get('raw_text', '') or ''
+        embedded = candidate.get('embedded_links', {}) or {}
+        
+        # Check resume text and embedded links for this email
+        if email in resume_text.lower() or email == (embedded.get('email', '') or '').lower():
+            candidate_access[email] = {
+                "name": candidate.get('name', ''),
+                "candidate_id": cid,
+                "access": True
+            }
+            
+            has_interview = email in interviews_store
+            interview_config = interviews_store.get(email) if has_interview else None
+            
+            print(f"✅ Access granted for {email} (found in resume)")
+            
+            return {
+                "access": True,
+                "name": candidate.get('name', ''),
+                "candidate_id": cid,
+                "has_interview": has_interview,
+                "interview_config": interview_config
+            }
+    
+    print(f"❌ Access denied for {email}")
+    return {
+        "access": False,
+        "message": "No access found for this email. Please contact your hiring manager."
+    }
+
+
+@router.get("/interview-status/{email}")
+async def get_interview_status(email: str, user=Depends(get_current_user)):
+    """Check interview status for a candidate"""
+    email = email.strip().lower()
+    if email in interviews_store:
+        return {"exists": True, "config": interviews_store[email]}
+    return {"exists": False}
