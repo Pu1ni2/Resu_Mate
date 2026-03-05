@@ -1420,9 +1420,31 @@ Provide a brief 3-5 sentence summary for a hiring manager. Note any interesting 
 
 # ============ CANDIDATE PORTAL & INTERVIEW ============
 
-# In-memory store for interviews (use DB in production)
-interviews_store = {}  # email -> interview config
-candidate_access = {}  # email -> {name, candidate_id, access: True}
+import json as json_lib
+
+INTERVIEWS_FILE = "interviews_data.json"
+
+def _load_interviews_data():
+    """Load interviews and access data from JSON file"""
+    try:
+        with open(INTERVIEWS_FILE, 'r') as f:
+            data = json_lib.load(f)
+            return data.get('interviews', {}), data.get('access', {})
+    except (FileNotFoundError, json_lib.JSONDecodeError):
+        return {}, {}
+
+def _save_interviews_data(interviews, access):
+    """Save interviews and access data to JSON file"""
+    try:
+        with open(INTERVIEWS_FILE, 'w') as f:
+            json_lib.dump({'interviews': interviews, 'access': access}, f, indent=2)
+        print(f"💾 Saved {len(interviews)} interviews, {len(access)} access grants")
+    except Exception as e:
+        print(f"⚠️ Failed to save interviews data: {e}")
+
+# Load from file on startup
+interviews_store, candidate_access = _load_interviews_data()
+print(f"📂 Loaded {len(interviews_store)} interviews, {len(candidate_access)} access grants from file")
 
 
 class CreateInterviewRequest(BaseModel):
@@ -1467,6 +1489,9 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
     
     print(f"✅ Interview created for {email} | Role: {req.role} | Questions: {req.num_questions}")
     
+    # Persist to file
+    _save_interviews_data(interviews_store, candidate_access)
+    
     return {
         "message": f"Interview created for {email}",
         "interview_config": interviews_store[email]
@@ -1475,7 +1500,7 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
 
 @router.post("/verify-email")
 async def verify_candidate_email(req: VerifyEmailRequest):
-    """Candidate verifies their email to access the portal"""
+    """Candidate verifies their email to access the portal - no auth required"""
     email = req.email.strip().lower()
     
     print(f"🔍 Candidate login attempt: {email}")
@@ -1513,6 +1538,7 @@ async def verify_candidate_email(req: VerifyEmailRequest):
             interview_config = interviews_store.get(email) if has_interview else None
             
             print(f"✅ Access granted for {email} (found in resume)")
+            _save_interviews_data(interviews_store, candidate_access)
             
             return {
                 "access": True,
@@ -1536,3 +1562,189 @@ async def get_interview_status(email: str, user=Depends(get_current_user)):
     if email in interviews_store:
         return {"exists": True, "config": interviews_store[email]}
     return {"exists": False}
+
+
+# ============ LIVE AI INTERVIEW ENDPOINTS ============
+
+class GenerateQuestionsRequest(BaseModel):
+    role: str = "General"
+    level: str = "Mid-Level"
+    num_questions: int = 8
+    focus_areas: list = []
+    candidate_name: str = "Candidate"
+
+
+class ScoreAnswerRequest(BaseModel):
+    question: str
+    answer: str
+    role: str = "General"
+    candidate_name: str = "Candidate"
+
+
+class InterviewReportRequest(BaseModel):
+    candidate_name: str
+    candidate_email: str
+    role: str
+    questions: list
+    answers: list
+    scores: list
+    duration: int = 0
+
+
+@router.post("/generate-interview-questions")
+async def generate_interview_questions(req: GenerateQuestionsRequest, user=Depends(get_current_user)):
+    """Generate interview questions based on role and level"""
+    try:
+        if not resume_rag.llm:
+            return {"questions": ["Tell me about yourself.", "What are your key strengths?", "Why are you interested in this role?"]}
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+        focus = f"\nFocus areas: {', '.join(req.focus_areas)}" if req.focus_areas else ""
+        
+        prompt = f"""Generate exactly {req.num_questions} interview questions for a {req.level} {req.role} position.{focus}
+
+RULES:
+- Mix behavioral, technical, and situational questions
+- Start easy, gradually increase difficulty
+- Include 1-2 questions about teamwork/collaboration
+- Include 1 question about handling challenges/failures
+- Make questions specific to {req.role}
+- Questions should be conversational, not robotic
+
+Return ONLY the questions, one per line, no numbering."""
+
+        resp = await resume_rag.llm.ainvoke([
+            SystemMessage(content="You are an expert interviewer. Generate clear, professional interview questions."),
+            HumanMessage(content=prompt)
+        ])
+        
+        questions = [q.strip() for q in resp.content.strip().split('\n') if q.strip() and len(q.strip()) > 10]
+        return {"questions": questions[:req.num_questions]}
+    except Exception as e:
+        print(f"Question generation error: {e}")
+        return {"questions": ["Tell me about yourself.", "What are your strengths?", "Why this role?"]}
+
+
+@router.post("/score-answer")
+async def score_answer(req: ScoreAnswerRequest, user=Depends(get_current_user)):
+    """Score a candidate's interview answer"""
+    try:
+        if not resume_rag.llm:
+            return {"score": 5, "feedback": "AI scoring unavailable."}
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+        
+        prompt = f"""Score this interview answer on a scale of 1-10.
+
+Role: {req.role}
+Question: "{req.question}"
+Answer: "{req.answer}"
+
+Score criteria:
+- Relevance to the question (0-3 points)
+- Depth and detail (0-3 points)  
+- Communication clarity (0-2 points)
+- Confidence and professionalism (0-2 points)
+
+If the answer is empty or just noise, score 1.
+If the answer is short but relevant, score 4-6.
+If the answer is detailed and impressive, score 7-10.
+
+Return in this EXACT format (no markdown):
+SCORE: [number 1-10]
+FEEDBACK: [one sentence feedback]"""
+
+        resp = await resume_rag.llm.ainvoke([
+            SystemMessage(content="You are a fair interview evaluator. Score answers objectively."),
+            HumanMessage(content=prompt)
+        ])
+        
+        content = resp.content.strip()
+        score = 5
+        feedback = "Answer noted."
+        
+        import re
+        score_match = re.search(r'SCORE:\s*(\d+)', content)
+        if score_match:
+            score = min(10, max(1, int(score_match.group(1))))
+        
+        feedback_match = re.search(r'FEEDBACK:\s*(.+)', content)
+        if feedback_match:
+            feedback = feedback_match.group(1).strip()
+        
+        return {"score": score, "feedback": feedback}
+    except Exception as e:
+        print(f"Scoring error: {e}")
+        return {"score": 5, "feedback": "Could not score this answer."}
+
+
+@router.post("/interview-report")
+async def generate_interview_report(req: InterviewReportRequest, user=Depends(get_current_user)):
+    """Generate a comprehensive interview report"""
+    try:
+        if not resume_rag.llm:
+            return {"report": "AI report generation unavailable."}
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+        
+        qa_pairs = ""
+        for i, (q, a, s) in enumerate(zip(req.questions, req.answers, req.scores)):
+            score_val = s.get('score', '?') if isinstance(s, dict) else '?'
+            feedback = s.get('feedback', '') if isinstance(s, dict) else ''
+            qa_pairs += f"\nQ{i+1}: {q}\nAnswer: {a or '(no answer)'}\nScore: {score_val}/10 - {feedback}\n"
+
+        avg_score = sum(s.get('score', 0) if isinstance(s, dict) else 0 for s in req.scores) / max(len(req.scores), 1)
+        
+        prompt = f"""Generate an interview evaluation report for:
+
+Candidate: {req.candidate_name}
+Role: {req.role}
+Duration: {req.duration // 60}min {req.duration % 60}sec
+Average Score: {avg_score:.1f}/10
+
+Questions & Answers:
+{qa_pairs}
+
+Generate a professional report with:
+## Interview Summary
+Brief overview of performance
+
+## Strengths Demonstrated
+What the candidate did well (2-3 points)
+
+## Areas for Improvement  
+Constructive feedback (2-3 points, be kind)
+
+## Overall Recommendation
+One of: Strong Hire / Hire / Consider / Pass
+With explanation
+
+## Suggested Follow-up
+1-2 follow-up questions for the next round
+
+Be professional, constructive, and fair. Never be harsh."""
+
+        resp = await resume_rag.llm.ainvoke([
+            SystemMessage(content="You are a professional hiring manager writing fair interview evaluations."),
+            HumanMessage(content=prompt)
+        ])
+        
+        report = resp.content
+        
+        # Save results to interview store
+        email = req.candidate_email.strip().lower()
+        if email in interviews_store:
+            interviews_store[email]["status"] = "completed"
+            interviews_store[email]["results"] = {
+                "report": report,
+                "avg_score": round(avg_score, 1),
+                "scores": req.scores,
+                "duration": req.duration
+            }
+            _save_interviews_data(interviews_store, candidate_access)
+            print(f"📊 Interview results saved for {email}")
+        
+        return {"report": report}
+    except Exception as e:
+        print(f"Report generation error: {e}")
+        return {"report": "Could not generate report. Please try again."}

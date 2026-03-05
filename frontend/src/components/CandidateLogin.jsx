@@ -25,7 +25,7 @@ export default function CandidateLogin() {
     setError('');
 
     try {
-      const resp = await fetch(`${API_BASE}/api/candidate/verify-email`, {
+      const resp = await fetch(`${API_BASE}/api/chat/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() })

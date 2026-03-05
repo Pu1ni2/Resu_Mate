@@ -6,7 +6,7 @@ import {
   AlertCircle, Briefcase, Award, MapPin, ExternalLink, Loader,
   ChevronRight, Sparkles, X, Volume2, Mic, MicOff, Square, Bot, Users,
   ClipboardList, Target, ChevronDown, FileText, UserCheck, Mail, Copy, Clipboard,
-  Github, Calendar
+  Github, Calendar, Video
 } from 'lucide-react';
 
 const AIAvatar = () => (
@@ -111,6 +111,15 @@ export default function CandidateFocus() {
   const [emailType, setEmailType] = useState('');
   const [emailDrafting, setEmailDrafting] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
+
+  // ═══════ CREATE INTERVIEW STATE ═══════
+  const [showInterviewCreator, setShowInterviewCreator] = useState(false);
+  const [interviewRole, setInterviewRole] = useState('');
+  const [interviewNumQuestions, setInterviewNumQuestions] = useState('8');
+  const [interviewFocusAreas, setInterviewFocusAreas] = useState('');
+  const [interviewCreating, setInterviewCreating] = useState(false);
+  const [interviewCreated, setInterviewCreated] = useState(false);
+  const [interviewEmail, setInterviewEmail] = useState('');
 
   // ═══════ GITHUB STATE ═══════
   const [ghLoading, setGhLoading] = useState(false);
@@ -373,6 +382,44 @@ export default function CandidateFocus() {
     setEmailCopied(true);
     setTimeout(() => setEmailCopied(false), 2000);
   };
+
+  // ═══════ CREATE INTERVIEW ═══════
+  const createInterview = async () => {
+    if (!focusCandidate || !interviewEmail.trim()) { showToast('Please enter candidate email'); return; }
+    setInterviewCreating(true);
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/create-interview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        body: JSON.stringify({
+          candidate_id: focusCandidate.id,
+          candidate_email: interviewEmail.trim(),
+          candidate_name: focusCandidate.name || '',
+          role: interviewRole || selectedRole || focusCandidate.predicted_role || 'General',
+          level: selectedLevel || focusCandidate.experience_level || 'Mid-Level',
+          experience_required: selectedExperience || '',
+          num_questions: parseInt(interviewNumQuestions) || 8,
+          focus_areas: interviewFocusAreas ? interviewFocusAreas.split(',').map(s => s.trim()) : []
+        })
+      });
+      const data = await resp.json();
+      if (data.message) {
+        setInterviewCreated(true);
+        showToast('Interview created! Candidate can now login.');
+      }
+    } catch (e) {
+      showToast('Failed to create interview');
+    } finally {
+      setInterviewCreating(false);
+    }
+  };
+
+  // Auto-fill interview email from scanner contact
+  useEffect(() => {
+    if (scanContact?.email && !interviewEmail) {
+      setInterviewEmail(scanContact.email);
+    }
+  }, [scanContact]);
 
   // ═══════ GITHUB FUNCTIONS ═══════
   const fetchGitHub = async (username) => {
@@ -931,11 +978,57 @@ export default function CandidateFocus() {
               {agentStep === 'result' && agentResult && (
                 <div className="agent-result" ref={agentResultRef}>
                   {agentResult.error ? (<div className="agent-error glass-card"><AlertCircle size={24} /><p>{agentResult.error}</p></div>) : (<div className="agent-report"><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(agentResult.report || '') }} /></div>)}
-                  <div className="agent-actions">
+                  <div className="agent-actions" style={{ flexWrap: 'wrap' }}>
                     <button className="btn btn-ghost" onClick={resetAgent}>← Start Over</button>
                     <button className="btn btn-secondary" onClick={() => setActiveTool('chat')}><MessageSquare size={16} /> Discuss in Chat</button>
-                    {!agentResult.error && !showEmailComposer && (<button className="btn btn-primary" onClick={() => setShowEmailComposer(true)}><Mail size={16} /> Mail to {anonymize ? 'Candidate' : (focusCandidate.name?.split(' ')[0] || 'Candidate')}</button>)}
                   </div>
+                  {!agentResult.error && (
+                    <div className="agent-actions" style={{ flexWrap: 'wrap', paddingTop: '0' }}>
+                      {!showEmailComposer && (<button className="btn btn-primary" onClick={() => { setShowEmailComposer(true); setShowInterviewCreator(false); }}><Mail size={16} /> Mail to {anonymize ? 'Candidate' : (focusCandidate.name?.split(' ')[0] || 'Candidate')}</button>)}
+                      {!interviewCreated && !showInterviewCreator && (<button className="btn btn-secondary" onClick={() => { setShowInterviewCreator(true); setShowEmailComposer(false); }} style={{ background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.3)', color: '#A78BFA' }}><Video size={16} /> Create Interview</button>)}
+                      {interviewCreated && (<span className="badge badge-green" style={{ padding: '10px 18px', fontSize: '13px' }}><Check size={14} /> Interview Created</span>)}
+                    </div>
+                  )}
+
+                  {/* ═══════ CREATE INTERVIEW PANEL ═══════ */}
+                  {showInterviewCreator && !interviewCreated && (
+                    <div className="interview-creator glass-card">
+                      <div className="email-composer-header">
+                        <div className="email-composer-title"><Video size={18} /><span>Create AI Interview</span></div>
+                        <button className="email-action-btn" onClick={() => setShowInterviewCreator(false)}><X size={16} /></button>
+                      </div>
+                      <div className="interview-creator-body">
+                        <div className="email-field">
+                          <label>Candidate Email</label>
+                          <input type="email" className="email-input" value={interviewEmail} onChange={e => setInterviewEmail(e.target.value)} placeholder="candidate@email.com (required for login)" />
+                        </div>
+                        <div className="email-field">
+                          <label>Role</label>
+                          <input type="text" className="email-input" value={interviewRole || selectedRole || focusCandidate?.predicted_role || ''} onChange={e => setInterviewRole(e.target.value)} placeholder="e.g. ML Engineer" />
+                        </div>
+                        <div className="email-field">
+                          <label>Questions</label>
+                          <select className="email-input" value={interviewNumQuestions} onChange={e => setInterviewNumQuestions(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontFamily: 'inherit' }}>
+                            <option value="5">5 questions</option>
+                            <option value="8">8 questions</option>
+                            <option value="10">10 questions</option>
+                            <option value="15">15 questions</option>
+                          </select>
+                        </div>
+                        <div className="email-field">
+                          <label>Focus Areas</label>
+                          <input type="text" className="email-input" value={interviewFocusAreas} onChange={e => setInterviewFocusAreas(e.target.value)} placeholder="e.g. System Design, Python, Leadership (comma-separated)" />
+                        </div>
+                        <div className="email-send-actions">
+                          <button className="email-send-btn" onClick={() => setShowInterviewCreator(false)}>Cancel</button>
+                          <button className="email-send-btn gmail" style={{ background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.3)', color: '#A78BFA' }} onClick={createInterview} disabled={!interviewEmail.trim() || interviewCreating}>
+                            {interviewCreating ? <Loader size={16} className="spin" /> : <Video size={16} />}
+                            <span>{interviewCreating ? 'Creating...' : 'Create Interview & Grant Access'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {showEmailComposer && (
                     <div className="email-composer glass-card">
                       <div className="email-composer-header"><div className="email-composer-title"><Mail size={18} /><span>Email</span></div><div className="email-composer-actions"><button className="email-action-btn" onClick={copyEmail} title="Copy">{emailCopied ? <Check size={16} /> : <Clipboard size={16} />}</button><button className="email-action-btn" onClick={() => setShowEmailComposer(false)} title="Close"><X size={16} /></button></div></div>
