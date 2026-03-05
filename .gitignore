@@ -1,113 +1,22 @@
-# ========================================
-# SENSITIVE - NEVER PUSH TO GITHUB
-# ========================================
-
-# Environment variables (contains API keys!)
-.env
-.env.local
-.env.production
-.env.development
-
-# ========================================
-# GENERATED FILES - No need to push
-# ========================================
-
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
 venv/
-env/
-.venv/
-ENV/
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Build outputs
-dist/
-build/
-*.egg-info/
-
-# ========================================
-# DATABASE & UPLOADS - Generated at runtime
-# ========================================
-
-# ChromaDB vector database
-chroma_db/
+.env
 *.db
-*.sqlite
+chroma_db/
+agent_memory.json
+interviews_data.json
+uploads/*.pdf
 
-# Uploaded files
-uploads/*
-!uploads/.gitkeep
+# Node
+node_modules/
+dist/
+.vite/
 
-# ========================================
-# IDE & OS FILES
-# ========================================
-
-# VS Code
+# IDE
 .vscode/
-*.code-workspace
-
-# PyCharm / IntelliJ
 .idea/
-*.iml
-
-# macOS
+*.swp
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# ========================================
-# LOGS & MISC
-# ========================================
-
-# Logs
-*.log
-logs/
-
-# Test coverage
-htmlcov/
-.coverage
-.pytest_cache/
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-```
-
----
-
-## 📁 Your Project Structure Should Look Like This
-```
-resumate-ai/
-├── .gitignore              ← Root gitignore
-├── README.md
-│
-├── backend/
-│   ├── .env                ← ❌ NOT pushed (in .gitignore)
-│   ├── .env.example        ← ✅ Push this (template)
-│   ├── main.py
-│   ├── requirements.txt
-│   └── app/
-│       ├── api/
-│       ├── core/
-│       └── services/
-│
-└── frontend/
-    ├── package.json
-    ├── vite.config.js
-    └── src/".env" 
-".env" 
-".env" 

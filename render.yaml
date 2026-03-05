@@ -1,0 +1,48 @@
+# render.yaml — Render deployment configuration
+services:
+  # Backend API
+  - type: web
+    name: resumate-api
+    runtime: python
+    region: ohio
+    plan: free
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      playwright install chromium
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resumate-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://resumate-v3.onrender.com
+      - key: PYTHON_VERSION
+        value: 3.12.8
+
+  # Frontend
+  - type: web
+    name: resumate-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: resumate-db
+    plan: free
+    region: ohio
