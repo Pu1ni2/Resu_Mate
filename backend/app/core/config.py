@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # Calendly
     calendly_token: str = ""
     
+    # Database
+    database_url: str = "sqlite+aiosqlite:///./resumate.db"
+    
     # ChromaDB
     chroma_dir: str = "chroma_db"
     chroma_collection: str = "resumes"
@@ -28,7 +31,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # CORS
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173"
     
     @property
     def cors_origins_list(self) -> List[str]:

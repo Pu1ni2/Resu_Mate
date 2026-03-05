@@ -1,26 +1,26 @@
 {
   "interviews": {
-    "kolla.sa@northeastern.edu": {
-      "candidate_id": 1,
-      "candidate_name": "SAI PUNITH KOLLA",
-      "role": "Python Developer",
-      "level": "Mid-Level",
-      "experience_required": "1-3 years",
-      "num_questions": 8,
-      "focus_areas": [],
+    "saipunithkolla@gmail.com": {
+      "candidate_id": 2,
+      "candidate_name": "Dhruv Kamalesh Kumar",
+      "role": "Generative AI Engineer",
+      "level": "Senior",
+      "num_questions": 10,
+      "focus_areas": [
+        "Pytho"
+      ],
       "status": "completed",
       "results": {
-        "report": "## Interview Summary\nThe interview with Sai Punith Kolla for the Python Developer role was notably brief, lasting only 17 seconds. As a result, there was insufficient time to gather meaningful insights into the candidate's technical skills, problem-solving abilities, or overall fit for the role. The average score of 0.0/10 reflects the lack of engagement and opportunity to assess the candidate's qualifications.\n\n## Strengths Demonstrated\nGiven the extremely limited duration of the interview, it is challenging to identify specific strengths demonstrated by the candidate. However, the candidate's promptness in attending the interview is appreciated.\n\n## Areas for Improvement\n1. **Engagement in the Interview Process**: It is crucial for the candidate to ensure active participation in the interview to provide a comprehensive understanding of their skills and experiences.\n   \n2. **Technical Demonstration**: Future interviews should focus on showcasing technical expertise and problem-solving skills relevant to the Python Developer role.\n\n## Overall Recommendation\n**Pass**: Due to the extremely short duration of the interview and the lack of substantive interaction, it is not possible to make a fair assessment of Sai Punith Kolla's suitability for the Python Developer position. A more extended and interactive session is recommended to evaluate the candidate's capabilities effectively.\n\n## Suggested Follow-up\n1. Can you describe a challenging Python project you have worked on and the outcome?\n2. How do you approach debugging a complex issue in your code?",
-        "avg_score": 0.0,
-        "scores": [],
-        "duration": 17
+        "report": "## Interview Summary\nThe interview with Dhruv Kamalesh Kumar for the Generative AI Engineer role was notably brief, lasting only 36 seconds, during which no substantial responses were provided. This limited interaction did not allow for a comprehensive assessment of Dhruv's skills or experience relevant to the position.\n\n## Strengths Demonstrated\n- Dhruv's willingness to participate in the interview process indicates an interest in the role and a potential eagerness to contribute to the field of generative AI.\n- The brief interaction suggests that Dhruv may benefit from a more structured interview setting to better articulate his experiences and skills.\n\n## Areas for Improvement\n- Dhruv should prepare to discuss his technical experience, particularly with Python and its application in generative AI, to provide a clearer picture of his capabilities.\n- Improving communication skills and confidence in articulating thoughts during interviews would be beneficial for future opportunities.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n- Can you describe a project where you utilized Python to develop a generative AI model, and what were the outcomes?\n- How do you stay updated with the latest advancements in generative AI technologies?",
+        "avg_score": 1.0,
+        "duration": 36
       }
     }
   },
   "access": {
-    "kolla.sa@northeastern.edu": {
-      "name": "SAI PUNITH KOLLA",
-      "candidate_id": 1,
+    "saipunithkolla@gmail.com": {
+      "name": "Dhruv Kamalesh Kumar",
+      "candidate_id": 2,
       "access": true
     }
   }
