@@ -1,26 +1,27 @@
 {
   "interviews": {
     "saipunithkolla@gmail.com": {
-      "candidate_id": 2,
-      "candidate_name": "Dhruv Kamalesh Kumar",
-      "role": "Generative AI Engineer",
+      "candidate_id": 1,
+      "candidate_name": "SAI PUNITH KOLLA",
+      "role": "Python Developer",
       "level": "Senior",
-      "num_questions": 10,
+      "num_questions": 5,
       "focus_areas": [
-        "Pytho"
+        "Wearable Technology"
       ],
-      "status": "completed",
-      "results": {
-        "report": "## Interview Summary\nThe interview with Dhruv Kamalesh Kumar for the Generative AI Engineer role was notably brief, lasting only 36 seconds, during which no substantial responses were provided. This limited interaction did not allow for a comprehensive assessment of Dhruv's skills or experience relevant to the position.\n\n## Strengths Demonstrated\n- Dhruv's willingness to participate in the interview process indicates an interest in the role and a potential eagerness to contribute to the field of generative AI.\n- The brief interaction suggests that Dhruv may benefit from a more structured interview setting to better articulate his experiences and skills.\n\n## Areas for Improvement\n- Dhruv should prepare to discuss his technical experience, particularly with Python and its application in generative AI, to provide a clearer picture of his capabilities.\n- Improving communication skills and confidence in articulating thoughts during interviews would be beneficial for future opportunities.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n- Can you describe a project where you utilized Python to develop a generative AI model, and what were the outcomes?\n- How do you stay updated with the latest advancements in generative AI technologies?",
-        "avg_score": 1.0,
-        "duration": 36
-      }
+      "status": "pending",
+      "results": null
     }
   },
   "access": {
     "saipunithkolla@gmail.com": {
-      "name": "Dhruv Kamalesh Kumar",
-      "candidate_id": 2,
+      "name": "SAI PUNITH KOLLA",
+      "candidate_id": 1,
+      "access": true
+    },
+    "kolla.sa@northeastern.edu": {
+      "name": "SAI PUNITH KOLLA",
+      "candidate_id": 1,
       "access": true
     }
   }

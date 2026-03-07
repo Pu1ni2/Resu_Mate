@@ -1,15 +1,25 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './App'
 import { AppProvider } from './context/AppContext'
+import App from './App'
+import ProductLayer from './components/ProductLayer'
+import './styles/interview-room.css'   
+
+// CSS - order matters: tokens → pages → components → overrides → product layer
+import './styles/design-system.css'
+import './styles/landing.css'
 import './styles/global.css'
+import './styles/dashboard-polish.css'
+import './styles/product-layer.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <AppProvider>
-        <App />
+        <ProductLayer>
+          <App />
+        </ProductLayer>
       </AppProvider>
     </BrowserRouter>
   </React.StrictMode>

@@ -4,9 +4,9 @@ import { marked } from 'marked';
 import {
   User, MessageSquare, Globe, Search, Send, ArrowLeft, Check,
   AlertCircle, Briefcase, Award, MapPin, ExternalLink, Loader,
-  ChevronRight, Sparkles, X, Volume2, Mic, MicOff, Square, Bot, Users,
+  ChevronRight, X, Volume2, Mic, MicOff, Square, Bot, Users,
   ClipboardList, Target, ChevronDown, FileText, UserCheck, Mail, Copy, Clipboard,
-  Github, Calendar, Video
+  Github, Calendar, Video, Zap, Brain
 } from 'lucide-react';
 
 const AIAvatar = () => (
@@ -863,9 +863,9 @@ export default function CandidateFocus() {
                 {scanContact && (scanContact.email || scanContact.phone) && (<div className="scanner-result-card"><Mail size={16} /><div><strong>Contact</strong><span>{[scanContact.email, scanContact.phone].filter(Boolean).join(' · ')}</span></div></div>)}
               </div>
             )}
-            {scanSummary && (<div className="scanner-ai-summary"><Sparkles size={14} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(scanSummary) }} /></div>)}
+            {scanSummary && (<div className="scanner-ai-summary"><Brain size={14} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(scanSummary) }} /></div>)}
           </div>
-          {toolsRevealing && (<div className="tools-reveal-overlay"><div className="tools-reveal-text"><Sparkles size={24} /><span>Tools Unlocked</span></div></div>)}
+          {toolsRevealing && (<div className="tools-reveal-overlay"><div className="tools-reveal-text"><Zap size={24} /><span>Tools Unlocked</span></div></div>)}
         </div>
       )}
 
@@ -964,7 +964,7 @@ export default function CandidateFocus() {
                 <div className="agent-jd">
                   <label className="agent-label">Paste the full Job Description:</label>
                   <textarea className="agent-textarea input" value={jdText} onChange={e => setJdText(e.target.value)} rows={10} placeholder="Paste the complete job description here..." />
-                  <div className="agent-actions"><button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button><button className="btn btn-primary" onClick={runJDAnalysis} disabled={!jdText.trim() || agentLoading}>{agentLoading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}<span>Evaluate Candidate</span></button></div>
+                  <div className="agent-actions"><button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button><button className="btn btn-primary" onClick={runJDAnalysis} disabled={!jdText.trim() || agentLoading}>{agentLoading ? <Loader size={16} className="spin" /> : <Target size={16} />}<span>Evaluate Candidate</span></button></div>
                 </div>
               )}
               {agentStep === 'quick' && (
@@ -972,7 +972,7 @@ export default function CandidateFocus() {
                   <div className="agent-section"><label className="agent-label"><Target size={14} /> What role are you hiring for?</label><div className="agent-chips">{suggestedRoles.map((r, i) => <button key={i} className={`agent-chip ${selectedRole === r ? 'active' : ''}`} onClick={() => { setSelectedRole(r); setCustomRole(''); }}>{r}</button>)}<button className={`agent-chip ${selectedRole === 'other' ? 'active' : ''}`} onClick={() => setSelectedRole('other')}>Other...</button></div>{selectedRole === 'other' && <input type="text" className="input agent-input" value={customRole} onChange={e => setCustomRole(e.target.value)} placeholder="Enter the role title..." />}</div>
                   <div className="agent-section"><label className="agent-label"><Briefcase size={14} /> Required experience:</label><div className="agent-chips">{['0-1 years', '1-3 years', '3-5 years', '5-8 years', '8+ years'].map(exp => <button key={exp} className={`agent-chip ${selectedExperience === exp ? 'active' : ''}`} onClick={() => setSelectedExperience(exp)}>{exp}</button>)}</div></div>
                   <div className="agent-section"><label className="agent-label"><Award size={14} /> Seniority level:</label><div className="agent-chips">{['Intern', 'Junior', 'Mid-Level', 'Senior', 'Lead / Principal'].map(lvl => <button key={lvl} className={`agent-chip ${selectedLevel === lvl ? 'active' : ''}`} onClick={() => setSelectedLevel(lvl)}>{lvl}</button>)}</div></div>
-                  <div className="agent-actions"><button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button><button className="btn btn-primary" onClick={runHiringAgent} disabled={agentLoading}>{agentLoading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}<span>Evaluate Candidate</span></button></div>
+                  <div className="agent-actions"><button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button><button className="btn btn-primary" onClick={runHiringAgent} disabled={agentLoading}>{agentLoading ? <Loader size={16} className="spin" /> : <Target size={16} />}<span>Evaluate Candidate</span></button></div>
                 </div>
               )}
               {agentStep === 'loading' && (<div className="agent-loading"><Loader size={36} className="spin" /><h3>Evaluating candidate...</h3><div className="agent-loading-steps"><p className="agent-step-item active">📄 Analyzing resume data...</p><p className="agent-step-item">🔍 Searching online presence...</p><p className="agent-step-item">🎯 Matching against requirements...</p><p className="agent-step-item">📊 Generating fit report...</p></div></div>)}
@@ -1070,7 +1070,7 @@ export default function CandidateFocus() {
               {ghProfile && (
                 <div className="gh-profile">
                   <div className="gh-header glass-card"><img src={ghProfile.avatar_url} alt="" className="gh-avatar" /><div className="gh-info"><h3>{ghProfile.name || ghProfile.username}</h3><a href={ghProfile.profile_url} target="_blank" rel="noopener noreferrer" className="gh-link">@{ghProfile.username} <ExternalLink size={12} /></a>{ghProfile.bio && <p className="gh-bio">{ghProfile.bio}</p>}</div><div className="gh-stats"><div className="gh-stat"><span className="gh-stat-val">{ghProfile.public_repos}</span><span className="gh-stat-label">Repos</span></div><div className="gh-stat"><span className="gh-stat-val">{ghProfile.followers}</span><span className="gh-stat-label">Followers</span></div><div className="gh-stat"><span className="gh-stat-val">{ghProfile.recent_pushes}</span><span className="gh-stat-label">Recent Pushes</span></div></div></div>
-                  {ghProfile.ai_analysis && <div className="tool-ai-analysis glass-card"><Sparkles size={16} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(ghProfile.ai_analysis) }} /></div>}
+                  {ghProfile.ai_analysis && <div className="tool-ai-analysis glass-card"><Brain size={16} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(ghProfile.ai_analysis) }} /></div>}
                   {Object.keys(ghProfile.languages || {}).length > 0 && (<div className="gh-languages glass-card"><h4>Languages</h4><div className="gh-lang-chips">{Object.entries(ghProfile.languages).map(([lang, count]) => <span key={lang} className="agent-chip active">{lang} ({count})</span>)}</div></div>)}
                   {ghProfile.top_repos?.length > 0 && (<div className="gh-repos"><h4>Top Repositories</h4>{ghProfile.top_repos.map((repo, i) => (<div key={i} className="gh-repo glass-card"><div className="gh-repo-header"><a href={repo.url} target="_blank" rel="noopener noreferrer">{repo.name} <ExternalLink size={12} /></a><span className="badge badge-blue">{repo.language}</span></div><p className="gh-repo-desc">{repo.description}</p><div className="gh-repo-stats"><span>⭐ {repo.stars}</span><span>🍴 {repo.forks}</span><span>Updated: {repo.updated}</span></div></div>))}</div>)}
                 </div>

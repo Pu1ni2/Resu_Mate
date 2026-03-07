@@ -1,20 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Brain, Shield, Zap, Target, BarChart2, Eye, ArrowRight, Upload, MessageSquare, Users, Briefcase, Video, UserCheck } from 'lucide-react';
+import {
+  ArrowRight, Upload, MessageSquare, Users, Briefcase, Video, UserCheck,
+  Bot, Search, Github, Mail, Calendar, Cpu, Shield, Eye,
+  ChevronRight, Zap, BarChart2, Globe, Play, Star
+} from 'lucide-react';
 
+// ─── Logo ───
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#F59E0B"/><stop offset="100%" stopColor="#D97706"/></linearGradient></defs>
-    <rect width="32" height="32" rx="8" fill="url(#lg)"/>
-    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#000" strokeWidth="1.5" fill="none"/>
-    <circle cx="16" cy="16" r="3" fill="#000"/>
+    <defs>
+      <linearGradient id="logo-g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#F59E0B" />
+        <stop offset="100%" stopColor="#D97706" />
+      </linearGradient>
+    </defs>
+    <rect width="32" height="32" rx="8" fill="url(#logo-g)" />
+    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#000" strokeWidth="1.5" fill="none" />
+    <circle cx="16" cy="16" r="3" fill="#000" />
   </svg>
+);
+
+// ─── Animated grid background ───
+const GridBackground = () => (
+  <div className="l-grid-bg" aria-hidden="true">
+    <div className="l-grid-pattern" />
+    <div className="l-grid-fade" />
+    <div className="l-grid-glow l-grid-glow-1" />
+    <div className="l-grid-glow l-grid-glow-2" />
+  </div>
+);
+
+// ─── Floating agent badges in hero ───
+const FloatingBadge = ({ icon, label, className, delay }) => (
+  <div className={`l-float-badge ${className}`} style={{ animationDelay: `${delay}s` }}>
+    {icon}
+    <span>{label}</span>
+  </div>
 );
 
 export default function Landing() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
-  const cursorRef = useRef(null);
+  const [activeAgent, setActiveAgent] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -22,158 +50,230 @@ export default function Landing() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Auto-rotate agents
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (cursorRef.current) {
-        cursorRef.current.style.left = e.clientX + 'px';
-        cursorRef.current.style.top = e.clientY + 'px';
-      }
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    const timer = setInterval(() => setActiveAgent(a => (a + 1) % 4), 3500);
+    return () => clearInterval(timer);
   }, []);
 
+  const agents = [
+    { name: 'Data Agent', desc: 'Scans resumes, scrapes GitHub & LinkedIn with browser automation, enriches candidate profiles from multiple sources.', icon: <Search size={20} />, color: '#3B82F6', tools: ['PDF Extract', 'Playwright', 'GitHub API', 'Tavily'] },
+    { name: 'HR Agent', desc: 'Evaluates candidates against job requirements, drafts personalized emails, provides hiring recommendations with bias checks.', icon: <UserCheck size={20} />, color: '#22C55E', tools: ['GPT-4o', 'Salary Research', 'Email Drafting'] },
+    { name: 'Technical Agent', desc: 'Generates role-specific interview questions, scores answers in real-time, produces comprehensive evaluation reports.', icon: <Cpu size={20} />, color: '#8B5CF6', tools: ['Voice AI', 'Question Gen', 'Scoring Engine'] },
+    { name: 'Research Agent', desc: 'Searches the web for candidate info, fact-checks resume claims, provides real-time data during AI chat.', icon: <Globe size={20} />, color: '#F59E0B', tools: ['Tavily Search', 'Fact Check', 'Citation'] },
+  ];
+
   const features = [
-    { icon: <Brain size={24} />, title: 'GPT-4o Analysis', desc: 'Latest AI model analyzes resumes with unmatched accuracy and understanding.' },
-    { icon: <Target size={24} />, title: 'Smart Matching', desc: 'Find perfect candidates for any role with intelligent skill matching.' },
-    { icon: <Shield size={24} />, title: 'No Hallucinations', desc: 'RAG-powered responses ensure accuracy - only facts from resumes.' },
-    { icon: <BarChart2 size={24} />, title: 'Visual Analytics', desc: 'Beautiful charts and comparisons for your candidate pool.' },
-    { icon: <Zap size={24} />, title: 'AI Scanner Agent', desc: 'Auto-detects GitHub, LinkedIn and scrapes profiles with browser agent.' },
-    { icon: <Eye size={24} />, title: 'Live AI Interview', desc: 'AI-powered video interviews with face tracking and real-time scoring.' }
+    { icon: <Bot size={22} />, title: '4 AI Agents', desc: 'Custom agent framework with Plan → Execute → Reflect → Output pipeline. Real agents, not just prompts.', accent: '#F59E0B' },
+    { icon: <Search size={22} />, title: 'Scanner Agent', desc: 'Extracts links from PDFs, launches headless browser to scrape GitHub profiles, searches LinkedIn via Tavily.', accent: '#3B82F6' },
+    { icon: <Video size={22} />, title: 'Live AI Interview', desc: 'Camera + mic. AI asks questions via voice, candidate answers live. Real-time scoring with evaluation report.', accent: '#8B5CF6' },
+    { icon: <Shield size={22} />, title: 'RAG — No Hallucinations', desc: 'ChromaDB vector store ensures AI only uses facts from actual resumes. Never makes things up.', accent: '#22C55E' },
+    { icon: <BarChart2 size={22} />, title: 'Smart Analytics', desc: 'Compare multiple candidates side by side. Skills matching, experience analysis, role fit scoring.', accent: '#EC4899' },
+    { icon: <Mail size={22} />, title: 'Email Composer', desc: 'AI drafts personalized emails based on evaluation. One-click open in Gmail, Outlook, or default mail.', accent: '#F59E0B' },
   ];
 
   const steps = [
-    { icon: <Upload size={28} />, title: 'Upload Resumes', desc: 'Upload up to 20+ resumes (PDF, DOCX, TXT)' },
-    { icon: <Users size={28} />, title: 'AI Analysis', desc: 'Scanner agent finds GitHub, LinkedIn, scrapes profiles' },
-    { icon: <MessageSquare size={28} />, title: 'Smart Hiring', desc: 'AI chat, hiring agent, email composer, interview' }
+    { num: '01', title: 'Upload Resumes', desc: 'Drop PDFs, DOCX, or TXT files. AI extracts text, embedded links, and analyzes content instantly.', icon: <Upload size={24} /> },
+    { num: '02', title: 'AI Agents Activate', desc: 'Data Agent scans profiles. Research Agent searches the web. All findings feed into a rich candidate profile.', icon: <Cpu size={24} /> },
+    { num: '03', title: 'Evaluate & Interview', desc: 'HR Agent evaluates fit. Create AI interviews for candidates. Get comprehensive reports with recommendations.', icon: <Cpu size={24} /> },
   ];
 
   return (
-    <div className="landing-page">
-      <div ref={cursorRef} className="cursor-glow" />
+    <div className="l-page">
+      <GridBackground />
 
-      <nav className={`nav ${scrolled ? 'scrolled' : ''}`}>
-        <div className="nav-inner">
-          <div className="nav-logo"><Logo /> ResuMate AI</div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => navigate('/hiring')} className="btn btn-ghost btn-sm">
-              Hiring Manager
-            </button>
-            <button onClick={() => navigate('/candidate/login')} className="btn btn-primary btn-sm">
-              Candidate Login
+      {/* ═══ NAV ═══ */}
+      <nav className={`l-nav ${scrolled ? 'l-nav-scrolled' : ''}`}>
+        <div className="l-nav-inner">
+          <div className="l-nav-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <Logo size={28} />
+            <span>ResuMate<span className="l-nav-ai">AI</span></span>
+          </div>
+          <div className="l-nav-links hide-mobile">
+            <a href="#agents">Agents</a>
+            <a href="#features">Features</a>
+            <a href="#how">How It Works</a>
+          </div>
+          <div className="l-nav-actions">
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/candidate/login')}>Candidate Login</button>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/hiring')}>
+              Hiring Dashboard <ArrowRight size={14} />
             </button>
           </div>
         </div>
       </nav>
 
-      <section className="hero">
-        <div className="hero-content">
-          <div className="hero-badge"><span className="hero-dot" /> Powered by GPT-4o + AI Agents</div>
-          <h1 className="hero-title">
-            Intelligent Resume<br />
-            <span className="hero-accent">Analytics Platform</span>
+      {/* ═══ HERO ═══ */}
+      <section className="l-hero">
+        <div className="l-hero-content">
+          <div className="l-hero-badge animate-fadeInUp">
+            <span className="l-pulse-dot" />
+            <span>Multi-Agent AI Platform</span>
+            <Zap size={12} />
+          </div>
+
+          <h1 className="l-hero-title animate-fadeInUp" style={{ animationDelay: '100ms' }}>
+            Hire Smarter with<br />
+            <span className="l-gradient-text">AI Agents</span>
           </h1>
-          <p className="hero-description">
-            AI-powered hiring platform with resume analysis, browser agents, live interviews, and smart evaluation tools.
+
+          <p className="l-hero-desc animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+            4 specialized AI agents work together to analyze resumes, scrape profiles, evaluate candidates, and conduct live video interviews — all in one platform.
           </p>
 
-          {/* ═══ ROLE SELECTOR CARDS ═══ */}
-          <div className="role-cards">
-            <div className="role-card hiring" onClick={() => navigate('/hiring')}>
-              <div className="role-card-icon"><Briefcase size={32} /></div>
-              <h3>I'm a Hiring Manager</h3>
-              <p>Upload resumes, analyze candidates, run AI evaluations, create interviews</p>
-              <div className="role-card-features">
-                <span>📄 Resume Upload</span>
-                <span>🤖 AI Scanner Agent</span>
-                <span>📊 Analytics</span>
-                <span>🎯 Hiring Agent</span>
-                <span>✉️ Email Composer</span>
-                <span>📅 Interview Creator</span>
+          {/* Role selector */}
+          <div className="l-hero-roles animate-fadeInUp" style={{ animationDelay: '300ms' }}>
+            <button className="l-role-btn l-role-hiring" onClick={() => navigate('/hiring')}>
+              <div className="l-role-icon"><Briefcase size={22} /></div>
+              <div className="l-role-info">
+                <strong>I'm Hiring</strong>
+                <span>Upload resumes, evaluate, interview</span>
               </div>
-              <div className="role-card-btn">
-                Enter Dashboard <ArrowRight size={16} />
+              <ChevronRight size={18} className="l-role-arrow" />
+            </button>
+            <button className="l-role-btn l-role-candidate" onClick={() => navigate('/candidate/login')}>
+              <div className="l-role-icon l-role-icon-blue"><UserCheck size={22} /></div>
+              <div className="l-role-info">
+                <strong>I'm a Candidate</strong>
+                <span>Take AI interview, view analysis</span>
               </div>
-            </div>
-
-            <div className="role-card candidate" onClick={() => navigate('/candidate/login')}>
-              <div className="role-card-icon candidate-icon"><UserCheck size={32} /></div>
-              <h3>I'm a Candidate</h3>
-              <p>Upload your resume, get AI analysis, take AI-powered video interviews</p>
-              <div className="role-card-features">
-                <span>📄 Resume Upload</span>
-                <span>🔍 AI Analysis</span>
-                <span>💬 AI Chat</span>
-                <span>🎥 Live AI Interview</span>
-              </div>
-              <div className="role-card-btn candidate-btn">
-                Login with Email <ArrowRight size={16} />
-              </div>
-            </div>
+              <ChevronRight size={18} className="l-role-arrow" />
+            </button>
           </div>
 
-          <div className="hero-stats">
-            <div><div className="hero-stat-value">20+</div><div className="hero-stat-label">Resumes at Once</div></div>
-            <div><div className="hero-stat-value">GPT-4o</div><div className="hero-stat-label">Latest AI Model</div></div>
-            <div><div className="hero-stat-value">AI Agent</div><div className="hero-stat-label">Browser Automation</div></div>
+          {/* Tech badges */}
+          <div className="l-hero-tech animate-fadeInUp" style={{ animationDelay: '400ms' }}>
+            {['GPT-4o', 'LangChain', 'ChromaDB', 'Playwright', 'Tavily', 'PostgreSQL'].map(t => (
+              <span key={t} className="l-tech-pill">{t}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Floating badges */}
+        <div className="l-hero-floats hide-mobile" aria-hidden="true">
+          <FloatingBadge icon={<Search size={14} />} label="Scanning GitHub..." className="l-fb-1" delay={0} />
+          <FloatingBadge icon={<Bot size={14} />} label="Evaluating candidate..." className="l-fb-2" delay={1.2} />
+          <FloatingBadge icon={<Video size={14} />} label="Interview ready" className="l-fb-3" delay={2.4} />
+          <FloatingBadge icon={<Mail size={14} />} label="Email drafted" className="l-fb-4" delay={3.6} />
+        </div>
+      </section>
+
+      {/* ═══ AGENTS SHOWCASE ═══ */}
+      <section className="l-section" id="agents">
+        <div className="l-section-inner">
+          <div className="l-section-header">
+            <span className="l-section-tag">Architecture</span>
+            <h2>4 Specialized AI Agents</h2>
+            <p>Each agent plans its approach, executes with tools, reflects on quality, and delivers results. Not prompt templates — real multi-step agents.</p>
+          </div>
+
+          <div className="l-agents-showcase">
+            {/* Agent tabs */}
+            <div className="l-agents-tabs">
+              {agents.map((agent, i) => (
+                <button key={i} className={`l-agent-tab ${activeAgent === i ? 'active' : ''}`} onClick={() => setActiveAgent(i)} style={{ '--agent-color': agent.color }}>
+                  <div className="l-agent-tab-icon">{agent.icon}</div>
+                  <span>{agent.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Active agent detail */}
+            <div className="l-agent-detail" key={activeAgent}>
+              <div className="l-agent-detail-header" style={{ '--agent-color': agents[activeAgent].color }}>
+                <div className="l-agent-detail-icon">{agents[activeAgent].icon}</div>
+                <div>
+                  <h3>{agents[activeAgent].name}</h3>
+                  <div className="l-agent-pipeline">
+                    {['Plan', 'Execute', 'Reflect', 'Output'].map((step, i) => (
+                      <React.Fragment key={step}>
+                        <span className="l-pipeline-step">{step}</span>
+                        {i < 3 && <span className="l-pipeline-arrow">→</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="l-agent-detail-desc">{agents[activeAgent].desc}</p>
+              <div className="l-agent-tools">
+                <span className="l-agent-tools-label">Tools:</span>
+                {agents[activeAgent].tools.map(tool => (
+                  <span key={tool} className="l-tool-chip" style={{ '--agent-color': agents[activeAgent].color }}>{tool}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="section">
-        <div className="section-inner">
-          <h2 className="section-title">How It Works</h2>
-          <p className="section-subtitle">Three simple steps to smarter hiring</p>
-          <div className="steps-grid">
+      {/* ═══ HOW IT WORKS ═══ */}
+      <section className="l-section l-section-alt" id="how">
+        <div className="l-section-inner">
+          <div className="l-section-header">
+            <span className="l-section-tag">Process</span>
+            <h2>How It Works</h2>
+            <p>Three steps from resume upload to hiring decision.</p>
+          </div>
+          <div className="l-steps">
             {steps.map((step, i) => (
-              <div key={i} className="step-card glass-card">
-                <div className="step-number">{i + 1}</div>
-                <div className="step-icon">{step.icon}</div>
-                <h3 className="step-title">{step.title}</h3>
-                <p className="step-desc">{step.desc}</p>
+              <div key={i} className="l-step-card">
+                <div className="l-step-num">{step.num}</div>
+                <div className="l-step-icon">{step.icon}</div>
+                <h3>{step.title}</h3>
+                <p>{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section section-dark">
-        <div className="section-inner">
-          <h2 className="section-title">Features</h2>
-          <p className="section-subtitle">Everything you need for smarter hiring</p>
-          <div className="features-grid">
+      {/* ═══ FEATURES ═══ */}
+      <section className="l-section" id="features">
+        <div className="l-section-inner">
+          <div className="l-section-header">
+            <span className="l-section-tag">Capabilities</span>
+            <h2>Everything You Need</h2>
+            <p>A complete AI hiring toolkit built with cutting-edge technology.</p>
+          </div>
+          <div className="l-features-grid">
             {features.map((f, i) => (
-              <div key={i} className="feature-card glass-card">
-                <div className="feature-icon">{f.icon}</div>
-                <h3 className="feature-title">{f.title}</h3>
-                <p className="feature-description">{f.desc}</p>
+              <div key={i} className="l-feature-card" style={{ animationDelay: `${i * 80}ms` }}>
+                <div className="l-feature-icon" style={{ background: `${f.accent}15`, color: f.accent }}>{f.icon}</div>
+                <h4>{f.title}</h4>
+                <p>{f.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section cta-section">
-        <div className="section-inner" style={{ textAlign: 'center' }}>
-          <h2 className="section-title">Start Analyzing Resumes</h2>
-          <p className="section-subtitle" style={{ marginBottom: '40px' }}>
-            Upload your first resume and experience AI-powered insights
-          </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => navigate('/hiring')} className="btn btn-primary btn-lg">
-              Hiring Manager <ArrowRight size={20} />
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="l-cta">
+        <div className="l-cta-inner">
+          <div className="l-cta-glow" aria-hidden="true" />
+          <h2>Ready to hire smarter?</h2>
+          <p>Upload your first resume and let AI agents do the heavy lifting.</p>
+          <div className="l-cta-buttons">
+            <button className="btn btn-primary btn-lg" onClick={() => navigate('/hiring')}>
+              Open Dashboard <ArrowRight size={18} />
             </button>
-            <button onClick={() => navigate('/candidate/login')} className="btn btn-secondary btn-lg">
-              Candidate Login <ArrowRight size={20} />
+            <button className="btn btn-secondary btn-lg" onClick={() => navigate('/candidate/login')}>
+              Candidate Portal
             </button>
           </div>
         </div>
       </section>
 
-      <footer className="footer">
-        <div className="footer-inner">
-          <div className="footer-logo"><Logo size={24} /> ResuMate AI</div>
-          <p className="footer-copy">© 2026 ResuMate AI • Built by Sai Punith Kolla</p>
+      {/* ═══ FOOTER ═══ */}
+      <footer className="l-footer">
+        <div className="l-footer-inner">
+          <div className="l-footer-logo"><Logo size={22} /> ResuMate AI</div>
+          <div className="l-footer-links">
+            <a href="#agents">Agents</a>
+            <a href="#features">Features</a>
+            <a href="#how">How It Works</a>
+          </div>
+          <p className="l-footer-copy">Built by Punith · Multi-Agent AI · GPT-4o + LangChain + ChromaDB</p>
         </div>
       </footer>
     </div>

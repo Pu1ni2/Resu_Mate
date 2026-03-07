@@ -6,8 +6,10 @@ import {
   Upload, BarChart2, MessageSquare, Video, Send, Bot,
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
   LogOut, Mic, MicOff, Volume2, Square, Camera, CameraOff,
-  Clock, ChevronRight, Sparkles, X, StopCircle
+  Clock, ChevronRight, X, StopCircle, CheckCircle,
+  EyeOff, XCircle, Shield, Eye
 } from 'lucide-react';
+import InterviewRoom from './InterviewRoom';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -46,26 +48,22 @@ export default function CandidateDashboard() {
   });
 
   // ═══════ INTERVIEW STATE ═══════
-  const [interviewPhase, setInterviewPhase] = useState('ready'); // ready | countdown | live | finished
-  const [currentQ, setCurrentQ] = useState(0);
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState([]);
-  const [scores, setScores] = useState([]);
-  const [aiSpeaking, setAiSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [currentTranscript, setCurrentTranscript] = useState('');
-  const [interviewTimer, setInterviewTimer] = useState(0);
-  const [countdown, setCountdown] = useState(3);
-  const [interviewReport, setInterviewReport] = useState(null);
-  const [generatingReport, setGeneratingReport] = useState(false);
+  const [showInterviewRoom, setShowInterviewRoom] = useState(false);
+  const [interviewReport, setInterviewReport] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('resumate_interview_report')) || null; }
+    catch { return null; }
+  });
 
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const timerRef = useRef(null);
-  const currentAudioRef = useRef(null);
+  const handleInterviewComplete = (reportData) => {
+    setShowInterviewRoom(false);
+    setInterviewReport(reportData);
+    // Save report to localStorage
+    localStorage.setItem('resumate_interview_report', JSON.stringify(reportData));
+    // Update session to mark interview as completed
+    const session = { ...candidateSession, interview_completed: true };
+    localStorage.setItem('resumate_candidate', JSON.stringify(session));
+    setCandidateSession(session);
+  };
 
   // Redirect if no session
   useEffect(() => {
@@ -80,16 +78,6 @@ export default function CandidateDashboard() {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Interview timer
-  useEffect(() => {
-    if (interviewPhase === 'live') {
-      timerRef.current = setInterval(() => setInterviewTimer(t => t + 1), 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [interviewPhase]);
-
-  const formatTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
       try { await uploadResume(file); } catch (err) { alert(`Failed: ${err.response?.data?.detail || err.message}`); }
@@ -102,248 +90,24 @@ export default function CandidateDashboard() {
   };
 
   const handleLogout = () => {
-    stopInterview();
     localStorage.removeItem('resumate_candidate');
     navigate('/candidate/login');
   };
 
-  // ═══════ INTERVIEW FUNCTIONS ═══════
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 1280, height: 720, facingMode: 'user' }, 
-        audio: true 
-      });
-      streamRef.current = stream;
-      // Set video source immediately and also in useEffect
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
-      }
-      return true;
-    } catch (err) {
-      alert('Please allow camera and microphone access to start the interview.');
-      return false;
-    }
-  };
-
-  // Keep video element synced with stream
-  useEffect(() => {
-    if (videoRef.current && streamRef.current && interviewPhase === 'live') {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(() => {});
-    }
-  }, [interviewPhase]);
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-  };
-
-  const stopInterview = () => {
-    stopCamera();
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
-    if (timerRef.current) clearInterval(timerRef.current);
-    setIsListening(false);
-    setAiSpeaking(false);
-  };
-
-  const speakQuestion = async (text) => {
-    setAiSpeaking(true);
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/text-to-speech`, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer demo-token', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'nova' })
-      });
-      if (!resp.ok) throw new Error('TTS failed');
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      currentAudioRef.current = audio;
-      
-      return new Promise((resolve) => {
-        audio.onended = () => { URL.revokeObjectURL(url); currentAudioRef.current = null; setAiSpeaking(false); resolve(); };
-        audio.onerror = () => { setAiSpeaking(false); resolve(); };
-        audio.play();
-      });
-    } catch (e) {
-      console.error('TTS error:', e);
-      setAiSpeaking(false);
-    }
-  };
-
-  const recordAnswer = async () => {
-    if (!streamRef.current) return '';
-    setIsListening(true);
-    setCurrentTranscript('');
-    audioChunksRef.current = [];
-
-    // Create audio-only stream for recording (Whisper needs audio only)
-    const audioTracks = streamRef.current.getAudioTracks();
-    if (audioTracks.length === 0) { setIsListening(false); return ''; }
-    const audioStream = new MediaStream(audioTracks);
-    
-    const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
-    mediaRecorderRef.current = mediaRecorder;
-
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-
-    return new Promise((resolve) => {
-      mediaRecorder.onstop = async () => {
-        setIsListening(false);
-        setIsTranscribing(true);
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        try {
-          const formData = new FormData();
-          formData.append('audio', audioBlob, 'answer.webm');
-          const resp = await fetch(`${API_BASE}/api/chat/speech-to-text`, {
-            method: 'POST', headers: { 'Authorization': 'Bearer demo-token' }, body: formData
-          });
-          const data = await resp.json();
-          const text = data.text || '';
-          setCurrentTranscript(text);
-          setIsTranscribing(false);
-          resolve(text);
-        } catch (e) {
-          setIsTranscribing(false);
-          resolve('');
-        }
-      };
-      mediaRecorder.start();
-    });
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const scoreAnswer = async (question, answer) => {
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/score-answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-        body: JSON.stringify({
-          question, answer,
-          role: candidateSession.interview_config?.role || 'General',
-          candidate_name: candidateSession.name || 'Candidate'
-        })
-      });
-      return await resp.json();
-    } catch (e) {
-      return { score: 5, feedback: 'Could not score this answer.' };
-    }
-  };
-
-  const generateQuestions = async () => {
-    try {
-      const config = candidateSession.interview_config || {};
-      const resp = await fetch(`${API_BASE}/api/chat/generate-interview-questions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-        body: JSON.stringify({
-          role: config.role || 'General',
-          level: config.level || 'Mid-Level',
-          num_questions: config.num_questions || 8,
-          focus_areas: config.focus_areas || [],
-          candidate_name: candidateSession.name || 'Candidate'
-        })
-      });
-      const data = await resp.json();
-      return data.questions || [];
-    } catch (e) {
-      return ['Tell me about yourself.', 'What are your strengths?', 'Why are you interested in this role?'];
-    }
-  };
-
-  const startInterview = async () => {
-    const cameraOk = await startCamera();
-    if (!cameraOk) return;
-
-    // Countdown
-    setInterviewPhase('countdown');
-    for (let i = 3; i >= 1; i--) {
-      setCountdown(i);
-      await new Promise(r => setTimeout(r, 1000));
-    }
-
-    // Generate questions
-    setInterviewPhase('live');
-    setInterviewTimer(0);
-    const qs = await generateQuestions();
-    setQuestions(qs);
-    setCurrentQ(0);
-    setAnswers([]);
-    setScores([]);
-
-    // Start with first question
-    if (qs.length > 0) {
-      await speakQuestion(qs[0]);
-    }
-  };
-
-  const submitAnswer = async () => {
-    stopRecording();
-    // Wait for transcription
-    await new Promise(r => setTimeout(r, 1500));
-    
-    const answer = currentTranscript;
-    const question = questions[currentQ];
-    
-    setAnswers(prev => [...prev, answer]);
-    setCurrentTranscript('');
-
-    // Score the answer
-    const scoreData = await scoreAnswer(question, answer);
-    setScores(prev => [...prev, scoreData]);
-
-    // Move to next question or finish
-    if (currentQ + 1 < questions.length) {
-      setCurrentQ(prev => prev + 1);
-      await speakQuestion(questions[currentQ + 1]);
-    } else {
-      // Interview complete
-      await finishInterview();
-    }
-  };
-
-  const finishInterview = async () => {
-    stopCamera();
-    if (timerRef.current) clearInterval(timerRef.current);
-    setInterviewPhase('finished');
-    setGeneratingReport(true);
-
-    // Generate final report
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/interview-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-        body: JSON.stringify({
-          candidate_name: candidateSession.name || 'Candidate',
-          candidate_email: candidateSession.email,
-          role: candidateSession.interview_config?.role || 'General',
-          questions, answers, scores,
-          duration: interviewTimer
-        })
-      });
-      const data = await resp.json();
-      setInterviewReport(data.report || 'Report generation failed.');
-    } catch (e) {
-      setInterviewReport('Could not generate report. Please contact support.');
-    } finally {
-      setGeneratingReport(false);
-    }
-  };
-
   if (!candidateSession) return null;
+
+  // If interview room is active, show it fullscreen
+  if (showInterviewRoom) {
+    return (
+      <InterviewRoom
+        config={candidateSession.interview_config}
+        candidateName={candidateSession.name || 'Candidate'}
+        candidateEmail={candidateSession.email}
+        onComplete={handleInterviewComplete}
+        onExit={() => setShowInterviewRoom(false)}
+      />
+    );
+  }
 
   return (
     <div className="cd-layout">
@@ -356,11 +120,16 @@ export default function CandidateDashboard() {
             { id: 'upload', icon: <Upload size={18} />, label: 'My Resume' },
             { id: 'analysis', icon: <BarChart2 size={18} />, label: 'Analysis' },
             { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
-            ...(candidateSession.has_interview ? [{ id: 'interview', icon: <Video size={18} />, label: 'Interview' }] : [])
+            ...(candidateSession.has_interview || interviewReport ? [{
+              id: 'interview',
+              icon: <Video size={18} />,
+              label: interviewReport ? 'Interview Report' : 'Interview'
+            }] : [])
           ].map(item => (
-            <div key={item.id} className={`cd-nav-link ${tab === item.id ? 'active' : ''}`} onClick={() => { if (interviewPhase === 'live') return; setTab(item.id); }}>
+            <div key={item.id} className={`cd-nav-link ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>
               {item.icon}<span>{item.label}</span>
-              {item.id === 'interview' && <span className="cd-nav-badge">New</span>}
+              {item.id === 'interview' && !interviewReport && <span className="cd-nav-badge">New</span>}
+              {item.id === 'interview' && interviewReport && <span className="cd-nav-badge" style={{ background: '#22C55E' }}>Done</span>}
             </div>
           ))}
         </nav>
@@ -382,12 +151,6 @@ export default function CandidateDashboard() {
           <h1 className="cd-title">
             {tab === 'upload' ? 'My Resume' : tab === 'analysis' ? 'Resume Analysis' : tab === 'chat' ? 'AI Chat' : 'Live AI Interview'}
           </h1>
-          {tab === 'interview' && interviewPhase === 'live' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span className="cd-live-badge">● LIVE</span>
-              <span style={{ fontSize: '14px', color: '#64748B', fontFamily: 'monospace' }}>{formatTime(interviewTimer)}</span>
-            </div>
-          )}
           {tab !== 'interview' && <span className="cd-welcome">Welcome, {candidateSession.name || 'Candidate'}</span>}
         </header>
 
@@ -481,202 +244,123 @@ export default function CandidateDashboard() {
             </div>
           )}
 
-          {/* ═══════ LIVE AI INTERVIEW ═══════ */}
+          {/* ═══════ INTERVIEW ═══════ */}
           {tab === 'interview' && (
             <div className="cd-interview-section">
+              {/* Priority 1: Show report if exists */}
+              {interviewReport ? (
+                /* ─── INTERVIEW REPORT VIEW ─── */
+                <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+                  {/* Header */}
+                  <div className="cd-card" style={{ padding: '28px', textAlign: 'center', marginBottom: '16px' }}>
+                    {interviewReport.terminated
+                      ? <AlertCircle size={40} style={{ color: '#EF4444', marginBottom: '12px' }} />
+                      : <CheckCircle size={40} style={{ color: '#22C55E', marginBottom: '12px' }} />
+                    }
+                    <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px' }}>
+                      {interviewReport.terminated ? 'Interview Terminated' : 'Interview Completed'}
+                    </h2>
+                    <p style={{ color: '#64748B', fontSize: '14px' }}>
+                      {candidateSession.interview_config?.role || 'General'} · {interviewReport.scores?.length || 0} questions answered
+                    </p>
+                    {interviewReport.terminated && (
+                      <div style={{ marginTop: '12px', padding: '10px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
+                        Terminated: exceeded 3 proctoring violations
+                      </div>
+                    )}
+                  </div>
 
-              {/* READY STATE */}
-              {interviewPhase === 'ready' && (
+                  {/* Stats */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                    {[
+                      { val: interviewReport.avgScore || '—', label: 'Score', color: null },
+                      { val: `${interviewReport.eyeContact || 0}%`, label: 'Eye Contact', color: null },
+                      { val: interviewReport.violations || 0, label: 'Violations', color: interviewReport.violations > 0 ? '#EF4444' : '#22C55E' },
+                      { val: `${Math.floor((interviewReport.timer || 0) / 60)}:${String((interviewReport.timer || 0) % 60).padStart(2, '0')}`, label: 'Duration', color: null },
+                    ].map((s, i) => (
+                      <div key={i} className="cd-card" style={{ textAlign: 'center', padding: '16px' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || '#1E293B' }}>{s.val}</div>
+                        <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Score Breakdown */}
+                  {interviewReport.scores?.length > 0 && (
+                    <div className="cd-card" style={{ padding: '20px', marginBottom: '16px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px' }}>Score Breakdown</h3>
+                      {interviewReport.scores.map((s, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#94A3B8', width: '28px' }}>Q{i + 1}</span>
+                          <div style={{ flex: 1, maxWidth: '180px', height: '6px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ width: `${(s.score || 0) * 10}%`, height: '100%', borderRadius: '3px', background: s.score >= 7 ? '#22C55E' : s.score >= 4 ? '#F59E0B' : '#EF4444', transition: 'width 0.5s' }} />
+                          </div>
+                          <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{s.score}/10</span>
+                          <span style={{ fontSize: '12px', color: '#94A3B8', flex: 1 }}>{s.feedback}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* AI Report */}
+                  {interviewReport.report && typeof interviewReport.report === 'string' && interviewReport.report.length > 5 && (
+                    <div className="cd-card" style={{ padding: '24px', marginBottom: '16px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Brain size={16} style={{ color: "#3B82F6" }} /> AI Evaluation
+                      </h3>
+                      <div className="md" style={{ lineHeight: '1.7', color: '#475569' }} dangerouslySetInnerHTML={{ __html: marked.parse(String(interviewReport.report)) }} />
+                    </div>
+                  )}
+
+                  {/* Proctoring */}
+                  {(interviewReport.violations > 0 || interviewReport.lookAwayCount > 10) && (
+                    <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', borderColor: 'rgba(239,68,68,0.2)' }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Shield size={14} /> Proctoring Summary
+                      </h3>
+                      {interviewReport.violations > 0 && (
+                        <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <XCircle size={13} style={{ color: '#F59E0B' }} /> {interviewReport.violations} violation{interviewReport.violations > 1 ? 's' : ''} detected
+                        </p>
+                      )}
+                      {interviewReport.lookAwayCount > 10 && (
+                        <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <EyeOff size={13} style={{ color: '#F59E0B' }} /> Gaze aversion: {interviewReport.lookAwayCount} times
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+              ) : candidateSession.has_interview ? (
+                /* ─── INTERVIEW NOT YET TAKEN ─── */
                 <div className="cd-interview-ready">
                   <div className="cd-card cd-interview-card">
-                    <Video size={48} className="cd-interview-icon" />
-                    <h2>Your AI Interview is Ready</h2>
-                    <p>You'll have a live video interview with our AI assistant.</p>
+                    <Camera size={48} className="cd-interview-icon" />
+                    <h2>AI Interview Room</h2>
+                    <p>Proctored interview with face tracking and real-time AI scoring.</p>
                     <div className="cd-interview-details">
                       {candidateSession.interview_config?.role && <span><Briefcase size={14} /> {candidateSession.interview_config.role}</span>}
                       {candidateSession.interview_config?.num_questions && <span><MessageSquare size={14} /> {candidateSession.interview_config.num_questions} questions</span>}
                       {candidateSession.interview_config?.level && <span><Award size={14} /> {candidateSession.interview_config.level}</span>}
                     </div>
                     <div className="cd-interview-tips">
-                      <h4>Before you start:</h4>
+                      <h4>⚠️ Strict Proctoring — 3 violations = auto-termination</h4>
                       <ul>
-                        <li>Allow camera & microphone access</li>
-                        <li>Find a quiet, well-lit space</li>
-                        <li>Speak clearly — AI will transcribe your answers</li>
-                        <li>Click the mic button when you're done answering</li>
+                        <li>Camera + mic active throughout</li>
+                        <li>Face detection + eye tracking enabled</li>
+                        <li>Tab/window switching = violation</li>
+                        <li>Fullscreen mode required</li>
                       </ul>
                     </div>
-                    <button className="cd-start-interview" onClick={startInterview}>
-                      <Camera size={20} /> Start Live Interview
+                    <button className="cd-start-interview" onClick={() => setShowInterviewRoom(true)}>
+                      <Camera size={20} /> Enter Interview Room
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* COUNTDOWN */}
-              {interviewPhase === 'countdown' && (
-                <div className="iv-countdown">
-                  <div className="iv-countdown-number">{countdown}</div>
-                  <p>Get ready...</p>
-                </div>
-              )}
-
-              {/* LIVE INTERVIEW - Full screen Zoom-like layout */}
-              {interviewPhase === 'live' && (
-                <div className="iv-live">
-                  {/* Main area - your video takes most of the screen */}
-                  <div className="iv-main-area">
-                    <div className="iv-video-container">
-                      <video ref={videoRef} autoPlay muted playsInline className="iv-video" />
-                      
-                      {/* Overlays on video */}
-                      <div className="iv-video-overlay">
-                        <div className="iv-video-top">
-                          <span className="iv-live-dot">● LIVE</span>
-                          <span className="iv-question-count">Question {currentQ + 1} of {questions.length}</span>
-                          <span className="iv-timer">{formatTime(interviewTimer)}</span>
-                        </div>
-                      </div>
-
-                      {/* AI Avatar floating in corner (like Zoom participant) */}
-                      <div className="iv-ai-pip">
-                        <div className="iv-ai-pip-inner">
-                          <Bot size={28} />
-                          {aiSpeaking && <div className="iv-ai-pip-ring" />}
-                        </div>
-                        <span>AI Interviewer</span>
-                      </div>
-                    </div>
-
-                    {/* Bottom control bar */}
-                    <div className="iv-control-bar">
-                      <div className="iv-control-left">
-                        {scores.length > 0 && (
-                          <div className="iv-mini-scores">
-                            {scores.map((s, i) => (
-                              <span key={i} className={`iv-mini-score ${s.score >= 7 ? 'good' : s.score >= 4 ? 'ok' : 'low'}`}>Q{i + 1}: {s.score}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="iv-control-center">
-                        {!isListening && !isTranscribing && !aiSpeaking && (
-                          <button className="iv-ctrl-btn record" onClick={() => { setCurrentTranscript(''); recordAnswer(); }}>
-                            <Mic size={22} />
-                          </button>
-                        )}
-                        {isListening && (
-                          <button className="iv-ctrl-btn stop" onClick={submitAnswer}>
-                            <StopCircle size={22} />
-                          </button>
-                        )}
-                        {isTranscribing && (
-                          <button className="iv-ctrl-btn" disabled><Loader size={22} className="spin" /></button>
-                        )}
-                        {aiSpeaking && (
-                          <button className="iv-ctrl-btn" disabled><Volume2 size={22} /></button>
-                        )}
-                      </div>
-                      <div className="iv-control-right">
-                        <button className="iv-ctrl-btn end" onClick={finishInterview}><X size={18} /> End</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Side panel - question + status */}
-                  <div className="iv-side-panel">
-                    <div className="iv-side-header">
-                      <Bot size={20} />
-                      <span>AI Interviewer</span>
-                    </div>
-
-                    {/* Current Question */}
-                    <div className="iv-current-q">
-                      <span className="iv-q-label">Question {currentQ + 1}</span>
-                      <p className="iv-q-text">{questions[currentQ] || 'Preparing...'}</p>
-                      {aiSpeaking && <span className="iv-speaking-badge">🔊 Speaking...</span>}
-                    </div>
-
-                    {/* Status */}
-                    {isListening && (
-                      <div className="iv-side-status listening">
-                        <div className="iv-wave"><span /><span /><span /><span /><span /></div>
-                        <span>Listening to your answer...</span>
-                      </div>
-                    )}
-                    {isTranscribing && (
-                      <div className="iv-side-status"><Loader size={14} className="spin" /><span>Transcribing...</span></div>
-                    )}
-                    {currentTranscript && (
-                      <div className="iv-side-transcript">
-                        <span className="iv-q-label">Your Answer</span>
-                        <p>"{currentTranscript}"</p>
-                      </div>
-                    )}
-                    {!isListening && !isTranscribing && !aiSpeaking && !currentTranscript && (
-                      <div className="iv-side-hint">
-                        <Mic size={16} />
-                        <span>Click the microphone button to start answering</span>
-                      </div>
-                    )}
-
-                    {/* Previous Q&A scores */}
-                    {scores.length > 0 && (
-                      <div className="iv-side-history">
-                        <span className="iv-q-label">Scores</span>
-                        {scores.map((s, i) => (
-                          <div key={i} className="iv-history-item">
-                            <span>Q{i + 1}</span>
-                            <div className="iv-breakdown-bar"><div style={{ width: `${s.score * 10}%` }} className={s.score >= 7 ? 'good' : s.score >= 4 ? 'ok' : 'low'} /></div>
-                            <span className={`iv-score-val ${s.score >= 7 ? 'good' : s.score >= 4 ? 'ok' : 'low'}`}>{s.score}/10</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* FINISHED */}
-              {interviewPhase === 'finished' && (
-                <div className="iv-finished">
-                  <div className="cd-card" style={{ maxWidth: '700px', margin: '0 auto' }}>
-                    {generatingReport ? (
-                      <div className="iv-generating"><Loader size={32} className="spin" /><h3>Generating your interview report...</h3><p>AI is analyzing your responses</p></div>
-                    ) : (
-                      <>
-                        <div className="iv-report-header">
-                          <Sparkles size={24} />
-                          <h2>Interview Complete!</h2>
-                          <p>Duration: {formatTime(interviewTimer)} | Questions: {questions.length}</p>
-                        </div>
-                        <div className="iv-final-scores">
-                          <div className="iv-avg-score">
-                            <span className="iv-avg-num">{scores.length > 0 ? (scores.reduce((a, s) => a + s.score, 0) / scores.length).toFixed(1) : '—'}</span>
-                            <span className="iv-avg-label">Average Score</span>
-                          </div>
-                          <div className="iv-score-breakdown">
-                            {scores.map((s, i) => (
-                              <div key={i} className="iv-breakdown-item">
-                                <span className="iv-breakdown-q">Q{i + 1}</span>
-                                <div className="iv-breakdown-bar"><div style={{ width: `${s.score * 10}%` }} className={s.score >= 7 ? 'good' : s.score >= 4 ? 'ok' : 'low'} /></div>
-                                <span className="iv-breakdown-num">{s.score}/10</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        {interviewReport && (
-                          <div className="iv-report-body">
-                            <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(interviewReport) }} />
-                          </div>
-                        )}
-                        <button className="cd-start-interview" onClick={() => { setInterviewPhase('ready'); setQuestions([]); setAnswers([]); setScores([]); setInterviewReport(null); setInterviewTimer(0); }} style={{ marginTop: '20px' }}>
-                          Back to Interview Info
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
+              ) : (
+                /* ─── NO INTERVIEW SCHEDULED ─── */
+                <div className="cd-empty"><Video size={40} /><h3>No interview scheduled</h3><p>Your hiring manager hasn't created an interview yet.</p></div>
               )}
             </div>
           )}
