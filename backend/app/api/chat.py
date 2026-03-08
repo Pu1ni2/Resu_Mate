@@ -5,6 +5,7 @@ Same endpoint URLs as before — frontend doesn't need to change.
 import os
 import re
 import json
+from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -512,10 +513,23 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
 @router.post("/verify-email")
 async def verify_email(req: VerifyEmailRequest):
     email = req.email.strip().lower()
+    print(f"\n🔍 Verify email: '{email}'")
+    print(f"  candidate_access keys: {list(candidate_access.keys())}")
+    print(f"  interviews_store keys: {list(interviews_store.keys())}")
+    
     if email in candidate_access:
         has_iv = email in interviews_store
+        print(f"  ✅ Found in candidate_access. has_interview={has_iv}")
         return {"access": True, "name": candidate_access[email].get("name", ""), "candidate_id": candidate_access[email].get("candidate_id"),
                 "has_interview": has_iv, "interview_config": interviews_store.get(email) if has_iv else None}
+
+    # Also check interviews_store directly (in case access wasn't saved but interview was created)
+    if email in interviews_store:
+        print(f"  ✅ Found in interviews_store (not in access). Auto-granting access.")
+        candidate_access[email] = {"name": interviews_store[email].get("candidate_name", ""), "candidate_id": interviews_store[email].get("candidate_id"), "access": True}
+        _save_data(interviews_store, candidate_access)
+        return {"access": True, "name": candidate_access[email].get("name", ""), "candidate_id": candidate_access[email].get("candidate_id"),
+                "has_interview": True, "interview_config": interviews_store.get(email)}
 
     for cid, c in resume_rag.candidates.items():
         text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
@@ -524,9 +538,11 @@ async def verify_email(req: VerifyEmailRequest):
             candidate_access[email] = {"name": c.get('name', ''), "candidate_id": cid, "access": True}
             _save_data(interviews_store, candidate_access)
             has_iv = email in interviews_store
+            print(f"  ✅ Found email in resume text. has_interview={has_iv}")
             return {"access": True, "name": c.get('name', ''), "candidate_id": cid,
                     "has_interview": has_iv, "interview_config": interviews_store.get(email) if has_iv else None}
 
+    print(f"  ❌ Not found anywhere")
     return {"access": False, "message": "No access found for this email. Please contact your hiring manager."}
 
 @router.get("/interview-status/{email}")
@@ -535,3 +551,70 @@ async def interview_status(email: str, user=Depends(get_current_user)):
     if email in interviews_store:
         return {"exists": True, "config": interviews_store[email]}
     return {"exists": False}
+
+# ═══════ INTERVIEW RESULTS (shared between candidate & hiring manager) ═══════
+
+interview_results = {}
+
+# Load saved results
+try:
+    import json as _json
+    with open("interview_results.json", "r") as _f:
+        interview_results = _json.load(_f)
+    print(f"📋 Loaded {len(interview_results)} interview results")
+except:
+    interview_results = {}
+
+def _save_results():
+    try:
+        with open("interview_results.json", "w") as f:
+            import json as _j
+            _j.dump(interview_results, f, indent=2, default=str)
+    except Exception as e:
+        print(f"Warning: Could not save results: {e}")
+
+class SaveInterviewResult(BaseModel):
+    candidate_email: str
+    candidate_name: Optional[str] = None
+    report: dict
+
+@router.post("/save-interview-result")
+async def save_interview_result(req: SaveInterviewResult):
+    """Save interview result (called by candidate after interview)"""
+    email = req.candidate_email.strip().lower()
+    
+    # Save to results store
+    if email not in interview_results:
+        interview_results[email] = []
+    
+    interview_results[email].append({
+        "candidate_name": req.candidate_name,
+        "timestamp": datetime.now().isoformat(),
+        "report": req.report
+    })
+    
+    # Update interview status
+    if email in interviews_store:
+        interviews_store[email]["status"] = "completed"
+        interviews_store[email]["result"] = req.report
+        _save_data(interviews_store, candidate_access)
+    
+    _save_results()
+    print(f"✅ Interview result saved for {email}")
+    return {"status": "saved"}
+
+@router.get("/get-interview-results/{email}")
+async def get_interview_results(email: str, user=Depends(get_current_user)):
+    """Get all interview results for a candidate (used by hiring manager)"""
+    email = email.strip().lower()
+    results = interview_results.get(email, [])
+    return {"email": email, "results": results, "count": len(results)}
+
+@router.get("/get-all-interview-results")
+async def get_all_interview_results(user=Depends(get_current_user)):
+    """Get all interview results (for hiring manager dashboard)"""
+    all_results = []
+    for email, results in interview_results.items():
+        for r in results:
+            all_results.append({"email": email, **r})
+    return {"results": all_results, "count": len(all_results)}

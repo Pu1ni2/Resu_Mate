@@ -38,6 +38,14 @@ export const AppProvider = ({ children }) => {
 
   const [anonymize, setAnonymize] = useState(false);
 
+  // Candidate session (for candidate portal)
+  const [candidateSession, setCandidateSession] = useState(() => {
+    try {
+      const stored = localStorage.getItem('resumate_candidate');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+
   useEffect(() => {
     storeCandidates(candidates);
   }, [candidates]);
@@ -269,7 +277,8 @@ export const AppProvider = ({ children }) => {
       loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
       anonymize, setAnonymize, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,
-      getDisplayName, getAvatarGradient
+      getDisplayName, getAvatarGradient,
+      candidateSession, setCandidateSession
     }}>
       {children}
     </AppContext.Provider>

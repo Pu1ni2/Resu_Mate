@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield } from 'lucide-react';
 
 const Logo = ({ size = 32 }) => (
@@ -15,6 +16,7 @@ const API_BASE = import.meta.env.PROD ? 'https://resumate-2vad.onrender.com' : '
 
 export default function CandidateLogin() {
   const navigate = useNavigate();
+  const { setCandidateSession } = useApp();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,14 +35,16 @@ export default function CandidateLogin() {
       const data = await resp.json();
 
       if (data.access) {
-        // Store candidate session
-        localStorage.setItem('resumate_candidate', JSON.stringify({
+        const session = {
           email: email.trim().toLowerCase(),
           name: data.name || '',
           candidate_id: data.candidate_id,
           has_interview: data.has_interview || false,
           interview_config: data.interview_config || null
-        }));
+        };
+        // Save to BOTH localStorage AND context
+        localStorage.setItem('resumate_candidate', JSON.stringify(session));
+        setCandidateSession(session);
         navigate('/candidate/dashboard');
       } else {
         setError(data.message || 'No access found for this email. Please contact your recruiter.');

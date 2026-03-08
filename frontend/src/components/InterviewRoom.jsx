@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Bot, Mic, StopCircle, X, Camera, AlertTriangle, Eye, EyeOff,
   Clock, ChevronRight, Loader, Volume2, Shield, Monitor,
-  CheckCircle, XCircle, ArrowRight
+  CheckCircle, XCircle, ArrowRight, Brain, Briefcase
 } from 'lucide-react';
 import { marked } from 'marked';
 
@@ -403,34 +403,36 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const avgScore = scores.length > 0 ? (scores.reduce((a, s) => a + (s.score || 0), 0) / scores.length).toFixed(1) : '—';
 
   // ═══ RENDER ═══
+  console.log('🎥 InterviewRoom rendering. Phase:', phase, 'Config:', config);
+  
   return (
-    <div className="ir-container" ref={containerRef}>
+    <div className="ir-container" ref={containerRef} style={{ background: '#0A0A0F', color: '#F4F4F5', position: 'fixed', inset: 0, zIndex: 9999 }}>
 
       {/* SETUP */}
       {phase === 'setup' && (
-        <div className="ir-setup">
-          <div className="ir-setup-card">
+        <div className="ir-setup" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', background: 'linear-gradient(135deg, #0A0A0F, #111128)' }}>
+          <div className="ir-setup-card" style={{ maxWidth: '560px', width: '100%', padding: '48px', background: 'rgba(14,14,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', textAlign: 'center' }}>
             <AIFace speaking={false} mood="neutral" />
-            <h1>AI Interview Room</h1>
-            <p>Proctored interview with face tracking and real-time AI scoring.</p>
-            <div className="ir-config">
-              {config?.role && <span className="ir-config-item"><Briefcase size={14} /> {config.role}</span>}
-              {config?.num_questions && <span className="ir-config-item"><Clock size={14} /> {config.num_questions} questions</span>}
-              {config?.level && <span className="ir-config-item"><Shield size={14} /> {config.level}</span>}
+            <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px', color: '#F4F4F5' }}>AI Interview Room</h1>
+            <p style={{ color: '#71717A', marginBottom: '24px' }}>Proctored interview with face tracking and real-time AI scoring.</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
+              {config?.role && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Briefcase size={14} /> {config.role}</span>}
+              {config?.num_questions && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Clock size={14} /> {config.num_questions} questions</span>}
+              {config?.level && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Shield size={14} /> {config.level}</span>}
             </div>
-            <div className="ir-rules">
-              <h3>⚠️ Strict Proctoring — {MAX_VIOLATIONS} Violations = Auto-Termination</h3>
-              <ul>
-                <li><Camera size={14} /> Camera + mic active throughout</li>
-                <li><Eye size={14} /> Face detection + eye tracking enabled</li>
-                <li><Monitor size={14} /> Tab/window switching = 1 violation</li>
-                <li><Shield size={14} /> Exiting fullscreen = 1 violation</li>
-                <li><AlertTriangle size={14} /> {MAX_VIOLATIONS} violations → interview terminates</li>
+            <div style={{ textAlign: 'left', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', marginBottom: '28px' }}>
+              <h3 style={{ fontSize: '15px', marginBottom: '12px', color: '#F59E0B' }}>⚠️ Strict Proctoring — {MAX_VIOLATIONS} Violations = Auto-Termination</h3>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Camera size={14} /> Camera + mic active throughout</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Eye size={14} /> Face detection + eye tracking enabled</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Monitor size={14} /> Tab/window switching = 1 violation</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Shield size={14} /> Exiting fullscreen = 1 violation</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><AlertTriangle size={14} /> {MAX_VIOLATIONS} violations → interview terminates</li>
               </ul>
             </div>
-            <div className="ir-setup-actions">
-              <button className="ir-btn-secondary" onClick={onExit}>Cancel</button>
-              <button className="ir-btn-primary" onClick={startInterview}><Camera size={18} /> Start Interview</button>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button onClick={onExit} style={{ padding: '14px 24px', background: 'none', color: '#71717A', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={startInterview} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}><Camera size={18} /> Start Interview</button>
             </div>
           </div>
         </div>
@@ -534,7 +536,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
           </div>
         </div>
       )}
-      
     </div>
   );
 }

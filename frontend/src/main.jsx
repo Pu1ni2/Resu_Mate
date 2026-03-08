@@ -4,13 +4,13 @@ import { BrowserRouter } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import App from './App'
 import ProductLayer from './components/ProductLayer'
-import './styles/interview-room.css'   
 
 // CSS - order matters: tokens → pages → components → overrides → product layer
 import './styles/design-system.css'
 import './styles/landing.css'
 import './styles/global.css'
 import './styles/dashboard-polish.css'
+import './styles/interview-room.css'
 import './styles/product-layer.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
