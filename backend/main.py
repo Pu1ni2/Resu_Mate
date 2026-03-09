@@ -7,6 +7,11 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import init_db
 
+
+from app.api.livekit_routes import router as livekit_router
+app.include_router(livekit_router)
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
