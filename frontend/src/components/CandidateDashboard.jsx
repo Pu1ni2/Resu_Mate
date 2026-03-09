@@ -351,57 +351,48 @@ export default function CandidateDashboard() {
           {tab === 'interview' && (
             <div className="cd-interview-section" style={{ maxWidth: '780px', margin: '0 auto' }}>
 
-              {/* CURRENT STATE: Just completed OR has report from before */}
+              {/* 1. PREVIOUS REPORT (on top, collapsible) */}
               {interviewReport && (
-                <div className="cd-card" style={{ padding: '24px', marginBottom: '20px', textAlign: 'center' }}>
-                  <CheckCircle size={36} style={{ color: '#22C55E', marginBottom: '10px' }} />
-                  <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>Interview Completed</h2>
-                  <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '16px' }}>
-                    Score: {interviewReport.avgScore || '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0}
-                  </p>
-
-                  {/* Stats row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-                    {[
-                      { val: interviewReport.avgScore || '—', label: 'Score' },
-                      { val: `${interviewReport.eyeContact || 0}%`, label: 'Eye Contact' },
-                      { val: interviewReport.violations || 0, label: 'Violations', color: (interviewReport.violations || 0) > 0 ? '#EF4444' : '#22C55E' },
-                      { val: `${Math.floor((interviewReport.timer || 0) / 60)}:${String((interviewReport.timer || 0) % 60).padStart(2, '0')}`, label: 'Duration' },
-                    ].map((s, i) => (
-                      <div key={i} style={{ padding: '12px 8px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                        <div style={{ fontSize: '20px', fontWeight: '800', fontFamily: 'monospace', color: s.color || '#1E293B' }}>{s.val}</div>
-                        <div style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>{s.label}</div>
+                <div className="cd-card" style={{ padding: '20px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <CheckCircle size={20} style={{ color: '#22C55E' }} />
+                      <div>
+                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px' }}>Previous Interview</h3>
+                        <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
+                          Score: {interviewReport.avgScore || '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
+                        </p>
                       </div>
-                    ))}
+                    </div>
+                    <button
+                      onClick={() => setShowFullReport(prev => !prev)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#475569', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                    >
+                      {showFullReport ? <EyeOff size={13} /> : <Eye size={13} />}
+                      {showFullReport ? 'Hide' : 'View Report'}
+                    </button>
                   </div>
 
-                  {/* Expandable report */}
-                  <button
-                    onClick={() => setShowFullReport(prev => !prev)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 20px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '10px', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    {showFullReport ? <EyeOff size={14} /> : <Eye size={14} />}
-                    {showFullReport ? 'Hide Full Report' : 'View Full Report'}
-                  </button>
+                  {/* Expanded report */}
+                  {showFullReport && (
+                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
+                      <InterviewReportView report={interviewReport} />
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* EXPANDED REPORT */}
-              {interviewReport && showFullReport && (
-                <div style={{ marginBottom: '20px' }}>
-                  <InterviewReportView report={interviewReport} />
-                </div>
-              )}
-
-              {/* NEW INTERVIEW: Only show if has_interview AND no report yet (or new interview after completion) */}
-              {hasInterview && !interviewReport && (
+              {/* 2. NEW INTERVIEW (below previous report) */}
+              {hasInterview && (
                 <div className="cd-card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid #DBEAFE', background: '#EFF6FF' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#3B82F6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Camera size={24} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '2px', color: '#1E293B' }}>AI Interview Ready</h3>
+                      <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '2px', color: '#1E293B' }}>
+                        {interviewReport ? 'New Interview Scheduled' : 'AI Interview Ready'}
+                      </h3>
                       <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
                         {candidateSession.interview_config?.role || 'General'} · {candidateSession.interview_config?.num_questions || 8} questions · {candidateSession.interview_config?.level || 'Mid-Level'}
                       </p>
@@ -410,13 +401,17 @@ export default function CandidateDashboard() {
                   <p style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '16px', lineHeight: '1.5' }}>
                     Proctored with camera, mic, face tracking. Tab switching monitored. 3 violations = auto-termination.
                   </p>
-                  <button className="cd-start-interview" onClick={() => setShowInterviewRoom(true)}>
+                  <button className="cd-start-interview" onClick={() => {
+                    setInterviewReport(null);
+                    localStorage.removeItem('resumate_interview_report');
+                    setShowInterviewRoom(true);
+                  }}>
                     <Camera size={18} /> Enter Interview Room
                   </button>
                 </div>
               )}
 
-              {/* NOTHING */}
+              {/* 3. NOTHING */}
               {!hasInterview && !interviewReport && (
                 <div className="cd-empty"><Video size={40} /><h3>No interview scheduled</h3><p>Your hiring manager hasn't created an interview yet.</p></div>
               )}
