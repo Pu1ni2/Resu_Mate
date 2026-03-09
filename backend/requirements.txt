@@ -41,3 +41,6 @@ livekit-plugins-openai>=1.0.0
 livekit-plugins-simli>=0.3.0
 python-dotenv
 requests
+
+
+PyJWT
