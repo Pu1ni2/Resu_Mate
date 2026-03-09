@@ -9,7 +9,7 @@ from app.core.database import init_db
 
 
 from app.api.livekit_routes import router as livekit_router
-app.include_router(livekit_router)
+app = FastAPI()
 
 
 # Configure logging
@@ -74,7 +74,8 @@ from app.api.candidates import router as candidates_router
 
 app.include_router(chat_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
-
+from app.api.livekit_routes import router as livekit_router
+app.include_router(livekit_router)
 
 @app.get("/")
 async def root():

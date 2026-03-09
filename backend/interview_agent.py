@@ -24,7 +24,6 @@ from livekit.agents import (
     WorkerOptions,
     WorkerType,
     cli,
-    RoomInputOptions,
 )
 from livekit.plugins import openai, simli
 
@@ -44,7 +43,8 @@ OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")  # alloy, echo, fable, onyx, n
 def get_interview_config(room_name: str) -> dict:
     """Fetch interview config from our backend using room name"""
     try:
-        resp = requests.get(f"{BACKEND_URL}/api/chat/interview-room-config/{room_name}", timeout=5)
+        # Try the livekit routes endpoint
+        resp = requests.get(f"{BACKEND_URL}/api/livekit/interview-room-config/{room_name}", timeout=5)
         if resp.ok:
             return resp.json()
     except Exception as e:
@@ -96,10 +96,11 @@ INTERVIEW RULES:
 - Stay in character as a human interviewer named Alex
 
 INTERVIEW STRUCTURE:
-1. Start with: "Hi {candidate}! I'm Alex, and I'll be interviewing you today for the {role} position. Let's start with something easy."
-2. Ask questions one at a time covering: {focus}
-3. After each answer, give a brief 3-5 word acknowledgment
-4. After all {num_qs} questions, say: "That wraps up our questions. Thank you so much for your time, {candidate}. We'll share the results with you shortly. Have a great day!"
+1. IMMEDIATELY greet the candidate when the session starts. Say: "Hi {candidate}! I'm Alex, and I'll be interviewing you today for the {role} position. Let's start with something easy."
+2. Do NOT wait for the candidate to speak first — you start the conversation
+3. Ask questions one at a time covering: {focus}
+4. After each answer, give a brief 3-5 word acknowledgment
+5. After all {num_qs} questions, say: "That wraps up our questions. Thank you so much for your time, {candidate}. We'll share the results with you shortly. Have a great day!"
 
 VOICE STYLE:
 - Conversational, not robotic
@@ -135,43 +136,36 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
-    # Create Simli avatar
-    avatar = simli.AvatarSession(
-        simli_config=simli.SimliConfig(
-            api_key=SIMLI_API_KEY,
-            face_id=SIMLI_FACE_ID,
-        ),
-    )
+    # Create Simli avatar (only if credentials are valid)
+    if SIMLI_API_KEY and SIMLI_FACE_ID:
+        try:
+            avatar = simli.AvatarSession(
+                simli_config=simli.SimliConfig(
+                    api_key=SIMLI_API_KEY,
+                    face_id=SIMLI_FACE_ID,
+                ),
+            )
+            logger.info("🎭 Starting Simli avatar...")
+            await avatar.start(session, room=ctx.room)
+            logger.info("✅ Simli avatar started")
+        except Exception as e:
+            logger.warning(f"⚠️ Simli avatar failed: {e}. Continuing without avatar.")
+    else:
+        logger.warning("⚠️ No Simli credentials, running without avatar")
 
-    # Start avatar (attaches to the session's audio output)
-    logger.info("🎭 Starting Simli avatar...")
-    await avatar.start(session, room=ctx.room)
+    # Create the agent with system prompt and first message
+    agent = Agent(
+        instructions=system_prompt,
+    )
 
     # Start the agent session
     logger.info("🤖 Starting interview agent...")
     await session.start(
-        agent=Agent(
-            instructions=system_prompt,
-        ),
+        agent=agent,
         room=ctx.room,
-        room_input_options=RoomInputOptions(
-            text_enabled=True,
-            audio_enabled=True,
-        ),
     )
 
-    # Send first message (avatar will speak this)
-    await session.say(first_message)
-    logger.info(f"💬 First message sent: {first_message[:50]}...")
-
-    # The agent will now automatically:
-    # 1. Listen to the candidate via their mic (LiveKit audio track)
-    # 2. Process speech with OpenAI Realtime
-    # 3. Generate responses
-    # 4. Simli avatar lip-syncs the responses
-    # 5. Continue the conversation based on system prompt
-
-    logger.info("✅ Interview agent running! Avatar is live.")
+    logger.info("✅ Interview agent running! Agent will greet candidate automatically.")
 
 
 if __name__ == "__main__":

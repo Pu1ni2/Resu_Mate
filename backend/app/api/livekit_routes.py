@@ -1,6 +1,5 @@
 """
 LiveKit Room Manager — Creates rooms and generates tokens for interview sessions.
-Add this to your existing FastAPI backend.
 """
 import os
 import time
@@ -9,8 +8,10 @@ import hashlib
 from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
-# LiveKit token generation (lightweight, no heavy SDK needed)
+load_dotenv(override=True)
+
 import jwt  # PyJWT
 
 router = APIRouter(prefix="/api/livekit", tags=["livekit"])
@@ -18,6 +19,10 @@ router = APIRouter(prefix="/api/livekit", tags=["livekit"])
 LIVEKIT_URL = os.getenv("LIVEKIT_URL", "")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
+
+print(f"🔑 LiveKit URL: {'✅ set' if LIVEKIT_URL else '❌ MISSING'}")
+print(f"🔑 LiveKit API Key: {'✅ set' if LIVEKIT_API_KEY else '❌ MISSING'}")
+print(f"🔑 LiveKit API Secret: {'✅ ' + LIVEKIT_API_SECRET[:8] + '...' if LIVEKIT_API_SECRET else '❌ MISSING'}")
 
 # Store room configs so the agent can fetch them
 room_configs = {}
