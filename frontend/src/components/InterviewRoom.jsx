@@ -1,7 +1,8 @@
 /**
- * InterviewRoom v2 — Full-screen proctored AI video interview.
- * 
- * Fixed: Video display, AI avatar animation, strict 3-violation termination
+ * InterviewRoom v3 — Full-screen proctored AI video interview + Simli Avatar
+ *
+ * Layout: Candidate camera (left) | Simli AI avatar (right)
+ * Flow: Technical Agent generates Qs → TTS audio → Simli lip-syncs → Candidate answers → Scoring Agent
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -9,72 +10,67 @@ import {
   Clock, ChevronRight, Loader, Volume2, Shield, Monitor,
   CheckCircle, XCircle, ArrowRight, Brain, Briefcase
 } from 'lucide-react';
-import { marked } from 'marked';
 
 const API_BASE = import.meta.env.PROD ? 'https://resumate-2vad.onrender.com' : '';
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
 const MAX_VIOLATIONS = 3;
 
-// ─── Animated AI Avatar ───
-const AIFace = ({ speaking, mood }) => (
-  <div className={`ir-ai-face ${speaking ? 'speaking' : ''} ${mood || ''}`}>
-    <div className="ir-ai-face-inner">
-      <div className="ir-ai-eyes">
-        <div className="ir-ai-eye"><div className="ir-ai-pupil" /></div>
-        <div className="ir-ai-eye"><div className="ir-ai-pupil" /></div>
-      </div>
-      <div className={`ir-ai-mouth ${speaking ? 'talking' : ''}`} />
-    </div>
-    <div className="ir-ai-ring" />
-    {speaking && <div className="ir-ai-ring pulse" />}
-  </div>
-);
+// ═══ SIMLI CONFIG — Replace with your credentials ═══
+const SIMLI_FACE_ID = 'tmp9i8bbq7c'; // Replace with your Face ID from Simli dashboard
+// API key will come from env or props
 
-export default function InterviewRoom({ config, candidateName, candidateEmail, onComplete, onExit }) {
-  const [phase, setPhase] = useState('setup');
+export default function InterviewRoom({ config, candidateName, candidateEmail, onComplete, onExit, simliApiKey }) {
+  // ─── Phase & Questions ───
+  const [phase, setPhase] = useState('setup'); // setup | countdown | live | finished
   const [currentQ, setCurrentQ] = useState(0);
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState([]);
-  const [scores, setScores] = useState([]);
-  const [timer, setTimer] = useState(0);
-  const [countdown, setCountdown] = useState(5);
 
+  // ─── AI State ───
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
-  const [aiMood, setAiMood] = useState('neutral'); // neutral, thinking, happy
 
+  // ─── Face Tracking ───
   const [faceDetected, setFaceDetected] = useState(false);
   const [eyeContact, setEyeContact] = useState(0);
   const [faceApiReady, setFaceApiReady] = useState(false);
   const [lookAwayCount, setLookAwayCount] = useState(0);
   const eyeContactSamples = useRef([]);
 
+  // ─── Proctoring ───
   const [violations, setViolations] = useState(0);
   const [warnings, setWarnings] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [terminated, setTerminated] = useState(false);
+  const [timer, setTimer] = useState(0);
 
-  const [report, setReport] = useState(null);
-  const [generatingReport, setGeneratingReport] = useState(false);
+  // ─── Simli State ───
+  const [simliReady, setSimliReady] = useState(false);
+  const [simliLoading, setSimliLoading] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  // ─── Refs ───
+  const candidateVideoRef = useRef(null);
+  const candidateCanvasRef = useRef(null);
+  const simliVideoRef = useRef(null);
+  const simliAudioRef = useRef(null);
   const streamRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
-  const currentAudioRef = useRef(null);
   const faceDetectionRef = useRef(null);
   const containerRef = useRef(null);
   const violationCountRef = useRef(0);
+  const answersRef = useRef([]);
+  const scoresRef = useRef([]);
+  const simliClientRef = useRef(null);
 
   const formatTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // ═══ Load face-api ═══
+  // ═══ LOAD FACE-API ═══
   useEffect(() => {
     if (window.faceapi) { setFaceApiReady(true); return; }
     const script = document.createElement('script');
@@ -90,21 +86,65 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     document.head.appendChild(script);
   }, []);
 
-  // ═══ VIOLATION HANDLER — strict 3-strike termination ═══
+  // ═══ INIT SIMLI ═══
+  const initSimli = async () => {
+    const apiKey = simliApiKey || import.meta.env.VITE_SIMLI_API_KEY;
+    if (!apiKey) { console.warn('⚠️ No Simli API key found'); return false; }
+
+    console.log('🔧 Simli init starting...');
+    console.log('  API key:', apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING');
+    console.log('  Face ID:', config?.simli_face_id || SIMLI_FACE_ID);
+    console.log('  Video ref:', !!simliVideoRef.current);
+    console.log('  Audio ref:', !!simliAudioRef.current);
+
+    if (!simliVideoRef.current || !simliAudioRef.current) {
+      console.warn('⚠️ Simli video/audio refs not ready, retrying in 1s...');
+      await new Promise(r => setTimeout(r, 1000));
+      if (!simliVideoRef.current || !simliAudioRef.current) {
+        console.error('❌ Simli refs still null after retry');
+        return false;
+      }
+    }
+
+    try {
+      // Dynamic import simli-client
+      const { SimliClient } = await import('simli-client');
+      const client = new SimliClient();
+      simliClientRef.current = client;
+
+      const simliConfig = {
+        apiKey: apiKey,
+        faceID: config?.simli_face_id || SIMLI_FACE_ID,
+        handleSilence: true,
+        maxSessionLength: 3600,
+        maxIdleTime: 600,
+        videoRef: simliVideoRef.current,
+        audioRef: simliAudioRef.current,
+        enableConsoleLogs: true,
+      };
+
+      client.Initialize(simliConfig);
+      await client.start();
+      setSimliReady(true);
+      console.log('✅ Simli avatar connected');
+      return true;
+    } catch (e) {
+      console.warn('Simli init failed:', e);
+      return false;
+    }
+  };
+
+  // ═══ VIOLATION HANDLER ═══
   const addViolation = useCallback((msg) => {
     violationCountRef.current += 1;
     const count = violationCountRef.current;
     setViolations(count);
-    setWarnings(prev => [...prev, { msg: `⚠️ VIOLATION ${count}/${MAX_VIOLATIONS}: ${msg}`, time: Date.now() }]);
+    setWarnings(prev => [...prev, { msg: `VIOLATION ${count}/${MAX_VIOLATIONS}: ${msg}`, time: Date.now() }]);
     setTimeout(() => setWarnings(prev => prev.slice(1)), 5000);
-
-    if (count >= MAX_VIOLATIONS) {
-      setTerminated(true);
-      terminateInterview();
-    }
+    if (count >= MAX_VIOLATIONS) { setTerminated(true); terminateInterview(); }
   }, []);
 
-  // ═══ Tab switch detection ═══
+  // ═══ TAB DETECTION ═══
   useEffect(() => {
     if (phase !== 'live') return;
     const onHidden = () => { if (document.hidden) addViolation('Tab switch detected'); };
@@ -114,7 +154,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     return () => { document.removeEventListener('visibilitychange', onHidden); window.removeEventListener('blur', onBlur); };
   }, [phase, addViolation]);
 
-  // ═══ Fullscreen ═══
+  // ═══ FULLSCREEN ═══
   const enterFullscreen = async () => {
     try {
       const el = containerRef.current || document.documentElement;
@@ -134,88 +174,58 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     return () => { document.removeEventListener('fullscreenchange', handler); document.removeEventListener('webkitfullscreenchange', handler); };
   }, [phase, addViolation]);
 
-  // ═══ Timer ═══
+  // ═══ TIMER ═══
   useEffect(() => {
     if (phase === 'live') timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  // ═══ VIDEO SYNC — ensure video shows after phase change ═══
-  useEffect(() => {
-    if (phase === 'live' && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(() => {});
-    }
-  }, [phase]);
-
-  // Additional sync on video element mount
-  const videoRefCallback = useCallback((node) => {
-    videoRef.current = node;
-    if (node && streamRef.current) {
-      node.srcObject = streamRef.current;
-      node.play().catch(() => {});
-    }
+  // ═══ VIDEO REF CALLBACK (fixes blank video) ═══
+  const candidateVideoCallback = useCallback((node) => {
+    candidateVideoRef.current = node;
+    if (node && streamRef.current) { node.srcObject = streamRef.current; node.play().catch(() => {}); }
   }, []);
 
-  // ═══ Face detection ═══
+  // ═══ FACE DETECTION ═══
   useEffect(() => {
     if (phase !== 'live' || !faceApiReady || !window.faceapi) return;
     const detect = async () => {
-      const video = videoRef.current;
+      const video = candidateVideoRef.current;
       if (!video || video.paused || video.readyState < 2) return;
       try {
         const detections = await window.faceapi
           .detectAllFaces(video, new window.faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
           .withFaceLandmarks(true);
-
-        const canvas = canvasRef.current;
+        const canvas = candidateCanvasRef.current;
         if (canvas) {
-          const displayW = video.clientWidth || video.offsetWidth || 640;
-          const displayH = video.clientHeight || video.offsetHeight || 480;
-          canvas.width = displayW;
-          canvas.height = displayH;
-          
-          const dims = { width: displayW, height: displayH };
-          const resized = window.faceapi.resizeResults(detections, dims);
+          const dw = video.clientWidth || 640, dh = video.clientHeight || 480;
+          canvas.width = dw; canvas.height = dh;
+          const resized = window.faceapi.resizeResults(detections, { width: dw, height: dh });
           const ctx = canvas.getContext('2d');
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+          ctx.clearRect(0, 0, dw, dh);
           resized.forEach(det => {
             const box = det.detection.box;
-            ctx.strokeStyle = '#22C55E';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([6, 4]);
+            ctx.strokeStyle = '#22C55E'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
             ctx.strokeRect(box.x, box.y, box.width, box.height);
             ctx.setLineDash([]);
-
-            // Eye landmarks
-            const lm = det.landmarks;
-            [lm.getLeftEye(), lm.getRightEye()].forEach(eye => {
+            [det.landmarks.getLeftEye(), det.landmarks.getRightEye()].forEach(eye => {
               ctx.beginPath();
               eye.forEach((pt, i) => { i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y); });
-              ctx.closePath();
-              ctx.strokeStyle = '#3B82F6'; ctx.lineWidth = 1.5; ctx.stroke();
+              ctx.closePath(); ctx.strokeStyle = '#3B82F6'; ctx.lineWidth = 1.5; ctx.stroke();
             });
-
-            // Label
-            ctx.fillStyle = '#22C55E'; ctx.font = '12px sans-serif';
-            ctx.fillText(`Face ${Math.round(det.detection.score * 100)}%`, box.x, box.y - 6);
+            ctx.fillStyle = '#22C55E'; ctx.font = '11px sans-serif';
+            ctx.fillText(`${Math.round(det.detection.score * 100)}%`, box.x, box.y - 5);
           });
-
           if (detections.length > 0) {
             setFaceDetected(true);
             const face = detections[0].detection.box;
-            const vcx = dims.width / 2;
-            const fcx = face.x + face.width / 2;
-            const offset = Math.abs(fcx - vcx) / (dims.width / 2);
+            const offset = Math.abs((face.x + face.width / 2) - dw / 2) / (dw / 2);
             const contact = Math.max(0, 1 - offset * 2);
             eyeContactSamples.current.push(contact > 0.4 ? 1 : 0);
             if (eyeContactSamples.current.length > 60) eyeContactSamples.current.shift();
             setEyeContact(Math.round(eyeContactSamples.current.reduce((a, b) => a + b, 0) / eyeContactSamples.current.length * 100));
             if (contact < 0.2) setLookAwayCount(prev => prev + 1);
-          } else {
-            setFaceDetected(false);
-          }
+          } else { setFaceDetected(false); }
         }
       } catch {}
     };
@@ -223,47 +233,70 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     return () => { if (faceDetectionRef.current) clearInterval(faceDetectionRef.current); };
   }, [phase, faceApiReady]);
 
-  // ═══ Camera ═══
+  // ═══ CAMERA ═══
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' }, audio: true });
       streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}); }
+      if (candidateVideoRef.current) { candidateVideoRef.current.srcObject = stream; candidateVideoRef.current.play().catch(() => {}); }
       return true;
-    } catch { alert('Camera and microphone access required.'); return false; }
+    } catch { alert('Camera and microphone required.'); return false; }
   };
 
   const stopAll = () => {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
     if (faceDetectionRef.current) clearInterval(faceDetectionRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
-    if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
+    if (simliClientRef.current) { try { simliClientRef.current.close(); } catch {} }
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch {}
   };
 
   useEffect(() => () => stopAll(), []);
 
-  // ═══ TTS ═══
+  // ═══ TTS → SIMLI (send audio to avatar) ═══
   const speakQuestion = async (text) => {
-    setAiSpeaking(true); setAiMood('speaking');
+    setAiSpeaking(true);
     try {
       const resp = await fetch(`${API_BASE}/api/chat/text-to-speech`, {
         method: 'POST', headers: { 'Authorization': 'Bearer demo-token', 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: 'nova' })
       });
       if (!resp.ok) throw new Error();
-      const blob = await resp.blob();
+
+      // Get raw audio bytes
+      const arrayBuffer = await resp.arrayBuffer();
+
+      // Send to Simli if connected
+      if (simliClientRef.current && simliReady) {
+        try {
+          // Convert to PCM16 for Simli
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+          const pcm = decoded.getChannelData(0);
+          const pcm16 = new Int16Array(pcm.length);
+          for (let i = 0; i < pcm.length; i++) {
+            pcm16[i] = Math.max(-32768, Math.min(32767, Math.round(pcm[i] * 32767)));
+          }
+          simliClientRef.current.sendAudioData(new Uint8Array(pcm16.buffer));
+          console.log('🎤 Audio sent to Simli avatar');
+        } catch (e) {
+          console.warn('Simli audio send failed:', e);
+        }
+      }
+
+      // Also play audio locally as fallback / for candidate to hear
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const audio = new Audio(URL.createObjectURL(blob));
-      currentAudioRef.current = audio;
+
       return new Promise(r => {
-        audio.onended = () => { currentAudioRef.current = null; setAiSpeaking(false); setAiMood('neutral'); r(); };
-        audio.onerror = () => { setAiSpeaking(false); setAiMood('neutral'); r(); };
+        audio.onended = () => { setAiSpeaking(false); r(); };
+        audio.onerror = () => { setAiSpeaking(false); r(); };
         audio.play();
       });
-    } catch { setAiSpeaking(false); setAiMood('neutral'); }
+    } catch { setAiSpeaking(false); }
   };
 
-  // ═══ Recording ═══
+  // ═══ RECORDING ═══
   const startRecording = () => {
     if (!streamRef.current) return;
     setIsListening(true); setCurrentTranscript(''); audioChunksRef.current = [];
@@ -291,249 +324,258 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     });
   };
 
-  // ═══ Scoring ═══
+  // ═══ SCORING ═══
   const scoreAnswer = async (q, a) => {
-    setIsScoring(true); setAiMood('thinking');
+    setIsScoring(true);
     try {
       const resp = await fetch(`${API_BASE}/api/chat/score-answer`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
         body: JSON.stringify({ question: q, answer: a, role: config?.role || 'General', candidate_name: candidateName })
       });
-      const data = await resp.json(); setIsScoring(false); setAiMood('neutral'); return data;
-    } catch { setIsScoring(false); setAiMood('neutral'); return { score: 5, feedback: 'Could not score.' }; }
+      const data = await resp.json(); setIsScoring(false); return data;
+    } catch { setIsScoring(false); return { score: 5, feedback: 'Could not score.' }; }
   };
 
-  // ═══ Interview flow ═══
+  // ═══ INTERVIEW FLOW ═══
   const startInterview = async () => {
     if (!(await startCamera())) return;
     await enterFullscreen();
+
+    // Countdown
     setPhase('countdown');
     for (let i = 5; i >= 1; i--) { setCountdown(i); await new Promise(r => setTimeout(r, 1000)); }
+
     setPhase('live'); setTimer(0);
+
+    // Init Simli AFTER phase is live (so video refs are mounted)
+    setTimeout(async () => {
+      setSimliLoading(true);
+      await initSimli();
+      setSimliLoading(false);
+    }, 500);
+
+    // Generate questions from Technical Agent
     try {
       const resp = await fetch(`${API_BASE}/api/chat/generate-interview-questions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
         body: JSON.stringify({ role: config?.role || 'General', level: config?.level || 'Mid-Level', num_questions: config?.num_questions || 8, focus_areas: config?.focus_areas || [], candidate_name: candidateName })
       });
-      const data = await resp.json(); const qs = data.questions || ['Tell me about yourself.'];
+      const data = await resp.json();
+      const qs = data.questions || ['Tell me about yourself.'];
       setQuestions(qs); setCurrentQ(0);
       await new Promise(r => setTimeout(r, 800));
-      await speakQuestion(qs[0]);
+      await speakQuestion(qs[0]); // Avatar speaks first question
     } catch { setQuestions(['Tell me about yourself.']); setCurrentQ(0); }
   };
-
-  // Track answers and scores in refs for reliable access in generateReport
-  const answersRef = useRef([]);
-  const scoresRef = useRef([]);
 
   const submitAnswer = async () => {
     const text = await stopAndTranscribe();
     answersRef.current = [...answersRef.current, text];
-    setAnswers(answersRef.current);
-    
     const s = await scoreAnswer(questions[currentQ], text);
     scoresRef.current = [...scoresRef.current, s];
-    setScores(scoresRef.current);
     setCurrentTranscript('');
-    
-    if (currentQ + 1 < questions.length) { 
-      setCurrentQ(prev => prev + 1); 
-      await new Promise(r => setTimeout(r, 500)); 
-      await speakQuestion(questions[currentQ + 1]); 
-    } else { 
-      await generateReport(false); 
-    }
+    if (currentQ + 1 < questions.length) {
+      setCurrentQ(prev => prev + 1);
+      await new Promise(r => setTimeout(r, 500));
+      await speakQuestion(questions[currentQ + 1]); // Avatar speaks next question
+    } else { await generateReport(false); }
   };
 
-  const terminateInterview = async () => {
-    stopAll(); setPhase('finished'); await generateReport(true);
-  };
+  const terminateInterview = async () => { stopAll(); await generateReport(true); };
 
   const generateReport = async (violated) => {
-    stopAll(); setPhase('finished'); setGeneratingReport(true);
-    
-    const finalAnswers = answersRef.current;
+    stopAll(); setPhase('finished');
     const finalScores = scoresRef.current;
-    const finalViolations = violationCountRef.current;
-    const finalTimer = timer;
-    const finalEyeContact = eyeContact;
-    const finalLookAway = lookAwayCount;
-    
+    const finalAnswers = answersRef.current;
     try {
       const resp = await fetch(`${API_BASE}/api/chat/interview-report`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-        body: JSON.stringify({ 
-          candidate_name: candidateName, candidate_email: candidateEmail, 
-          role: config?.role || 'General', questions, 
-          answers: finalAnswers, scores: finalScores, duration: finalTimer 
-        })
+        body: JSON.stringify({ candidate_name: candidateName, candidate_email: candidateEmail, role: config?.role || 'General', questions, answers: finalAnswers, scores: finalScores, duration: timer })
       });
       const data = await resp.json();
       let r = data.report || 'Report generated.';
-      if (violated) r = `## ⚠️ INTERVIEW TERMINATED\n\nAutomatically terminated after ${MAX_VIOLATIONS} proctoring violations.\n\n---\n\n` + r;
-      
-      setGeneratingReport(false);
-      const reportData = {
-        report: r, 
-        scores: finalScores, 
-        violations: finalViolations,
-        eyeContact: finalEyeContact, 
-        timer: finalTimer, 
-        terminated: violated,
-        avgScore: finalScores.length > 0 ? parseFloat((finalScores.reduce((a, s) => a + (s.score || 0), 0) / finalScores.length).toFixed(1)) : 0,
-        lookAwayCount: finalLookAway
-      };
-      
-      if (onComplete) onComplete(reportData);
-      else if (onExit) onExit();
-    } catch (e) {
-      console.error('Report generation failed:', e);
-      setGeneratingReport(false);
-      const reportData = { 
-        report: 'Report generation failed. Your answers were recorded.', 
-        scores: finalScores, violations: finalViolations, 
-        eyeContact: finalEyeContact, timer: finalTimer, 
-        terminated: violated, avgScore: 0, lookAwayCount: finalLookAway 
-      };
-      if (onComplete) onComplete(reportData);
-      else if (onExit) onExit();
+      if (violated) r = `## Interview Terminated\n\nAutomatically terminated after ${MAX_VIOLATIONS} proctoring violations.\n\n---\n\n` + r;
+      if (onComplete) onComplete({ report: r, scores: finalScores, violations: violationCountRef.current, eyeContact, timer, terminated: violated, avgScore: finalScores.length > 0 ? parseFloat((finalScores.reduce((a, s) => a + (s.score || 0), 0) / finalScores.length).toFixed(1)) : 0, lookAwayCount });
+    } catch {
+      if (onComplete) onComplete({ report: 'Report generation failed.', scores: finalScores, violations: violationCountRef.current, eyeContact, timer, terminated: violated, avgScore: 0, lookAwayCount });
     }
   };
 
-  const avgScore = scores.length > 0 ? (scores.reduce((a, s) => a + (s.score || 0), 0) / scores.length).toFixed(1) : '—';
-
   // ═══ RENDER ═══
-  console.log('🎥 InterviewRoom rendering. Phase:', phase, 'Config:', config);
-  
   return (
-    <div className="ir-container" ref={containerRef} style={{ background: '#0A0A0F', color: '#F4F4F5', position: 'fixed', inset: 0, zIndex: 9999 }}>
+    <div className="ir-container" ref={containerRef} style={{ background: '#0A0A0F', color: '#F4F4F5', position: 'fixed', inset: 0, zIndex: 9999, fontFamily: "'DM Sans', sans-serif" }}>
 
-      {/* SETUP */}
+      {/* ═══ SETUP ═══ */}
       {phase === 'setup' && (
-        <div className="ir-setup" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', background: 'linear-gradient(135deg, #0A0A0F, #111128)' }}>
-          <div className="ir-setup-card" style={{ maxWidth: '560px', width: '100%', padding: '48px', background: 'rgba(14,14,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', textAlign: 'center' }}>
-            <AIFace speaking={false} mood="neutral" />
-            <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px', color: '#F4F4F5' }}>AI Interview Room</h1>
-            <p style={{ color: '#71717A', marginBottom: '24px' }}>Proctored interview with face tracking and real-time AI scoring.</p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', background: 'linear-gradient(135deg, #0A0A0F, #111128)' }}>
+          <div style={{ maxWidth: '560px', width: '100%', padding: '48px', background: 'rgba(14,14,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', textAlign: 'center' }}>
+            {/* AI Face preview */}
+            <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid rgba(59,130,246,0.3)' }}>
+              <Bot size={40} color="#fff" />
+            </div>
+            <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>AI Interview Room</h1>
+            <p style={{ color: '#71717A', marginBottom: '24px' }}>Live AI avatar interview with face tracking and real-time scoring.</p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
               {config?.role && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Briefcase size={14} /> {config.role}</span>}
-              {config?.num_questions && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Clock size={14} /> {config.num_questions} questions</span>}
-              {config?.level && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Shield size={14} /> {config.level}</span>}
+              {config?.num_questions && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Clock size={14} /> {config.num_questions} Qs</span>}
             </div>
-            <div style={{ textAlign: 'left', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', marginBottom: '28px' }}>
-              <h3 style={{ fontSize: '15px', marginBottom: '12px', color: '#F59E0B' }}>⚠️ Strict Proctoring — {MAX_VIOLATIONS} Violations = Auto-Termination</h3>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Camera size={14} /> Camera + mic active throughout</li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Eye size={14} /> Face detection + eye tracking enabled</li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Monitor size={14} /> Tab/window switching = 1 violation</li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><Shield size={14} /> Exiting fullscreen = 1 violation</li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', fontSize: '13px', color: '#A1A1AA' }}><AlertTriangle size={14} /> {MAX_VIOLATIONS} violations → interview terminates</li>
-              </ul>
+
+            <div style={{ textAlign: 'left', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '24px' }}>
+              <p style={{ fontSize: '13px', color: '#F59E0B', fontWeight: '600', marginBottom: '10px' }}>Strict Proctoring — {MAX_VIOLATIONS} violations = auto-termination</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['Camera + mic active', 'AI avatar asks questions live', 'Face & eye tracking enabled', 'Tab switching = violation', 'Fullscreen required'].map(rule => (
+                  <span key={rule} style={{ fontSize: '12px', color: '#71717A', display: 'flex', alignItems: 'center', gap: '8px' }}><Shield size={12} /> {rule}</span>
+                ))}
+              </div>
             </div>
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button onClick={onExit} style={{ padding: '14px 24px', background: 'none', color: '#71717A', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={startInterview} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}><Camera size={18} /> Start Interview</button>
+              <button onClick={startInterview} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <Camera size={18} /> Start Interview
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* COUNTDOWN */}
+      {/* ═══ COUNTDOWN ═══ */}
       {phase === 'countdown' && (
-        <div className="ir-countdown">
-          <div className="ir-countdown-num">{countdown}</div>
-          <p>Camera activating...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+          {simliLoading && <p style={{ color: '#3B82F6', marginBottom: '20px', fontSize: '14px' }}>Connecting AI avatar...</p>}
+          <div style={{ fontSize: '140px', fontWeight: '900', color: '#3B82F6', lineHeight: 1 }}>{countdown}</div>
+          <p style={{ color: '#71717A', marginTop: '12px' }}>Get ready...</p>
         </div>
       )}
 
-      {/* LIVE */}
+      {/* ═══ LIVE INTERVIEW ═══ */}
       {phase === 'live' && (
-        <div className="ir-live">
-          <div className="ir-video-area">
-            <video ref={videoRefCallback} autoPlay muted playsInline className="ir-video" />
-            <canvas ref={canvasRef} className="ir-canvas" />
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+          {/* Top bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ background: '#EF4444', color: '#fff', padding: '4px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700' }}>● REC</span>
+              <span style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 14px', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace' }}>{formatTime(timer)}</span>
+            </div>
+            <span style={{ fontSize: '13px', fontWeight: '600' }}>Question {currentQ + 1} / {questions.length}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: faceDetected ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: faceDetected ? '#22C55E' : '#EF4444' }}>
+                {faceDetected ? <Eye size={13} /> : <EyeOff size={13} />} {faceDetected ? `${eyeContact}%` : 'No face'}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: violations > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)', color: violations > 0 ? '#F87171' : '#71717A' }}>
+                <Shield size={12} /> {violations}/{MAX_VIOLATIONS}
+              </span>
+            </div>
+          </div>
 
-            <div className="ir-topbar">
-              <div className="ir-topbar-left">
-                <span className="ir-live-badge">● REC</span>
-                <span className="ir-timer">{formatTime(timer)}</span>
-              </div>
-              <div className="ir-topbar-center">
-                <span className="ir-q-indicator">Question {currentQ + 1} / {questions.length}</span>
-              </div>
-              <div className="ir-topbar-right">
-                <span className={`ir-face-status ${faceDetected ? 'ok' : 'warn'}`}>
-                  {faceDetected ? <Eye size={14} /> : <EyeOff size={14} />} {faceDetected ? `${eyeContact}%` : 'No face'}
-                </span>
-                <span className={`ir-violation-counter ${violations > 0 ? 'active' : ''}`}>
-                  <Shield size={12} /> {violations}/{MAX_VIOLATIONS}
-                </span>
+          {/* Video area — side by side */}
+          <div style={{ flex: 1, display: 'flex', gap: '2px', background: '#000', position: 'relative' }}>
+            {/* Candidate camera (left) */}
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+              <video ref={candidateVideoCallback} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+              <canvas ref={candidateCanvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600' }}>You</div>
+            </div>
+
+            {/* AI Avatar (right) */}
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#111' }}>
+              {/* Simli video element */}
+              <video ref={simliVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: simliReady ? 'block' : 'none' }} />
+              <audio ref={simliAudioRef} autoPlay style={{ display: 'none' }} />
+
+              {/* Fallback if Simli not connected */}
+              {!simliReady && (
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0F172A, #1E293B)' }}>
+                  <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                    <Bot size={50} color="#fff" />
+                  </div>
+                  <p style={{ fontSize: '14px', color: '#94A3B8' }}>AI Interviewer</p>
+                  {aiSpeaking && <p style={{ fontSize: '12px', color: '#3B82F6', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}><Volume2 size={14} /> Speaking...</p>}
+                </div>
+              )}
+
+              <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Bot size={12} /> Alex (AI) {aiSpeaking && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22C55E', animation: 'irPulse 1.5s infinite' }} />}
               </div>
             </div>
 
+            {/* Warnings overlay */}
             {warnings.length > 0 && (
-              <div className="ir-warnings">{warnings.map((w, i) => (
-                <div key={i} className="ir-warning-toast"><AlertTriangle size={16} /> {w.msg}</div>
-              ))}</div>
+              <div style={{ position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {warnings.map((w, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                    <AlertTriangle size={14} /> {w.msg}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Side panel with AI face */}
-          <div className="ir-panel">
-            <div className="ir-panel-ai">
-              <AIFace speaking={aiSpeaking} mood={aiMood} />
-              <div className="ir-panel-ai-info">
-                <strong>AI Interviewer</strong>
-                <span>{aiSpeaking ? '🔊 Speaking...' : isScoring ? '🤔 Thinking...' : 'Listening'}</span>
+          {/* Bottom panel */}
+          <div style={{ background: '#111118', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '16px 24px' }}>
+            {/* Question */}
+            <div style={{ marginBottom: '12px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717A' }}>Question {currentQ + 1}</span>
+              <p style={{ fontSize: '15px', marginTop: '4px', color: '#E4E4E7', lineHeight: '1.5' }}>{questions[currentQ] || 'Preparing...'}</p>
+            </div>
+
+            {/* Status + Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {isListening && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3B82F6', fontSize: '13px' }}><Mic size={14} /> Listening...</span>}
+                {isTranscribing && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#A1A1AA', fontSize: '13px' }}><Loader size={14} className="spin" /> Transcribing...</span>}
+                {isScoring && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#F59E0B', fontSize: '13px' }}><Brain size={14} /> Scoring...</span>}
+                {aiSpeaking && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3B82F6', fontSize: '13px' }}><Volume2 size={14} /> AI speaking...</span>}
+                {currentTranscript && <span style={{ fontSize: '12px', color: '#71717A', fontStyle: 'italic', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{currentTranscript}"</span>}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Score pills */}
+                {scoresRef.current.length > 0 && (
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {scoresRef.current.map((s, i) => (
+                      <span key={i} style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700',
+                        background: (s.score || 0) >= 7 ? 'rgba(34,197,94,0.1)' : (s.score || 0) >= 4 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                        color: (s.score || 0) >= 7 ? '#22C55E' : (s.score || 0) >= 4 ? '#F59E0B' : '#EF4444' }}>
+                        Q{i + 1}:{s.score}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Main action button */}
+                {!isListening && !isTranscribing && !aiSpeaking && !isScoring && (
+                  <button onClick={startRecording} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', background: '#3B82F6', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <Mic size={18} /> Answer
+                  </button>
+                )}
+                {isListening && (
+                  <button onClick={submitAnswer} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <StopCircle size={18} /> Done
+                  </button>
+                )}
+                {(isTranscribing || isScoring || aiSpeaking) && (
+                  <button disabled style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', background: '#1E293B', color: '#71717A', border: 'none', borderRadius: '12px', fontSize: '14px', fontFamily: 'inherit' }}>
+                    <Loader size={16} className="spin" /> Wait...
+                  </button>
+                )}
+
+                <button onClick={() => generateReport(false)} style={{ padding: '10px 14px', background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#71717A', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <X size={12} /> End
+                </button>
               </div>
             </div>
-
-            <div className="ir-question">
-              <span className="ir-q-label">Question {currentQ + 1}</span>
-              <p>{questions[currentQ] || 'Preparing...'}</p>
-            </div>
-
-            <div className="ir-status-area">
-              {isListening && (<div className="ir-status listening"><div className="ir-wave"><span /><span /><span /><span /><span /></div><span>Listening...</span></div>)}
-              {isTranscribing && (<div className="ir-status"><Loader size={14} className="spin" /> Transcribing...</div>)}
-              {isScoring && (<div className="ir-status"><Brain size={14} /> Scoring...</div>)}
-              {currentTranscript && (<div className="ir-transcript"><p>"{currentTranscript}"</p></div>)}
-            </div>
-
-            <div className="ir-controls">
-              {!isListening && !isTranscribing && !aiSpeaking && !isScoring && (
-                <button className="ir-btn-record" onClick={startRecording}><Mic size={22} /> Answer</button>
-              )}
-              {isListening && (
-                <button className="ir-btn-stop" onClick={submitAnswer}><StopCircle size={22} /> Done</button>
-              )}
-              {(isTranscribing || isScoring || aiSpeaking) && (
-                <button className="ir-btn-disabled" disabled><Loader size={18} className="spin" /> Processing...</button>
-              )}
-            </div>
-
-            {scores.length > 0 && (
-              <div className="ir-score-history">{scores.map((s, i) => (
-                <div key={i} className={`ir-score-item ${s.score >= 7 ? 'good' : s.score >= 4 ? 'ok' : 'low'}`}>
-                  <span>Q{i + 1}</span><span>{s.score}/10</span>
-                </div>
-              ))}</div>
-            )}
-
-            <button className="ir-btn-end" onClick={() => generateReport(false)}><X size={14} /> End Early</button>
           </div>
         </div>
       )}
 
-      {/* FINISHED — just shows generating state, then exits to dashboard */}
+      {/* ═══ FINISHED (generating) ═══ */}
       {phase === 'finished' && (
-        <div className="ir-finished">
-          <div className="ir-generating">
-            <AIFace speaking={false} mood="thinking" />
-            <h2>Generating Your Report...</h2>
-            <p>AI is analyzing your answers. You'll be redirected to your dashboard.</p>
-            <Loader size={24} className="spin" style={{ marginTop: '16px', color: '#3B82F6' }} />
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+          <Loader size={40} className="spin" style={{ color: '#3B82F6', marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '22px' }}>Generating Report...</h2>
+          <p style={{ color: '#71717A', marginTop: '8px' }}>Redirecting to dashboard...</p>
         </div>
       )}
     </div>

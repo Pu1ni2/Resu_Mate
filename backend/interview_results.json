@@ -64,6 +64,71 @@
         "avgScore": 0,
         "lookAwayCount": 0
       }
+    },
+    {
+      "candidate_name": "SAI PUNITH KOLLA",
+      "timestamp": "2026-03-09T16:20:54.935077",
+      "report": {
+        "report": "## Interview Terminated\n\nAutomatically terminated after 3 proctoring violations.\n\n---\n\n## Interview Summary\nThe interview with Sai Punith Kolla for the Python Developer role was unfortunately not conducted, as indicated by the duration of 0 minutes and 0 seconds. Consequently, there is no available data on the candidate's responses or performance to provide a comprehensive evaluation.\n\n## Strengths Demonstrated\n- Due to the lack of an interview, specific strengths could not be assessed.\n- Sai Punith Kolla's resume suggests a familiarity with Python, which is a relevant skill for the role.\n\n## Areas for Improvement\n- It is essential for Sai Punith Kolla to ensure availability and punctuality for scheduled interviews to allow for a fair assessment of skills and fit for the role.\n- Preparing for the interview by reviewing Python fundamentals and any relevant project experience could be beneficial for future opportunities.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n- Can you describe a challenging Python project you have worked on and the outcome?\n- How do you stay updated with the latest developments in Python and software development in general?",
+        "scores": [],
+        "violations": 3,
+        "eyeContact": 0,
+        "timer": 0,
+        "terminated": true,
+        "avgScore": 0,
+        "lookAwayCount": 0
+      }
+    },
+    {
+      "candidate_name": "SAI PUNITH KOLLA",
+      "timestamp": "2026-03-09T16:22:36.211376",
+      "report": {
+        "report": "## Interview Summary\nThe interview with Sai Punith Kolla for the Python Developer role was notably brief and did not provide sufficient information to assess the candidate's technical skills or experience effectively. The responses given were minimal and did not address the questions posed, making it challenging to evaluate the candidate's suitability for the role.\n\n## Strengths Demonstrated\n- Sai Punith Kolla was polite and greeted the interviewer, indicating a basic level of professionalism.\n- The candidate was responsive, albeit with limited engagement.\n\n## Areas for Improvement\n- **Communication Skills**: Sai should focus on providing more detailed and relevant answers to technical questions to demonstrate their understanding and experience.\n- **Technical Depth**: It would be beneficial for Sai to prepare examples of past projects and experiences, particularly those involving Python libraries and frameworks like NumPy, TensorFlow, Django, or Flask.\n- **Engagement**: Increasing engagement during interviews by elaborating on answers and asking clarifying questions could help Sai better convey their skills and interest in the role.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n1. Can you provide a detailed example of a project where you utilized Python to solve a complex problem?\n2. How do you stay updated with the latest developments in Python and related technologies?",
+        "scores": [
+          {
+            "score": 1,
+            "feedback": "The answer is completely irrelevant and lacks any detail or clarity related to the question."
+          },
+          {
+            "score": 1,
+            "feedback": "The answer lacks relevance, detail, clarity, and professionalism, providing no insight into the candidate's debugging approach."
+          }
+        ],
+        "violations": 0,
+        "eyeContact": 0,
+        "timer": 59,
+        "terminated": false,
+        "avgScore": 1,
+        "lookAwayCount": 96
+      }
+    },
+    {
+      "candidate_name": "SAI PUNITH KOLLA",
+      "timestamp": "2026-03-09T16:26:38.424788",
+      "report": {
+        "report": "## Interview Terminated\n\nAutomatically terminated after 3 proctoring violations.\n\n---\n\n## Interview Summary\nThe interview with Sai Punith Kolla for the Python Developer role was unfortunately not conducted, as indicated by the duration of 0 minutes and 0 seconds. Consequently, no questions were asked or answered, and no average score could be assigned.\n\n## Strengths Demonstrated\n- Due to the absence of the interview, no specific strengths could be observed or noted.\n\n## Areas for Improvement\n- Ensure availability and readiness for the scheduled interview to facilitate a comprehensive evaluation.\n- Confirm technical setup and connectivity prior to the interview to avoid any potential disruptions.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n- Can you share your experience with Python development, including any specific projects or challenges you've tackled?\n- What motivates you to pursue a role in Python development, and how do you stay updated with the latest trends in the field?",
+        "scores": [],
+        "violations": 3,
+        "eyeContact": 0,
+        "timer": 0,
+        "terminated": true,
+        "avgScore": 0,
+        "lookAwayCount": 0
+      }
+    },
+    {
+      "candidate_name": "SAI PUNITH KOLLA",
+      "timestamp": "2026-03-09T16:27:33.976118",
+      "report": {
+        "report": "## Interview Terminated\n\nAutomatically terminated after 3 proctoring violations.\n\n---\n\n## Interview Summary\nThe interview with Sai Punith Kolla for the Python Developer role was not conducted, as indicated by the duration of 0 minutes and 0 seconds. As a result, there is no data available to assess the candidate's technical skills, problem-solving abilities, or cultural fit for the position.\n\n## Strengths Demonstrated\n- Due to the lack of an actual interview, no strengths could be observed or documented.\n\n## Areas for Improvement\n- Ensure availability and readiness for scheduled interviews to facilitate a comprehensive assessment.\n- Confirm technical setup and connectivity to avoid any disruptions or missed appointments.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n- Confirm the candidate's interest and availability for a rescheduled interview.\n- Prepare questions to assess the candidate's experience with Python programming and problem-solving skills in a technical setting.",
+        "scores": [],
+        "violations": 3,
+        "eyeContact": 0,
+        "timer": 0,
+        "terminated": true,
+        "avgScore": 0,
+        "lookAwayCount": 0
+      }
     }
   ]
 }
