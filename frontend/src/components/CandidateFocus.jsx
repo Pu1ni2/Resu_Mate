@@ -879,6 +879,12 @@ export default function CandidateFocus() {
             <button className={`focus-tab ${activeTool === 'agent' ? 'active' : ''}`} onClick={() => setActiveTool('agent')}><UserCheck size={16} /><span>Hiring Agent</span></button>
             <button className={`focus-tab ${activeTool === 'github' ? 'active' : ''}`} onClick={() => { setActiveTool('github'); if (!ghProfile && !ghLoading && !ghError) fetchGitHub(); }}><Github size={16} /><span>GitHub</span></button>
             <button className={`focus-tab ${activeTool === 'calendly' ? 'active' : ''}`} onClick={() => { setActiveTool('calendly'); if (!calData && !calLoading && !calError) fetchCalendly(); }}><Calendar size={16} /><span>Schedule</span></button>
+            {agentStep === 'result' && agentResult && !agentResult.error && (
+              <>
+                <button className={`focus-tab ${activeTool === 'email' ? 'active' : ''}`} onClick={() => setActiveTool('email')}><Mail size={16} /><span>Email</span></button>
+                <button className={`focus-tab ${activeTool === 'interview' ? 'active' : ''}`} onClick={() => setActiveTool('interview')} style={interviewCreated ? { color: '#22C55E' } : {}}><Video size={16} /><span>{interviewCreated ? 'Interview ✓' : 'Interview'}</span></button>
+              </>
+            )}
           </div>
 
           {/* ════════ AI CHAT ════════ */}
@@ -978,83 +984,125 @@ export default function CandidateFocus() {
               {agentStep === 'loading' && (<div className="agent-loading"><Loader size={36} className="spin" /><h3>Evaluating candidate...</h3><div className="agent-loading-steps"><p className="agent-step-item active">📄 Analyzing resume data...</p><p className="agent-step-item">🔍 Searching online presence...</p><p className="agent-step-item">🎯 Matching against requirements...</p><p className="agent-step-item">📊 Generating fit report...</p></div></div>)}
               {agentStep === 'result' && agentResult && (
                 <div className="agent-result" ref={agentResultRef}>
-                  {agentResult.error ? (<div className="agent-error glass-card"><AlertCircle size={24} /><p>{agentResult.error}</p></div>) : (<div className="agent-report"><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(agentResult.report || '') }} /></div>)}
-                  <div className="agent-actions" style={{ flexWrap: 'wrap' }}>
-                    <button className="btn btn-ghost" onClick={resetAgent}>← Start Over</button>
-                    <button className="btn btn-secondary" onClick={() => setActiveTool('chat')}><MessageSquare size={16} /> Discuss in Chat</button>
-                  </div>
-                  {!agentResult.error && (
-                    <div className="agent-actions" style={{ flexWrap: 'wrap', paddingTop: '0' }}>
-                      {!showEmailComposer && (<button className="btn btn-primary" onClick={() => { setShowEmailComposer(true); setShowInterviewCreator(false); }}><Mail size={16} /> Mail to {anonymize ? 'Candidate' : (focusCandidate.name?.split(' ')[0] || 'Candidate')}</button>)}
-                      {!interviewCreated && !showInterviewCreator && (<button className="btn btn-secondary" onClick={() => { setShowInterviewCreator(true); setShowEmailComposer(false); }} style={{ background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.3)', color: '#A78BFA' }}><Video size={16} /> Create Interview</button>)}
-                      {interviewCreated && (<span className="badge badge-green" style={{ padding: '10px 18px', fontSize: '13px' }}><Check size={14} /> Interview Created</span>)}
-                    </div>
+                  {agentResult.error ? (<div className="agent-error glass-card"><AlertCircle size={24} /><p>{agentResult.error}</p></div>) : (
+                    <>
+                      <div className="agent-report"><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(agentResult.report || '') }} /></div>
+                      <div className="agent-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button className="btn btn-ghost btn-sm" onClick={resetAgent}>← Start Over</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setActiveTool('chat')}><MessageSquare size={14} /> Discuss</button>
+                      </div>
+                    </>
                   )}
+                </div>
+              )}
+            </div>
+          )}
 
-                  {/* ═══════ CREATE INTERVIEW PANEL ═══════ */}
-                  {showInterviewCreator && !interviewCreated && (
-                    <div className="interview-creator glass-card" ref={el => { if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }}>
-                      <div className="email-composer-header">
-                        <div className="email-composer-title"><Video size={18} /><span>Create AI Interview</span></div>
-                        <button className="email-action-btn" onClick={() => setShowInterviewCreator(false)}><X size={16} /></button>
+          {/* ════════ EMAIL (separate page) ════════ */}
+          {activeTool === 'email' && (
+            <div style={{ padding: '20px', maxWidth: '640px' }}>
+              <div className="glass-card" style={{ overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--surface-border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}><Mail size={18} /> Email {anonymize ? 'Candidate' : (focusCandidate?.name?.split(' ')[0] || 'Candidate')}</div>
+                  {emailType && <button className="btn btn-ghost btn-sm" onClick={copyEmail}>{emailCopied ? <Check size={14} /> : <Clipboard size={14} />} {emailCopied ? 'Copied' : 'Copy'}</button>}
+                </div>
+
+                {!emailType && !emailDrafting && (
+                  <div style={{ padding: '24px' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text2)', marginBottom: '16px' }}>Choose the type of email to draft:</p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {[['interest', '📩 Express Interest'], ['interview', '📅 Interview Invite'], ['offer', '🎉 Job Offer'], ['pass', '🙏 Polite Pass'], ['followup', '🔄 Follow-up']].map(([type, label]) => (
+                        <button key={type} className="btn btn-secondary" onClick={() => draftEmail(type)} style={{ padding: '10px 16px' }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {emailDrafting && (
+                  <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text3)' }}>
+                    <Loader size={24} className="spin" />
+                    <p style={{ marginTop: '12px' }}>AI is drafting your email...</p>
+                  </div>
+                )}
+
+                {emailType && !emailDrafting && (
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>To</label>
+                      <input type="email" className="input" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="candidate@email.com" style={{ padding: '10px 14px' }} />
+                    </div>
+                    {!showCcBcc && <button style={{ fontSize: '12px', color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '0' }} onClick={() => setShowCcBcc(true)}>+ Cc / Bcc</button>}
+                    {showCcBcc && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Cc</label><input type="text" className="input" value={emailCc} onChange={e => setEmailCc(e.target.value)} style={{ padding: '10px 14px' }} /></div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Bcc</label><input type="text" className="input" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} style={{ padding: '10px 14px' }} /></div>
                       </div>
-                      <div className="interview-creator-body">
-                        <div className="email-field">
-                          <label>Candidate Email</label>
-                          <input type="email" className="email-input" value={interviewEmail} onChange={e => setInterviewEmail(e.target.value)} placeholder="candidate@email.com (required for login)" />
-                        </div>
-                        <div className="email-field">
-                          <label>Role</label>
-                          <input type="text" className="email-input" value={interviewRole || selectedRole || focusCandidate?.predicted_role || ''} onChange={e => setInterviewRole(e.target.value)} placeholder="e.g. ML Engineer" />
-                        </div>
-                        <div className="email-field">
-                          <label>Questions</label>
-                          <select className="email-input" value={interviewNumQuestions} onChange={e => setInterviewNumQuestions(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontFamily: 'inherit' }}>
-                            <option value="5">5 questions</option>
-                            <option value="8">8 questions</option>
-                            <option value="10">10 questions</option>
-                            <option value="15">15 questions</option>
-                          </select>
-                        </div>
-                        <div className="email-field">
-                          <label>Focus Areas</label>
-                          <input type="text" className="email-input" value={interviewFocusAreas} onChange={e => setInterviewFocusAreas(e.target.value)} placeholder="e.g. System Design, Python, Leadership (comma-separated)" />
-                        </div>
-                        <div className="email-send-actions">
-                          <button className="email-send-btn" onClick={() => setShowInterviewCreator(false)}>Cancel</button>
-                          <button className="email-send-btn gmail" style={{ background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.3)', color: '#A78BFA' }} onClick={createInterview} disabled={!interviewEmail.trim() || interviewCreating}>
-                            {interviewCreating ? <Loader size={16} className="spin" /> : <Video size={16} />}
-                            <span>{interviewCreating ? 'Creating...' : 'Create Interview & Grant Access'}</span>
-                          </button>
-                        </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Subject</label>
+                      <input type="text" className="input" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} style={{ padding: '10px 14px' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Body</label>
+                      <textarea className="input" value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={12} style={{ padding: '12px 14px', resize: 'vertical', lineHeight: '1.6' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '4px' }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setEmailType(''); setEmailBody(''); setEmailSubject(''); }}>New Draft</button>
+                      <button className="btn btn-secondary btn-sm" onClick={openInGmail}>Open in Gmail</button>
+                      <button className="btn btn-secondary btn-sm" onClick={openInOutlook}>Open in Outlook</button>
+                      <button className="btn btn-secondary btn-sm" onClick={openMailto}>Default Mail</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ════════ INTERVIEW CREATOR (separate page) ════════ */}
+          {activeTool === 'interview' && (
+            <div style={{ padding: '20px', maxWidth: '540px' }}>
+              {interviewCreated ? (
+                <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
+                  <Check size={40} style={{ color: '#22C55E', marginBottom: '14px' }} />
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>Interview Created!</h3>
+                  <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '4px' }}>Candidate can now login with:</p>
+                  <p style={{ fontSize: '16px', fontWeight: '600', color: 'var(--info)', marginBottom: '12px' }}>{interviewEmail}</p>
+                  <p style={{ color: 'var(--text3)', fontSize: '13px' }}>{interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions</p>
+                  {interviewFocusAreas && <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Focus: {interviewFocusAreas}</p>}
+                </div>
+              ) : (
+                <div className="glass-card" style={{ overflow: 'hidden' }}>
+                  <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}>
+                    <Video size={18} /> Create AI Interview
+                  </div>
+                  <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Candidate Email *</label>
+                      <input type="email" className="input" value={interviewEmail} onChange={e => setInterviewEmail(e.target.value)} placeholder="candidate@email.com" style={{ padding: '11px 14px' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Role</label>
+                        <input type="text" className="input" value={interviewRole || selectedRole || focusCandidate?.predicted_role || ''} onChange={e => setInterviewRole(e.target.value)} placeholder="ML Engineer" style={{ padding: '11px 14px' }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Number of Questions</label>
+                        <select className="input" value={interviewNumQuestions} onChange={e => setInterviewNumQuestions(e.target.value)} style={{ padding: '11px 14px' }}>
+                          <option value="5">5 questions</option><option value="8">8 questions</option><option value="10">10 questions</option><option value="15">15 questions</option>
+                        </select>
                       </div>
                     </div>
-                  )}
-                  {showEmailComposer && (
-                    <div className="email-composer glass-card">
-                      <div className="email-composer-header"><div className="email-composer-title"><Mail size={18} /><span>Email</span></div><div className="email-composer-actions"><button className="email-action-btn" onClick={copyEmail} title="Copy">{emailCopied ? <Check size={16} /> : <Clipboard size={16} />}</button><button className="email-action-btn" onClick={() => setShowEmailComposer(false)} title="Close"><X size={16} /></button></div></div>
-                      {!emailType && !emailDrafting && (<div className="email-type-select"><p className="email-type-label">What type of email?</p><div className="email-type-chips"><button className="agent-chip" onClick={() => draftEmail('interest')}>📩 Interest</button><button className="agent-chip" onClick={() => draftEmail('interview')}>📅 Interview</button><button className="agent-chip" onClick={() => draftEmail('offer')}>🎉 Offer</button><button className="agent-chip" onClick={() => draftEmail('pass')}>🙏 Polite Pass</button><button className="agent-chip" onClick={() => draftEmail('followup')}>🔄 Follow-up</button></div></div>)}
-                      {emailDrafting && (<div className="email-drafting"><Loader size={20} className="spin" /><span>Drafting email...</span></div>)}
-                      {emailType && !emailDrafting && (
-                        <>
-                          <div className="email-fields">
-                            <div className="email-field"><label>To</label><input type="email" className="email-input" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="candidate@email.com" /></div>
-                            {!showCcBcc && <button className="email-ccbcc-toggle" onClick={() => setShowCcBcc(true)}>+ Cc / Bcc</button>}
-                            {showCcBcc && (<><div className="email-field"><label>Cc</label><input type="text" className="email-input" value={emailCc} onChange={e => setEmailCc(e.target.value)} placeholder="cc@email.com" /></div><div className="email-field"><label>Bcc</label><input type="text" className="email-input" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} placeholder="bcc@email.com" /></div></>)}
-                            <div className="email-field"><label>Subject</label><input type="text" className="email-input" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Email subject..." /></div>
-                          </div>
-                          <div className="email-divider" />
-                          <textarea className="email-body" value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={12} placeholder="Email body..." />
-                          <div className="email-send-actions">
-                            <button className="email-send-btn gmail" onClick={openInGmail}><span>Open in Gmail</span></button>
-                            <button className="email-send-btn outlook" onClick={openInOutlook}><span>Open in Outlook</span></button>
-                            <button className="email-send-btn default" onClick={openMailto}><Mail size={16} /><span>Default Mail</span></button>
-                            <button className="email-send-btn copy" onClick={copyEmail}>{emailCopied ? <Check size={16} /> : <Clipboard size={16} />}<span>{emailCopied ? 'Copied!' : 'Copy All'}</span></button>
-                          </div>
-                        </>
-                      )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Focus Areas</label>
+                      <input type="text" className="input" value={interviewFocusAreas} onChange={e => setInterviewFocusAreas(e.target.value)} placeholder="System Design, Python, Leadership (comma-separated)" style={{ padding: '11px 14px' }} />
                     </div>
-                  )}
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '4px' }}>
+                      <button className="btn btn-primary" onClick={createInterview} disabled={!interviewEmail.trim() || interviewCreating} style={{ background: 'rgba(139,92,246,0.9)', padding: '12px 24px' }}>
+                        {interviewCreating ? <Loader size={16} className="spin" /> : <Video size={16} />}
+                        <span>{interviewCreating ? 'Creating...' : 'Create Interview & Grant Access'}</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

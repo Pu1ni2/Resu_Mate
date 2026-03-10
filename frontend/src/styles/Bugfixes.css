@@ -140,7 +140,86 @@
 .agent-step-item { font-size: 13px; color: var(--text3); }
 .agent-step-item.active { color: var(--accent); }
 
-/* ─── Hiring Manager — dark/light theme support ─── */
+/* ─── Candidate Portal — DARK theme (default) ─── */
+[data-theme="dark"] .cd-layout,
+.cd-layout {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .cd-sidebar,
+[data-theme="dark"] .cd-sidebar-header,
+[data-theme="dark"] .cd-sidebar-footer {
+  background: var(--bg2) !important;
+  border-color: var(--surface-border) !important;
+}
+[data-theme="dark"] .cd-sidebar-logo { color: var(--text) !important; }
+[data-theme="dark"] .cd-header {
+  background: var(--bg2) !important;
+  border-color: var(--surface-border) !important;
+}
+[data-theme="dark"] .cd-welcome { color: var(--text) !important; }
+[data-theme="dark"] .cd-body { background: var(--bg) !important; }
+[data-theme="dark"] .cd-card {
+  background: var(--surface) !important;
+  border-color: var(--surface-border) !important;
+  box-shadow: none !important;
+}
+[data-theme="dark"] .cd-card:hover { border-color: var(--surface-hover) !important; }
+[data-theme="dark"] .cd-nav-link { color: var(--text2) !important; }
+[data-theme="dark"] .cd-nav-link:hover { background: var(--bg3) !important; color: var(--text) !important; }
+[data-theme="dark"] .cd-nav-link.active { background: var(--info-bg) !important; color: var(--info) !important; }
+[data-theme="dark"] .cd-nav-badge { background: #EF4444 !important; }
+[data-theme="dark"] .cd-logout { border-color: var(--surface-border) !important; color: var(--text3) !important; }
+[data-theme="dark"] .cd-logout:hover { border-color: var(--error) !important; color: var(--error) !important; }
+
+[data-theme="dark"] .cd-empty h3 { color: var(--text) !important; }
+[data-theme="dark"] .cd-empty p { color: var(--text3) !important; }
+
+[data-theme="dark"] .cd-upload-zone {
+  border-color: var(--surface-border) !important;
+  background: transparent !important;
+}
+[data-theme="dark"] .cd-upload-zone:hover {
+  border-color: var(--info) !important;
+  background: var(--info-bg) !important;
+}
+[data-theme="dark"] .cd-upload-zone h3 { color: var(--text) !important; }
+[data-theme="dark"] .cd-upload-zone p { color: var(--text3) !important; }
+[data-theme="dark"] .cd-uploaded-item { border-color: var(--surface-border) !important; }
+[data-theme="dark"] .cd-uploaded-item.selected { border-color: var(--info) !important; background: var(--info-bg) !important; }
+
+[data-theme="dark"] .cd-chat-bubble.assistant { background: var(--bg3) !important; color: var(--text) !important; }
+[data-theme="dark"] .cd-chat-bubble.user { background: var(--info) !important; color: #fff !important; }
+[data-theme="dark"] .cd-chat-input { border-color: var(--surface-border) !important; }
+[data-theme="dark"] .cd-chat-input input { background: var(--bg3) !important; border-color: var(--surface-border) !important; color: var(--text) !important; }
+[data-theme="dark"] .cd-chat-input input::placeholder { color: var(--text3) !important; }
+[data-theme="dark"] .cd-suggestion { background: var(--bg3) !important; border-color: var(--surface-border) !important; color: var(--text2) !important; }
+[data-theme="dark"] .cd-suggestion:hover { background: var(--info-bg) !important; color: var(--info) !important; }
+
+[data-theme="dark"] .cd-analysis-card h3 { color: var(--text) !important; }
+
+[data-theme="dark"] .cd-interview-card h2 { color: var(--text) !important; }
+[data-theme="dark"] .cd-interview-card p { color: var(--text3) !important; }
+[data-theme="dark"] .cd-interview-details span { background: var(--bg3) !important; color: var(--text2) !important; }
+[data-theme="dark"] .cd-interview-tips { background: var(--bg3) !important; }
+[data-theme="dark"] .cd-interview-tips h4 { color: var(--warning) !important; }
+[data-theme="dark"] .cd-interview-tips li { color: var(--text3) !important; }
+[data-theme="dark"] .cd-start-interview { background: var(--info) !important; }
+
+/* Candidate Login dark */
+[data-theme="dark"] .candidate-login-page { background: var(--bg) !important; color: var(--text) !important; }
+[data-theme="dark"] .cl-card { background: var(--surface) !important; border-color: var(--surface-border) !important; box-shadow: var(--shadow-lg) !important; }
+[data-theme="dark"] .cl-title { color: var(--text) !important; }
+[data-theme="dark"] .cl-subtitle { color: var(--text3) !important; }
+[data-theme="dark"] .cl-input { background: var(--bg3) !important; border-color: var(--surface-border) !important; color: var(--text) !important; }
+[data-theme="dark"] .cl-input::placeholder { color: var(--text3) !important; }
+[data-theme="dark"] .cl-input-icon { color: var(--text3) !important; }
+[data-theme="dark"] .cl-error { color: var(--error) !important; }
+[data-theme="dark"] .cl-info { color: var(--text3) !important; }
+[data-theme="dark"] .cl-submit { background: var(--info) !important; }
+[data-theme="dark"] .cl-back { color: var(--text2) !important; }
+[data-theme="dark"] .cl-nav-logo { color: var(--text) !important; }
+[data-theme="dark"] .cl-bg-gradient { background: radial-gradient(ellipse at top, rgba(59,130,246,0.1), transparent 70%) !important; }
 .dashboard-layout { background: var(--bg); color: var(--text); }
 .sidebar { background: var(--bg2); border-color: var(--surface-border); }
 .main { background: var(--bg); }
