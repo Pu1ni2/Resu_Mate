@@ -18,12 +18,12 @@
       "result": {
         "report": "## Interview Terminated\n\nAutomatically terminated after 3 proctoring violations.\n\n---\n\n## Interview Summary\nThe interview with Sai Punith Kolla for the Python Developer role was unfortunately not conducted, as indicated by the duration of 0 minutes and 0 seconds. Consequently, there is no information available regarding the candidate's responses or technical capabilities. \n\n## Strengths Demonstrated\n- Due to the absence of an interview, no strengths were observed or demonstrated by the candidate.\n\n## Areas for Improvement\n- Ensure availability and punctuality for scheduled interviews to allow for a proper assessment of skills and fit for the role.\n- Proactively communicate any scheduling conflicts or technical issues that might prevent participation in the interview.\n\n## Overall Recommendation\nPass\n\n## Suggested Follow-up\n- Confirm the candidate's interest and availability for rescheduling the interview.\n- If rescheduled, consider asking about their experience with Python projects and problem-solving approaches.",
         "scores": [],
-        "violations": 3,
-        "eyeContact": 0,
-        "timer": 0,
-        "terminated": true,
+        "violations": 0,
+        "eyeContact": 7,
+        "timer": 71,
+        "terminated": false,
         "avgScore": 0,
-        "lookAwayCount": 0
+        "lookAwayCount": 91
       }
     }
   },

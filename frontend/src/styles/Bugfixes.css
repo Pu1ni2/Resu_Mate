@@ -1,0 +1,216 @@
+/* ═══════════════════════════════════════════════════
+   BUG FIXES & FORMATTING — Final polish pass
+   ═══════════════════════════════════════════════════ */
+
+/* ─── Agent Result Section — proper vertical layout ─── */
+.agent-result {
+  display: flex; flex-direction: column; gap: 16px;
+  max-width: 100%; overflow: hidden;
+}
+.agent-report {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  overflow-x: auto;
+}
+.agent-report .md { line-height: 1.7; }
+.agent-report .md h2 { font-size: 16px; color: var(--accent); margin-top: 20px; margin-bottom: 8px; }
+.agent-report .md h3 { font-size: 15px; margin-top: 16px; margin-bottom: 6px; }
+.agent-report .md p { margin-bottom: 8px; color: var(--text2); }
+.agent-report .md strong { color: var(--text); }
+.agent-report .md ul, .agent-report .md ol { padding-left: 20px; margin-bottom: 10px; }
+.agent-report .md li { margin-bottom: 4px; color: var(--text2); }
+
+.agent-actions {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; padding: 0;
+}
+.agent-actions .btn { font-size: 13px; padding: 10px 16px; }
+
+/* ─── Interview Creator Panel — clean card layout ─── */
+.interview-creator {
+  border-radius: var(--radius-xl) !important;
+  overflow: hidden;
+  margin-top: 0;
+}
+.interview-creator-body {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.interview-creator-body label {
+  font-size: 12px; font-weight: 600;
+  color: var(--text3); margin-bottom: 2px;
+}
+.interview-creator-body select {
+  padding: 10px 14px;
+  background: var(--bg3); color: var(--text);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans); font-size: 14px;
+}
+.interview-creator-body select option {
+  background: var(--bg2); color: var(--text);
+}
+
+/* ─── Email Composer — clean card layout ─── */
+.email-composer {
+  border-radius: var(--radius-xl) !important;
+  overflow: hidden;
+}
+.email-composer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--surface-border);
+}
+.email-composer-title {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 600; font-size: 14px;
+}
+.email-composer-actions { display: flex; gap: 6px; }
+.email-action-btn {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  background: none; border: 1px solid var(--surface-border);
+  color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.email-action-btn:hover { background: var(--bg3); color: var(--text); }
+
+.email-fields { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.email-field { display: flex; flex-direction: column; gap: 4px; }
+.email-field label { font-size: 12px; font-weight: 600; color: var(--text3); }
+.email-input {
+  padding: 10px 14px; font-size: 14px;
+  background: var(--bg3); border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md); color: var(--text);
+  font-family: var(--font-sans);
+}
+.email-input:focus { outline: none; border-color: var(--accent); }
+.email-input::placeholder { color: var(--text3); }
+.email-ccbcc-toggle {
+  font-size: 12px; color: var(--info); background: none;
+  border: none; cursor: pointer; text-align: left; padding: 0;
+}
+.email-divider { height: 1px; background: var(--surface-border); margin: 0 20px; }
+.email-body {
+  margin: 0 20px; padding: 14px;
+  background: var(--bg3); border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md); color: var(--text);
+  font-family: var(--font-sans); font-size: 14px;
+  line-height: 1.6; resize: vertical; min-height: 180px;
+}
+.email-body:focus { outline: none; border-color: var(--accent); }
+.email-type-select { padding: 20px; }
+.email-type-label { font-size: 13px; color: var(--text3); margin-bottom: 12px; }
+.email-type-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.email-drafting {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 40px; color: var(--text3);
+}
+.email-send-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 12px 20px;
+}
+.email-send-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: var(--font-sans); border: 1px solid var(--surface-border);
+  background: var(--bg3); color: var(--text2);
+  transition: all 0.15s;
+}
+.email-send-btn:hover { background: var(--bg4); color: var(--text); }
+.email-send-btn.gmail { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.email-send-btn.outlook { background: var(--info-bg); border-color: var(--info); color: var(--info); }
+
+/* ─── Agent Error ─── */
+.agent-error {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px; color: var(--error);
+}
+
+/* ─── Agent Loading ─── */
+.agent-loading {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 24px; text-align: center;
+}
+.agent-loading h3 { margin-top: 16px; font-size: 16px; }
+.agent-loading-steps { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.agent-step-item { font-size: 13px; color: var(--text3); }
+.agent-step-item.active { color: var(--accent); }
+
+/* ─── Hiring Manager — dark/light theme support ─── */
+.dashboard-layout { background: var(--bg); color: var(--text); }
+.sidebar { background: var(--bg2); border-color: var(--surface-border); }
+.main { background: var(--bg); }
+.main-header { background: var(--bg2); border-color: var(--surface-border); }
+
+[data-theme="light"] .dashboard-layout { background: #F8FAFC; color: #1E293B; }
+[data-theme="light"] .sidebar { background: #FFFFFF; border-color: #E2E8F0; }
+[data-theme="light"] .main { background: #F8FAFC; }
+[data-theme="light"] .main-header { background: #FFFFFF; border-color: #E2E8F0; }
+[data-theme="light"] .sidebar-link { color: #64748B; }
+[data-theme="light"] .sidebar-link:hover { background: #F1F5F9; color: #1E293B; }
+[data-theme="light"] .sidebar-link.active { background: rgba(245,158,11,0.08); color: #D97706; }
+[data-theme="light"] .sidebar-section-title { color: #94A3B8; }
+[data-theme="light"] .main-title { color: #1E293B; }
+
+[data-theme="light"] .glass-card { background: #FFFFFF; border-color: #E2E8F0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+[data-theme="light"] .glass-card::before { display: none; }
+[data-theme="light"] .glass-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+[data-theme="light"] .candidate-card, [data-theme="light"] .focus-candidate-card { border-color: #E2E8F0; }
+[data-theme="light"] .candidate-card:hover, [data-theme="light"] .focus-candidate-card:hover { border-color: #CBD5E1; }
+[data-theme="light"] .candidate-card.selected { border-color: #F59E0B; background: rgba(245,158,11,0.04); }
+
+[data-theme="light"] .upload-zone { border-color: #CBD5E1; }
+[data-theme="light"] .upload-zone:hover { border-color: #F59E0B; background: rgba(245,158,11,0.04); }
+
+[data-theme="light"] .chat-bubble.assistant { background: #F1F5F9; color: #1E293B; }
+[data-theme="light"] .chat-bubble.user { background: #F59E0B; color: #000; }
+[data-theme="light"] .chat-input { background: #FFFFFF; border-color: #E2E8F0; color: #1E293B; }
+[data-theme="light"] .chat-suggestion { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+
+[data-theme="light"] .skill { background: #F1F5F9; color: #475569; }
+[data-theme="light"] .badge { border: none; }
+
+[data-theme="light"] .focus-tabs { background: #F1F5F9; }
+[data-theme="light"] .focus-tab { color: #64748B; }
+[data-theme="light"] .focus-tab.active { background: #FFFFFF; color: #1E293B; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+[data-theme="light"] .agent-chip { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+[data-theme="light"] .agent-chip:hover { background: #E2E8F0; }
+[data-theme="light"] .agent-option { border-color: #E2E8F0; }
+[data-theme="light"] .agent-option:hover { border-color: #F59E0B; background: rgba(245,158,11,0.04); }
+
+[data-theme="light"] .input { background: #FFFFFF; border-color: #E2E8F0; color: #1E293B; }
+[data-theme="light"] .email-input { background: #FFFFFF; border-color: #E2E8F0; color: #1E293B; }
+[data-theme="light"] .email-body { background: #FFFFFF; border-color: #E2E8F0; color: #1E293B; }
+[data-theme="light"] .email-send-btn { background: #F1F5F9; border-color: #E2E8F0; color: #475569; }
+
+[data-theme="light"] .toggle { background: #E2E8F0; }
+[data-theme="light"] .toggle.active { background: #F59E0B; }
+
+/* Scanner terminal stays dark always */
+[data-theme="light"] .scanner-terminal { background: #0a0a0a !important; color: #22c55e !important; }
+[data-theme="light"] .scanner-log { color: #22c55e !important; }
+[data-theme="light"] .matrix-canvas { opacity: 0.3; }
+
+/* ─── Consistent spacing for all pages ─── */
+.main-content { padding: 24px; }
+.focus-content { padding: 0; }
+
+/* ─── Fix: buttons inside agent-actions should not overflow ─── */
+.agent-actions { overflow-x: auto; }
+.agent-actions .btn { flex-shrink: 0; }
+
+/* ─── Fix: agent report markdown tables ─── */
+.agent-report .md table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.agent-report .md th, .agent-report .md td { padding: 8px 12px; border: 1px solid var(--surface-border); text-align: left; font-size: 13px; }
+.agent-report .md th { background: var(--bg3); font-weight: 600; color: var(--text); }
+.agent-report .md td { color: var(--text2); }
+
+/* ─── Fix: focus tools container spacing ─── */
+.tools-container { padding: 0 !important; }
+.tool-content { padding: 0; }
