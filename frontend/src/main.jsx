@@ -5,12 +5,14 @@ import { AppProvider } from './context/AppContext'
 import App from './App'
 import ProductLayer from './components/ProductLayer'
 
-// CSS - order matters: tokens → pages → components → overrides → product layer
+// CSS - order matters: tokens → pages → components → overrides → themes → fixes → product layer
 import './styles/design-system.css'
 import './styles/landing.css'
 import './styles/global.css'
 import './styles/dashboard-polish.css'
+import './styles/candidate-theme.css'
 import './styles/interview-room.css'
+import './styles/bugfixes.css'
 import './styles/product-layer.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(

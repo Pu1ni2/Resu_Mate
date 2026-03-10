@@ -42,10 +42,10 @@ export default function CandidateLogin() {
           has_interview: data.has_interview || false,
           interview_config: data.interview_config || null
         };
-        // Save to BOTH localStorage AND context
         localStorage.setItem('resumate_candidate', JSON.stringify(session));
         setCandidateSession(session);
-        navigate('/candidate/dashboard');
+        // Small delay to ensure React state updates before navigation
+        setTimeout(() => navigate('/candidate/dashboard'), 100);
       } else {
         setError(data.message || 'No access found for this email. Please contact your recruiter.');
       }
