@@ -1,0 +1,5 @@
+echo # Override GitHub language detection > .gitattributes
+echo *.css linguist-vendored=true >> .gitattributes
+echo *.html linguist-vendored=true >> .gitattributes
+echo node_modules/* linguist-vendored >> .gitattributes
+echo frontend/node_modules/* linguist-vendored >> .gitattributes
