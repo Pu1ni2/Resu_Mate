@@ -125,14 +125,29 @@ Keep responses concise and structured."""
 
 INTERVIEW_PREP_PROMPT = """You are an expert Interview Preparation Coach. Your role is to help candidates prepare for job interviews.
 
-Given the candidate's resume and background, you:
-- Generate realistic interview questions for their target role
-- Provide tips on how to answer behavioral questions (STAR method)
-- Help them prepare their "tell me about yourself" pitch
-- Suggest questions they should ask the interviewer
-- Provide mock interview scenarios
-- Coach on body language and presentation tips
-- Help with salary negotiation preparation
+IMPORTANT: Before giving generic advice, ASK the candidate about their specific situation:
+- What role are they interviewing for?
+- What company or industry?
+- What type of interview (technical, behavioral, system design, HR)?
+- What round (phone screen, onsite, final)?
+- Any specific concerns or areas they want to focus on?
+
+If the candidate gives vague requests like "help me prepare", ask 1-2 clarifying questions first.
+Format your clarifying questions as clear options when possible, like:
+"What type of interview are you preparing for?
+- Technical coding interview
+- System design interview  
+- Behavioral/HR interview
+- Case study interview"
+
+Once you have context, provide:
+- Realistic interview questions tailored to their specific role and company
+- Tips on how to answer using the STAR method for behavioral questions
+- Help crafting their "tell me about yourself" pitch
+- Questions they should ask the interviewer
+- Mock interview scenarios with feedback
+- Body language and presentation tips
+- Salary negotiation preparation
 
 Be practical and supportive. Give example answers when asked.
 Keep responses focused and actionable."""
@@ -220,8 +235,8 @@ Be warm, encouraging, and practical."""
         reply = response.choices[0].message.content
         history.append({"role": "assistant", "content": reply})
         
-        # Generate suggestions based on mode
-        suggestions = get_suggestions(req.mode, len(history))
+        # Always generate follow-up suggestions
+        suggestions = get_suggestions(req.mode, len(history), reply)
         
         return {
             "reply": reply,
@@ -229,43 +244,59 @@ Be warm, encouraging, and practical."""
             "suggestions": suggestions,
         }
     except Exception as e:
-        return {"reply": f"Sorry, I encountered an error: {str(e)}", "mode": req.mode, "suggestions": []}
+        return {"reply": f"Sorry, I encountered an error: {str(e)}", "mode": req.mode, "suggestions": ["Try again", "Ask something else"]}
 
 
-def get_suggestions(mode: str, history_len: int) -> List[str]:
-    """Context-aware suggestions based on mode and conversation progress"""
+def get_suggestions(mode: str, history_len: int, last_reply: str = "") -> List[str]:
+    """Context-aware suggestions — always provide follow-ups"""
     if history_len <= 2:
-        # First message suggestions
         return {
             "resume_coach": [
-                "Review my resume and give feedback",
-                "What's missing from my resume?",
-                "How can I make it ATS-friendly?",
+                "Review my resume and highlight weak areas",
+                "How can I optimize for ATS?",
+                "Suggest stronger bullet points",
             ],
             "interview_prep": [
-                "Generate practice questions for my role",
-                "Help me with 'Tell me about yourself'",
-                "What behavioral questions should I expect?",
+                "What role am I preparing for?",
+                "Generate 5 practice questions",
+                "Help me with behavioral questions",
             ],
             "career_advisor": [
-                "What are my key strengths?",
+                "Analyze my strengths and weaknesses",
                 "What career paths fit my profile?",
-                "What skills should I learn next?",
+                "What skills are in-demand for my field?",
             ],
             "general": [
                 "Review my resume",
                 "Help me prepare for interviews",
-                "What career advice do you have?",
+                "Give me career advice",
             ],
         }.get(mode, [])
-    else:
-        # Follow-up suggestions
-        return {
-            "resume_coach": ["Suggest better bullet points", "Check for grammar issues", "How does it compare to top resumes?"],
-            "interview_prep": ["Give me a mock interview", "How should I handle tough questions?", "Tips for virtual interviews"],
-            "career_advisor": ["Recommend certifications", "What's the job market like?", "How to negotiate salary?"],
-            "general": ["Tell me more", "What else should I improve?", "Any other tips?"],
-        }.get(mode, [])
+    
+    # Dynamic follow-ups based on conversation stage
+    follow_ups = {
+        "resume_coach": [
+            "What about the format and layout?",
+            "How does it compare to top resumes?",
+            "Help me rewrite the summary section",
+        ],
+        "interview_prep": [
+            "Give me a harder question",
+            "How should I handle salary negotiation?",
+            "What questions should I ask them?",
+        ],
+        "career_advisor": [
+            "What certifications would help?",
+            "How's the job market for my role?",
+            "What should I focus on in the next 6 months?",
+        ],
+        "general": [
+            "Tell me more",
+            "What else should I improve?",
+            "Can you be more specific?",
+        ],
+    }
+    return follow_ups.get(mode, ["Tell me more", "What else?", "Can you elaborate?"])
 
 
 @router.get("/context/{email}")

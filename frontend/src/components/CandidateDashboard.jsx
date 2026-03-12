@@ -186,58 +186,80 @@ export default function CandidateDashboard() {
     }
   }, [candidateSession, navigate, setCandidateSession]);
 
-  // Advisor chat state
+  // Advisor chat state — messages stored PER MODE so switching tabs doesn't lose them
   const [advisorMode, setAdvisorMode] = useState('general');
-  const [advisorMessages, setAdvisorMessages] = useState([]);
-  const [advisorSuggestions, setAdvisorSuggestions] = useState(['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?']);
+  const [advisorChatMap, setAdvisorChatMap] = useState({
+    general: [], resume_coach: [], interview_prep: [], career_advisor: []
+  });
   const [advisorTyping, setAdvisorTyping] = useState(false);
   const [resumeUploaded, setResumeUploaded] = useState(false);
   const [resumeData, setResumeData] = useState(null);
+
+  const advisorMessages = advisorChatMap[advisorMode] || [];
+
+  const modeSuggestions = {
+    general: ['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?'],
+    resume_coach: ['What are the weak spots in my resume?', 'How can I make it ATS-friendly?', 'Suggest better bullet points'],
+    interview_prep: ['Generate practice questions for my role', 'Help me with "Tell me about yourself"', 'What behavioral questions should I expect?'],
+    career_advisor: ['What are my key strengths?', 'What career paths fit my profile?', 'What skills should I learn next?'],
+  };
+
+  // Follow-up suggestions — show initial if empty, otherwise show dynamic from backend
+  const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
+  const advisorSuggestions = advisorMessages.length === 0 ? modeSuggestions[advisorMode] : dynamicSuggestions;
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [advisorMessages, advisorTyping]);
 
+  // Reset dynamic suggestions when switching modes
+  useEffect(() => {
+    setDynamicSuggestions([]);
+  }, [advisorMode]);
+
   const handleUpload = async (files) => {
-    for (const file of Array.from(files)) {
-      try {
-        const form = new FormData();
-        form.append('file', file);
-        form.append('email', candidateSession?.email || '');
-        const resp = await fetch(`${API_BASE}/api/advisor/upload-resume`, { method: 'POST', body: form });
-        const data = await resp.json();
-        if (data.success) {
-          setResumeUploaded(true);
-          setResumeData(data.data);
-          setAdvisorCandidates(prev => {
-            const filtered = prev.filter(c => c.id !== data.data.id);
-            return [data.data, ...filtered];
-          });
-        } else {
-          alert('Upload failed');
-        }
-      } catch (err) { alert(`Upload failed: ${err.message}`); }
-    }
+    // Only take the first file — single resume per candidate
+    const file = Array.from(files)[0];
+    if (!file) return;
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('email', candidateSession?.email || '');
+      const resp = await fetch(`${API_BASE}/api/advisor/upload-resume`, { method: 'POST', body: form });
+      const data = await resp.json();
+      if (data.success) {
+        setResumeUploaded(true);
+        setResumeData(data.data);
+        // Replace — only one resume allowed
+        setAdvisorCandidates([data.data]);
+      } else {
+        alert('Upload failed');
+      }
+    } catch (err) { alert(`Upload failed: ${err.message}`); }
   };
 
   const handleAdvisorSend = async (msg) => {
     const m = msg || input.trim();
     if (!m || advisorTyping) return;
     setInput('');
-    setAdvisorMessages(prev => [...prev, { role: 'user', content: m }]);
-    setAdvisorSuggestions([]);
+    const mode = advisorMode;
+    setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'user', content: m }] }));
+    setDynamicSuggestions([]); // Clear while loading
     setAdvisorTyping(true);
     try {
       const resp = await fetch(`${API_BASE}/api/advisor/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: candidateSession?.email || '', message: m, mode: advisorMode })
+        body: JSON.stringify({ email: candidateSession?.email || '', message: m, mode })
       });
       const data = await resp.json();
-      setAdvisorMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'No response.' }]);
-      if (data.suggestions?.length > 0) setAdvisorSuggestions(data.suggestions);
+      setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: data.reply || 'No response.' }] }));
+      // Set follow-up suggestions from backend
+      if (data.suggestions?.length > 0) {
+        setDynamicSuggestions(data.suggestions);
+      }
     } catch {
-      setAdvisorMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, could not connect. Please try again.' }]);
+      setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: 'Sorry, could not connect. Please try again.' }] }));
     }
     setAdvisorTyping(false);
   };
@@ -335,20 +357,36 @@ export default function CandidateDashboard() {
           {/* ═══ UPLOAD ═══ */}
           {tab === 'upload' && (
             <div className="cd-upload-section">
-              <div className="cd-card cd-upload-zone" onClick={() => document.getElementById('cd-file').click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); handleUpload(e.dataTransfer.files); }}>
-                <Upload size={36} className="cd-upload-icon" />
-                <h3>Upload Your Resume</h3>
-                <p>PDF, DOCX, or TXT (max 5MB)</p>
-                <input id="cd-file" type="file" accept=".pdf,.docx,.txt" multiple hidden onChange={e => handleUpload(e.target.files)} />
-              </div>
-              {advisorCandidates.length > 0 && (
-                <div className="cd-uploaded-list">
-                  {advisorCandidates.map((c, i) => (
-                    <div key={c.id} className={`cd-card cd-uploaded-item ${selectedIds.includes(c.id) ? 'selected' : ''}`} onClick={() => toggleSelection(c.id)}>
-                      <FileText size={18} /><span>{c.name || `Resume ${i + 1}`}</span>
-                      {selectedIds.includes(c.id) && <Check size={16} style={{ color: '#22C55E' }} />}
+              {advisorCandidates.length === 0 ? (
+                <div className="cd-card cd-upload-zone" onClick={() => document.getElementById('cd-file').click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); handleUpload(e.dataTransfer.files); }}>
+                  <Upload size={36} className="cd-upload-icon" />
+                  <h3>Upload Your Resume</h3>
+                  <p>PDF, DOCX, or TXT (max 5MB)</p>
+                  <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
+                </div>
+              ) : (
+                <div>
+                  {/* Show uploaded resume */}
+                  <div className="cd-card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '20px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FileText size={22} style={{ color: '#3B82F6' }} />
                     </div>
-                  ))}
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px' }}>{advisorCandidates[0].name || 'Resume'}</h3>
+                      <p style={{ fontSize: '13px', color: 'var(--text3)', margin: 0 }}>
+                        {advisorCandidates[0].predicted_role || ''} {advisorCandidates[0].experience_level ? `· ${advisorCandidates[0].experience_level}` : ''} {advisorCandidates[0].total_experience_years ? `· ${advisorCandidates[0].total_experience_years}y exp` : ''}
+                      </p>
+                    </div>
+                    <Check size={20} style={{ color: '#22C55E' }} />
+                  </div>
+                  {/* Replace button */}
+                  <button
+                    onClick={() => document.getElementById('cd-file-replace').click()}
+                    style={{ marginTop: '12px', padding: '10px 18px', fontSize: '13px', background: 'transparent', border: '1px solid var(--surface-border)', borderRadius: '10px', color: 'var(--text3)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <Upload size={14} style={{ marginRight: '6px', verticalAlign: '-2px' }} /> Replace Resume
+                  </button>
+                  <input id="cd-file-replace" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
                 </div>
               )}
             </div>
@@ -379,60 +417,132 @@ export default function CandidateDashboard() {
           {/* ═══ AI ADVISOR CHAT ═══ */}
           {tab === 'chat' && (
             <div className="cd-chat-section">
-              {/* Mode selector */}
-              <div style={{ display: 'flex', gap: '6px', padding: '12px 16px', borderBottom: '1px solid var(--surface-border)', background: 'var(--bg2)', flexWrap: 'wrap' }}>
+              {/* Mode selector tabs */}
+              <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--surface-border)', background: 'var(--bg2)' }}>
                 {[
-                  { id: 'general', label: '💬 General', desc: 'Ask anything' },
-                  { id: 'resume_coach', label: '📄 Resume Coach', desc: 'Improve your resume' },
-                  { id: 'interview_prep', label: '🎯 Interview Prep', desc: 'Practice & tips' },
-                  { id: 'career_advisor', label: '🚀 Career Advisor', desc: 'Growth & strategy' },
+                  { id: 'general', icon: '💬', label: 'General' },
+                  { id: 'resume_coach', icon: '📄', label: 'Resume Coach' },
+                  { id: 'interview_prep', icon: '🎯', label: 'Interview Prep' },
+                  { id: 'career_advisor', icon: '🚀', label: 'Career Advisor' },
                 ].map(mode => (
                   <button
                     key={mode.id}
-                    onClick={() => { setAdvisorMode(mode.id); setAdvisorMessages([]); setAdvisorSuggestions(['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?']); }}
+                    onClick={() => setAdvisorMode(mode.id)}
                     style={{
-                      padding: '8px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '600',
-                      border: advisorMode === mode.id ? '1px solid var(--cd-accent, #3B82F6)' : '1px solid var(--surface-border)',
-                      background: advisorMode === mode.id ? 'var(--cd-accent-bg, rgba(59,130,246,0.1))' : 'transparent',
-                      color: advisorMode === mode.id ? 'var(--cd-accent, #3B82F6)' : 'var(--text2)',
+                      padding: '12px 18px', fontSize: '13px', fontWeight: advisorMode === mode.id ? '600' : '500',
+                      border: 'none', borderBottom: advisorMode === mode.id ? '2px solid #3B82F6' : '2px solid transparent',
+                      background: 'transparent',
+                      color: advisorMode === mode.id ? '#3B82F6' : 'var(--text3)',
                       cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                      display: 'flex', alignItems: 'center', gap: '6px',
                     }}
                   >
-                    {mode.label}
+                    <span>{mode.icon}</span> {mode.label}
+                    {(advisorChatMap[mode.id]?.length || 0) > 0 && (
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3B82F6' }} />
+                    )}
                   </button>
                 ))}
               </div>
 
               <div className="cd-chat-container">
                 <div className="cd-chat-messages">
+                  {/* Empty state per mode */}
                   {advisorMessages.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
-                      <Bot size={36} style={{ color: 'var(--cd-accent, #3B82F6)', marginBottom: '12px' }} />
-                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)', marginBottom: '6px' }}>
+                    <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                        <Bot size={28} color="#fff" />
+                      </div>
+                      <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text)', marginBottom: '8px' }}>
                         {advisorMode === 'resume_coach' ? '📄 Resume Coach' : advisorMode === 'interview_prep' ? '🎯 Interview Prep' : advisorMode === 'career_advisor' ? '🚀 Career Advisor' : '💬 AI Career Assistant'}
                       </h3>
-                      <p style={{ fontSize: '13px' }}>
-                        {advisorMode === 'resume_coach' ? "I'll review your resume and suggest improvements." : advisorMode === 'interview_prep' ? "I'll help you prepare for your upcoming interviews." : advisorMode === 'career_advisor' ? "I'll help you plan your career growth." : "Ask me anything about your resume, interviews, or career."}
+                      <p style={{ fontSize: '14px', color: 'var(--text3)', maxWidth: '380px', margin: '0 auto 20px', lineHeight: '1.5' }}>
+                        {advisorMode === 'resume_coach' ? "I'll analyze your resume, identify gaps, and suggest specific improvements to make it stand out." : advisorMode === 'interview_prep' ? "I'll generate practice questions, help you craft answers using the STAR method, and give presentation tips." : advisorMode === 'career_advisor' ? "I'll analyze your strengths, suggest career paths, recommend skills to learn, and provide market insights." : "Your personal career assistant — ask about your resume, interviews, or career growth."}
                       </p>
                     </div>
                   )}
+
+                  {/* Messages */}
                   {advisorMessages.map((m, i) => (
                     <div key={i} className={`cd-chat-msg ${m.role}`}>
-                      {m.role === 'assistant' && <AIAvatar />}
-                      <div className={`cd-chat-bubble ${m.role}`}>
-                        {m.role === 'user' ? <p>{m.content}</p> : <SafeMarkdown text={m.content} />}
+                      {m.role === 'assistant' && (
+                        <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Bot size={16} color="#fff" />
+                        </div>
+                      )}
+                      <div style={{
+                        padding: '12px 16px', borderRadius: '14px', maxWidth: '75%', fontSize: '14px', lineHeight: '1.65',
+                        ...(m.role === 'user' ? {
+                          background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                          color: '#FFFFFF',
+                          borderBottomRightRadius: '4px',
+                        } : {
+                          background: 'var(--bg3)',
+                          color: 'var(--text)',
+                          borderBottomLeftRadius: '4px',
+                          border: '1px solid var(--surface-border)',
+                        })
+                      }}>
+                        {m.role === 'user' ? <p style={{ margin: 0, color: '#FFFFFF' }}>{m.content}</p> : <SafeMarkdown text={m.content} />}
                       </div>
                     </div>
                   ))}
-                  {advisorTyping && <div className="cd-chat-msg assistant"><AIAvatar /><div className="cd-chat-bubble assistant"><div className="typing"><span /><span /><span /></div></div></div>}
+                  {advisorTyping && (
+                    <div className="cd-chat-msg assistant">
+                      <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Bot size={16} color="#fff" />
+                      </div>
+                      <div style={{ padding: '14px 18px', borderRadius: '14px', background: 'var(--bg3)', border: '1px solid var(--surface-border)', borderBottomLeftRadius: '4px' }}>
+                        <div className="typing"><span /><span /><span /></div>
+                      </div>
+                    </div>
+                  )}
                   <div ref={msgEndRef} />
                 </div>
+
+                {/* Suggestions */}
                 {advisorSuggestions.length > 0 && !advisorTyping && (
-                  <div className="cd-suggestions">{advisorSuggestions.map((q, i) => <button key={i} className="cd-suggestion" onClick={() => handleAdvisorSend(q)}>{q}</button>)}</div>
+                  <div style={{ display: 'flex', gap: '8px', padding: '10px 16px', flexWrap: 'wrap', borderTop: '1px solid var(--surface-border)' }}>
+                    {advisorSuggestions.map((q, i) => (
+                      <button key={i} onClick={() => handleAdvisorSend(q)} style={{
+                        padding: '8px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '500',
+                        background: 'var(--bg3)', border: '1px solid var(--surface-border)', color: 'var(--text2)',
+                        cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}
+                      onMouseOver={e => { e.target.style.background = 'rgba(59,130,246,0.1)'; e.target.style.borderColor = '#3B82F6'; e.target.style.color = '#3B82F6'; }}
+                      onMouseOut={e => { e.target.style.background = 'var(--bg3)'; e.target.style.borderColor = 'var(--surface-border)'; e.target.style.color = 'var(--text2)'; }}
+                      >{q}</button>
+                    ))}
+                  </div>
                 )}
-                <div className="cd-chat-input">
-                  <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAdvisorSend(); }} placeholder={advisorMode === 'resume_coach' ? 'Ask about your resume...' : advisorMode === 'interview_prep' ? 'Ask about interview prep...' : advisorMode === 'career_advisor' ? 'Ask about career growth...' : 'Ask me anything...'} disabled={advisorTyping} />
-                  <button onClick={() => handleAdvisorSend()} disabled={!input.trim() || advisorTyping}><Send size={18} /></button>
+
+                {/* Input */}
+                <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderTop: '1px solid var(--surface-border)', background: 'var(--bg2)' }}>
+                  <input
+                    type="text" value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAdvisorSend(); }}
+                    placeholder={advisorMode === 'resume_coach' ? 'Ask about your resume...' : advisorMode === 'interview_prep' ? 'Ask about interviews...' : advisorMode === 'career_advisor' ? 'Ask about your career...' : 'Ask me anything...'}
+                    disabled={advisorTyping}
+                    style={{
+                      flex: 1, padding: '12px 16px', borderRadius: '12px',
+                      border: '1px solid var(--surface-border)', background: 'var(--bg3)',
+                      fontSize: '14px', color: 'var(--text)', fontFamily: 'inherit',
+                    }}
+                  />
+                  <button
+                    onClick={() => handleAdvisorSend()}
+                    disabled={!input.trim() || advisorTyping}
+                    style={{
+                      width: '44px', height: '44px', borderRadius: '12px',
+                      background: input.trim() ? '#3B82F6' : 'var(--bg3)',
+                      color: '#fff', border: 'none', cursor: input.trim() ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: input.trim() ? 1 : 0.4, transition: 'all 0.15s',
+                    }}
+                  >
+                    <Send size={18} />
+                  </button>
                 </div>
               </div>
             </div>
