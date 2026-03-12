@@ -165,29 +165,35 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
+  const [deleting, setDeleting] = useState(false);
+
   const deleteCandidate = useCallback(async (id) => {
-    // Remove from backend
+    setDeleting(true);
     try {
+      // Wait for backend to fully delete (hash cleanup, ChromaDB)
       await candidatesAPI.delete(id);
+      // Small delay to ensure backend state is consistent
+      await new Promise(r => setTimeout(r, 800));
     } catch (err) {
       console.error('Failed to delete from backend:', err);
     }
     // Remove from state
     setCandidates(prev => {
       const updated = prev.filter(c => c.id !== id);
-      // Also update localStorage immediately
       try { localStorage.setItem('resumate_candidates', JSON.stringify(updated)); } catch {}
       return updated;
     });
     setSelectedIds(prev => prev.filter(x => x !== id));
-    // Clear chat history since context changed
     setMessages([]);
     setSuggestions([]);
+    setDeleting(false);
   }, []);
 
   const clearAllCandidates = useCallback(async () => {
+    setDeleting(true);
     try {
       await candidatesAPI.deleteAll();
+      await new Promise(r => setTimeout(r, 800));
     } catch (err) {
       console.error('Failed to clear backend:', err);
     }
@@ -196,6 +202,7 @@ export const AppProvider = ({ children }) => {
     setMessages([]);
     setSuggestions([]);
     localStorage.removeItem('resumate_candidates');
+    setDeleting(false);
   }, []);
 
   // FIX: toggleSelection with strict equality
@@ -285,7 +292,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      candidates, setCandidates, selectedIds, selectedCandidates, uploadProgress, loading,
+      candidates, setCandidates, selectedIds, selectedCandidates, uploadProgress, loading, deleting,
       loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
       anonymize, setAnonymize, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,

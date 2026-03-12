@@ -52,19 +52,20 @@ export default function Landing() {
 
   // Auto-rotate agents
   useEffect(() => {
-    const timer = setInterval(() => setActiveAgent(a => (a + 1) % 4), 3500);
+    const timer = setInterval(() => setActiveAgent(a => (a + 1) % 5), 3500);
     return () => clearInterval(timer);
   }, []);
 
   const agents = [
     { name: 'Data Agent', desc: 'Scans resumes, scrapes GitHub & LinkedIn with browser automation, enriches candidate profiles from multiple sources.', icon: <Search size={20} />, color: '#3B82F6', tools: ['PDF Extract', 'Playwright', 'GitHub API', 'Tavily'] },
     { name: 'HR Agent', desc: 'Evaluates candidates against job requirements, drafts personalized emails, provides hiring recommendations with bias checks.', icon: <UserCheck size={20} />, color: '#22C55E', tools: ['GPT-4o', 'Salary Research', 'Email Drafting'] },
-    { name: 'Technical Agent', desc: 'Generates role-specific interview questions, scores answers in real-time, produces comprehensive evaluation reports.', icon: <Cpu size={20} />, color: '#8B5CF6', tools: ['Voice AI', 'Question Gen', 'Scoring Engine'] },
+    { name: 'Technical Agent', desc: 'Orchestrates the entire interview pipeline — splits into two specialized sub-agents that work in sequence.', icon: <Cpu size={20} />, color: '#8B5CF6', tools: ['LiveKit', 'Simli Avatar', 'OpenAI Realtime', 'Whisper'], hasSubAgents: true },
     { name: 'Research Agent', desc: 'Searches the web for candidate info, fact-checks resume claims, provides real-time data during AI chat.', icon: <Globe size={20} />, color: '#F59E0B', tools: ['Tavily Search', 'Fact Check', 'Citation'] },
+    { name: 'Advisor Agent', desc: 'Candidate-facing career coach with 3 modes — Resume Coach, Interview Prep, and Career Advisor. Personalized AI guidance.', icon: <Bot size={20} />, color: '#EC4899', tools: ['Resume Coach', 'Interview Prep', 'Career Advisor'] },
   ];
 
   const features = [
-    { icon: <Bot size={22} />, title: '4 AI Agents', desc: 'Custom agent framework with Plan → Execute → Reflect → Output pipeline. Real agents, not just prompts.', accent: '#F59E0B' },
+    { icon: <Bot size={22} />, title: '5 AI Agents', desc: 'Custom agent framework with Plan → Execute → Reflect → Output pipeline. Real agents, not just prompts.', accent: '#F59E0B' },
     { icon: <Search size={22} />, title: 'Scanner Agent', desc: 'Extracts links from PDFs, launches headless browser to scrape GitHub profiles, searches LinkedIn via Tavily.', accent: '#3B82F6' },
     { icon: <Video size={22} />, title: 'Live AI Interview', desc: 'Camera + mic. AI asks questions via voice, candidate answers live. Real-time scoring with evaluation report.', accent: '#8B5CF6' },
     { icon: <Shield size={22} />, title: 'RAG — No Hallucinations', desc: 'ChromaDB vector store ensures AI only uses facts from actual resumes. Never makes things up.', accent: '#22C55E' },
@@ -118,7 +119,7 @@ export default function Landing() {
           </h1>
 
           <p className="l-hero-desc animate-fadeInUp" style={{ animationDelay: '200ms' }}>
-            4 specialized AI agents work together to analyze resumes, scrape profiles, evaluate candidates, and conduct live video interviews — all in one platform.
+            5 specialized AI agents work together to analyze resumes, scrape profiles, evaluate candidates, coach careers, and conduct live avatar interviews — all in one platform.
           </p>
 
           {/* Role selector */}
@@ -163,7 +164,7 @@ export default function Landing() {
         <div className="l-section-inner">
           <div className="l-section-header">
             <span className="l-section-tag">Architecture</span>
-            <h2>4 Specialized AI Agents</h2>
+            <h2>5 Specialized AI Agents</h2>
             <p>Each agent plans its approach, executes with tools, reflects on quality, and delivers results. Not prompt templates — real multi-step agents.</p>
           </div>
 
@@ -195,6 +196,72 @@ export default function Landing() {
                 </div>
               </div>
               <p className="l-agent-detail-desc">{agents[activeAgent].desc}</p>
+
+              {/* Sub-agents for Technical Agent */}
+              {agents[activeAgent].hasSubAgents && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0', margin: '16px 0', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {/* Technical Agent box */}
+                  <div style={{ padding: '12px 18px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '12px', textAlign: 'center', minWidth: '100px' }}>
+                    <Cpu size={18} style={{ color: '#8B5CF6', marginBottom: '4px' }} />
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#8B5CF6' }}>Technical Agent</div>
+                  </div>
+
+                  {/* Animated arrow */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px' }}>
+                    <svg width="60" height="60" viewBox="0 0 60 60" style={{ overflow: 'visible' }}>
+                      {/* Arrow to Interview Agent */}
+                      <path d="M0,20 Q30,5 55,15" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeDasharray="4,4">
+                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />
+                      </path>
+                      <polygon points="52,12 58,16 52,20" fill="#8B5CF6">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
+                      </polygon>
+                      {/* Arrow to Scoring Agent */}
+                      <path d="M0,40 Q30,55 55,45" fill="none" stroke="#F59E0B" strokeWidth="2" strokeDasharray="4,4">
+                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />
+                      </path>
+                      <polygon points="52,42 58,46 52,50" fill="#F59E0B">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
+                      </polygon>
+                    </svg>
+                  </div>
+
+                  {/* Sub-agent boxes */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ padding: '10px 16px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Video size={14} style={{ color: '#8B5CF6' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: '#A78BFA' }}>Interview Agent</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text3)' }}>LiveKit + Simli Avatar + OpenAI Realtime</div>
+                      </div>
+                    </div>
+
+                    {/* Arrow between sub-agents */}
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M10,2 L10,14" stroke="var(--text3)" strokeWidth="1.5" strokeDasharray="3,2">
+                          <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.8s" repeatCount="indefinite" />
+                        </path>
+                        <polygon points="7,12 10,18 13,12" fill="var(--text3)" />
+                      </svg>
+                      <span style={{ fontSize: '10px', opacity: 0.6 }}>scores feed into</span>
+                    </div>
+
+                    <div style={{ padding: '10px 16px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BarChart2 size={14} style={{ color: '#F59E0B' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: '#FBBF24' }}>Scoring Agent</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text3)' }}>GPT-4o evaluation + per-question feedback</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="l-agent-tools">
                 <span className="l-agent-tools-label">Tools:</span>
                 {agents[activeAgent].tools.map(tool => (

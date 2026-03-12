@@ -410,12 +410,38 @@ BADGES (pick 2-3):
     def get_candidate(self, candidate_id: int) -> Optional[Dict]:
         return self.candidates.get(candidate_id)
     
+    # def delete_candidate(self, candidate_id: int):
+    #     if candidate_id in self.candidates:
+    #         candidate=self.candidates[candidate_id]
+    #         del self.candidates[candidate_id]
+
     def delete_candidate(self, candidate_id: int):
+        """Delete a candidate and remove their file hash so re-upload works"""
         if candidate_id in self.candidates:
-            candidate=self.candidates[candidate_id]
-            del self.candidates[candidate_id]
+            candidate = self.candidates[candidate_id]
+        
+            # Remove file hash — THIS IS THE KEY FIX
+            file_hash = candidate.get('file_hash')
+        if file_hash:
+            self.uploaded_file_hashes.discard(file_hash)
+            print(f"Removed file hash for candidate {candidate_id}")
+        
+        # Remove from ChromaDB
+        if self.vectordb:
+            try:
+                self.vectordb._collection.delete(
+                    where={"candidate_id": candidate_id}
+                )
+            except:
+                pass
+        
+        del self.candidates[candidate_id]
+        print(f"Deleted candidate {candidate_id}")
+
+        
     
     def clear_all(self):
+        """Clear ALL data"""
         self.candidates = {}
         self.candidate_counter = 0
         self.recently_discussed = []
@@ -424,10 +450,11 @@ BADGES (pick 2-3):
             try:
                 shutil.rmtree(self.chroma_dir)
             except Exception as e:
-                print(f"Error removing chromaDB: {e}")
+                print(f"Error clearing ChromaDB: {e}")
         self._init_vectordb()
-        print("✅ All data cleared successfully")
-    
+        print("All data cleared")  
+        
+          
     def _create_name_mapping(self, candidate_ids: List[int]) -> Tuple[Dict[str, str], Dict[str, str]]:
         """Create mapping between real names and anonymous names"""
         real_to_anon = {}
