@@ -44,8 +44,8 @@ export default function CandidateLogin() {
         };
         localStorage.setItem('resumate_candidate', JSON.stringify(session));
         setCandidateSession(session);
-        // Small delay to ensure React state updates before navigation
-        setTimeout(() => navigate('/candidate/dashboard'), 100);
+        // Delay to ensure React state propagates before navigation
+        setTimeout(() => navigate('/candidate/dashboard'), 300);
       } else {
         setError(data.message || 'No access found for this email. Please contact your recruiter.');
       }

@@ -170,14 +170,21 @@ export default function CandidateDashboard() {
     return null;
   });
 
-  // Redirect if no session
+  // Redirect if no session — but check localStorage first
   useEffect(() => {
-    if (!candidateSession) navigate('/candidate/login');
-  }, [candidateSession, navigate]);
-
-  useEffect(() => {
-    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [advisorMessages, advisorTyping]);
+    if (!candidateSession) {
+      // Double-check localStorage before redirecting
+      try {
+        const stored = localStorage.getItem('resumate_candidate');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setCandidateSession(parsed);
+          return; // Don't redirect, session will be set
+        }
+      } catch {}
+      navigate('/candidate/login');
+    }
+  }, [candidateSession, navigate, setCandidateSession]);
 
   // Advisor chat state
   const [advisorMode, setAdvisorMode] = useState('general');
@@ -186,6 +193,10 @@ export default function CandidateDashboard() {
   const [advisorTyping, setAdvisorTyping] = useState(false);
   const [resumeUploaded, setResumeUploaded] = useState(false);
   const [resumeData, setResumeData] = useState(null);
+
+  useEffect(() => {
+    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [advisorMessages, advisorTyping]);
 
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
