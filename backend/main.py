@@ -7,14 +7,6 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import init_db
 
-
-from app.api.livekit_routes import router as livekit_router
-app = FastAPI()
-
-
-from app.agents.advisor_agent import router as advisor_router
-app.include_router(advisor_router, prefix="/api")
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -29,13 +21,11 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     print("\n🚀 Starting ResuMate AI...")
     
-    # Initialize database
     try:
         await init_db()
     except Exception as e:
         print(f"⚠️ Database init failed (using in-memory): {e}")
     
-    # Register agents with orchestrator
     from app.agents.orchestrator import orchestrator
     from app.agents.data_agent import data_agent
     from app.agents.hr_agent import hr_agent
@@ -55,6 +45,7 @@ async def lifespan(app: FastAPI):
     print("👋 Shutting down...")
 
 
+# ═══ ONE app instance — everything registers here ═══
 app = FastAPI(
     title="ResuMate AI",
     description="Multi-Agent AI Hiring Platform",
@@ -71,21 +62,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routes
+# Routes — ALL registered on the SAME app
 from app.api.chat import router as chat_router
 from app.api.candidates import router as candidates_router
+from app.api.livekit_routes import router as livekit_router
+from app.api.advisor_agent import router as advisor_router
 
 app.include_router(chat_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
-from app.api.livekit_routes import router as livekit_router
 app.include_router(livekit_router)
+app.include_router(advisor_router, prefix="/api")
+
+print("✅ All routers registered (chat, candidates, livekit, advisor)")
+
 
 @app.get("/")
 async def root():
     return {
         "message": "ResuMate AI API",
         "version": "3.0.0",
-        "architecture": "Multi-Agent (Data, HR, Technical, Research)",
+        "architecture": "Multi-Agent (Data, HR, Technical, Research, Advisor)",
         "status": "running"
     }
 
@@ -104,7 +100,6 @@ async def health():
 
 @app.get("/monitoring")
 async def monitoring():
-    """Agent monitoring dashboard data"""
     from app.agents.orchestrator import orchestrator
     from app.agents.base_agent import memory_store
     return {

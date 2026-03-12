@@ -14,11 +14,14 @@ import json
 from fastapi import APIRouter, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, List
-from openai import OpenAI
+try:
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+except ImportError:
+    print("⚠️ openai package not installed — advisor agent chat will not work")
+    client = None
 
 router = APIRouter(prefix="/advisor", tags=["advisor"])
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Store candidate contexts (resume text per email)
 candidate_contexts = {}
@@ -37,22 +40,29 @@ async def candidate_upload_resume(
     content = await file.read()
     text = ""
     
-    # Extract text based on file type
+    # Extract text — try packages if available, fallback to raw decode
     if file.filename.endswith('.pdf'):
         try:
             import PyPDF2
             import io
             reader = PyPDF2.PdfReader(io.BytesIO(content))
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        except ImportError:
+            # PyPDF2 not installed — try raw decode
+            text = content.decode('utf-8', errors='ignore')
+            # Clean up binary PDF artifacts
+            text = ''.join(c for c in text if c.isprintable() or c in '\n\r\t')
         except Exception as e:
-            text = f"[PDF extraction failed: {e}]"
+            text = content.decode('utf-8', errors='ignore')
     elif file.filename.endswith('.docx'):
         try:
             import docx
             import io
             doc = docx.Document(io.BytesIO(content))
             text = "\n".join(p.text for p in doc.paragraphs)
-        except:
+        except ImportError:
+            text = content.decode('utf-8', errors='ignore')
+        except Exception:
             text = content.decode('utf-8', errors='ignore')
     else:
         text = content.decode('utf-8', errors='ignore')
