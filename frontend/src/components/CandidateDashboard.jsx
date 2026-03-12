@@ -27,10 +27,10 @@ const API_BASE = import.meta.env.PROD ? 'https://resumate-2vad.onrender.com' : '
 function SafeMarkdown({ text }) {
   if (!text || typeof text !== 'string') return null;
   try {
-    return <div className="md" style={{ lineHeight: '1.7', color: '#475569' }} dangerouslySetInnerHTML={{ __html: marked.parse(text) }} />;
+    return <div className="md" style={{ lineHeight: '1.7', color: 'var(--text2)' }} dangerouslySetInnerHTML={{ __html: marked.parse(text) }} />;
   } catch (e) {
     console.error('Markdown parse error:', e);
-    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: '13px', color: '#475569' }}>{text}</pre>;
+    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: '13px', color: 'var(--text2)' }}>{text}</pre>;
   }
 }
 
@@ -139,11 +139,17 @@ function InterviewReportView({ report }) {
 export default function CandidateDashboard() {
   const navigate = useNavigate();
   const {
-    candidates, selectedIds, uploadProgress,
-    loadCandidates, uploadResume, toggleSelection, selectAll,
-    messages, suggestions, isTyping, sendMessage, initChat,
+    candidates, selectedIds, uploadProgress, setCandidates,
+    loadCandidates, toggleSelection, selectAll,
     candidateSession, setCandidateSession
   } = useApp();
+
+  const [advisorCandidates, setAdvisorCandidates] = useState([]);
+
+  // Sync with global candidates
+  useEffect(() => {
+    if (candidates?.length > 0) setAdvisorCandidates(candidates);
+  }, [candidates]);
 
   const [tab, setTab] = useState('upload');
   const [input, setInput] = useState('');
@@ -170,22 +176,59 @@ export default function CandidateDashboard() {
   }, [candidateSession, navigate]);
 
   useEffect(() => {
-    if (tab === 'chat' && selectedIds.length > 0) initChat();
-  }, [tab, initChat, selectedIds.length]);
-
-  useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [advisorMessages, advisorTyping]);
+
+  // Advisor chat state
+  const [advisorMode, setAdvisorMode] = useState('general');
+  const [advisorMessages, setAdvisorMessages] = useState([]);
+  const [advisorSuggestions, setAdvisorSuggestions] = useState(['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?']);
+  const [advisorTyping, setAdvisorTyping] = useState(false);
+  const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [resumeData, setResumeData] = useState(null);
 
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
-      try { await uploadResume(file); } catch (err) { alert(`Failed: ${err.message}`); }
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('email', candidateSession?.email || '');
+        const resp = await fetch(`${API_BASE}/api/advisor/upload-resume`, { method: 'POST', body: form });
+        const data = await resp.json();
+        if (data.success) {
+          setResumeUploaded(true);
+          setResumeData(data.data);
+          setAdvisorCandidates(prev => {
+            const filtered = prev.filter(c => c.id !== data.data.id);
+            return [data.data, ...filtered];
+          });
+        } else {
+          alert('Upload failed');
+        }
+      } catch (err) { alert(`Upload failed: ${err.message}`); }
     }
   };
 
-  const handleSend = (msg) => {
+  const handleAdvisorSend = async (msg) => {
     const m = msg || input.trim();
-    if (m) { sendMessage(m); setInput(''); }
+    if (!m || advisorTyping) return;
+    setInput('');
+    setAdvisorMessages(prev => [...prev, { role: 'user', content: m }]);
+    setAdvisorSuggestions([]);
+    setAdvisorTyping(true);
+    try {
+      const resp = await fetch(`${API_BASE}/api/advisor/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: candidateSession?.email || '', message: m, mode: advisorMode })
+      });
+      const data = await resp.json();
+      setAdvisorMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'No response.' }]);
+      if (data.suggestions?.length > 0) setAdvisorSuggestions(data.suggestions);
+    } catch {
+      setAdvisorMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, could not connect. Please try again.' }]);
+    }
+    setAdvisorTyping(false);
   };
 
   const handleLogout = () => {
@@ -218,7 +261,13 @@ export default function CandidateDashboard() {
     setTab('interview');
   };
 
-  if (!candidateSession) return null;
+  if (!candidateSession) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+        <Loader size={24} className="spin" />
+      </div>
+    );
+  }
 
   // Fullscreen interview room
   if (showInterviewRoom) {
@@ -247,7 +296,7 @@ export default function CandidateDashboard() {
           {[
             { id: 'upload', icon: <Upload size={18} />, label: 'My Resume' },
             { id: 'analysis', icon: <BarChart2 size={18} />, label: 'Analysis' },
-            { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
+            { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Advisor' },
             ...(showInterviewTab ? [{
               id: 'interview', icon: <Video size={18} />,
               label: interviewReport ? 'Interview Report' : 'Interview'
@@ -281,9 +330,9 @@ export default function CandidateDashboard() {
                 <p>PDF, DOCX, or TXT (max 5MB)</p>
                 <input id="cd-file" type="file" accept=".pdf,.docx,.txt" multiple hidden onChange={e => handleUpload(e.target.files)} />
               </div>
-              {candidates.length > 0 && (
+              {advisorCandidates.length > 0 && (
                 <div className="cd-uploaded-list">
-                  {candidates.map((c, i) => (
+                  {advisorCandidates.map((c, i) => (
                     <div key={c.id} className={`cd-card cd-uploaded-item ${selectedIds.includes(c.id) ? 'selected' : ''}`} onClick={() => toggleSelection(c.id)}>
                       <FileText size={18} /><span>{c.name || `Resume ${i + 1}`}</span>
                       {selectedIds.includes(c.id) && <Check size={16} style={{ color: '#22C55E' }} />}
@@ -297,10 +346,10 @@ export default function CandidateDashboard() {
           {/* ═══ ANALYSIS ═══ */}
           {tab === 'analysis' && (
             <div className="cd-analysis-section">
-              {candidates.length === 0 ? (
+              {advisorCandidates.length === 0 ? (
                 <div className="cd-empty"><FileText size={40} /><h3>No resume uploaded</h3><p>Upload your resume to see analysis</p></div>
               ) : (
-                candidates.map(c => (
+                advisorCandidates.map(c => (
                   <div key={c.id} className="cd-card cd-analysis-card">
                     <h3>{c.name}</h3>
                     <p style={{ color: '#64748B' }}>{c.predicted_role} · {c.experience_level} · {c.total_experience_years || 0}y experience</p>
@@ -316,34 +365,65 @@ export default function CandidateDashboard() {
             </div>
           )}
 
-          {/* ═══ CHAT ═══ */}
+          {/* ═══ AI ADVISOR CHAT ═══ */}
           {tab === 'chat' && (
             <div className="cd-chat-section">
-              {selectedIds.length === 0 ? (
-                <div className="cd-empty"><MessageSquare size={40} /><h3>Select a resume first</h3><p>Go to My Resume tab and select a resume to chat about</p></div>
-              ) : (
-                <div className="cd-chat-container">
-                  <div className="cd-chat-messages">
-                    {messages.map((m, i) => (
-                      <div key={i} className={`cd-chat-msg ${m.role}`}>
-                        {m.role === 'assistant' && <AIAvatar />}
-                        <div className={`cd-chat-bubble ${m.role}`}>
-                          {m.role === 'user' ? <p>{m.content}</p> : <SafeMarkdown text={m.content} />}
-                        </div>
-                      </div>
-                    ))}
-                    {isTyping && <div className="cd-chat-msg assistant"><AIAvatar /><div className="cd-chat-bubble assistant"><div className="typing"><span /><span /><span /></div></div></div>}
-                    <div ref={msgEndRef} />
-                  </div>
-                  {suggestions.length > 0 && !isTyping && (
-                    <div className="cd-suggestions">{suggestions.map((q, i) => <button key={i} className="cd-suggestion" onClick={() => handleSend(q)}>{q}</button>)}</div>
+              {/* Mode selector */}
+              <div style={{ display: 'flex', gap: '6px', padding: '12px 16px', borderBottom: '1px solid var(--surface-border)', background: 'var(--bg2)', flexWrap: 'wrap' }}>
+                {[
+                  { id: 'general', label: '💬 General', desc: 'Ask anything' },
+                  { id: 'resume_coach', label: '📄 Resume Coach', desc: 'Improve your resume' },
+                  { id: 'interview_prep', label: '🎯 Interview Prep', desc: 'Practice & tips' },
+                  { id: 'career_advisor', label: '🚀 Career Advisor', desc: 'Growth & strategy' },
+                ].map(mode => (
+                  <button
+                    key={mode.id}
+                    onClick={() => { setAdvisorMode(mode.id); setAdvisorMessages([]); setAdvisorSuggestions(['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?']); }}
+                    style={{
+                      padding: '8px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '600',
+                      border: advisorMode === mode.id ? '1px solid var(--cd-accent, #3B82F6)' : '1px solid var(--surface-border)',
+                      background: advisorMode === mode.id ? 'var(--cd-accent-bg, rgba(59,130,246,0.1))' : 'transparent',
+                      color: advisorMode === mode.id ? 'var(--cd-accent, #3B82F6)' : 'var(--text2)',
+                      cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="cd-chat-container">
+                <div className="cd-chat-messages">
+                  {advisorMessages.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
+                      <Bot size={36} style={{ color: 'var(--cd-accent, #3B82F6)', marginBottom: '12px' }} />
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)', marginBottom: '6px' }}>
+                        {advisorMode === 'resume_coach' ? '📄 Resume Coach' : advisorMode === 'interview_prep' ? '🎯 Interview Prep' : advisorMode === 'career_advisor' ? '🚀 Career Advisor' : '💬 AI Career Assistant'}
+                      </h3>
+                      <p style={{ fontSize: '13px' }}>
+                        {advisorMode === 'resume_coach' ? "I'll review your resume and suggest improvements." : advisorMode === 'interview_prep' ? "I'll help you prepare for your upcoming interviews." : advisorMode === 'career_advisor' ? "I'll help you plan your career growth." : "Ask me anything about your resume, interviews, or career."}
+                      </p>
+                    </div>
                   )}
-                  <div className="cd-chat-input">
-                    <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSend(); }} placeholder="Ask about your resume..." disabled={isTyping} />
-                    <button onClick={() => handleSend()} disabled={!input.trim() || isTyping}><Send size={18} /></button>
-                  </div>
+                  {advisorMessages.map((m, i) => (
+                    <div key={i} className={`cd-chat-msg ${m.role}`}>
+                      {m.role === 'assistant' && <AIAvatar />}
+                      <div className={`cd-chat-bubble ${m.role}`}>
+                        {m.role === 'user' ? <p>{m.content}</p> : <SafeMarkdown text={m.content} />}
+                      </div>
+                    </div>
+                  ))}
+                  {advisorTyping && <div className="cd-chat-msg assistant"><AIAvatar /><div className="cd-chat-bubble assistant"><div className="typing"><span /><span /><span /></div></div></div>}
+                  <div ref={msgEndRef} />
                 </div>
-              )}
+                {advisorSuggestions.length > 0 && !advisorTyping && (
+                  <div className="cd-suggestions">{advisorSuggestions.map((q, i) => <button key={i} className="cd-suggestion" onClick={() => handleAdvisorSend(q)}>{q}</button>)}</div>
+                )}
+                <div className="cd-chat-input">
+                  <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAdvisorSend(); }} placeholder={advisorMode === 'resume_coach' ? 'Ask about your resume...' : advisorMode === 'interview_prep' ? 'Ask about interview prep...' : advisorMode === 'career_advisor' ? 'Ask about career growth...' : 'Ask me anything...'} disabled={advisorTyping} />
+                  <button onClick={() => handleAdvisorSend()} disabled={!input.trim() || advisorTyping}><Send size={18} /></button>
+                </div>
+              </div>
             </div>
           )}
 

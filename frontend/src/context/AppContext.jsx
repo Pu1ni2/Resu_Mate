@@ -273,7 +273,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      candidates, selectedIds, selectedCandidates, uploadProgress, loading,
+      candidates, setCandidates, selectedIds, selectedCandidates, uploadProgress, loading,
       loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
       anonymize, setAnonymize, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,

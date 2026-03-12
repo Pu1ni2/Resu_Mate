@@ -12,6 +12,9 @@ from app.api.livekit_routes import router as livekit_router
 app = FastAPI()
 
 
+from app.agents.advisor_agent import router as advisor_router
+app.include_router(advisor_router, prefix="/api")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
