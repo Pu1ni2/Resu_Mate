@@ -166,13 +166,23 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const deleteCandidate = useCallback(async (id) => {
+    // Remove from backend
     try {
       await candidatesAPI.delete(id);
     } catch (err) {
       console.error('Failed to delete from backend:', err);
     }
-    setCandidates(prev => prev.filter(c => c.id !== id));
+    // Remove from state
+    setCandidates(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      // Also update localStorage immediately
+      try { localStorage.setItem('resumate_candidates', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     setSelectedIds(prev => prev.filter(x => x !== id));
+    // Clear chat history since context changed
+    setMessages([]);
+    setSuggestions([]);
   }, []);
 
   const clearAllCandidates = useCallback(async () => {
@@ -183,6 +193,8 @@ export const AppProvider = ({ children }) => {
     }
     setCandidates([]);
     setSelectedIds([]);
+    setMessages([]);
+    setSuggestions([]);
     localStorage.removeItem('resumate_candidates');
   }, []);
 

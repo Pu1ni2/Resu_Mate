@@ -401,13 +401,13 @@ export default function CandidateDashboard() {
                 advisorCandidates.map(c => (
                   <div key={c.id} className="cd-card cd-analysis-card">
                     <h3>{c.name}</h3>
-                    <p style={{ color: '#64748B' }}>{c.predicted_role} · {c.experience_level} · {c.total_experience_years || 0}y experience</p>
+                    <p style={{ color: 'var(--text2)' }}>{c.predicted_role} · {c.experience_level} · {c.total_experience_years || 0}y experience</p>
                     {c.skills?.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
                         {c.skills.slice(0, 12).map(s => <span key={s} className="skill">{s}</span>)}
                       </div>
                     )}
-                    {c.summary && <p style={{ marginTop: '12px', fontSize: '13px', color: '#94A3B8', lineHeight: '1.6' }}>{c.summary}</p>}
+                    {c.summary && <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text3)', lineHeight: '1.6' }}>{c.summary}</p>}
                   </div>
                 ))
               )}
@@ -567,7 +567,7 @@ export default function CandidateDashboard() {
                     </div>
                     <button
                       onClick={() => setShowFullReport(prev => !prev)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '8px', color: '#475569', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--bg3)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'var(--text2)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                     >
                       {showFullReport ? <EyeOff size={13} /> : <Eye size={13} />}
                       {showFullReport ? 'Hide' : 'View Report'}
@@ -576,7 +576,7 @@ export default function CandidateDashboard() {
 
                   {/* Expanded report */}
                   {showFullReport && (
-                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
+                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)' }}>
                       <InterviewReportView report={interviewReport} />
                     </div>
                   )}
@@ -585,21 +585,21 @@ export default function CandidateDashboard() {
 
               {/* 2. NEW INTERVIEW (below previous report) */}
               {hasInterview && (
-                <div className="cd-card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid #DBEAFE', background: '#EFF6FF' }}>
+                <div className="cd-card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid rgba(59,130,246,0.2)', background: 'var(--cd-accent-bg, rgba(59,130,246,0.06))' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#3B82F6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Camera size={24} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '2px', color: '#1E293B' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '2px', color: 'var(--text)' }}>
                         {interviewReport ? 'New Interview Scheduled' : 'AI Interview Ready'}
                       </h3>
-                      <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+                      <p style={{ fontSize: '13px', color: 'var(--text3)', margin: 0 }}>
                         {candidateSession.interview_config?.role || 'General'} · {candidateSession.interview_config?.num_questions || 8} questions · {candidateSession.interview_config?.level || 'Mid-Level'}
                       </p>
                     </div>
                   </div>
-                  <p style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '16px', lineHeight: '1.5' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '16px', lineHeight: '1.5' }}>
                     Proctored with camera, mic, face tracking. Tab switching monitored. 3 violations = auto-termination.
                   </p>
                   <button className="cd-start-interview" onClick={() => {
