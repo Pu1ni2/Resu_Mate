@@ -1,5 +1,8 @@
-echo # Override GitHub language detection > .gitattributes
-echo *.css linguist-vendored=true >> .gitattributes
-echo *.html linguist-vendored=true >> .gitattributes
-echo node_modules/* linguist-vendored >> .gitattributes
-echo frontend/node_modules/* linguist-vendored >> .gitattributes
+# Make GitHub show Python as primary language
+*.js linguist-vendored
+*.jsx linguist-vendored
+*.css linguist-vendored
+*.html linguist-vendored
+*.json linguist-vendored
+frontend/* linguist-vendored
+node_modules/* linguist-vendored
