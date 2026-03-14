@@ -41,18 +41,14 @@ async def lifespan(app: FastAPI):
     print(f"✅ ResuMate AI ready!\n")
 
 
-    interview_proc = None
     try:
-        from interview_agent import start_agent_subprocess
-        interview_proc = start_agent_subprocess()
+        from interview_agent import start_worker
+        start_worker()
     except Exception as e:
         print(f"⚠️ Interview agent not started: {e}")
     
     yield
     
-    # Cleanup on shutdown
-    if interview_proc:
-        interview_proc.terminate()
     print("👋 Shutting down...")
     
     
