@@ -40,16 +40,22 @@ async def lifespan(app: FastAPI):
     print("✅ All agents registered")
     print(f"✅ ResuMate AI ready!\n")
 
+
+    interview_proc = None
     try:
-        from interview_agent import run_worker_in_thread
-        run_worker_in_thread()
+        from interview_agent import start_agent_subprocess
+        interview_proc = start_agent_subprocess()
     except Exception as e:
         print(f"⚠️ Interview agent not started: {e}")
-
     
     yield
     
+    # Cleanup on shutdown
+    if interview_proc:
+        interview_proc.terminate()
     print("👋 Shutting down...")
+    
+    
 
 
 # ═══ ONE app instance — everything registers here ═══
