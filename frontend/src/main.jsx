@@ -12,7 +12,7 @@ import './styles/global.css'
 import './styles/dashboard-polish.css'
 import './styles/candidate-theme.css'
 import './styles/interview-room.css'
-import './styles/bugfixes.css'
+import './styles/overrides.css'
 import './styles/product-layer.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
