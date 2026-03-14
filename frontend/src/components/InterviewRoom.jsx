@@ -13,7 +13,7 @@ import {
   CheckCircle, Phone, PhoneOff
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-2vad.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
 const MAX_VIOLATIONS = 3;

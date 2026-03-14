@@ -49,7 +49,7 @@ const MatrixRain = () => {
 };
 
 const API_BASE = import.meta.env.PROD
-  ? 'https://resumate-2vad.onrender.com'
+  ? 'https://resumate-api-74dm.onrender.com'
   : '';
 
 export default function CandidateFocus() {

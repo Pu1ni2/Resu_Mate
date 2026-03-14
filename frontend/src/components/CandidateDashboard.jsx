@@ -21,7 +21,7 @@ const Logo = ({ size = 32 }) => (
 
 const AIAvatar = () => (<div className="cd-avatar-ai"><Bot size={18} /></div>);
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-2vad.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 
 // ═══════ SAFE MARKDOWN RENDERER ═══════
 function SafeMarkdown({ text }) {

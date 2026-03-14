@@ -1911,7 +1911,7 @@ export default function Dashboard() {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
 
-    const response = await fetch('https://resumate-2vad.onrender.com/api/chat/speech-to-text', {
+    const response = await fetch('https://resumate-api-74dm.onrender.com/api/chat/speech-to-text', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer demo-token' },
       body: formData
@@ -1998,7 +1998,7 @@ export default function Dashboard() {
         cleanText = cleanText.substring(0, 4000) + '...';
       }
       
-      const response = await fetch('https://resumate-2vad.onrender.com/api/chat/text-to-speech', {
+      const response = await fetch('https://resumate-api-74dm.onrender.com/api/chat/text-to-speech', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer demo-token',

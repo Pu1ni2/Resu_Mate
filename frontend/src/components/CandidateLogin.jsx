@@ -12,7 +12,7 @@ const Logo = ({ size = 32 }) => (
   </svg>
 );
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-2vad.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 
 export default function CandidateLogin() {
   const navigate = useNavigate();
