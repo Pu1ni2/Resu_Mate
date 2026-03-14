@@ -70,7 +70,7 @@ def start_agent_subprocess():
 
     try:
         proc = subprocess.Popen(
-            [sys.executable, "interview_agent.py", "start"],
+            [sys.executable, "interview_agent.py", "dev"],
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
