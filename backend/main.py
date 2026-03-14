@@ -39,6 +39,13 @@ async def lifespan(app: FastAPI):
     
     print("✅ All agents registered")
     print(f"✅ ResuMate AI ready!\n")
+
+    try:
+        from interview_agent import run_worker_in_thread
+        run_worker_in_thread()
+    except Exception as e:
+        print(f"⚠️ Interview agent not started: {e}")
+
     
     yield
     
