@@ -33,3 +33,9 @@ python-docx>=1.1.0
 # Document Loaders
 docx2txt>=0.8
 pypdf>=4.0.0
+
+
+# LiveKit Interview Agent
+livekit-agents>=1.0.0
+livekit-plugins-openai>=1.0.0
+livekit-plugins-simli>=0.3.0
