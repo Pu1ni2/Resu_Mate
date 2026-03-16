@@ -21,53 +21,77 @@ ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system wh
   <img src="./architecture.png" alt="ResuMate AI Architecture" width="100%" />
 </p>
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        RESUMATE AI PLATFORM                         │
-│                                                                     │
-│  ┌──────────── HIRING MANAGER PORTAL ────────────┐                 │
-│  │                                                │                 │
-│  │  Upload → Scanner → Evaluate → Interview       │                 │
-│  │                                                │                 │
-│  │  ┌────────┐ ┌────────┐ ┌──────────┐ ┌───────┐│                 │
-│  │  │  DATA  │ │   HR   │ │TECHNICAL │ │RESEARCH││                 │
-│  │  │ AGENT  │ │ AGENT  │ │  AGENT   │ │ AGENT  ││                 │
-│  │  │        │ │        │ │ ┌──────┐ │ │        ││                 │
-│  │  │ PDF    │ │ Eval   │ │ │ INT. │ │ │ Tavily ││                 │
-│  │  │ GitHub │ │ Email  │ │ │AGENT │ │ │ Fact   ││                 │
-│  │  │ Chrome │ │ Score  │ │ ├──────┤ │ │ Check  ││                 │
-│  │  │ Tavily │ │ Salary │ │ │SCORE │ │ │ Web    ││                 │
-│  │  │        │ │        │ │ │AGENT │ │ │        ││                 │
-│  │  └────────┘ └────────┘ │ └──────┘ │ └───────┘│                 │
-│  │                        └──────────┘           │                 │
-│  └────────────────────────────────────────────────┘                 │
-│                                                                     │
-│  ┌──────────── CANDIDATE PORTAL ─────────────────┐                 │
-│  │                                                │                 │
-│  │  Login → Upload → AI Advisor → Interview       │                 │
-│  │                                                │                 │
-│  │  ┌────────────── ADVISOR AGENT ──────────────┐│                 │
-│  │  │                                            ││                 │
-│  │  │  ┌──────────┐ ┌───────────┐ ┌──────────┐ ││                 │
-│  │  │  │ RESUME   │ │INTERVIEW  │ │ CAREER   │ ││                 │
-│  │  │  │ COACH    │ │   PREP    │ │ ADVISOR  │ ││                 │
-│  │  │  └──────────┘ └───────────┘ └──────────┘ ││                 │
-│  │  └────────────────────────────────────────────┘│                 │
-│  └────────────────────────────────────────────────┘                 │
-│                                                                     │
-│  ┌──────────── INTERVIEW SYSTEM ─────────────────┐                 │
-│  │                                                │                 │
-│  │  LiveKit Cloud ←→ OpenAI Realtime ←→ Simli    │                 │
-│  │  (WebRTC Room)    (Voice-to-Voice)   (Avatar)  │                 │
-│  │                                                │                 │
-│  │  Candidate Camera  |  AI Avatar (lip-synced)   │                 │
-│  │  Face Tracking     |  Real-time conversation   │                 │
-│  │  Eye Contact %     |  Per-question scoring     │                 │
-│  │  Violation Monitor |  Comprehensive report     │                 │
-│  └────────────────────────────────────────────────┘                 │
-└─────────────────────────────────────────────────────────────────────┘
+## Architecture
+
+### System Overview
+
+```
+                         ┌─────────────────────────────────┐
+                         │        ResuMate AI Platform       │
+                         └────────────────┬──────────────────┘
+                                          │
+                    ┌─────────────────────┼─────────────────────┐
+                    │                     │                     │
+            ┌───────▼───────┐    ┌───────▼────────┐   ┌───────▼───────┐
+            │    Hiring     │    │   Candidate    │   │   Interview   │
+            │    Manager    │    │    Portal      │   │    System     │
+            │    Portal     │    │               │   │               │
+            └───────┬───────┘    └───────┬────────┘   └───────┬───────┘
+                    │                    │                     │
+                    ▼                    ▼                     ▼
+       ┌─────────────────────────────────────────────────────────────┐
+       │                    FastAPI Backend                          │
+       │                  (15+ REST Endpoints)                      │
+       └─────────────────────────┬───────────────────────────────────┘
+                                 │
+       ┌────────────┬────────────┼────────────┬────────────┐
+       │            │            │            │            │
+  ┌────▼────┐ ┌────▼────┐ ┌────▼─────┐ ┌───▼─────┐ ┌───▼──────┐
+  │  Data   │ │   HR    │ │Technical │ │Research │ │ Advisor  │
+  │  Agent  │ │  Agent  │ │  Agent   │ │  Agent  │ │  Agent   │
+  └─────────┘ └─────────┘ └────┬─────┘ └─────────┘ └────┬─────┘
+                               │                         │
+                         ┌─────┴─────┐            ┌──────┼──────┐
+                         │           │            │      │      │
+                    ┌────▼───┐ ┌────▼────┐  ┌────▼──┐ ┌▼────┐ ┌▼──────┐
+                    │Interview│ │Scoring  │  │Resume │ │Int. │ │Career │
+                    │ Agent  │ │ Agent   │  │Coach  │ │Prep │ │Advisor│
+                    └────────┘ └─────────┘  └───────┘ └─────┘ └───────┘
 ```
 
----
+### Agent Framework
+
+Each agent follows the **Plan → Execute → Reflect → Output** pipeline:
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│   PLAN   │ ──▶ │ EXECUTE  │ ──▶ │ REFLECT  │ ──▶ │  OUTPUT  │
+│          │     │          │     │          │     │          │
+│ Analyze  │     │ Run      │     │ Quality  │     │ Format   │
+│ task     │     │ tools    │     │ check    │     │ results  │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+```
+
+### Interview System Architecture
+
+```
+┌──────────────────┐              ┌──────────────────────┐
+│                  │   LiveKit    │                      │
+│  Candidate       │   WebRTC    │   Interview Agent     │
+│  Browser         │◄──────────►│   (Python Process)    │
+│                  │    Room     │                      │
+│  ┌────────────┐  │              │  ┌────────────────┐  │
+│  │ Camera     │  │              │  │ OpenAI         │  │
+│  │ + Mic      │  │              │  │ Realtime API   │  │
+│  ├────────────┤  │              │  │ (Voice-to-     │  │
+│  │ Face       │  │              │  │  Voice)        │  │
+│  │ Tracking   │  │              │  ├────────────────┤  │
+│  ├────────────┤  │              │  │ Simli Avatar   │  │
+│  │ Tab        │  │              │  │ (Lip-synced    │  │
+│  │ Monitor    │  │              │  │  Face)         │  │
+│  └────────────┘  │              │  └────────────────┘  │
+└──────────────────┘              └──────────────────────┘
+```
 
 ## Features
 
