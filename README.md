@@ -15,9 +15,11 @@
 ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system where **5 specialized AI agents** orchestrate the entire hiring pipeline, from resume parsing to live video interviews with a lip-synced AI avatar.
 
 ---
-
 ## Architecture
-![ResuMate AI Architecture](./architecture.png)
+
+<p align="center">
+  <img src="./architecture.png" alt="ResuMate AI Architecture" width="100%" />
+</p>
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        RESUMATE AI PLATFORM                         │
