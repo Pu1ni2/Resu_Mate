@@ -17,11 +17,6 @@ ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system wh
 ---
 ## Architecture
 
-<p align="center">
-  <img src="./architecture.png" alt="ResuMate AI Architecture" width="100%" />
-</p>
-```
-## Architecture
 
 ### System Overview
 
