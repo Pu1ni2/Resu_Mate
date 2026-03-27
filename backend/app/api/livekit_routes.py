@@ -73,18 +73,25 @@ async def create_room(req: CreateRoomRequest):
     # Generate unique room name
     room_name = f"interview-{hashlib.md5(f'{req.candidate_email}-{time.time()}'.encode()).hexdigest()[:12]}"
 
-    # Store config so the agent can fetch it
+    # Extract resume intelligence if available in interview config
+    resume_intel = req.interview_config.get("resume_intelligence")
+    verification_targets = []
+    if resume_intel and isinstance(resume_intel, dict):
+        verification_targets = resume_intel.get("verification_targets", [])
+
+    # Store config so the agent can fetch it (with intelligence)
     room_configs[room_name] = {
         **req.interview_config,
         "candidate_name": req.candidate_name,
         "candidate_email": req.candidate_email,
+        "verification_targets": verification_targets,
         "created_at": time.time(),
     }
 
     # Generate token for candidate
     token = create_livekit_token(room_name, req.candidate_name)
 
-    print(f"🏠 LiveKit room created: {room_name} for {req.candidate_name}")
+    print(f"🏠 LiveKit room created: {room_name} for {req.candidate_name} ({len(verification_targets)} verification targets)")
 
     return {
         "room_name": room_name,

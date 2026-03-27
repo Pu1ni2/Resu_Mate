@@ -26,7 +26,229 @@ class TechnicalAgent(BaseAgent):
             }
         )
 
-    # ═══════ QUESTION GENERATION ═══════
+    # ═══════ RESUME INTELLIGENCE — Gap & Credibility Analysis ═══════
+
+    async def analyze_resume_gaps(self, candidate_data: dict) -> Dict:
+        """Analyze resume for gaps, inconsistencies, and verification targets."""
+        skills = candidate_data.get("skills", [])
+        work_exp = candidate_data.get("work_experience", [])
+        education = candidate_data.get("education", [])
+        summary = candidate_data.get("summary", "")
+        role = candidate_data.get("predicted_role", "Professional")
+        level = candidate_data.get("experience_level", "Mid-Level")
+        total_years = candidate_data.get("total_experience_years", 0)
+        key_strengths = candidate_data.get("key_strengths", [])
+
+        work_text = "\n".join(
+            f"- {w.get('title','')} at {w.get('company','')} ({w.get('start_date','?')} – {w.get('end_date','?')}, {w.get('duration_months',0)} months)"
+            for w in work_exp
+        ) or "No work experience listed"
+
+        edu_text = "\n".join(
+            f"- {e.get('degree','')} from {e.get('institution','')}" for e in education
+        ) or "No education listed"
+
+        prompt = f"""Analyze this resume for a {level} {role} candidate and identify:
+
+RESUME DATA:
+Name: {candidate_data.get('name', 'Unknown')}
+Role: {role} | Level: {level} | Total Exp: {total_years} years
+Summary: {summary}
+Skills: {', '.join(skills[:20])}
+Key Strengths: {', '.join(key_strengths[:5])}
+Work Experience:
+{work_text}
+Education:
+{edu_text}
+
+ANALYZE:
+1. Employment gaps (periods with no job listed)
+2. Skills claimed but not backed by any work experience
+3. Experience level vs actual years (overclaiming?)
+4. Role progression (does the career path make sense?)
+5. Skills that are "trendy" but may be surface-level (e.g., listing LLMs/GenAI without relevant projects)
+
+Return ONLY valid JSON:
+{{
+    "gaps": [
+        {{"type": "employment_gap", "detail": "6-month gap between X and Y", "severity": "low/medium/high"}},
+        {{"type": "unverified_skill", "detail": "Claims Kubernetes but no role mentions it", "severity": "low/medium/high"}},
+        {{"type": "level_mismatch", "detail": "Claims Senior but only 2 years exp", "severity": "low/medium/high"}}
+    ],
+    "verification_targets": [
+        {{"skill": "skill_name", "claim": "what resume says", "question_angle": "how to probe this in interview"}}
+    ],
+    "red_flags": ["any concerning patterns"],
+    "strong_points": ["genuinely impressive aspects"],
+    "resume_confidence_score": 0-100
+}}"""
+
+        try:
+            content = await openai_tool.structured_call(prompt, "You are a senior technical recruiter analyzing resumes for verification targets. Be fair but thorough.")
+            content = content.strip()
+            if '```' in content:
+                for part in content.split('```'):
+                    part = part.strip()
+                    if part.startswith('json'): content = part[4:].strip(); break
+                    elif part.startswith('{'): content = part; break
+            return json.loads(content)
+        except Exception as e:
+            return {"gaps": [], "verification_targets": [], "red_flags": [], "strong_points": [], "resume_confidence_score": 70}
+
+    async def generate_smart_questions(self, role: str, level: str, num_questions: int = 8,
+                                        focus_areas: list = None, candidate_name: str = "Candidate",
+                                        candidate_data: dict = None) -> Dict[str, Any]:
+        """Generate interview questions informed by resume intelligence."""
+        self.logs = []
+        self.log("start", f"Smart question generation for {candidate_name} — {level} {role}")
+
+        # Step 1: Analyze resume gaps if candidate data is available
+        resume_intel = None
+        if candidate_data:
+            self.log("analyze", "Analyzing resume for gaps and verification targets...")
+            resume_intel = await self.analyze_resume_gaps(candidate_data)
+            self.log("analyze_done", f"Found {len(resume_intel.get('gaps', []))} gaps, {len(resume_intel.get('verification_targets', []))} targets", "success")
+
+        # Step 2: Research current trends
+        trends = ""
+        if tavily_tool.client:
+            self.log("research", f"Researching current trends for {role}...")
+            search = await tavily_tool.call({"query": f"{role} interview questions 2024 trends", "max_results": 2})
+            trends = search.get("answer", "")
+            self.log("research_done", "Market research complete", "success")
+
+        # Step 3: Build intelligent prompt with gap-informed questions
+        focus_str = f"\nFocus areas: {', '.join(focus_areas)}" if focus_areas else ""
+        trends_str = f"\nCurrent trends: {trends[:300]}" if trends else ""
+
+        gap_str = ""
+        if resume_intel:
+            targets = resume_intel.get("verification_targets", [])[:5]
+            if targets:
+                gap_str = "\n\nRESUME VERIFICATION TARGETS (weave these into questions naturally):"
+                for t in targets:
+                    gap_str += f"\n- Probe '{t.get('skill', '')}': {t.get('question_angle', '')}"
+            gaps = resume_intel.get("gaps", [])
+            if gaps:
+                gap_str += "\n\nRESUME GAPS TO EXPLORE:"
+                for g in gaps[:3]:
+                    gap_str += f"\n- [{g.get('severity', 'low')}] {g.get('detail', '')}"
+
+        prompt = f"""Generate exactly {num_questions} interview questions for {candidate_name}, a {level} {role}.
+{focus_str}{trends_str}{gap_str}
+
+RULES:
+- 30% questions should directly probe resume claims (skills, experience, projects)
+- 30% technical depth questions (can they actually do what they claim?)
+- 20% behavioral/situational
+- 20% problem-solving/system design
+- Start conversational, increase difficulty
+- Make questions feel natural, NOT like an interrogation
+- Reference specific things from their background when possible
+
+Return ONLY questions, one per line, no numbering."""
+
+        self.log("generate", "Generating resume-informed questions...")
+        content = await openai_tool.structured_call(prompt, "You are an expert interviewer who crafts questions based on resume analysis. Ask probing but fair questions.")
+        questions = [q.strip() for q in content.strip().split('\n') if q.strip() and len(q.strip()) > 10][:num_questions]
+
+        # Step 4: Reflect on quality
+        self.log("reflect", "Checking question quality...")
+        try:
+            reflect_prompt = f"""Review these {level} {role} interview questions:
+{chr(10).join(f'{i+1}. {q}' for i, q in enumerate(questions))}
+
+Are they: appropriate for {level} level? Covering technical + behavioral? Probing resume claims? Not too generic?
+Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
+            reflect_resp = await openai_tool.structured_call(reflect_prompt, "You are a quality checker. Return ONLY JSON.")
+            reflection = json.loads(reflect_resp.strip().replace('```json', '').replace('```', ''))
+            self.log("reflect_done", f"Quality: {reflection.get('quality', 'ok')}", "success")
+        except:
+            pass
+
+        self.log("complete", f"Generated {len(questions)} smart questions", "success")
+
+        return {
+            "questions": questions,
+            "resume_intelligence": resume_intel,
+        }
+
+    # ═══════ CREDIBILITY ANALYSIS ═══════
+
+    async def analyze_credibility(self, candidate_data: dict, interview_report: dict) -> Dict:
+        """Cross-reference resume claims against interview performance."""
+        skills = candidate_data.get("skills", [])
+        work_exp = candidate_data.get("work_experience", [])
+        role = candidate_data.get("predicted_role", "Professional")
+        level = candidate_data.get("experience_level", "Mid-Level")
+        total_years = candidate_data.get("total_experience_years", 0)
+        key_strengths = candidate_data.get("key_strengths", [])
+
+        # Extract interview data
+        report_text = interview_report.get("report", "")
+        scores = interview_report.get("scores", [])
+        avg_score = interview_report.get("avgScore", 0)
+        if not avg_score and scores:
+            avg_score = sum(s.get("score", 0) for s in scores if isinstance(s, dict)) / max(len(scores), 1)
+
+        prompt = f"""Cross-reference this candidate's RESUME CLAIMS against their INTERVIEW PERFORMANCE.
+
+RESUME CLAIMS:
+- Role: {role} | Level: {level} | Claims {total_years} years experience
+- Skills: {', '.join(skills[:15])}
+- Key Strengths: {', '.join(key_strengths[:5])}
+- Work History: {', '.join(f"{w.get('title','')} at {w.get('company','')}" for w in work_exp[:4])}
+
+INTERVIEW PERFORMANCE:
+- Average Score: {avg_score:.1f}/10
+- Per-Question Scores: {json.dumps([s.get('score', 0) if isinstance(s, dict) else 0 for s in scores])}
+- Per-Question Feedback: {json.dumps([s.get('feedback', '') if isinstance(s, dict) else '' for s in scores[:8]])}
+- AI Report Excerpt: {report_text[:1500]}
+
+ANALYZE and return ONLY valid JSON:
+{{
+    "credibility_score": 0-100,
+    "verdict": "Highly Credible / Credible / Partially Credible / Low Credibility",
+    "resume_vs_interview": {{
+        "confirmed_skills": ["skills demonstrated in interview"],
+        "unverified_skills": ["claimed but not tested or not demonstrated"],
+        "overrated_skills": ["claimed as strength but performed poorly"],
+        "hidden_strengths": ["not on resume but showed in interview"]
+    }},
+    "level_assessment": {{
+        "resume_claims": "{level}",
+        "interview_suggests": "actual level based on performance",
+        "match": true/false,
+        "explanation": "brief why"
+    }},
+    "key_insights": [
+        "insight about the candidate's actual abilities vs claims"
+    ],
+    "hiring_recommendation": "Strong Hire / Hire / Consider / Pass",
+    "confidence_in_assessment": "High / Medium / Low"
+}}"""
+
+        try:
+            content = await openai_tool.structured_call(prompt, "You are a senior hiring analyst cross-referencing resume claims against interview evidence. Be fair, data-driven, and constructive.")
+            content = content.strip()
+            if '```' in content:
+                for part in content.split('```'):
+                    part = part.strip()
+                    if part.startswith('json'): content = part[4:].strip(); break
+                    elif part.startswith('{'): content = part; break
+            return json.loads(content)
+        except Exception as e:
+            return {
+                "credibility_score": 50,
+                "verdict": "Unable to assess",
+                "resume_vs_interview": {"confirmed_skills": [], "unverified_skills": [], "overrated_skills": [], "hidden_strengths": []},
+                "level_assessment": {"resume_claims": level, "interview_suggests": "Unknown", "match": True, "explanation": "Analysis unavailable"},
+                "key_insights": ["Credibility analysis could not be completed"],
+                "hiring_recommendation": "Consider",
+                "confidence_in_assessment": "Low"
+            }
+
+    # ═══════ QUESTION GENERATION (Legacy) ═══════
 
     async def generate_questions(self, role: str, level: str, num_questions: int = 8,
                                   focus_areas: list = None, candidate_name: str = "Candidate") -> List[str]:

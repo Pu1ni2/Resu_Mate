@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements-agent.txt .
+RUN pip install --no-cache-dir -r requirements-agent.txt
+
+# Copy agent
+COPY interview_agent.py .
+
+# LiveKit agent start command
+CMD ["python", "interview_agent.py", "start"]

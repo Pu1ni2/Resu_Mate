@@ -575,7 +575,7 @@ export default function CandidateDashboard() {
                     </div>
                     {showFullReport && (
                       <div className="cd-report-detail">
-                        <InterviewReportView report={interviewReport} />
+                        <InterviewReportView report={interviewReport} candidateId={candidateSession?.candidate_id} candidateEmail={candidateSession?.email} />
                       </div>
                     )}
                   </div>

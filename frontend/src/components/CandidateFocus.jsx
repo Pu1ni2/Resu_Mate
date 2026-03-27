@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   User, ArrowLeft, AlertCircle, Briefcase, Award, MapPin,
-  UserCheck, Mail, Github, Calendar, Video, MessageSquare, Globe
+  UserCheck, Mail, Github, Calendar, Video, MessageSquare, Globe, Target
 } from 'lucide-react';
 
 import useVoice from '../hooks/useVoice';
@@ -18,6 +18,7 @@ import GitHubPanel from './focus/GitHubPanel';
 import SchedulePanel from './focus/SchedulePanel';
 import EmailComposer from './focus/EmailComposer';
 import InterviewCreator from './focus/InterviewCreator';
+import ResumeIntelPanel from './focus/ResumeIntelPanel';
 
 const API_BASE = import.meta.env.PROD
   ? 'https://resumate-api-74dm.onrender.com'
@@ -548,6 +549,7 @@ export default function CandidateFocus() {
     {
       group: 'Evaluate', items: [
         { key: 'agent', icon: <UserCheck size={18} />, label: 'Hiring Agent' },
+        { key: 'resume-intel', icon: <Target size={18} />, label: 'Resume Intel' },
         ...(agentStep === 'result' && agentResult && !agentResult.error ? [
           { key: 'email', icon: <Mail size={18} />, label: 'Email' },
           { key: 'interview', icon: <Video size={18} />, label: 'Interview' },
@@ -673,6 +675,10 @@ export default function CandidateFocus() {
               focusCandidate={focusCandidate} agentResult={agentResult}
               anonymize={anonymize} getCandidatePayload={getCandidatePayload}
             />
+          )}
+
+          {activeTool === 'resume-intel' && (
+            <ResumeIntelPanel focusCandidate={focusCandidate} showToast={showToast} />
           )}
 
           {activeTool === 'interview' && (

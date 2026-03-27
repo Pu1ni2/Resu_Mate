@@ -1,0 +1,14 @@
+# fly.toml — ResuMate Interview Agent (background worker, no HTTP)
+app = 'resumate-interview-agent'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile.agent'
+
+[env]
+  BACKEND_URL = "https://resumate-api-74dm.onrender.com"
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1

@@ -43,9 +43,18 @@ def build_system_prompt(config):
     num_qs = config.get("num_questions", 5)
     focus = ", ".join(config.get("focus_areas", [])) or "general skills"
     candidate = config.get("candidate_name", "the candidate")
+
+    # Resume intelligence — verification targets
+    verification_section = ""
+    targets = config.get("verification_targets", [])
+    if targets:
+        verification_section = "\n\nRESUME VERIFICATION TARGETS (weave 2-3 of these into your questions naturally, do NOT mention you analyzed their resume):"
+        for t in targets[:4]:
+            verification_section += f"\n- Probe '{t.get('skill', '')}': {t.get('question_angle', '')}"
+
     return f"""You are Alex, a senior technical interviewer conducting a live video interview.
 CONTEXT: Role: {role}, Level: {level}, Candidate: {candidate}, Questions: {num_qs}, Focus: {focus}
-RULES: Keep responses SHORT. Ask ONE question at a time. Acknowledge answers briefly. Ask exactly {num_qs} questions. Start easy, increase difficulty. Cover {focus}. Stay in character as human interviewer Alex.
+RULES: Keep responses SHORT. Ask ONE question at a time. Acknowledge answers briefly. Ask exactly {num_qs} questions. Start easy, increase difficulty. Cover {focus}. Stay in character as human interviewer Alex.{verification_section}
 STRUCTURE: 1. IMMEDIATELY greet: "Hi {candidate}! I'm Alex, interviewing you for {role}. Let's start easy." 2. Ask questions one at a time. 3. After all questions: "Thank you {candidate}, we'll share results shortly."
 VOICE: Conversational, medium pace, friendly but professional. No emojis or markdown."""
 

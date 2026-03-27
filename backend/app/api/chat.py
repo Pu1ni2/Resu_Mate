@@ -457,6 +457,59 @@ async def generate_interview_questions(req: GenerateQuestionsRequest, user=Depen
     questions = await technical_agent.generate_questions(req.role, req.level, req.num_questions, req.focus_areas, req.candidate_name)
     return {"questions": questions}
 
+# ═══════ RESUME INTELLIGENCE ═══════
+
+class ResumeIntelRequest(BaseModel):
+    candidate_id: int
+
+class CredibilityRequest(BaseModel):
+    candidate_id: int
+    candidate_email: str
+
+@router.post("/resume-intelligence")
+async def resume_intelligence(req: ResumeIntelRequest, user=Depends(get_current_user)):
+    """Analyze resume for gaps, unverified skills, and verification targets."""
+    candidate = resume_rag.candidates.get(req.candidate_id)
+    if not candidate:
+        raise HTTPException(404, "Candidate not found")
+    intel = await technical_agent.analyze_resume_gaps(candidate)
+    return {"intelligence": intel, "candidate_id": req.candidate_id}
+
+@router.post("/smart-questions")
+async def smart_questions(req: GenerateQuestionsRequest, user=Depends(get_current_user)):
+    """Generate interview questions informed by resume gap analysis."""
+    candidate_data = None
+    # Try to find candidate by name in resume_rag
+    for cid, c in resume_rag.candidates.items():
+        if c.get("name", "").lower() == (req.candidate_name or "").lower():
+            candidate_data = c
+            break
+    result = await technical_agent.generate_smart_questions(
+        req.role, req.level, req.num_questions, req.focus_areas, req.candidate_name, candidate_data
+    )
+    return result
+
+@router.post("/credibility-analysis")
+async def credibility_analysis(req: CredibilityRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Cross-reference resume claims against interview performance."""
+    candidate = resume_rag.candidates.get(req.candidate_id)
+    if not candidate:
+        raise HTTPException(404, "Candidate not found in memory")
+
+    interview = await db_service.get_interview_by_email(db, req.candidate_email)
+    if not interview or not interview.report:
+        raise HTTPException(404, "No completed interview found for this candidate")
+
+    report_data = interview.report
+    if isinstance(report_data, str):
+        try:
+            report_data = json.loads(report_data)
+        except:
+            report_data = {"report": report_data}
+
+    analysis = await technical_agent.analyze_credibility(candidate, report_data)
+    return {"credibility": analysis, "candidate_id": req.candidate_id, "email": req.candidate_email}
+
 @router.post("/score-answer")
 async def score_answer(req: ScoreAnswerRequest, user=Depends(get_current_user)):
     return await technical_agent.score_answer(req.question, req.answer, req.role, req.candidate_name)
@@ -493,11 +546,22 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
         "focus_areas": req.focus_areas or [],
     })
 
+    # Generate resume intelligence for smart interview questions
+    resume_intel = None
+    candidate = resume_rag.candidates.get(req.candidate_id)
+    if candidate:
+        try:
+            resume_intel = await technical_agent.analyze_resume_gaps(candidate)
+            print(f"🧠 Resume intelligence generated: {len(resume_intel.get('verification_targets', []))} targets")
+        except Exception as e:
+            print(f"⚠️ Resume intel failed: {e}")
+
     config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",
         "role": req.role or "General", "level": req.level or "Mid-Level",
         "num_questions": req.num_questions, "focus_areas": req.focus_areas or [],
         "status": "pending",
+        "resume_intelligence": resume_intel,
     }
     print(f"✅ Interview created for {email}")
     return {"message": f"Interview created for {email}", "interview_config": config}

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { marked } from 'marked';
-import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, Brain } from 'lucide-react';
+import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader } from 'lucide-react';
+
+const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 
 function SafeMarkdown({ text }) {
   if (!text || typeof text !== 'string') return null;
@@ -12,7 +14,162 @@ function SafeMarkdown({ text }) {
   }
 }
 
-export default function InterviewReportView({ report }) {
+function CredibilityBadge({ score }) {
+  const color = score >= 80 ? '#22C55E' : score >= 60 ? '#F59E0B' : '#EF4444';
+  const label = score >= 80 ? 'Highly Credible' : score >= 60 ? 'Credible' : score >= 40 ? 'Partially Credible' : 'Low Credibility';
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', border: `1px solid ${color}30`, background: `${color}10`, fontSize: '12px', fontWeight: '700', color }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+      {label} — {score}/100
+    </div>
+  );
+}
+
+function SkillTag({ skill, type }) {
+  const colors = {
+    confirmed: { bg: '#22C55E15', border: '#22C55E30', text: '#22C55E' },
+    overrated: { bg: '#EF444415', border: '#EF444430', text: '#EF4444' },
+    unverified: { bg: '#94A3B815', border: '#94A3B830', text: '#94A3B8' },
+    hidden: { bg: '#3B82F615', border: '#3B82F630', text: '#3B82F6' },
+  };
+  const c = colors[type] || colors.unverified;
+  return (
+    <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '12px', border: `1px solid ${c.border}`, background: c.bg, color: c.text, fontSize: '11px', fontWeight: '600', marginRight: '4px', marginBottom: '4px' }}>
+      {skill}
+    </span>
+  );
+}
+
+function CredibilitySection({ candidateId, candidateEmail }) {
+  const [credibility, setCredibility] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchCredibility = async () => {
+    if (!candidateId || !candidateEmail) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/credibility-analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        body: JSON.stringify({ candidate_id: candidateId, candidate_email: candidateEmail }),
+      });
+      if (!resp.ok) throw new Error('Analysis unavailable');
+      const data = await resp.json();
+      setCredibility(data.credibility);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!candidateId || !candidateEmail) return null;
+
+  if (!credibility && !loading && !error) {
+    return (
+      <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', textAlign: 'center' }}>
+        <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+          <Target size={15} /> Run Credibility Analysis
+        </button>
+        <p style={{ color: '#94A3B8', fontSize: '11px', marginTop: '8px' }}>Cross-reference resume claims against interview performance</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="cd-card" style={{ padding: '28px', marginBottom: '16px', textAlign: 'center' }}>
+        <Loader size={20} className="spin" style={{ color: '#8B5CF6', marginBottom: '8px' }} />
+        <p style={{ color: '#94A3B8', fontSize: '13px' }}>Analyzing credibility...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', textAlign: 'center', color: '#94A3B8', fontSize: '13px' }}>
+        Credibility analysis unavailable: {error}
+      </div>
+    );
+  }
+
+  const c = credibility;
+  const rvi = c.resume_vs_interview || {};
+  const la = c.level_assessment || {};
+
+  return (
+    <div className="cd-card" style={{ padding: '24px', marginBottom: '16px', borderColor: 'rgba(139,92,246,0.2)' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Target size={16} style={{ color: '#8B5CF6' }} /> Credibility Analysis
+      </h3>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <CredibilityBadge score={c.credibility_score || 0} />
+        <span style={{ fontSize: '12px', color: '#94A3B8' }}>Confidence: {c.confidence_in_assessment || 'Medium'}</span>
+      </div>
+
+      {/* Skills Comparison */}
+      <div style={{ marginBottom: '14px' }}>
+        {(rvi.confirmed_skills || []).length > 0 && (
+          <div style={{ marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#22C55E', display: 'block', marginBottom: '4px' }}>Confirmed in Interview</span>
+            {rvi.confirmed_skills.map((s, i) => <SkillTag key={i} skill={s} type="confirmed" />)}
+          </div>
+        )}
+        {(rvi.overrated_skills || []).length > 0 && (
+          <div style={{ marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#EF4444', display: 'block', marginBottom: '4px' }}>Overrated (claimed but underperformed)</span>
+            {rvi.overrated_skills.map((s, i) => <SkillTag key={i} skill={s} type="overrated" />)}
+          </div>
+        )}
+        {(rvi.hidden_strengths || []).length > 0 && (
+          <div style={{ marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#3B82F6', display: 'block', marginBottom: '4px' }}>Hidden Strengths (not on resume)</span>
+            {rvi.hidden_strengths.map((s, i) => <SkillTag key={i} skill={s} type="hidden" />)}
+          </div>
+        )}
+        {(rvi.unverified_skills || []).length > 0 && (
+          <div style={{ marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Unverified</span>
+            {rvi.unverified_skills.slice(0, 6).map((s, i) => <SkillTag key={i} skill={s} type="unverified" />)}
+          </div>
+        )}
+      </div>
+
+      {/* Level Assessment */}
+      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--bg3, rgba(255,255,255,0.04))', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <TrendingUp size={14} style={{ color: '#8B5CF6' }} />
+          <span style={{ fontSize: '12px', fontWeight: '700' }}>Level Assessment</span>
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text2, #94A3B8)' }}>
+          Resume claims: <strong>{la.resume_claims || '—'}</strong> → Interview suggests: <strong style={{ color: la.match ? '#22C55E' : '#F59E0B' }}>{la.interview_suggests || '—'}</strong>
+          {la.explanation && <span> — {la.explanation}</span>}
+        </div>
+      </div>
+
+      {/* Key Insights */}
+      {(c.key_insights || []).length > 0 && (
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text3, #64748B)', display: 'block', marginBottom: '6px' }}>Key Insights</span>
+          {c.key_insights.map((insight, i) => (
+            <p key={i} style={{ fontSize: '12px', color: 'var(--text2, #94A3B8)', marginBottom: '4px', paddingLeft: '10px', borderLeft: '2px solid rgba(139,92,246,0.3)' }}>{insight}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Recommendation */}
+      <div style={{ marginTop: '14px', padding: '10px 14px', borderRadius: '8px', background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', fontWeight: '600' }}>Hiring Recommendation</span>
+        <span style={{ fontSize: '13px', fontWeight: '700', color: '#8B5CF6' }}>{c.hiring_recommendation || '—'}</span>
+      </div>
+    </div>
+  );
+}
+
+export default function InterviewReportView({ report, candidateId, candidateEmail }) {
   if (!report) return <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
   const r = report;
@@ -83,11 +240,14 @@ export default function InterviewReportView({ report }) {
       {reportText.length > 5 && (
         <div className="cd-card" style={{ padding: '24px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Brain size={16} style={{ color: '#3B82F6' }} /> AI Evaluation
+            <FileText size={16} style={{ color: '#3B82F6' }} /> Evaluation
           </h3>
           <SafeMarkdown text={reportText} />
         </div>
       )}
+
+      {/* Credibility Analysis */}
+      <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} />
 
       {/* Proctoring */}
       {(violations > 0 || (r.lookAwayCount || 0) > 10) && (
