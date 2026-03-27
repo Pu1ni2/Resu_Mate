@@ -12,7 +12,7 @@ class TavilyTool:
                 from tavily import TavilyClient
                 self.client = TavilyClient(api_key=self.api_key)
             except ImportError:
-                print("⚠️ tavily-python not installed")
+                print("[WARNING] tavily-python not installed")
 
     async def call(self, params: Dict, context: Dict = None) -> Dict:
         """Search the web"""
