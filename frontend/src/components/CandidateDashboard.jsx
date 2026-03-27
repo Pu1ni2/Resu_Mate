@@ -206,9 +206,9 @@ export default function CandidateDashboard() {
     );
   }
 
-  // Demo account: interview always open even after completion
-  const hasInterview = isDemo ? true : (candidateSession.has_interview && !candidateSession.interview_completed);
-  const interviewCompleted = !isDemo && (candidateSession.interview_completed || !!interviewReport);
+  const interviewCompleted = candidateSession.interview_completed || !!interviewReport;
+  // Demo: interview always available even after completion (can retake)
+  const hasInterview = isDemo ? true : (candidateSession.has_interview && !interviewCompleted);
   const showInterviewTab = hasInterview || interviewCompleted;
   const c = advisorCandidates[0]; // Current resume data
   const getSkills = (cand) => Array.isArray(cand?.skills) ? cand.skills : [];
@@ -583,8 +583,8 @@ export default function CandidateDashboard() {
                 </div>
               )}
 
-              {/* Pending — Enter room */}
-              {hasInterview && !interviewCompleted && (
+              {/* Pending — Enter room (demo can retake after completion) */}
+              {hasInterview && (!interviewCompleted || isDemo) && (
                 <div className="cd-interview-pending">
                   <div className="cd-card cd-interview-ready-card">
                     <div className="cd-interview-ready-icon"><Camera size={28} /></div>
