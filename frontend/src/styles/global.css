@@ -726,32 +726,27 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .focus-empty h3{font-size:18px;font-weight:600;margin-bottom:8px}
 .focus-empty p{color:var(--text3);font-size:14px}
 
-.focus-candidates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;padding:0 24px 48px}
+.focus-candidates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:16px;padding:0 24px 48px}
 
 /* ── Premium Candidate Card ── */
-.fc-card{position:relative;background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;padding:24px;cursor:pointer;transition:all .25s ease;overflow:hidden;display:flex;flex-direction:column;gap:14px}
-.fc-card-glow{position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:var(--card-gradient,linear-gradient(135deg,#F59E0B,#D97706));opacity:0.07;filter:blur(30px);transition:opacity .3s;pointer-events:none}
-.fc-card:hover{border-color:rgba(255,255,255,0.15);transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,0.35)}
-.fc-card:hover .fc-card-glow{opacity:0.18}
-.fc-card-top{display:flex;align-items:center;gap:14px}
-.fc-avatar{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
-.fc-card-identity{flex:1;min-width:0}
-.fc-name{font-size:16px;font-weight:700;color:var(--text1);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fc-role{font-size:12px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fc-badges{display:flex;flex-wrap:wrap;gap:6px}
-.fc-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
-.fc-badge-exp{background:rgba(245,158,11,0.12);color:#F59E0B;border:1px solid rgba(245,158,11,0.2)}
-.fc-badge-level{background:rgba(34,197,94,0.1);color:#22C55E;border:1px solid rgba(34,197,94,0.2)}
-.fc-badge-loc{background:rgba(99,102,241,0.1);color:#818CF8;border:1px solid rgba(99,102,241,0.2)}
-.fc-skills{display:flex;flex-wrap:wrap;gap:6px}
-.fc-skill{padding:3px 10px;background:var(--bg3);border:1px solid var(--glass-border);border-radius:6px;font-size:11px;color:var(--text2);font-weight:500}
-.fc-skill-more{opacity:0.5}
-.fc-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px;padding-top:14px;border-top:1px solid var(--glass-border)}
-.fc-status-ok{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px}
-.fc-status-ok::before{content:'';width:6px;height:6px;border-radius:50%;background:#22C55E;display:inline-block}
-.fc-not-resume{font-size:11px;color:#F87171;display:flex;align-items:center;gap:4px}
-.fc-cta{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--text3);transition:all .2s}
-.fc-card:hover .fc-cta{color:#F59E0B;gap:6px}
+.pc-card{position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;overflow:hidden}
+.pc-card:hover{transform:translateY(-4px);box-shadow:0 24px 64px rgba(0,0,0,0.5);border-color:rgba(255,255,255,0.16)}
+.pc-stripe{height:3px;width:100%}
+.pc-body{padding:20px 20px 16px;display:flex;flex-direction:column;gap:14px}
+.pc-header{display:flex;gap:14px;align-items:flex-start}
+.pc-avatar{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:-0.5px}
+.pc-info{flex:1;min-width:0}
+.pc-name{font-size:15px;font-weight:700;color:rgba(255,255,255,0.92);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-role{font-size:12px;color:rgba(255,255,255,0.38);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400}
+.pc-meta{display:flex;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.28);line-height:1.4}
+.pc-meta span+span::before{content:'·';margin:0 5px;opacity:0.5}
+.pc-skills{display:flex;flex-wrap:wrap;gap:5px}
+.pc-skill{padding:3px 9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;font-size:11px;color:rgba(255,255,255,0.42);font-weight:500;white-space:nowrap}
+.pc-skill-more{color:rgba(255,255,255,0.2);background:transparent;border-color:transparent}
+.pc-footer{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06)}
+.pc-verified{font-size:11px;color:rgba(255,255,255,0.22);font-weight:400}
+.pc-btn{padding:7px 16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.55);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s,border-color .2s,color .2s;letter-spacing:0.01em}
+.pc-card:hover .pc-btn{background:rgba(255,255,255,0.11);border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.88)}
 
 .focus-header{display:flex;align-items:center;gap:20px;padding:20px 24px;border-bottom:1px solid var(--glass-border);flex-wrap:wrap}
 .focus-back-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:var(--bg3);border:1px solid var(--glass-border);color:var(--text2);cursor:pointer;font-size:14px;font-weight:500;transition:all .2s;font-family:inherit}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   User, ArrowLeft, AlertCircle, Briefcase, Award, MapPin,
-  ChevronRight, UserCheck, Mail, Github, Calendar, Video, MessageSquare, Globe
+  UserCheck, Mail, Github, Calendar, Video, MessageSquare, Globe
 } from 'lucide-react';
 
 import useVoice from '../hooks/useVoice';
@@ -446,46 +446,41 @@ export default function CandidateFocus() {
                 const skills = getSkills(c);
                 const name = getDisplayName(c, i);
                 const gradient = getAvatarGradient(c.name);
+                const skillNames = skills.slice(0, 4).map(s => typeof s === 'string' ? s : s?.name || '');
                 return (
-                  <div key={c.id} className="fc-card" style={{ '--card-gradient': gradient }} onClick={() => handleCandidateSelect(c)}>
-                    <div className="fc-card-glow" />
-                    <div className="fc-card-top">
-                      <div className="fc-avatar" style={{ background: gradient }}>
-                        {name[0]?.toUpperCase()}
+                  <div key={c.id} className="pc-card" onClick={() => handleCandidateSelect(c)}>
+                    <div className="pc-stripe" style={{ background: gradient }} />
+                    <div className="pc-body">
+                      <div className="pc-header">
+                        <div className="pc-avatar" style={{ background: gradient }}>
+                          {name[0]?.toUpperCase()}
+                        </div>
+                        <div className="pc-info">
+                          <h3 className="pc-name">{name}</h3>
+                          <p className="pc-role">{c.predicted_role || 'Processing...'}</p>
+                          <div className="pc-meta">
+                            {c.total_experience_years != null && <span>{c.total_experience_years}y exp</span>}
+                            {c.experience_level && <span>{c.experience_level}</span>}
+                            {c.location && <span>{c.location}</span>}
+                          </div>
+                        </div>
                       </div>
-                      <div className="fc-card-identity">
-                        <h3 className="fc-name">{name}</h3>
-                        <p className="fc-role">{c.predicted_role || 'Processing...'}</p>
+
+                      {skillNames.length > 0 && (
+                        <div className="pc-skills">
+                          {skillNames.map((s, j) => <span key={j} className="pc-skill">{s}</span>)}
+                          {skills.length > 4 && <span className="pc-skill pc-skill-more">+{skills.length - 4}</span>}
+                        </div>
+                      )}
+
+                      <div className="pc-footer">
+                        <span className="pc-verified">
+                          {c.is_resume === false ? '⚠ Not a resume' : '✓ Verified resume'}
+                        </span>
+                        <button className="pc-btn" style={{ '--g': gradient }}>
+                          Open Focus
+                        </button>
                       </div>
-                    </div>
-
-                    <div className="fc-badges">
-                      {c.total_experience_years != null && (
-                        <span className="fc-badge fc-badge-exp"><Briefcase size={11} /> {c.total_experience_years}y exp</span>
-                      )}
-                      {c.experience_level && (
-                        <span className="fc-badge fc-badge-level"><Award size={11} /> {c.experience_level}</span>
-                      )}
-                      {c.location && (
-                        <span className="fc-badge fc-badge-loc"><MapPin size={11} /> {c.location}</span>
-                      )}
-                    </div>
-
-                    {skills.length > 0 && (
-                      <div className="fc-skills">
-                        {skills.slice(0, 5).map((s, j) => (
-                          <span key={j} className="fc-skill">{typeof s === 'string' ? s : s?.name || ''}</span>
-                        ))}
-                        {skills.length > 5 && <span className="fc-skill fc-skill-more">+{skills.length - 5}</span>}
-                      </div>
-                    )}
-
-                    <div className="fc-card-footer">
-                      {c.is_resume === false
-                        ? <span className="fc-not-resume"><AlertCircle size={11} /> Not a Resume</span>
-                        : <span className="fc-status-ok">Resume verified</span>
-                      }
-                      <span className="fc-cta">Focus <ChevronRight size={14} /></span>
                     </div>
                   </div>
                 );
