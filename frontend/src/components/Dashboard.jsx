@@ -2079,7 +2079,7 @@ export default function Dashboard() {
               <div
                 key={item.id}
                 className={`sidebar-link ${tab === item.id ? 'active' : ''}`}
-                onClick={() => setTab(item.id)}
+                onClick={() => item.id === 'focus' ? navigate('/hiring/focus') : setTab(item.id)}
               >
                 {item.icon}<span>{item.label}</span>
               </div>
