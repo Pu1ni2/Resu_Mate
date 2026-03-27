@@ -130,6 +130,12 @@
 [data-theme="light"] .focus-empty h3 { color: var(--text); }
 [data-theme="light"] .focus-empty p { color: var(--text3); }
 
+/* Hiring upload sample row light */
+[data-theme="light"] .upload-sample-label { color: var(--text3); }
+[data-theme="light"] .upload-sample-btn { background: #EFF6FF; border-color: #BFDBFE; color: #2563EB; }
+[data-theme="light"] .upload-sample-btn:hover { background: #DBEAFE; border-color: #93C5FD; }
+[data-theme="light"] .upload-sample-tag { background: #DBEAFE; border-color: #93C5FD; color: #2563EB; }
+
 
 /* ═══ FLOATING TOOLBAR ═══ */
 .pl-toolbar {

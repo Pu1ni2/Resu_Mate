@@ -134,6 +134,12 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .upload-zone h3 { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
 .upload-zone p { color: var(--text3); font-size: 15px; }
 .upload-progress { margin-top: 24px; }
+.upload-sample-row{display:flex;align-items:center;gap:12px;margin-top:20px;padding-top:20px;border-top:1px solid var(--glass-border);flex-wrap:wrap}
+.upload-sample-label{font-size:13px;color:var(--text3)}
+.upload-sample-btn{display:flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:10px;color:#60A5FA;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .2s}
+.upload-sample-btn:hover{background:rgba(59,130,246,0.18);border-color:rgba(59,130,246,0.45)}
+.upload-sample-btn:disabled{opacity:0.5;cursor:not-allowed}
+.upload-sample-tag{font-size:10px;font-weight:700;padding:2px 7px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);border-radius:8px;margin-left:2px}
 .progress-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
 .progress-value { color: var(--accent); font-weight: 600; }
 .candidates-section { margin-top: 20px; }

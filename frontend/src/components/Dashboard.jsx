@@ -1839,6 +1839,22 @@ export default function Dashboard() {
     }
   };
 
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const handleLoadSample = async () => {
+    setSampleLoading(true);
+    try {
+      const resp = await fetch('/sample-resume.pdf');
+      if (!resp.ok) throw new Error('Sample not found');
+      const blob = await resp.blob();
+      const file = new File([blob], 'Sai-Punith-Kolla-Resume.pdf', { type: 'application/pdf' });
+      await uploadResume(file);
+    } catch (err) {
+      alert(`Could not load sample: ${err.message}`);
+    } finally {
+      setSampleLoading(false);
+    }
+  };
+
   // Send message via typing (no auto-speak)
   const handleSend = (msg) => {
     const m = msg || input.trim();
@@ -2150,6 +2166,15 @@ export default function Dashboard() {
                       <div className="progress"><div className="progress-fill" style={{ width: `${p}%` }} /></div>
                     </div>
                   ))}
+
+                  <div className="upload-sample-row">
+                    <span className="upload-sample-label">No resume? Try the sample:</span>
+                    <button className="upload-sample-btn" onClick={handleLoadSample} disabled={sampleLoading}>
+                      {sampleLoading ? <span className="spin" style={{display:'inline-block',width:14,height:14,border:'2px solid currentColor',borderTopColor:'transparent',borderRadius:'50%'}} /> : <FileText size={14} />}
+                      {sampleLoading ? 'Loading...' : 'Load Sample Resume'}
+                      <span className="upload-sample-tag">Demo</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
