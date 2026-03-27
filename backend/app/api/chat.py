@@ -12,9 +12,13 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import io
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag
 from app.core.config import settings
+from app.core.database import get_db
+from app.services import db_service
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
 from app.agents.technical_agent import technical_agent
@@ -458,120 +462,121 @@ async def score_answer(req: ScoreAnswerRequest, user=Depends(get_current_user)):
     return await technical_agent.score_answer(req.question, req.answer, req.role, req.candidate_name)
 
 @router.post("/interview-report")
-async def interview_report(req: InterviewReportRequest, user=Depends(get_current_user)):
+async def interview_report(req: InterviewReportRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     report = await technical_agent.generate_report(
         req.candidate_name, req.candidate_email, req.role,
         req.questions, req.answers, req.scores, req.duration
     )
-    # Save results
-    _save_interview_results(req.candidate_email, report, req.scores, req.duration)
+    # Save to database
+    await db_service.save_interview_result(db, req.candidate_email, {
+        "report": report, "scores": req.scores, "timer": req.duration
+    })
     return {"report": report}
 
-# ═══════ CANDIDATE PORTAL ═══════
-
-INTERVIEWS_FILE = "interviews_data.json"
-
-def _load_data():
-    try:
-        with open(INTERVIEWS_FILE, 'r') as f:
-            d = json.load(f)
-            return d.get('interviews', {}), d.get('access', {})
-    except:
-        return {}, {}
-
-def _save_data(interviews, access):
-    try:
-        with open(INTERVIEWS_FILE, 'w') as f:
-            json.dump({'interviews': interviews, 'access': access}, f, indent=2)
-    except Exception as e:
-        print(f"Save error: {e}")
-
-interviews_store, candidate_access = _load_data()
-
-def _save_interview_results(email, report, scores, duration):
-    email = email.strip().lower()
-    if email in interviews_store:
-        avg = sum(s.get('score', 0) if isinstance(s, dict) else 0 for s in scores) / max(len(scores), 1)
-        interviews_store[email]["status"] = "completed"
-        interviews_store[email]["results"] = {"report": report, "avg_score": round(avg, 1), "duration": duration}
-        _save_data(interviews_store, candidate_access)
+# ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════
 
 @router.post("/create-interview")
-async def create_interview(req: CreateInterviewRequest, user=Depends(get_current_user)):
+async def create_interview(req: CreateInterviewRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     email = req.candidate_email.strip().lower()
-    candidate_access[email] = {"name": req.candidate_name or "", "candidate_id": req.candidate_id, "access": True}
-    interviews_store[email] = {
+
+    # Grant portal access
+    await db_service.create_candidate_access(db, email, req.candidate_name or "", req.candidate_id)
+
+    # Create interview record
+    interview = await db_service.create_interview(db, {
+        "candidate_id": req.candidate_id,
+        "candidate_email": email,
+        "role": req.role or "General",
+        "level": req.level or "Mid-Level",
+        "experience_required": req.experience_required,
+        "num_questions": req.num_questions,
+        "focus_areas": req.focus_areas or [],
+    })
+
+    config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",
         "role": req.role or "General", "level": req.level or "Mid-Level",
         "num_questions": req.num_questions, "focus_areas": req.focus_areas or [],
-        "status": "pending", "results": None
+        "status": "pending",
     }
-    _save_data(interviews_store, candidate_access)
     print(f"✅ Interview created for {email}")
-    return {"message": f"Interview created for {email}", "interview_config": interviews_store[email]}
+    return {"message": f"Interview created for {email}", "interview_config": config}
 
 @router.post("/verify-email")
-async def verify_email(req: VerifyEmailRequest):
+async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
     email = req.email.strip().lower()
     print(f"\n🔍 Verify email: '{email}'")
-    print(f"  candidate_access keys: {list(candidate_access.keys())}")
-    print(f"  interviews_store keys: {list(interviews_store.keys())}")
-    
-    if email in candidate_access:
-        has_iv = email in interviews_store
-        print(f"  ✅ Found in candidate_access. has_interview={has_iv}")
-        return {"access": True, "name": candidate_access[email].get("name", ""), "candidate_id": candidate_access[email].get("candidate_id"),
-                "has_interview": has_iv, "interview_config": interviews_store.get(email) if has_iv else None}
 
-    # Also check interviews_store directly (in case access wasn't saved but interview was created)
-    if email in interviews_store:
-        print(f"  ✅ Found in interviews_store (not in access). Auto-granting access.")
-        candidate_access[email] = {"name": interviews_store[email].get("candidate_name", ""), "candidate_id": interviews_store[email].get("candidate_id"), "access": True}
-        _save_data(interviews_store, candidate_access)
-        return {"access": True, "name": candidate_access[email].get("name", ""), "candidate_id": candidate_access[email].get("candidate_id"),
-                "has_interview": True, "interview_config": interviews_store.get(email)}
+    # 1. Check database access table
+    access = await db_service.get_candidate_access(db, email)
+    if access:
+        interview = await db_service.get_interview_by_email(db, email)
+        has_iv = interview is not None
+        completed = has_iv and interview.status == "completed"
 
+        # Build interview config
+        iv_config = None
+        iv_report = None
+        if interview:
+            iv_config = {
+                "role": interview.role, "level": interview.level,
+                "num_questions": interview.num_questions, "focus_areas": interview.focus_areas or [],
+                "status": interview.status,
+            }
+            if completed and interview.report:
+                try:
+                    iv_report = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
+                except:
+                    iv_report = {"report": interview.report}
+
+        print(f"  ✅ Found in DB. has_interview={has_iv}, completed={completed}")
+        return {
+            "access": True, "name": access.name or "", "candidate_id": access.candidate_id,
+            "has_interview": has_iv and not completed,
+            "interview_config": iv_config if has_iv and not completed else None,
+            "interview_completed": completed,
+            "interview_report": iv_report,
+        }
+
+    # 2. Fallback: scan resume texts for the email
     for cid, c in resume_rag.candidates.items():
         text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
         emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
         if email in text or email == emb_email.lower():
-            candidate_access[email] = {"name": c.get('name', ''), "candidate_id": cid, "access": True}
-            _save_data(interviews_store, candidate_access)
-            has_iv = email in interviews_store
+            # Auto-grant access and persist to DB
+            await db_service.create_candidate_access(db, email, c.get('name', ''), cid)
+            interview = await db_service.get_interview_by_email(db, email)
+            has_iv = interview is not None
+            completed = has_iv and interview.status == "completed"
             print(f"  ✅ Found email in resume text. has_interview={has_iv}")
-            return {"access": True, "name": c.get('name', ''), "candidate_id": cid,
-                    "has_interview": has_iv, "interview_config": interviews_store.get(email) if has_iv else None}
+            return {
+                "access": True, "name": c.get('name', ''), "candidate_id": cid,
+                "has_interview": has_iv and not completed,
+                "interview_config": None,
+                "interview_completed": completed,
+                "interview_report": None,
+            }
 
     print(f"  ❌ Not found anywhere")
     return {"access": False, "message": "No access found for this email. Please contact your hiring manager."}
 
 @router.get("/interview-status/{email}")
-async def interview_status(email: str, user=Depends(get_current_user)):
+async def interview_status(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     email = email.strip().lower()
-    if email in interviews_store:
-        return {"exists": True, "config": interviews_store[email]}
+    interview = await db_service.get_interview_by_email(db, email)
+    if interview:
+        return {
+            "exists": True,
+            "status": interview.status,
+            "completed": interview.status == "completed",
+            "config": {
+                "role": interview.role, "level": interview.level,
+                "num_questions": interview.num_questions,
+            }
+        }
     return {"exists": False}
 
-# ═══════ INTERVIEW RESULTS (shared between candidate & hiring manager) ═══════
-
-interview_results = {}
-
-# Load saved results
-try:
-    import json as _json
-    with open("interview_results.json", "r") as _f:
-        interview_results = _json.load(_f)
-    print(f"📋 Loaded {len(interview_results)} interview results")
-except:
-    interview_results = {}
-
-def _save_results():
-    try:
-        with open("interview_results.json", "w") as f:
-            import json as _j
-            _j.dump(interview_results, f, indent=2, default=str)
-    except Exception as e:
-        print(f"Warning: Could not save results: {e}")
+# ═══════ INTERVIEW RESULTS (PostgreSQL-backed) ═══════
 
 class SaveInterviewResult(BaseModel):
     candidate_email: str
@@ -579,42 +584,29 @@ class SaveInterviewResult(BaseModel):
     report: dict
 
 @router.post("/save-interview-result")
-async def save_interview_result(req: SaveInterviewResult):
+async def save_interview_result(req: SaveInterviewResult, db: AsyncSession = Depends(get_db)):
     """Save interview result (called by candidate after interview)"""
     email = req.candidate_email.strip().lower()
-    
-    # Save to results store
-    if email not in interview_results:
-        interview_results[email] = []
-    
-    interview_results[email].append({
-        "candidate_name": req.candidate_name,
-        "timestamp": datetime.now().isoformat(),
-        "report": req.report
-    })
-    
-    # Update interview status
-    if email in interviews_store:
-        interviews_store[email]["status"] = "completed"
-        interviews_store[email]["result"] = req.report
-        _save_data(interviews_store, candidate_access)
-    
-    _save_results()
+    await db_service.save_interview_result(db, email, req.report)
     print(f"✅ Interview result saved for {email}")
     return {"status": "saved"}
 
 @router.get("/get-interview-results/{email}")
-async def get_interview_results(email: str, user=Depends(get_current_user)):
-    """Get all interview results for a candidate (used by hiring manager)"""
+async def get_interview_results(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Get interview results for a candidate"""
     email = email.strip().lower()
-    results = interview_results.get(email, [])
-    return {"email": email, "results": results, "count": len(results)}
+    interview = await db_service.get_interview_by_email(db, email)
+    if interview and interview.report:
+        report = interview.report
+        try:
+            report = json.loads(report) if isinstance(report, str) else report
+        except:
+            pass
+        return {"email": email, "results": [{"report": report, "timestamp": interview.completed_at.isoformat() if interview.completed_at else None}], "count": 1}
+    return {"email": email, "results": [], "count": 0}
 
 @router.get("/get-all-interview-results")
-async def get_all_interview_results(user=Depends(get_current_user)):
-    """Get all interview results (for hiring manager dashboard)"""
-    all_results = []
-    for email, results in interview_results.items():
-        for r in results:
-            all_results.append({"email": email, **r})
-    return {"results": all_results, "count": len(all_results)}
+async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Get all completed interview results (for hiring manager dashboard)"""
+    results = await db_service.get_all_completed_interviews(db)
+    return {"results": results, "count": len(results)}

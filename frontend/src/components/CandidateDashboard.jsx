@@ -6,9 +6,11 @@ import {
   Upload, BarChart2, MessageSquare, Video, Send, Bot,
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
   LogOut, Camera, Clock, ChevronRight, X, CheckCircle,
-  EyeOff, XCircle, Shield, Eye, Brain
+  EyeOff, XCircle, Shield, Eye, Brain, Sparkles, GraduationCap,
+  Code, Star, TrendingUp, Target
 } from 'lucide-react';
 import InterviewRoom from './InterviewRoom';
+import InterviewReportView from './shared/InterviewReportView';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -19,123 +21,17 @@ const Logo = ({ size = 32 }) => (
   </svg>
 );
 
-const AIAvatar = () => (<div className="cd-avatar-ai"><Bot size={18} /></div>);
-
 const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 
-// ═══════ SAFE MARKDOWN RENDERER ═══════
 function SafeMarkdown({ text }) {
   if (!text || typeof text !== 'string') return null;
   try {
     return <div className="md" style={{ lineHeight: '1.7', color: 'var(--text2)' }} dangerouslySetInnerHTML={{ __html: marked.parse(text) }} />;
   } catch (e) {
-    console.error('Markdown parse error:', e);
     return <pre style={{ whiteSpace: 'pre-wrap', fontSize: '13px', color: 'var(--text2)' }}>{text}</pre>;
   }
 }
 
-// ═══════ INTERVIEW REPORT COMPONENT ═══════
-function InterviewReportView({ report }) {
-  if (!report) return <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
-
-  const r = report;
-  const avgScore = r.avgScore || (r.scores?.length > 0 ? (r.scores.reduce((a, s) => a + (s?.score || 0), 0) / r.scores.length).toFixed(1) : '—');
-  const eyeContact = r.eyeContact || 0;
-  const violations = r.violations || 0;
-  const timerVal = r.timer || 0;
-  const mins = Math.floor(timerVal / 60);
-  const secs = String(timerVal % 60).padStart(2, '0');
-  const scores = Array.isArray(r.scores) ? r.scores : [];
-  const reportText = typeof r.report === 'string' ? r.report : '';
-
-  return (
-    <div style={{ maxWidth: '780px', margin: '0 auto' }}>
-      {/* Header */}
-      <div className="cd-card" style={{ padding: '28px', textAlign: 'center', marginBottom: '16px' }}>
-        {r.terminated
-          ? <AlertCircle size={40} style={{ color: '#EF4444', marginBottom: '12px' }} />
-          : <CheckCircle size={40} style={{ color: '#22C55E', marginBottom: '12px' }} />
-        }
-        <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px' }}>
-          {r.terminated ? 'Interview Terminated' : 'Interview Completed'}
-        </h2>
-        <p style={{ color: '#64748B', fontSize: '14px' }}>
-          {scores.length} questions answered · {mins}:{secs} duration
-        </p>
-        {r.terminated && (
-          <div style={{ marginTop: '12px', padding: '10px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
-            Terminated: exceeded proctoring violations limit
-          </div>
-        )}
-      </div>
-
-      {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
-        {[
-          { val: avgScore, label: 'Avg Score' },
-          { val: `${eyeContact}%`, label: 'Eye Contact' },
-          { val: violations, label: 'Violations', color: violations > 0 ? '#EF4444' : '#22C55E' },
-          { val: `${mins}:${secs}`, label: 'Duration' },
-        ].map((s, i) => (
-          <div key={i} className="cd-card" style={{ textAlign: 'center', padding: '16px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || '#1E293B' }}>{s.val}</div>
-            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Score Breakdown */}
-      {scores.length > 0 && (
-        <div className="cd-card" style={{ padding: '20px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px' }}>Score Breakdown</h3>
-          {scores.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#94A3B8', width: '28px' }}>Q{i + 1}</span>
-              <div style={{ flex: 1, maxWidth: '180px', height: '6px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${(s?.score || 0) * 10}%`, height: '100%', borderRadius: '3px', transition: 'width 0.5s',
-                  background: (s?.score || 0) >= 7 ? '#22C55E' : (s?.score || 0) >= 4 ? '#F59E0B' : '#EF4444' }} />
-              </div>
-              <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{s?.score || 0}/10</span>
-              {s?.feedback && <span style={{ fontSize: '12px', color: '#94A3B8', flex: 1 }}>{s.feedback}</span>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* AI Report */}
-      {reportText.length > 5 && (
-        <div className="cd-card" style={{ padding: '24px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Brain size={16} style={{ color: '#3B82F6' }} /> AI Evaluation
-          </h3>
-          <SafeMarkdown text={reportText} />
-        </div>
-      )}
-
-      {/* Proctoring */}
-      {(violations > 0 || (r.lookAwayCount || 0) > 10) && (
-        <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', borderColor: 'rgba(239,68,68,0.2)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Shield size={14} /> Proctoring Summary
-          </h3>
-          {violations > 0 && (
-            <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <XCircle size={13} style={{ color: '#F59E0B' }} /> {violations} violation{violations > 1 ? 's' : ''} detected
-            </p>
-          )}
-          {(r.lookAwayCount || 0) > 10 && (
-            <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <EyeOff size={13} style={{ color: '#F59E0B' }} /> Gaze aversion: {r.lookAwayCount} times
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-// ═══════ MAIN COMPONENT ═══════
 export default function CandidateDashboard() {
   const navigate = useNavigate();
   const {
@@ -145,11 +41,7 @@ export default function CandidateDashboard() {
   } = useApp();
 
   const [advisorCandidates, setAdvisorCandidates] = useState([]);
-
-  // Sync with global candidates
-  useEffect(() => {
-    if (candidates?.length > 0) setAdvisorCandidates(candidates);
-  }, [candidates]);
+  useEffect(() => { if (candidates?.length > 0) setAdvisorCandidates(candidates); }, [candidates]);
 
   const [tab, setTab] = useState('upload');
   const [input, setInput] = useState('');
@@ -160,33 +52,31 @@ export default function CandidateDashboard() {
   const [showFullReport, setShowFullReport] = useState(false);
   const [interviewReport, setInterviewReport] = useState(() => {
     try {
-      const stored = localStorage.getItem('resumate_interview_report');
+      const stored = localStorage.getItem('resumate_candidate');
       if (stored) {
-        const parsed = JSON.parse(stored);
-        console.log('Loaded interview report from storage:', parsed);
-        return parsed;
+        const session = JSON.parse(stored);
+        if (session.interview_completed && session.interview_report) return session.interview_report;
       }
-    } catch (e) { console.error('Failed to load report:', e); }
+    } catch {}
+    try {
+      const stored = localStorage.getItem('resumate_interview_report');
+      if (stored) return JSON.parse(stored);
+    } catch {}
     return null;
   });
 
-  // Redirect if no session — but check localStorage first
+  // Redirect if no session
   useEffect(() => {
     if (!candidateSession) {
-      // Double-check localStorage before redirecting
       try {
         const stored = localStorage.getItem('resumate_candidate');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setCandidateSession(parsed);
-          return; // Don't redirect, session will be set
-        }
+        if (stored) { setCandidateSession(JSON.parse(stored)); return; }
       } catch {}
       navigate('/candidate/login');
     }
   }, [candidateSession, navigate, setCandidateSession]);
 
-  // Advisor chat state — messages stored PER MODE so switching tabs doesn't lose them
+  // Advisor chat
   const [advisorMode, setAdvisorMode] = useState('general');
   const [advisorChatMap, setAdvisorChatMap] = useState({
     general: [], resume_coach: [], interview_prep: [], career_advisor: []
@@ -194,31 +84,21 @@ export default function CandidateDashboard() {
   const [advisorTyping, setAdvisorTyping] = useState(false);
   const [resumeUploaded, setResumeUploaded] = useState(false);
   const [resumeData, setResumeData] = useState(null);
+  const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
 
   const advisorMessages = advisorChatMap[advisorMode] || [];
-
   const modeSuggestions = {
     general: ['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?'],
     resume_coach: ['What are the weak spots in my resume?', 'How can I make it ATS-friendly?', 'Suggest better bullet points'],
     interview_prep: ['Generate practice questions for my role', 'Help me with "Tell me about yourself"', 'What behavioral questions should I expect?'],
     career_advisor: ['What are my key strengths?', 'What career paths fit my profile?', 'What skills should I learn next?'],
   };
-
-  // Follow-up suggestions — show initial if empty, otherwise show dynamic from backend
-  const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
   const advisorSuggestions = advisorMessages.length === 0 ? modeSuggestions[advisorMode] : dynamicSuggestions;
 
-  useEffect(() => {
-    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [advisorMessages, advisorTyping]);
-
-  // Reset dynamic suggestions when switching modes
-  useEffect(() => {
-    setDynamicSuggestions([]);
-  }, [advisorMode]);
+  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [advisorMessages, advisorTyping]);
+  useEffect(() => { setDynamicSuggestions([]); }, [advisorMode]);
 
   const handleUpload = async (files) => {
-    // Only take the first file — single resume per candidate
     const file = Array.from(files)[0];
     if (!file) return;
     try {
@@ -230,11 +110,8 @@ export default function CandidateDashboard() {
       if (data.success) {
         setResumeUploaded(true);
         setResumeData(data.data);
-        // Replace — only one resume allowed
         setAdvisorCandidates([data.data]);
-      } else {
-        alert('Upload failed');
-      }
+      } else { alert('Upload failed'); }
     } catch (err) { alert(`Upload failed: ${err.message}`); }
   };
 
@@ -244,20 +121,16 @@ export default function CandidateDashboard() {
     setInput('');
     const mode = advisorMode;
     setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'user', content: m }] }));
-    setDynamicSuggestions([]); // Clear while loading
+    setDynamicSuggestions([]);
     setAdvisorTyping(true);
     try {
       const resp = await fetch(`${API_BASE}/api/advisor/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: candidateSession?.email || '', message: m, mode })
       });
       const data = await resp.json();
       setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: data.reply || 'No response.' }] }));
-      // Set follow-up suggestions from backend
-      if (data.suggestions?.length > 0) {
-        setDynamicSuggestions(data.suggestions);
-      }
+      if (data.suggestions?.length > 0) setDynamicSuggestions(data.suggestions);
     } catch {
       setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: 'Sorry, could not connect. Please try again.' }] }));
     }
@@ -272,39 +145,28 @@ export default function CandidateDashboard() {
   };
 
   const handleInterviewComplete = (reportData) => {
-    console.log('Interview complete, report data:', reportData);
     setShowInterviewRoom(false);
     setInterviewReport(reportData);
     localStorage.setItem('resumate_interview_report', JSON.stringify(reportData));
-
-    // Also save to backend so hiring manager can see it
+    if (candidateSession) {
+      const updated = { ...candidateSession, has_interview: false, interview_completed: true, interview_report: reportData };
+      localStorage.setItem('resumate_candidate', JSON.stringify(updated));
+      setCandidateSession(updated);
+    }
     try {
       fetch(`${API_BASE}/api/chat/save-interview-result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
-        body: JSON.stringify({
-          candidate_email: candidateSession?.email,
-          candidate_name: candidateSession?.name,
-          report: reportData
-        })
-      }).catch(e => console.warn('Failed to save report to backend:', e));
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: reportData })
+      }).catch(() => {});
     } catch {}
-
-    // Auto switch to interview tab to show report
     setTab('interview');
   };
 
   if (!candidateSession) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
-        <Loader size={24} className="spin" />
-      </div>
-    );
+    return <div className="cd-loading"><Loader size={24} className="spin" /></div>;
   }
 
-  // Fullscreen interview room
   if (showInterviewRoom) {
-    console.log('🎬 Showing InterviewRoom. Config:', candidateSession.interview_config);
     return (
       <InterviewRoom
         config={candidateSession.interview_config}
@@ -316,14 +178,19 @@ export default function CandidateDashboard() {
     );
   }
 
-  const hasInterview = candidateSession.has_interview;
-  const showInterviewTab = hasInterview || interviewReport;
+  const hasInterview = candidateSession.has_interview && !candidateSession.interview_completed;
+  const interviewCompleted = candidateSession.interview_completed || !!interviewReport;
+  const showInterviewTab = hasInterview || interviewCompleted;
+  const c = advisorCandidates[0]; // Current resume data
+  const getSkills = (cand) => Array.isArray(cand?.skills) ? cand.skills : [];
 
   return (
     <div className="cd-layout">
-      {/* Sidebar */}
+      {/* ═══ SIDEBAR ═══ */}
       <aside className="cd-sidebar">
-        <div className="cd-sidebar-header"><div className="cd-sidebar-logo"><Logo size={24} /> ResuMate</div></div>
+        <div className="cd-sidebar-header">
+          <div className="cd-sidebar-logo"><Logo size={24} /> ResuMate</div>
+        </div>
         <nav className="cd-sidebar-nav">
           <div className="cd-nav-section-title">Dashboard</div>
           {[
@@ -332,13 +199,13 @@ export default function CandidateDashboard() {
             { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Advisor' },
             ...(showInterviewTab ? [{
               id: 'interview', icon: <Video size={18} />,
-              label: interviewReport ? 'Interview Report' : 'Interview'
+              label: interviewCompleted ? 'Interview Report' : 'Interview'
             }] : [])
           ].map(item => (
             <div key={item.id} className={`cd-nav-link ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>
               {item.icon}<span>{item.label}</span>
-              {item.id === 'interview' && !interviewReport && <span className="cd-nav-badge">New</span>}
-              {item.id === 'interview' && interviewReport && <span className="cd-nav-badge" style={{ background: '#22C55E' }}>Done</span>}
+              {item.id === 'interview' && hasInterview && !interviewCompleted && <span className="cd-nav-badge cd-badge-new">New</span>}
+              {item.id === 'interview' && interviewCompleted && <span className="cd-nav-badge cd-badge-done">Done</span>}
             </div>
           ))}
         </nav>
@@ -347,69 +214,214 @@ export default function CandidateDashboard() {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* ═══ MAIN ═══ */}
       <main className="cd-main">
         <header className="cd-header">
           <span className="cd-welcome">Welcome, {candidateSession.name || 'Candidate'}</span>
+          {hasInterview && (
+            <div className="cd-header-alert" onClick={() => setTab('interview')}>
+              <Camera size={14} /> Interview Ready
+            </div>
+          )}
         </header>
 
         <div className="cd-body">
-          {/* ═══ UPLOAD ═══ */}
+
+          {/* ═══ UPLOAD TAB ═══ */}
           {tab === 'upload' && (
-            <div className="cd-upload-section">
-              {advisorCandidates.length === 0 ? (
-                <div className="cd-card cd-upload-zone" onClick={() => document.getElementById('cd-file').click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); handleUpload(e.dataTransfer.files); }}>
-                  <Upload size={36} className="cd-upload-icon" />
-                  <h3>Upload Your Resume</h3>
-                  <p>PDF, DOCX, or TXT (max 5MB)</p>
-                  <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
+            <div className="cd-tab-content">
+              {!c ? (
+                <div className="cd-upload-hero">
+                  <div className="cd-upload-zone" onClick={() => document.getElementById('cd-file').click()}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
+                    onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
+                    onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); handleUpload(e.dataTransfer.files); }}
+                  >
+                    <div className="cd-upload-icon-wrap"><Upload size={28} /></div>
+                    <h3>Upload Your Resume</h3>
+                    <p>Drag & drop or click to browse</p>
+                    <span className="cd-upload-formats">PDF, DOCX, or TXT (max 5MB)</span>
+                    <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
+                  </div>
                 </div>
               ) : (
-                <div>
-                  {/* Show uploaded resume */}
-                  <div className="cd-card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '20px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FileText size={22} style={{ color: '#3B82F6' }} />
+                <div className="cd-resume-overview">
+                  {/* Resume card */}
+                  <div className="cd-card cd-resume-card">
+                    <div className="cd-resume-card-top">
+                      <div className="cd-resume-file-icon"><FileText size={24} /></div>
+                      <div className="cd-resume-card-info">
+                        <h3>{c.name || 'Your Resume'}</h3>
+                        <p>{[c.predicted_role, c.experience_level, c.total_experience_years ? `${c.total_experience_years}y exp` : null].filter(Boolean).join(' · ')}</p>
+                      </div>
+                      <div className="cd-resume-check"><Check size={18} /></div>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px' }}>{advisorCandidates[0].name || 'Resume'}</h3>
-                      <p style={{ fontSize: '13px', color: 'var(--text3)', margin: 0 }}>
-                        {advisorCandidates[0].predicted_role || ''} {advisorCandidates[0].experience_level ? `· ${advisorCandidates[0].experience_level}` : ''} {advisorCandidates[0].total_experience_years ? `· ${advisorCandidates[0].total_experience_years}y exp` : ''}
-                      </p>
+
+                    {/* Quick stats */}
+                    <div className="cd-resume-stats">
+                      {c.total_experience_years != null && (
+                        <div className="cd-stat"><Briefcase size={14} /><span>{c.total_experience_years}y</span><label>Experience</label></div>
+                      )}
+                      {c.experience_level && (
+                        <div className="cd-stat"><Award size={14} /><span>{c.experience_level}</span><label>Level</label></div>
+                      )}
+                      {c.predicted_role && (
+                        <div className="cd-stat"><Target size={14} /><span>{c.predicted_role}</span><label>Role</label></div>
+                      )}
+                      {getSkills(c).length > 0 && (
+                        <div className="cd-stat"><Code size={14} /><span>{getSkills(c).length}</span><label>Skills</label></div>
+                      )}
                     </div>
-                    <Check size={20} style={{ color: '#22C55E' }} />
+
+                    {/* Skills */}
+                    {getSkills(c).length > 0 && (
+                      <div className="cd-resume-skills">
+                        {getSkills(c).slice(0, 10).map((s, i) => (
+                          <span key={i} className="cd-skill-tag">{typeof s === 'string' ? s : s?.name || ''}</span>
+                        ))}
+                        {getSkills(c).length > 10 && <span className="cd-skill-tag cd-skill-more">+{getSkills(c).length - 10}</span>}
+                      </div>
+                    )}
                   </div>
+
                   {/* Replace button */}
-                  <button
-                    onClick={() => document.getElementById('cd-file-replace').click()}
-                    style={{ marginTop: '12px', padding: '10px 18px', fontSize: '13px', background: 'transparent', border: '1px solid var(--surface-border)', borderRadius: '10px', color: 'var(--text3)', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    <Upload size={14} style={{ marginRight: '6px', verticalAlign: '-2px' }} /> Replace Resume
+                  <button className="cd-replace-btn" onClick={() => document.getElementById('cd-file-replace').click()}>
+                    <Upload size={14} /> Replace Resume
                   </button>
                   <input id="cd-file-replace" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
+
+                  {/* Quick actions */}
+                  <div className="cd-quick-actions">
+                    <div className="cd-quick-action" onClick={() => setTab('analysis')}>
+                      <BarChart2 size={20} /><span>View Analysis</span><ChevronRight size={16} />
+                    </div>
+                    <div className="cd-quick-action" onClick={() => setTab('chat')}>
+                      <MessageSquare size={20} /><span>Ask AI Advisor</span><ChevronRight size={16} />
+                    </div>
+                    {hasInterview && (
+                      <div className="cd-quick-action cd-quick-action-highlight" onClick={() => setTab('interview')}>
+                        <Camera size={20} /><span>Take Interview</span><ChevronRight size={16} />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* ═══ ANALYSIS ═══ */}
+          {/* ═══ ANALYSIS TAB ═══ */}
           {tab === 'analysis' && (
-            <div className="cd-analysis-section">
-              {advisorCandidates.length === 0 ? (
+            <div className="cd-tab-content">
+              {!c ? (
                 <div className="cd-empty"><FileText size={40} /><h3>No resume uploaded</h3><p>Upload your resume to see analysis</p></div>
               ) : (
-                advisorCandidates.map(c => (
-                  <div key={c.id} className="cd-card cd-analysis-card">
-                    <h3>{c.name}</h3>
-                    <p style={{ color: 'var(--text2)' }}>{c.predicted_role} · {c.experience_level} · {c.total_experience_years || 0}y experience</p>
-                    {c.skills?.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
-                        {c.skills.slice(0, 12).map(s => <span key={s} className="skill">{s}</span>)}
-                      </div>
-                    )}
-                    {c.summary && <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text3)', lineHeight: '1.6' }}>{c.summary}</p>}
+                <div className="cd-analysis-layout">
+                  {/* Header card */}
+                  <div className="cd-card cd-analysis-header-card">
+                    <div className="cd-analysis-avatar">
+                      <Sparkles size={24} />
+                    </div>
+                    <h2>{c.name || 'Candidate'}</h2>
+                    <p className="cd-analysis-subtitle">{c.predicted_role || 'Role'} · {c.experience_level || 'Level'} · {c.total_experience_years || 0}y experience</p>
+                    {c.location && <p className="cd-analysis-location"><MapPin size={13} /> {c.location}</p>}
                   </div>
-                ))
+
+                  {/* Stats grid */}
+                  <div className="cd-analysis-stats-grid">
+                    <div className="cd-card cd-mini-stat">
+                      <Briefcase size={18} className="cd-mini-stat-icon" />
+                      <div className="cd-mini-stat-value">{c.total_experience_years || 0}y</div>
+                      <div className="cd-mini-stat-label">Experience</div>
+                    </div>
+                    <div className="cd-card cd-mini-stat">
+                      <Code size={18} className="cd-mini-stat-icon" />
+                      <div className="cd-mini-stat-value">{getSkills(c).length}</div>
+                      <div className="cd-mini-stat-label">Skills</div>
+                    </div>
+                    <div className="cd-card cd-mini-stat">
+                      <Award size={18} className="cd-mini-stat-icon" />
+                      <div className="cd-mini-stat-value">{c.experience_level || '—'}</div>
+                      <div className="cd-mini-stat-label">Level</div>
+                    </div>
+                    <div className="cd-card cd-mini-stat">
+                      <GraduationCap size={18} className="cd-mini-stat-icon" />
+                      <div className="cd-mini-stat-value">{c.education?.length || 0}</div>
+                      <div className="cd-mini-stat-label">Education</div>
+                    </div>
+                  </div>
+
+                  {/* Skills section */}
+                  {getSkills(c).length > 0 && (
+                    <div className="cd-card cd-analysis-section">
+                      <h3 className="cd-section-title"><Code size={16} /> Skills</h3>
+                      <div className="cd-skills-grid">
+                        {getSkills(c).map((s, i) => (
+                          <span key={i} className="cd-skill-tag">{typeof s === 'string' ? s : s?.name || ''}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Key Strengths */}
+                  {c.key_strengths?.length > 0 && (
+                    <div className="cd-card cd-analysis-section">
+                      <h3 className="cd-section-title"><Star size={16} /> Key Strengths</h3>
+                      <div className="cd-strengths-list">
+                        {c.key_strengths.map((s, i) => (
+                          <div key={i} className="cd-strength-item">
+                            <CheckCircle size={14} className="cd-strength-icon" />
+                            <span>{typeof s === 'string' ? s : s?.name || ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {c.summary && (
+                    <div className="cd-card cd-analysis-section">
+                      <h3 className="cd-section-title"><Brain size={16} /> AI Summary</h3>
+                      <p className="cd-summary-text">{c.summary}</p>
+                    </div>
+                  )}
+
+                  {/* Work Experience */}
+                  {c.work_experience?.length > 0 && (
+                    <div className="cd-card cd-analysis-section">
+                      <h3 className="cd-section-title"><Briefcase size={16} /> Work Experience</h3>
+                      <div className="cd-experience-list">
+                        {c.work_experience.map((w, i) => (
+                          <div key={i} className="cd-experience-item">
+                            <div className="cd-exp-dot" />
+                            <div>
+                              <h4>{w.title || w.role || 'Position'}</h4>
+                              <p className="cd-exp-company">{w.company || ''} {w.duration ? `· ${w.duration}` : ''}</p>
+                              {w.description && <p className="cd-exp-desc">{w.description}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Education */}
+                  {c.education?.length > 0 && (
+                    <div className="cd-card cd-analysis-section">
+                      <h3 className="cd-section-title"><GraduationCap size={16} /> Education</h3>
+                      <div className="cd-experience-list">
+                        {c.education.map((e, i) => (
+                          <div key={i} className="cd-experience-item">
+                            <div className="cd-exp-dot cd-exp-dot-blue" />
+                            <div>
+                              <h4>{e.degree || e.field || 'Degree'}</h4>
+                              <p className="cd-exp-company">{e.institution || e.school || ''} {e.year ? `· ${e.year}` : ''}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -417,47 +429,33 @@ export default function CandidateDashboard() {
           {/* ═══ AI ADVISOR CHAT ═══ */}
           {tab === 'chat' && (
             <div className="cd-chat-section">
-              {/* Mode selector tabs */}
-              <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--surface-border)', background: 'var(--bg2)' }}>
+              {/* Mode tabs */}
+              <div className="cd-chat-mode-tabs">
                 {[
-                  { id: 'general', icon: '💬', label: 'General' },
-                  { id: 'resume_coach', icon: '📄', label: 'Resume Coach' },
-                  { id: 'interview_prep', icon: '🎯', label: 'Interview Prep' },
-                  { id: 'career_advisor', icon: '🚀', label: 'Career Advisor' },
+                  { id: 'general', icon: <MessageSquare size={14} />, label: 'General' },
+                  { id: 'resume_coach', icon: <FileText size={14} />, label: 'Resume Coach' },
+                  { id: 'interview_prep', icon: <Target size={14} />, label: 'Interview Prep' },
+                  { id: 'career_advisor', icon: <TrendingUp size={14} />, label: 'Career Advisor' },
                 ].map(mode => (
-                  <button
-                    key={mode.id}
-                    onClick={() => setAdvisorMode(mode.id)}
-                    style={{
-                      padding: '12px 18px', fontSize: '13px', fontWeight: advisorMode === mode.id ? '600' : '500',
-                      border: 'none', borderBottom: advisorMode === mode.id ? '2px solid #3B82F6' : '2px solid transparent',
-                      background: 'transparent',
-                      color: advisorMode === mode.id ? '#3B82F6' : 'var(--text3)',
-                      cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                    }}
-                  >
-                    <span>{mode.icon}</span> {mode.label}
-                    {(advisorChatMap[mode.id]?.length || 0) > 0 && (
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3B82F6' }} />
-                    )}
+                  <button key={mode.id} className={`cd-mode-tab ${advisorMode === mode.id ? 'active' : ''}`} onClick={() => setAdvisorMode(mode.id)}>
+                    {mode.icon} {mode.label}
+                    {(advisorChatMap[mode.id]?.length || 0) > 0 && <span className="cd-mode-dot" />}
                   </button>
                 ))}
               </div>
 
               <div className="cd-chat-container">
                 <div className="cd-chat-messages">
-                  {/* Empty state per mode */}
+                  {/* Empty state */}
                   {advisorMessages.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-                      <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                        <Bot size={28} color="#fff" />
-                      </div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text)', marginBottom: '8px' }}>
-                        {advisorMode === 'resume_coach' ? '📄 Resume Coach' : advisorMode === 'interview_prep' ? '🎯 Interview Prep' : advisorMode === 'career_advisor' ? '🚀 Career Advisor' : '💬 AI Career Assistant'}
-                      </h3>
-                      <p style={{ fontSize: '14px', color: 'var(--text3)', maxWidth: '380px', margin: '0 auto 20px', lineHeight: '1.5' }}>
-                        {advisorMode === 'resume_coach' ? "I'll analyze your resume, identify gaps, and suggest specific improvements to make it stand out." : advisorMode === 'interview_prep' ? "I'll generate practice questions, help you craft answers using the STAR method, and give presentation tips." : advisorMode === 'career_advisor' ? "I'll analyze your strengths, suggest career paths, recommend skills to learn, and provide market insights." : "Your personal career assistant — ask about your resume, interviews, or career growth."}
+                    <div className="cd-chat-empty">
+                      <div className="cd-chat-empty-icon"><Bot size={28} /></div>
+                      <h3>{advisorMode === 'resume_coach' ? 'Resume Coach' : advisorMode === 'interview_prep' ? 'Interview Prep' : advisorMode === 'career_advisor' ? 'Career Advisor' : 'AI Career Assistant'}</h3>
+                      <p>
+                        {advisorMode === 'resume_coach' ? "I'll analyze your resume and suggest specific improvements." :
+                         advisorMode === 'interview_prep' ? "I'll help you prepare with practice questions and tips." :
+                         advisorMode === 'career_advisor' ? "I'll analyze your strengths and suggest career paths." :
+                         "Your personal career assistant for resume, interviews, and growth."}
                       </p>
                     </div>
                   )}
@@ -465,36 +463,17 @@ export default function CandidateDashboard() {
                   {/* Messages */}
                   {advisorMessages.map((m, i) => (
                     <div key={i} className={`cd-chat-msg ${m.role}`}>
-                      {m.role === 'assistant' && (
-                        <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Bot size={16} color="#fff" />
-                        </div>
-                      )}
-                      <div style={{
-                        padding: '12px 16px', borderRadius: '14px', maxWidth: '75%', fontSize: '14px', lineHeight: '1.65',
-                        ...(m.role === 'user' ? {
-                          background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
-                          color: '#FFFFFF',
-                          borderBottomRightRadius: '4px',
-                        } : {
-                          background: 'var(--bg3)',
-                          color: 'var(--text)',
-                          borderBottomLeftRadius: '4px',
-                          border: '1px solid var(--surface-border)',
-                        })
-                      }}>
-                        {m.role === 'user' ? <p style={{ margin: 0, color: '#FFFFFF' }}>{m.content}</p> : <SafeMarkdown text={m.content} />}
+                      {m.role === 'assistant' && <div className="cd-msg-avatar"><Bot size={16} /></div>}
+                      <div className={`cd-msg-bubble ${m.role}`}>
+                        {m.role === 'user' ? <p>{m.content}</p> : <SafeMarkdown text={m.content} />}
                       </div>
                     </div>
                   ))}
+
                   {advisorTyping && (
                     <div className="cd-chat-msg assistant">
-                      <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Bot size={16} color="#fff" />
-                      </div>
-                      <div style={{ padding: '14px 18px', borderRadius: '14px', background: 'var(--bg3)', border: '1px solid var(--surface-border)', borderBottomLeftRadius: '4px' }}>
-                        <div className="typing"><span /><span /><span /></div>
-                      </div>
+                      <div className="cd-msg-avatar"><Bot size={16} /></div>
+                      <div className="cd-msg-bubble assistant"><div className="typing"><span /><span /><span /></div></div>
                     </div>
                   )}
                   <div ref={msgEndRef} />
@@ -502,45 +481,24 @@ export default function CandidateDashboard() {
 
                 {/* Suggestions */}
                 {advisorSuggestions.length > 0 && !advisorTyping && (
-                  <div style={{ display: 'flex', gap: '8px', padding: '10px 16px', flexWrap: 'wrap', borderTop: '1px solid var(--surface-border)' }}>
+                  <div className="cd-chat-suggestions">
                     {advisorSuggestions.map((q, i) => (
-                      <button key={i} onClick={() => handleAdvisorSend(q)} style={{
-                        padding: '8px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '500',
-                        background: 'var(--bg3)', border: '1px solid var(--surface-border)', color: 'var(--text2)',
-                        cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                      }}
-                      onMouseOver={e => { e.target.style.background = 'rgba(59,130,246,0.1)'; e.target.style.borderColor = '#3B82F6'; e.target.style.color = '#3B82F6'; }}
-                      onMouseOut={e => { e.target.style.background = 'var(--bg3)'; e.target.style.borderColor = 'var(--surface-border)'; e.target.style.color = 'var(--text2)'; }}
-                      >{q}</button>
+                      <button key={i} className="cd-suggestion-btn" onClick={() => handleAdvisorSend(q)}>{q}</button>
                     ))}
                   </div>
                 )}
 
                 {/* Input */}
-                <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderTop: '1px solid var(--surface-border)', background: 'var(--bg2)' }}>
+                <div className="cd-chat-input-bar">
                   <input
                     type="text" value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleAdvisorSend(); }}
                     placeholder={advisorMode === 'resume_coach' ? 'Ask about your resume...' : advisorMode === 'interview_prep' ? 'Ask about interviews...' : advisorMode === 'career_advisor' ? 'Ask about your career...' : 'Ask me anything...'}
                     disabled={advisorTyping}
-                    style={{
-                      flex: 1, padding: '12px 16px', borderRadius: '12px',
-                      border: '1px solid var(--surface-border)', background: 'var(--bg3)',
-                      fontSize: '14px', color: 'var(--text)', fontFamily: 'inherit',
-                    }}
+                    className="cd-chat-input"
                   />
-                  <button
-                    onClick={() => handleAdvisorSend()}
-                    disabled={!input.trim() || advisorTyping}
-                    style={{
-                      width: '44px', height: '44px', borderRadius: '12px',
-                      background: input.trim() ? '#3B82F6' : 'var(--bg3)',
-                      color: '#fff', border: 'none', cursor: input.trim() ? 'pointer' : 'not-allowed',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      opacity: input.trim() ? 1 : 0.4, transition: 'all 0.15s',
-                    }}
-                  >
+                  <button className="cd-chat-send" onClick={() => handleAdvisorSend()} disabled={!input.trim() || advisorTyping}>
                     <Send size={18} />
                   </button>
                 </div>
@@ -548,73 +506,66 @@ export default function CandidateDashboard() {
             </div>
           )}
 
-          {/* ═══ INTERVIEW ═══ */}
+          {/* ═══ INTERVIEW TAB ═══ */}
           {tab === 'interview' && (
-            <div className="cd-interview-section" style={{ maxWidth: '780px', margin: '0 auto' }}>
+            <div className="cd-tab-content cd-interview-tab">
 
-              {/* 1. PREVIOUS REPORT (on top, collapsible) */}
-              {interviewReport && (
-                <div className="cd-card" style={{ padding: '20px', marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <CheckCircle size={20} style={{ color: '#22C55E' }} />
-                      <div>
-                        <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '2px' }}>Previous Interview</h3>
-                        <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
+              {/* Completed — Report */}
+              {interviewCompleted && interviewReport && (
+                <div className="cd-interview-done">
+                  <div className="cd-card cd-interview-done-header">
+                    <div className="cd-interview-done-top">
+                      <div className="cd-interview-done-badge"><CheckCircle size={20} /></div>
+                      <div className="cd-interview-done-info">
+                        <h3>Interview Completed</h3>
+                        <p>
                           Score: {interviewReport.avgScore || '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
                         </p>
                       </div>
+                      <button className="cd-report-toggle" onClick={() => setShowFullReport(prev => !prev)}>
+                        {showFullReport ? <EyeOff size={13} /> : <Eye size={13} />}
+                        {showFullReport ? 'Hide Details' : 'View Full Report'}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setShowFullReport(prev => !prev)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--bg3)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'var(--text2)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                    >
-                      {showFullReport ? <EyeOff size={13} /> : <Eye size={13} />}
-                      {showFullReport ? 'Hide' : 'View Report'}
+                    {showFullReport && (
+                      <div className="cd-report-detail">
+                        <InterviewReportView report={interviewReport} />
+                      </div>
+                    )}
+                  </div>
+                  <p className="cd-interview-footer-text">Your hiring manager has been notified of your interview results.</p>
+                </div>
+              )}
+
+              {/* Pending — Enter room */}
+              {hasInterview && !interviewCompleted && (
+                <div className="cd-interview-pending">
+                  <div className="cd-card cd-interview-ready-card">
+                    <div className="cd-interview-ready-icon"><Camera size={28} /></div>
+                    <h3>AI Interview Ready</h3>
+                    <p className="cd-interview-meta">
+                      {candidateSession.interview_config?.role || 'General'} · {candidateSession.interview_config?.num_questions || 8} questions · {candidateSession.interview_config?.level || 'Mid-Level'}
+                    </p>
+                    <div className="cd-interview-rules">
+                      <div className="cd-rule"><Camera size={14} /> Camera & mic required</div>
+                      <div className="cd-rule"><Eye size={14} /> Face tracking enabled</div>
+                      <div className="cd-rule"><Shield size={14} /> Tab switching monitored</div>
+                      <div className="cd-rule"><AlertCircle size={14} /> 3 violations = auto-termination</div>
+                    </div>
+                    <button className="cd-start-interview" onClick={() => setShowInterviewRoom(true)}>
+                      <Camera size={18} /> Enter Interview Room
                     </button>
                   </div>
-
-                  {/* Expanded report */}
-                  {showFullReport && (
-                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)' }}>
-                      <InterviewReportView report={interviewReport} />
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* 2. NEW INTERVIEW (below previous report) */}
-              {hasInterview && (
-                <div className="cd-card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid rgba(59,130,246,0.2)', background: 'var(--cd-accent-bg, rgba(59,130,246,0.06))' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#3B82F6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Camera size={24} />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '2px', color: 'var(--text)' }}>
-                        {interviewReport ? 'New Interview Scheduled' : 'AI Interview Ready'}
-                      </h3>
-                      <p style={{ fontSize: '13px', color: 'var(--text3)', margin: 0 }}>
-                        {candidateSession.interview_config?.role || 'General'} · {candidateSession.interview_config?.num_questions || 8} questions · {candidateSession.interview_config?.level || 'Mid-Level'}
-                      </p>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '16px', lineHeight: '1.5' }}>
-                    Proctored with camera, mic, face tracking. Tab switching monitored. 3 violations = auto-termination.
-                  </p>
-                  <button className="cd-start-interview" onClick={() => {
-                    setInterviewReport(null);
-                    localStorage.removeItem('resumate_interview_report');
-                    setShowInterviewRoom(true);
-                  }}>
-                    <Camera size={18} /> Enter Interview Room
-                  </button>
+              {/* No interview */}
+              {!hasInterview && !interviewCompleted && (
+                <div className="cd-empty">
+                  <Video size={40} />
+                  <h3>No interview scheduled</h3>
+                  <p>Your hiring manager hasn't created an interview for you yet.</p>
                 </div>
-              )}
-
-              {/* 3. NOTHING */}
-              {!hasInterview && !interviewReport && (
-                <div className="cd-empty"><Video size={40} /><h3>No interview scheduled</h3><p>Your hiring manager hasn't created an interview yet.</p></div>
               )}
             </div>
           )}

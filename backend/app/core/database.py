@@ -21,7 +21,7 @@ elif not DATABASE_URL or DATABASE_URL == "":
     # Fallback to SQLite for local dev
     DATABASE_URL = "sqlite+aiosqlite:///./resumate.db"
 
-print(f"📦 Database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}")
+print(f"Database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -31,7 +31,7 @@ async def init_db():
     """Create all tables"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database tables created")
+    print("Database tables created")
 
 
 async def get_db():

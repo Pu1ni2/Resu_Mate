@@ -21,6 +21,7 @@ chromadb>=0.4.22
 # Database
 sqlalchemy[asyncio]>=2.0.0
 aiosqlite>=0.20.0
+asyncpg>=0.29.0
 
 # Web Search
 tavily-python>=0.5.0

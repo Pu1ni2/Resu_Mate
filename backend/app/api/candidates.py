@@ -1,9 +1,12 @@
 """Candidates API"""
 import os
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag, MAX_FILE_SIZE
+from app.core.database import get_db
+from app.services import db_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
 
@@ -12,7 +15,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @router.post("/upload")
-async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user)):
+async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Upload and analyze a resume"""
     
     allowed_extensions = ['.pdf', '.docx', '.doc', '.txt']
@@ -45,7 +48,10 @@ async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_u
             # If error, unregister the hash
             resume_rag.unregister_file(file_hash)
             raise HTTPException(400, result["error"])
-        
+
+        # Persist to PostgreSQL database
+        await db_service.create_candidate_db(db, {**result, "file_hash": file_hash})
+
         return result
         
     finally:

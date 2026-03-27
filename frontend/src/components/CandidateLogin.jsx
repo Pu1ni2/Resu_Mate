@@ -40,7 +40,9 @@ export default function CandidateLogin() {
           name: data.name || '',
           candidate_id: data.candidate_id,
           has_interview: data.has_interview || false,
-          interview_config: data.interview_config || null
+          interview_config: data.interview_config || null,
+          interview_completed: data.interview_completed || false,
+          interview_report: data.interview_report || null,
         };
         localStorage.setItem('resumate_candidate', JSON.stringify(session));
         setCandidateSession(session);
