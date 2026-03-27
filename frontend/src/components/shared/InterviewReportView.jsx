@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { marked } from 'marked';
-import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader } from 'lucide-react';
+import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download } from 'lucide-react';
 
 const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 
@@ -196,6 +196,14 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
         <p style={{ color: '#64748B', fontSize: '14px' }}>
           {scores.length} questions answered · {mins}:{secs} duration
         </p>
+        {candidateEmail && (
+          <button onClick={() => {
+            const url = `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`;
+            window.open(url, '_blank');
+          }} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+            <Download size={14} /> Export PDF Report
+          </button>
+        )}
         {r.terminated && (
           <div style={{ marginTop: '12px', padding: '10px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
             Terminated: exceeded proctoring violations limit

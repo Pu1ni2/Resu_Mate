@@ -674,3 +674,162 @@ async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSes
     """Get all completed interview results (for hiring manager dashboard)"""
     results = await db_service.get_all_completed_interviews(db)
     return {"results": results, "count": len(results)}
+
+# ═══════ PDF REPORT EXPORT ═══════
+
+@router.get("/export-report/{email}")
+async def export_report_pdf(email: str, db: AsyncSession = Depends(get_db)):
+    """Generate a branded PDF report for a candidate (resume + interview)."""
+    from fpdf import FPDF
+    import re as re_mod
+
+    email = email.strip().lower()
+    interview = await db_service.get_interview_by_email(db, email)
+
+    # Find candidate data
+    candidate = None
+    for cid, c in resume_rag.candidates.items():
+        emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
+        if email in (c.get('text', '') or '').lower() or email == emb_email.lower():
+            candidate = c
+            break
+
+    if not interview and not candidate:
+        raise HTTPException(404, "No data found for this email")
+
+    # Parse interview report
+    report_data = {}
+    if interview and interview.report:
+        try:
+            report_data = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
+        except:
+            report_data = {"report": interview.report}
+
+    # Build PDF
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    # Header
+    pdf.set_fill_color(59, 130, 246)
+    pdf.rect(0, 0, 210, 40, 'F')
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_y(10)
+    pdf.cell(0, 10, "ResuMate Pro", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 8, "Candidate Assessment Report", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(10)
+
+    def section_title(title):
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_text_color(59, 130, 246)
+        pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(59, 130, 246)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(4)
+        pdf.set_text_color(40, 40, 40)
+
+    def body_text(text):
+        pdf.set_font("Helvetica", "", 10)
+        # Clean markdown
+        text = re_mod.sub(r'\*\*(.*?)\*\*', r'\1', text)
+        text = re_mod.sub(r'#{1,3}\s*', '', text)
+        text = text.replace('- ', '  * ')
+        for line in text.split('\n'):
+            line = line.strip()
+            if line:
+                pdf.multi_cell(0, 5, line)
+                pdf.ln(1)
+
+    # Candidate Info
+    if candidate:
+        section_title("Candidate Profile")
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 7, candidate.get("name", "Unknown"), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 10)
+        info_lines = []
+        if candidate.get("predicted_role"): info_lines.append(f"Role: {candidate['predicted_role']}")
+        if candidate.get("experience_level"): info_lines.append(f"Level: {candidate['experience_level']}")
+        if candidate.get("total_experience_years"): info_lines.append(f"Experience: {candidate['total_experience_years']} years")
+        if candidate.get("location"): info_lines.append(f"Location: {candidate['location']}")
+        pdf.cell(0, 6, "  |  ".join(info_lines), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+        if candidate.get("summary"):
+            pdf.set_font("Helvetica", "I", 10)
+            pdf.multi_cell(0, 5, candidate["summary"])
+            pdf.ln(3)
+
+        if candidate.get("skills"):
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 6, "Skills:", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 9)
+            pdf.multi_cell(0, 5, ", ".join(candidate["skills"][:20]))
+            pdf.ln(3)
+
+        if candidate.get("work_experience"):
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 6, "Work Experience:", new_x="LMARGIN", new_y="NEXT")
+            for w in candidate["work_experience"][:5]:
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(0, 5, f"{w.get('title', '')} at {w.get('company', '')}", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font("Helvetica", "", 9)
+                pdf.cell(0, 5, f"{w.get('start_date', '?')} - {w.get('end_date', '?')} ({w.get('duration_months', 0)} months)", new_x="LMARGIN", new_y="NEXT")
+                pdf.ln(1)
+            pdf.ln(2)
+
+    # Interview Results
+    if interview and interview.status == "completed":
+        section_title("Interview Results")
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 6, f"Role: {interview.role or 'General'}  |  Level: {interview.level or 'Mid-Level'}  |  Status: Completed", new_x="LMARGIN", new_y="NEXT")
+
+        scores = report_data.get("scores", [])
+        avg = report_data.get("avgScore", 0)
+        if not avg and scores:
+            avg = sum(s.get("score", 0) for s in scores if isinstance(s, dict)) / max(len(scores), 1)
+
+        dur = report_data.get("timer", interview.duration or 0)
+        eye = report_data.get("eyeContact", 0)
+        viol = report_data.get("violations", 0)
+
+        pdf.ln(2)
+        pdf.set_font("Helvetica", "B", 10)
+        stats = f"Avg Score: {avg:.1f}/10  |  Eye Contact: {eye}%  |  Violations: {viol}  |  Duration: {dur // 60}m {dur % 60}s"
+        pdf.cell(0, 6, stats, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+        # Score breakdown
+        if scores:
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 6, "Score Breakdown:", new_x="LMARGIN", new_y="NEXT")
+            for i, s in enumerate(scores):
+                if isinstance(s, dict):
+                    sc = s.get("score", 0)
+                    fb = s.get("feedback", "")
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.cell(0, 5, f"  Q{i+1}: {sc}/10 - {fb}", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(3)
+
+        # Report text
+        report_text = report_data.get("report", "")
+        if report_text and isinstance(report_text, str) and len(report_text) > 5:
+            section_title("AI Evaluation")
+            body_text(report_text)
+
+    # Footer
+    pdf.ln(10)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 5, f"Generated by ResuMate Pro | {datetime.utcnow().strftime('%B %d, %Y')}", align="C")
+
+    # Return PDF
+    pdf_bytes = pdf.output()
+    name = (candidate or {}).get("name", email).replace(" ", "-")
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="ResuMate-Report-{name}.pdf"'}
+    )
