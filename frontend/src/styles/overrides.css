@@ -258,6 +258,16 @@
 [data-theme="light"] .focus-tab { color: #64748B; }
 [data-theme="light"] .focus-tab.active { background: #FFFFFF; color: #1E293B; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
+/* Sidebar + Scanner Bar light theme */
+[data-theme="light"] .focus-sidebar { background: #F8FAFC; border-color: #E2E8F0; }
+[data-theme="light"] .focus-sidebar-group { border-color: #E2E8F0; }
+[data-theme="light"] .focus-sidebar-btn:hover { background: #E2E8F0; }
+[data-theme="light"] .focus-sidebar-btn.active { background: rgba(245,158,11,0.08); color: #D97706; }
+[data-theme="light"] .scanner-bar { background: #FFFFFF; border-color: #E2E8F0; }
+[data-theme="light"] .scanner-bar-main:hover { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .scanner-bar-chip { background: #F1F5F9; color: #475569; }
+[data-theme="light"] .scanner-bar-expandable { background: #F8FAFC; border-color: #E2E8F0; }
+
 [data-theme="light"] .agent-chip { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
 [data-theme="light"] .agent-chip:hover { background: #E2E8F0; }
 [data-theme="light"] .agent-option { border-color: #E2E8F0; }

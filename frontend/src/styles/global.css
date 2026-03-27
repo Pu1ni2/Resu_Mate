@@ -746,11 +746,33 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .focus-profile-role{font-size:13px;color:var(--text2);margin-top:2px}
 .focus-profile-badges{display:flex;gap:8px;flex-wrap:wrap}
 
-.focus-tabs{display:flex;gap:4px;padding:16px 24px 0;border-bottom:1px solid var(--glass-border)}
-.focus-tab{display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px 12px 0 0;background:transparent;border:none;color:var(--text3);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;position:relative;font-family:inherit}
-.focus-tab:hover{color:var(--text2);background:rgba(255,255,255,0.03)}
-.focus-tab.active{color:#F59E0B;background:rgba(245,158,11,0.08)}
-.focus-tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#F59E0B;border-radius:2px 2px 0 0}
+/* ─── Sidebar Layout (replaces old horizontal tabs) ─── */
+.focus-workspace{display:flex;height:calc(100vh - 220px);min-height:400px}
+.focus-sidebar{width:68px;border-right:1px solid var(--glass-border);display:flex;flex-direction:column;padding:12px 0;gap:4px;flex-shrink:0;background:var(--bg2)}
+.focus-sidebar-group{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0;border-bottom:1px solid var(--glass-border)}
+.focus-sidebar-group:last-child{border-bottom:none}
+.focus-sidebar-label{font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:6px;font-weight:600}
+.focus-sidebar-btn{width:44px;height:44px;border-radius:10px;background:transparent;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:inherit}
+.focus-sidebar-btn:hover{background:var(--bg3);color:var(--text2)}
+.focus-sidebar-btn.active{background:rgba(245,158,11,0.12);color:#F59E0B}
+.focus-panel{flex:1;overflow-y:auto;min-width:0}
+
+/* ─── Scanner Bar (replaces full-screen scanner) ─── */
+.scanner-bar{border-bottom:1px solid var(--glass-border);background:var(--bg2)}
+.scanner-bar-main{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;cursor:pointer;transition:background .2s}
+.scanner-bar-main:hover{background:rgba(255,255,255,0.02)}
+.scanner-bar-left{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2)}
+.scanner-bar-right{display:flex;align-items:center;gap:12px}
+.scanner-bar-summary{display:flex;gap:6px;flex-wrap:wrap}
+.scanner-bar-chip{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;background:var(--bg3);font-size:11px;color:var(--text2);font-weight:500}
+.scanner-bar-chevron{transition:transform .2s;color:var(--text3)}
+.scanner-bar-chevron.expanded{transform:rotate(180deg)}
+.scanner-bar-progress{height:3px;background:var(--bg3);overflow:hidden}
+.scanner-bar-progress-fill{height:100%;background:linear-gradient(90deg,#22c55e,#F59E0B);transition:width .4s ease;border-radius:0 2px 2px 0}
+.scanner-bar-expandable{padding:16px 24px;border-top:1px solid var(--glass-border);background:rgba(0,0,0,0.2)}
+.scanner-bar-logs{max-height:200px;overflow-y:auto;margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px}
+.scanner-bar-profiles{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.scanner-bar-status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px}
 
 .focus-chat-container{display:flex;flex-direction:column;height:calc(100vh - 280px);padding:0}
 .focus-chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}

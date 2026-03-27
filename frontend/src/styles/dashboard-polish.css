@@ -290,7 +290,20 @@ kbd {
   .focus-profile-badges { display: none; }
   .focus-candidates-grid { grid-template-columns: 1fr !important; }
 
-  /* Mobile scanner */
+  /* Mobile sidebar → horizontal row */
+  .focus-workspace { flex-direction: column; height: auto; min-height: calc(100vh - 220px); }
+  .focus-sidebar { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--glass-border); padding: 8px 12px; -webkit-overflow-scrolling: touch; }
+  .focus-sidebar-group { flex-direction: row; border-bottom: none; border-right: 1px solid var(--glass-border); padding: 0 8px; gap: 4px; }
+  .focus-sidebar-group:last-child { border-right: none; }
+  .focus-sidebar-label { display: none; }
+  .focus-sidebar-btn { width: 40px; height: 40px; flex-shrink: 0; }
+  .focus-panel { min-height: 400px; }
+
+  /* Mobile scanner bar */
+  .scanner-bar-status { max-width: 200px; }
+  .scanner-bar-expandable { padding: 12px 16px; }
+
+  /* Mobile scanner (legacy) */
   .scanner-fullscreen { min-height: auto; padding: var(--space-3); }
   .scanner-terminal { max-width: 100%; }
   .scanner-result-card { flex-wrap: wrap; }
