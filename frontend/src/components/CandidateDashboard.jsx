@@ -101,6 +101,14 @@ export default function CandidateDashboard() {
   const DEMO_EMAIL = 'saipunithkolla@gmail.com';
   const isDemo = candidateSession?.email === DEMO_EMAIL;
 
+  // Auto-load demo profile on first render for demo account
+  useEffect(() => {
+    if (isDemo && advisorCandidates.length === 0 && candidateSession?.profile) {
+      setAdvisorCandidates([candidateSession.profile]);
+      setResumeUploaded(true);
+    }
+  }, [isDemo, candidateSession]);
+
   const uploadFile = async (file) => {
     try {
       const form = new FormData();
