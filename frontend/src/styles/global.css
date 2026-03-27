@@ -711,6 +711,9 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 @keyframes toastSlide{from{transform:translateX(-50%) translateY(-20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
 @keyframes toastFade{to{opacity:0;transform:translateX(-50%) translateY(-10px)}}
 
+.focus-page{min-height:100vh;background:var(--bg1);padding-bottom:60px}
+.focus-page-header{display:flex;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--glass-border)}
+.focus-page-title{font-size:20px;font-weight:700;color:var(--text1)}
 .focus-container{padding:0;max-width:100%;position:relative;min-height:calc(100vh - 80px)}
 .focus-select-header{text-align:center;padding:48px 24px 32px}
 .focus-select-icon{width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));border:1px solid rgba(245,158,11,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#F59E0B}
