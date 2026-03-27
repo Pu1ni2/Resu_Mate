@@ -1720,10 +1720,10 @@ import { useApp } from '../context/AppContext';
 import { marked } from 'marked';
 import CandidateFocus from './CandidateFocus';
 import { 
-  Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles, 
+  Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, VolumeX, Loader, Square
+  Mic, MicOff, Volume2, VolumeX, Loader, Square, Video, Clock
 } from 'lucide-react';
 
 const Logo = ({ size = 32 }) => (
@@ -1757,6 +1757,153 @@ const FloatingParticles = () => (
     ))}
   </div>
 );
+
+function InterviewAnalytics() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const API = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch(`${API}/api/chat/get-all-interview-results`, {
+        headers: { 'Authorization': 'Bearer demo-token' },
+      });
+      const json = await resp.json();
+      setData(json.results || []);
+    } catch { setData([]); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  if (loading) return (
+    <div className="chart-section" style={{ textAlign: 'center', padding: '40px' }}>
+      <Loader size={20} className="spin" style={{ color: 'var(--accent)' }} />
+      <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '8px' }}>Loading interview data...</p>
+    </div>
+  );
+
+  if (!data || data.length === 0) return (
+    <div className="chart-section">
+      <h3 className="chart-title"><Video size={20} /> Interview Analytics</h3>
+      <div className="glass-card" style={{ padding: '30px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--text3)', fontSize: '13px' }}>No completed interviews yet</p>
+      </div>
+    </div>
+  );
+
+  // Compute analytics
+  const total = data.length;
+  const scores = data.map(d => {
+    const r = typeof d.report === 'object' ? d.report : {};
+    const s = r.scores || d.scores || [];
+    if (s.length === 0) return 0;
+    return s.reduce((a, x) => a + ((x?.score || 0)), 0) / s.length;
+  }).filter(s => s > 0);
+  const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
+  const highPerformers = scores.filter(s => s >= 7).length;
+  const lowPerformers = scores.filter(s => s < 4).length;
+
+  // Role breakdown
+  const roleMap = {};
+  data.forEach(d => {
+    const role = d.role || 'General';
+    roleMap[role] = (roleMap[role] || 0) + 1;
+  });
+  const roles = Object.entries(roleMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+  // Score distribution
+  const dist = [0, 0, 0, 0, 0]; // 0-2, 2-4, 4-6, 6-8, 8-10
+  scores.forEach(s => {
+    if (s < 2) dist[0]++;
+    else if (s < 4) dist[1]++;
+    else if (s < 6) dist[2]++;
+    else if (s < 8) dist[3]++;
+    else dist[4]++;
+  });
+  const maxDist = Math.max(...dist, 1);
+
+  return (
+    <>
+      <div className="chart-section" style={{ marginTop: '24px' }}>
+        <h3 className="chart-title"><Video size={20} /> Interview Analytics</h3>
+        <div className="analytics-grid">
+          {[
+            { label: 'Interviews', value: total, color: 'var(--info)', icon: <Video size={24} /> },
+            { label: 'Avg Score', value: avgScore, color: 'var(--success)', icon: <TrendingUp size={24} /> },
+            { label: 'High Performers', value: highPerformers, color: '#22C55E', icon: <Award size={24} /> },
+            { label: 'Needs Work', value: lowPerformers, color: '#EF4444', icon: <AlertCircle size={24} /> },
+          ].map((stat, i) => (
+            <div key={i} className="analytics-card glass-card floating-card" style={{ animationDelay: `${i * 0.1}s` }}>
+              <div className="analytics-glow" style={{ background: stat.color }} />
+              <div className="analytics-icon" style={{ color: stat.color }}>{stat.icon}</div>
+              <div className="analytics-label">{stat.label}</div>
+              <div className="analytics-value" style={{ color: stat.color }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Score Distribution */}
+      <div className="chart-section">
+        <h3 className="chart-title"><BarChart2 size={20} /> Score Distribution</h3>
+        <div className="glass-card" style={{ padding: '20px' }}>
+          {['0-2', '2-4', '4-6', '6-8', '8-10'].map((range, i) => (
+            <div key={i} className="chart-bar" style={{ animationDelay: `${i * 0.05}s` }}>
+              <div className="chart-bar-header">
+                <span>{range}</span>
+                <span className="chart-bar-value">{dist[i]} candidate{dist[i] !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="chart-bar-track">
+                <div className="chart-bar-fill animated-fill" style={{
+                  '--target-width': `${(dist[i] / maxDist) * 100}%`,
+                  background: i < 2 ? '#EF4444' : i < 3 ? '#F59E0B' : '#22C55E'
+                }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Interview by Role */}
+      {roles.length > 0 && (
+        <div className="chart-section">
+          <h3 className="chart-title"><Briefcase size={20} /> Interviews by Role</h3>
+          <div className="glass-card" style={{ padding: '20px' }}>
+            {roles.map(([role, count], i) => (
+              <div key={i} className="dist-row">
+                <span>{role}</span>
+                <span className="badge badge-orange">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Interviews */}
+      <div className="chart-section">
+        <h3 className="chart-title"><Clock size={20} /> Recent Interviews</h3>
+        <div className="glass-card" style={{ padding: '16px' }}>
+          {data.slice(0, 8).map((d, i) => {
+            const r = typeof d.report === 'object' ? d.report : {};
+            const s = r.scores || d.scores || [];
+            const avg = s.length > 0 ? (s.reduce((a, x) => a + (x?.score || 0), 0) / s.length).toFixed(1) : '—';
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', borderBottom: i < Math.min(data.length, 8) - 1 ? '1px solid var(--surface-border)' : 'none' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600' }}>{d.email}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{d.role || 'General'} · {d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—'}</div>
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '800', fontFamily: 'monospace', color: avg >= 7 ? '#22C55E' : avg >= 4 ? '#F59E0B' : '#EF4444' }}>{avg}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -2369,6 +2516,9 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
+
+              {/* Interview Analytics */}
+              <InterviewAnalytics />
             </div>
           )}
 
