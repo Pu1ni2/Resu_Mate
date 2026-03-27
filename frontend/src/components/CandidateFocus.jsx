@@ -442,32 +442,54 @@ export default function CandidateFocus() {
           <div className="focus-candidates-grid">
             {candidates
               .filter((c, idx, self) => idx === self.findIndex(t => t.id === c.id))
-              .map((c, i) => (
-                <div key={c.id} className="focus-candidate-card glass-card" onClick={() => handleCandidateSelect(c)}>
-                  <div className="focus-card-header">
-                    <div className="candidate-avatar" style={{ background: getAvatarGradient(c.name) }}>
-                      {getDisplayName(c, i)[0]?.toUpperCase()}
+              .map((c, i) => {
+                const skills = getSkills(c);
+                const name = getDisplayName(c, i);
+                const gradient = getAvatarGradient(c.name);
+                return (
+                  <div key={c.id} className="fc-card" style={{ '--card-gradient': gradient }} onClick={() => handleCandidateSelect(c)}>
+                    <div className="fc-card-glow" />
+                    <div className="fc-card-top">
+                      <div className="fc-avatar" style={{ background: gradient }}>
+                        {name[0]?.toUpperCase()}
+                      </div>
+                      <div className="fc-card-identity">
+                        <h3 className="fc-name">{name}</h3>
+                        <p className="fc-role">{c.predicted_role || 'Processing...'}</p>
+                      </div>
                     </div>
-                    <div className="focus-card-info">
-                      <h3 className="focus-card-name">{getDisplayName(c, i)}</h3>
-                      <p className="focus-card-role">{c.predicted_role || 'Processing...'}</p>
+
+                    <div className="fc-badges">
+                      {c.total_experience_years != null && (
+                        <span className="fc-badge fc-badge-exp"><Briefcase size={11} /> {c.total_experience_years}y exp</span>
+                      )}
+                      {c.experience_level && (
+                        <span className="fc-badge fc-badge-level"><Award size={11} /> {c.experience_level}</span>
+                      )}
+                      {c.location && (
+                        <span className="fc-badge fc-badge-loc"><MapPin size={11} /> {c.location}</span>
+                      )}
                     </div>
-                    <ChevronRight size={18} className="focus-card-arrow" />
+
+                    {skills.length > 0 && (
+                      <div className="fc-skills">
+                        {skills.slice(0, 5).map((s, j) => (
+                          <span key={j} className="fc-skill">{typeof s === 'string' ? s : s?.name || ''}</span>
+                        ))}
+                        {skills.length > 5 && <span className="fc-skill fc-skill-more">+{skills.length - 5}</span>}
+                      </div>
+                    )}
+
+                    <div className="fc-card-footer">
+                      {c.is_resume === false
+                        ? <span className="fc-not-resume"><AlertCircle size={11} /> Not a Resume</span>
+                        : <span className="fc-status-ok">Resume verified</span>
+                      }
+                      <span className="fc-cta">Focus <ChevronRight size={14} /></span>
+                    </div>
                   </div>
-                  <div className="focus-card-meta">
-                    {c.total_experience_years != null && <span className="focus-meta-item"><Briefcase size={12} /> {c.total_experience_years}y exp</span>}
-                    {c.experience_level && <span className="focus-meta-item"><Award size={12} /> {c.experience_level}</span>}
-                    {c.location && <span className="focus-meta-item"><MapPin size={12} /> {c.location}</span>}
-                  </div>
-                  <div className="focus-card-skills">
-                    {getSkills(c).slice(0, 4).map((s, j) => (
-                      <span key={j} className="skill">{typeof s === 'string' ? s : s?.name || ''}</span>
-                    ))}
-                    {getSkills(c).length > 4 && <span className="skill" style={{ opacity: 0.6 }}>+{getSkills(c).length - 4}</span>}
-                  </div>
-                  {c.is_resume === false && <div className="focus-not-resume"><AlertCircle size={12} /> Not a Resume</div>}
-                </div>
-              ))}
+                );
+              })}
           </div>
         )}
       </div>
