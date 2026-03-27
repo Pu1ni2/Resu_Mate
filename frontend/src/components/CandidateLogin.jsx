@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, FileText } from 'lucide-react';
+
+const DEMO_EMAIL = 'saipunithkolla@gmail.com';
+const DEMO_SESSION = {
+  email: DEMO_EMAIL,
+  name: 'Sai Punith Kolla',
+  candidate_id: 'demo-sample',
+  has_interview: true,
+  interview_config: {
+    role: 'Software Engineer',
+    level: 'Mid-Level',
+    num_questions: 8,
+  },
+  interview_completed: false,
+  interview_report: null,
+  is_demo: true,
+};
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -23,20 +39,30 @@ export default function CandidateLogin() {
 
   const handleLogin = async () => {
     if (!email.trim()) return;
+    const trimmed = email.trim().toLowerCase();
+
+    // Demo account — always works, no API needed
+    if (trimmed === DEMO_EMAIL) {
+      localStorage.removeItem('resumate_interview_report');
+      localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
+      setCandidateSession(DEMO_SESSION);
+      setTimeout(() => navigate('/candidate/dashboard'), 300);
+      return;
+    }
+
     setLoading(true);
     setError('');
-
     try {
       const resp = await fetch(`${API_BASE}/api/chat/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() })
+        body: JSON.stringify({ email: trimmed })
       });
       const data = await resp.json();
 
       if (data.access) {
         const session = {
-          email: email.trim().toLowerCase(),
+          email: trimmed,
           name: data.name || '',
           candidate_id: data.candidate_id,
           has_interview: data.has_interview || false,
@@ -46,7 +72,6 @@ export default function CandidateLogin() {
         };
         localStorage.setItem('resumate_candidate', JSON.stringify(session));
         setCandidateSession(session);
-        // Delay to ensure React state propagates before navigation
         setTimeout(() => navigate('/candidate/dashboard'), 300);
       } else {
         setError(data.message || 'No access found for this email. Please contact your recruiter.');
@@ -56,6 +81,13 @@ export default function CandidateLogin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoAccess = () => {
+    localStorage.removeItem('resumate_interview_report');
+    localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
+    setCandidateSession(DEMO_SESSION);
+    navigate('/candidate/dashboard');
   };
 
   return (
@@ -101,6 +133,14 @@ export default function CandidateLogin() {
               <span>{loading ? 'Verifying...' : 'Access Dashboard'}</span>
             </button>
           </div>
+
+          <div className="cl-divider"><span>or</span></div>
+
+          <button className="cl-demo-btn" onClick={handleDemoAccess}>
+            <FileText size={16} />
+            <span>Try Sample Resume</span>
+            <span className="cl-demo-badge">Demo</span>
+          </button>
 
           <div className="cl-info">
             <Shield size={14} />

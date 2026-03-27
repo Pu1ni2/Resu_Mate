@@ -1085,6 +1085,11 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .cl-submit:hover{box-shadow:0 4px 16px rgba(59,130,246,0.3);transform:translateY(-1px)}
 .cl-submit:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 .cl-info{display:flex;align-items:center;gap:8px;margin-top:20px;font-size:12px;color:#94A3B8}
+.cl-divider{display:flex;align-items:center;gap:12px;color:#64748B;font-size:12px;margin:4px 0}
+.cl-divider::before,.cl-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.08)}
+.cl-demo-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:12px;color:#60A5FA;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .2s}
+.cl-demo-btn:hover{background:rgba(59,130,246,0.18);border-color:rgba(59,130,246,0.45)}
+.cl-demo-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);border-radius:10px}
 
 /* ========================================
    CANDIDATE DASHBOARD (Dark theme)
@@ -1126,7 +1131,15 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .cd-card{background:var(--bg2);border:1px solid var(--glass-border);border-radius:16px;padding:24px}
 
 /* Upload */
-.cd-upload-hero{max-width:600px}
+.cd-upload-hero{max-width:600px;display:flex;flex-direction:column;gap:12px}
+.cd-sample-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:14px;cursor:pointer;transition:all .2s}
+.cd-sample-banner:hover{background:rgba(59,130,246,0.18);border-color:rgba(59,130,246,0.5)}
+.cd-sample-banner-left{display:flex;align-items:center;gap:12px;color:#60A5FA}
+.cd-sample-title{font-size:14px;font-weight:600;color:#93C5FD;margin-bottom:2px}
+.cd-sample-sub{font-size:12px;color:var(--text3)}
+.cd-sample-tag{font-size:11px;font-weight:700;padding:3px 10px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.35);border-radius:20px;color:#60A5FA;white-space:nowrap;flex-shrink:0}
+.cd-sample-link{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-family:inherit;padding:4px 0;transition:color .2s;width:fit-content}
+.cd-sample-link:hover{color:#60A5FA}
 .cd-upload-zone{border:2px dashed var(--glass-border);border-radius:16px;padding:60px 40px;text-align:center;cursor:pointer;transition:all .3s}
 .cd-upload-zone:hover,.cd-upload-zone.drag-over{border-color:#3B82F6;background:rgba(59,130,246,0.06)}
 .cd-upload-icon-wrap{width:64px;height:64px;border-radius:16px;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;color:#60A5FA;margin:0 auto 16px}

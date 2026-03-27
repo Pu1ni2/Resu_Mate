@@ -98,9 +98,10 @@ export default function CandidateDashboard() {
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [advisorMessages, advisorTyping]);
   useEffect(() => { setDynamicSuggestions([]); }, [advisorMode]);
 
-  const handleUpload = async (files) => {
-    const file = Array.from(files)[0];
-    if (!file) return;
+  const DEMO_EMAIL = 'saipunithkolla@gmail.com';
+  const isDemo = candidateSession?.email === DEMO_EMAIL;
+
+  const uploadFile = async (file) => {
     try {
       const form = new FormData();
       form.append('file', file);
@@ -113,6 +114,22 @@ export default function CandidateDashboard() {
         setAdvisorCandidates([data.data]);
       } else { alert('Upload failed'); }
     } catch (err) { alert(`Upload failed: ${err.message}`); }
+  };
+
+  const handleUpload = async (files) => {
+    const file = Array.from(files)[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
+  const handleLoadSample = async () => {
+    try {
+      const resp = await fetch('/sample-resume.pdf');
+      if (!resp.ok) { alert('Sample resume not found. Please add it to the public folder.'); return; }
+      const blob = await resp.blob();
+      const file = new File([blob], 'sample-resume.pdf', { type: 'application/pdf' });
+      await uploadFile(file);
+    } catch (err) { alert(`Could not load sample: ${err.message}`); }
   };
 
   const handleAdvisorSend = async (msg) => {
@@ -149,7 +166,10 @@ export default function CandidateDashboard() {
     setInterviewReport(reportData);
     localStorage.setItem('resumate_interview_report', JSON.stringify(reportData));
     if (candidateSession) {
-      const updated = { ...candidateSession, has_interview: false, interview_completed: true, interview_report: reportData };
+      // Demo account: keep interview always available (reset after completion)
+      const updated = isDemo
+        ? { ...candidateSession, has_interview: true, interview_completed: true, interview_report: reportData }
+        : { ...candidateSession, has_interview: false, interview_completed: true, interview_report: reportData };
       localStorage.setItem('resumate_candidate', JSON.stringify(updated));
       setCandidateSession(updated);
     }
@@ -178,8 +198,9 @@ export default function CandidateDashboard() {
     );
   }
 
-  const hasInterview = candidateSession.has_interview && !candidateSession.interview_completed;
-  const interviewCompleted = candidateSession.interview_completed || !!interviewReport;
+  // Demo account: interview always open even after completion
+  const hasInterview = isDemo ? true : (candidateSession.has_interview && !candidateSession.interview_completed);
+  const interviewCompleted = !isDemo && (candidateSession.interview_completed || !!interviewReport);
   const showInterviewTab = hasInterview || interviewCompleted;
   const c = advisorCandidates[0]; // Current resume data
   const getSkills = (cand) => Array.isArray(cand?.skills) ? cand.skills : [];
@@ -232,6 +253,18 @@ export default function CandidateDashboard() {
             <div className="cd-tab-content">
               {!c ? (
                 <div className="cd-upload-hero">
+                  {isDemo && (
+                    <div className="cd-sample-banner" onClick={handleLoadSample}>
+                      <div className="cd-sample-banner-left">
+                        <FileText size={20} />
+                        <div>
+                          <p className="cd-sample-title">Sample Resume Available</p>
+                          <p className="cd-sample-sub">Click to load the pre-built sample resume and explore all features</p>
+                        </div>
+                      </div>
+                      <span className="cd-sample-tag">Sample</span>
+                    </div>
+                  )}
                   <div className="cd-upload-zone" onClick={() => document.getElementById('cd-file').click()}
                     onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
                     onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
@@ -243,6 +276,11 @@ export default function CandidateDashboard() {
                     <span className="cd-upload-formats">PDF, DOCX, or TXT (max 5MB)</span>
                     <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
                   </div>
+                  {!isDemo && (
+                    <button className="cd-sample-link" onClick={handleLoadSample}>
+                      <FileText size={14} /> Try with sample resume
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="cd-resume-overview">
