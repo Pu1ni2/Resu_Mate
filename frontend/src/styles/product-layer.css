@@ -71,6 +71,65 @@
 [data-theme="light"] .l-feature-card { background: var(--bg-elevated); box-shadow: var(--shadow-sm); }
 [data-theme="light"] .l-step-num { color: var(--bg3); }
 
+/* ═══ CANDIDATE FOCUS PAGE — light theme ═══ */
+
+/* Page shell */
+[data-theme="light"] .focus-page { background: var(--bg); }
+[data-theme="light"] .focus-page-header { background: var(--bg-elevated); border-color: var(--surface-border); }
+[data-theme="light"] .focus-page-title { color: var(--text); }
+[data-theme="light"] .focus-header { background: var(--bg-elevated); border-color: var(--surface-border); }
+[data-theme="light"] .focus-back-btn { background: var(--bg2); border-color: var(--surface-border); color: var(--text2); }
+[data-theme="light"] .focus-back-btn:hover { background: var(--bg3); color: var(--text); }
+[data-theme="light"] .focus-profile-name { color: var(--text); }
+[data-theme="light"] .focus-profile-role { color: var(--text2); }
+
+/* Select screen heading */
+[data-theme="light"] .focus-select-title { background: linear-gradient(135deg, var(--text) 0%, var(--text2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+[data-theme="light"] .focus-select-subtitle { color: var(--text2); }
+
+/* Candidate cards */
+[data-theme="light"] .pc-card { background: #FFFFFF; border-color: rgba(0,0,0,0.08); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+[data-theme="light"] .pc-card:hover { border-color: rgba(0,0,0,0.15); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+[data-theme="light"] .pc-name { color: #1A1A2E; }
+[data-theme="light"] .pc-role { color: #4A4A6A; }
+[data-theme="light"] .pc-meta { color: #7A7A9A; }
+[data-theme="light"] .pc-skill { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.07); color: #4A4A6A; }
+[data-theme="light"] .pc-skill-more { background: transparent; border-color: transparent; color: #A0A0B8; }
+[data-theme="light"] .pc-footer { border-color: rgba(0,0,0,0.07); }
+[data-theme="light"] .pc-verified { color: #7A7A9A; }
+[data-theme="light"] .pc-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #4A4A6A; }
+[data-theme="light"] .pc-card:hover .pc-btn { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.15); color: #1A1A2E; }
+
+/* Workspace sidebar */
+[data-theme="light"] .focus-workspace { border-color: var(--surface-border); }
+[data-theme="light"] .focus-sidebar { background: var(--bg-elevated); border-color: var(--surface-border); }
+[data-theme="light"] .focus-sidebar-group { border-color: var(--surface-border); }
+[data-theme="light"] .focus-sidebar-label { color: var(--text3); }
+[data-theme="light"] .focus-sidebar-btn { color: var(--text3); }
+[data-theme="light"] .focus-sidebar-btn:hover { background: var(--bg2); color: var(--text2); }
+[data-theme="light"] .focus-panel { background: var(--bg); }
+
+/* Scanner bar */
+[data-theme="light"] .scanner-bar { background: var(--bg-elevated); border-color: var(--surface-border); }
+[data-theme="light"] .scanner-bar-left { color: var(--text2); }
+[data-theme="light"] .scanner-bar-chip { background: var(--bg2); color: var(--text2); }
+[data-theme="light"] .scanner-bar-progress { background: var(--bg3); }
+[data-theme="light"] .scanner-bar-expandable { background: var(--bg2); border-color: var(--surface-border); }
+
+/* Chat panel */
+[data-theme="light"] .focus-chat-container { background: var(--bg); }
+[data-theme="light"] .focus-chat-messages { background: var(--bg); }
+
+/* Web search panel */
+[data-theme="light"] .focus-search-chip { background: var(--bg2); border-color: var(--surface-border); color: var(--text2); }
+[data-theme="light"] .focus-search-chip:hover { background: var(--bg3); color: var(--text); }
+[data-theme="light"] .focus-search-results-count { color: var(--text3); }
+
+/* Empty state */
+[data-theme="light"] .focus-empty-icon { background: var(--bg2); border-color: var(--surface-border); color: var(--text3); }
+[data-theme="light"] .focus-empty h3 { color: var(--text); }
+[data-theme="light"] .focus-empty p { color: var(--text3); }
+
 
 /* ═══ FLOATING TOOLBAR ═══ */
 .pl-toolbar {

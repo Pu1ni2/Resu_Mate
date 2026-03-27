@@ -6,7 +6,7 @@ import {
   Upload, BarChart2, MessageSquare, Video, Send, Bot,
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
   LogOut, Camera, Clock, ChevronRight, X, CheckCircle,
-  EyeOff, XCircle, Shield, Eye, Brain, Sparkles, GraduationCap,
+  EyeOff, XCircle, Shield, Eye, GraduationCap,
   Code, Star, TrendingUp, Target
 } from 'lucide-react';
 import InterviewRoom from './InterviewRoom';
@@ -319,7 +319,7 @@ export default function CandidateDashboard() {
                   {/* Header card */}
                   <div className="cd-card cd-analysis-header-card">
                     <div className="cd-analysis-avatar">
-                      <Sparkles size={24} />
+                      {(c.name || 'C')[0].toUpperCase()}
                     </div>
                     <h2>{c.name || 'Candidate'}</h2>
                     <p className="cd-analysis-subtitle">{c.predicted_role || 'Role'} · {c.experience_level || 'Level'} · {c.total_experience_years || 0}y experience</p>
@@ -380,7 +380,7 @@ export default function CandidateDashboard() {
                   {/* Summary */}
                   {c.summary && (
                     <div className="cd-card cd-analysis-section">
-                      <h3 className="cd-section-title"><Brain size={16} /> AI Summary</h3>
+                      <h3 className="cd-section-title"><FileText size={16} /> Summary</h3>
                       <p className="cd-summary-text">{c.summary}</p>
                     </div>
                   )}
