@@ -15,6 +15,48 @@
 ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system where **5 specialized AI agents** orchestrate the entire hiring pipeline, from resume parsing to live video interviews with a lip-synced AI avatar.
 
 ---
+
+## Demo
+
+> **Live Demo:** [resumate-2vad.onrender.com](https://resumate-2vad.onrender.com)
+>
+> *Free-tier hosting — first load may take ~30s to wake up.*
+
+---
+
+## Screenshots
+
+### Landing Page
+<p align="center">
+  <img src="screenshots/landing.png" alt="Landing Page — Agent showcase with glassmorphism UI" width="800" />
+</p>
+
+### Hiring Manager Dashboard
+<p align="center">
+  <img src="screenshots/dashboard.png" alt="Hiring Manager Dashboard — Resume upload, AI chat, candidate management" width="800" />
+</p>
+
+### Candidate Deep-Dive
+<p align="center">
+  <img src="screenshots/candidate-focus.png" alt="Candidate Focus — Chat, GitHub, web search, evaluation, interview creation" width="800" />
+</p>
+
+### AI Interview Room
+<p align="center">
+  <img src="screenshots/interview-room.png" alt="Live AI Interview — Simli avatar, proctoring, real-time conversation" width="800" />
+</p>
+
+### Candidate Portal & AI Advisor
+<p align="center">
+  <img src="screenshots/candidate-portal.png" alt="Candidate Portal — Resume coach, interview prep, career advisor" width="800" />
+</p>
+
+### Interview Report
+<p align="center">
+  <img src="screenshots/interview-report.png" alt="Interview Report — Per-question scores, eye contact, proctoring summary" width="800" />
+</p>
+
+---
 ## Architecture
 
 

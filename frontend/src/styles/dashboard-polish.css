@@ -280,8 +280,8 @@ kbd {
   .upload-grid, .candidates-grid { grid-template-columns: 1fr !important; }
 
   /* Mobile analytics */
-  .analytics-grid { grid-template-columns: 1fr !important; }
-  .chart-row { flex-direction: column !important; }
+  .clean-stat-grid { grid-template-columns: 1fr 1fr !important; }
+  .clean-two-col { grid-template-columns: 1fr !important; }
 
   /* Mobile focus */
   .focus-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }

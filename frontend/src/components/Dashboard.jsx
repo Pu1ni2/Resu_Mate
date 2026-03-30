@@ -1741,22 +1741,7 @@ const AIAvatar = () => (
   </div>
 );
 
-const FloatingParticles = () => (
-  <div className="floating-particles">
-    {[...Array(20)].map((_, i) => (
-      <div 
-        key={i} 
-        className="particle"
-        style={{
-          left: `${Math.random() * 100}%`,
-          top: `${Math.random() * 100}%`,
-          animationDelay: `${Math.random() * 5}s`,
-          animationDuration: `${10 + Math.random() * 10}s`
-        }}
-      />
-    ))}
-  </div>
-);
+// FloatingParticles removed — clean analytics design
 
 function InterviewAnalytics() {
   const [data, setData] = useState(null);
@@ -1778,22 +1763,21 @@ function InterviewAnalytics() {
   useEffect(() => { fetchData(); }, []);
 
   if (loading) return (
-    <div className="chart-section" style={{ textAlign: 'center', padding: '40px' }}>
-      <Loader size={20} className="spin" style={{ color: 'var(--accent)' }} />
-      <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '8px' }}>Loading interview data...</p>
+    <div className="clean-section" style={{ textAlign: 'center', padding: '48px' }}>
+      <Loader size={18} className="spin" style={{ color: 'var(--text3)' }} />
+      <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '10px' }}>Loading interview data...</p>
     </div>
   );
 
   if (!data || data.length === 0) return (
-    <div className="chart-section">
-      <h3 className="chart-title"><Video size={20} /> Interview Analytics</h3>
-      <div className="glass-card" style={{ padding: '30px', textAlign: 'center' }}>
+    <div className="clean-section">
+      <h3 className="clean-section-title">Interview Analytics</h3>
+      <div className="clean-card" style={{ padding: '40px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text3)', fontSize: '13px' }}>No completed interviews yet</p>
       </div>
     </div>
   );
 
-  // Compute analytics
   const total = data.length;
   const scores = data.map(d => {
     const r = typeof d.report === 'object' ? d.report : {};
@@ -1805,7 +1789,6 @@ function InterviewAnalytics() {
   const highPerformers = scores.filter(s => s >= 7).length;
   const lowPerformers = scores.filter(s => s < 4).length;
 
-  // Role breakdown
   const roleMap = {};
   data.forEach(d => {
     const role = d.role || 'General';
@@ -1813,8 +1796,7 @@ function InterviewAnalytics() {
   });
   const roles = Object.entries(roleMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
-  // Score distribution
-  const dist = [0, 0, 0, 0, 0]; // 0-2, 2-4, 4-6, 6-8, 8-10
+  const dist = [0, 0, 0, 0, 0];
   scores.forEach(s => {
     if (s < 2) dist[0]++;
     else if (s < 4) dist[1]++;
@@ -1824,81 +1806,83 @@ function InterviewAnalytics() {
   });
   const maxDist = Math.max(...dist, 1);
 
+  const distColors = ['#EF4444', '#F97316', '#F59E0B', '#22C55E', '#10B981'];
+
   return (
     <>
-      <div className="chart-section" style={{ marginTop: '24px' }}>
-        <h3 className="chart-title"><Video size={20} /> Interview Analytics</h3>
-        <div className="analytics-grid">
+      <div className="clean-section" style={{ marginTop: '32px' }}>
+        <h3 className="clean-section-title">Interview Analytics</h3>
+        <div className="clean-stat-grid clean-stat-grid--4">
           {[
-            { label: 'Interviews', value: total, color: 'var(--info)', icon: <Video size={24} /> },
-            { label: 'Avg Score', value: avgScore, color: 'var(--success)', icon: <TrendingUp size={24} /> },
-            { label: 'High Performers', value: highPerformers, color: '#22C55E', icon: <Award size={24} /> },
-            { label: 'Needs Work', value: lowPerformers, color: '#EF4444', icon: <AlertCircle size={24} /> },
+            { label: 'Total Interviews', value: total, sub: 'completed', icon: <Video size={18} /> },
+            { label: 'Avg Score', value: avgScore, sub: 'out of 10', icon: <TrendingUp size={18} /> },
+            { label: 'High Performers', value: highPerformers, sub: 'scored 7+', icon: <Award size={18} /> },
+            { label: 'Needs Improvement', value: lowPerformers, sub: 'scored below 4', icon: <AlertCircle size={18} /> },
           ].map((stat, i) => (
-            <div key={i} className="analytics-card glass-card floating-card" style={{ animationDelay: `${i * 0.1}s` }}>
-              <div className="analytics-glow" style={{ background: stat.color }} />
-              <div className="analytics-icon" style={{ color: stat.color }}>{stat.icon}</div>
-              <div className="analytics-label">{stat.label}</div>
-              <div className="analytics-value" style={{ color: stat.color }}>{stat.value}</div>
+            <div key={i} className="clean-stat-card">
+              <div className="clean-stat-icon">{stat.icon}</div>
+              <div className="clean-stat-value">{stat.value}</div>
+              <div className="clean-stat-label">{stat.label}</div>
+              <div className="clean-stat-sub">{stat.sub}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Score Distribution */}
-      <div className="chart-section">
-        <h3 className="chart-title"><BarChart2 size={20} /> Score Distribution</h3>
-        <div className="glass-card" style={{ padding: '20px' }}>
-          {['0-2', '2-4', '4-6', '6-8', '8-10'].map((range, i) => (
-            <div key={i} className="chart-bar" style={{ animationDelay: `${i * 0.05}s` }}>
-              <div className="chart-bar-header">
-                <span>{range}</span>
-                <span className="chart-bar-value">{dist[i]} candidate{dist[i] !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="chart-bar-track">
-                <div className="chart-bar-fill animated-fill" style={{
-                  '--target-width': `${(dist[i] / maxDist) * 100}%`,
-                  background: i < 2 ? '#EF4444' : i < 3 ? '#F59E0B' : '#22C55E'
-                }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Interview by Role */}
-      {roles.length > 0 && (
-        <div className="chart-section">
-          <h3 className="chart-title"><Briefcase size={20} /> Interviews by Role</h3>
-          <div className="glass-card" style={{ padding: '20px' }}>
-            {roles.map(([role, count], i) => (
-              <div key={i} className="dist-row">
-                <span>{role}</span>
-                <span className="badge badge-orange">{count}</span>
+      <div className="clean-section">
+        <h3 className="clean-section-title">Score Distribution</h3>
+        <div className="clean-card clean-card--padded">
+          <div className="clean-bar-chart">
+            {['0–2', '2–4', '4–6', '6–8', '8–10'].map((range, i) => (
+              <div key={i} className="clean-bar-row">
+                <span className="clean-bar-label">{range}</span>
+                <div className="clean-bar-track">
+                  <div className="clean-bar-fill" style={{
+                    width: `${(dist[i] / maxDist) * 100}%`,
+                    background: distColors[i]
+                  }} />
+                </div>
+                <span className="clean-bar-count">{dist[i]}</span>
               </div>
             ))}
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Recent Interviews */}
-      <div className="chart-section">
-        <h3 className="chart-title"><Clock size={20} /> Recent Interviews</h3>
-        <div className="glass-card" style={{ padding: '16px' }}>
-          {data.slice(0, 8).map((d, i) => {
-            const r = typeof d.report === 'object' ? d.report : {};
-            const s = r.scores || d.scores || [];
-            const avg = s.length > 0 ? (s.reduce((a, x) => a + (x?.score || 0), 0) / s.length).toFixed(1) : '—';
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', borderBottom: i < Math.min(data.length, 8) - 1 ? '1px solid var(--surface-border)' : 'none' }}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '600' }}>{d.email}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{d.role || 'General'} · {d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—'}</div>
+      <div className="clean-two-col">
+        {roles.length > 0 && (
+          <div className="clean-section">
+            <h3 className="clean-section-title">By Role</h3>
+            <div className="clean-card">
+              {roles.map(([role, count], i) => (
+                <div key={i} className="clean-list-row">
+                  <span className="clean-list-label">{role}</span>
+                  <span className="clean-pill">{count}</span>
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: '800', fontFamily: 'monospace', color: avg >= 7 ? '#22C55E' : avg >= 4 ? '#F59E0B' : '#EF4444' }}>{avg}</div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="clean-section">
+          <h3 className="clean-section-title">Recent Interviews</h3>
+          <div className="clean-card">
+            {data.slice(0, 6).map((d, i) => {
+              const r = typeof d.report === 'object' ? d.report : {};
+              const s = r.scores || d.scores || [];
+              const avg = s.length > 0 ? (s.reduce((a, x) => a + (x?.score || 0), 0) / s.length).toFixed(1) : '—';
+              const scoreColor = avg >= 7 ? 'var(--success)' : avg >= 4 ? 'var(--warning)' : 'var(--error)';
+              return (
+                <div key={i} className="clean-list-row">
+                  <div>
+                    <div className="clean-list-primary">{d.email}</div>
+                    <div className="clean-list-secondary">{d.role || 'General'} · {d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—'}</div>
+                  </div>
+                  <span className="clean-score" style={{ color: scoreColor }}>{avg}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </>
@@ -2421,103 +2405,111 @@ export default function Dashboard() {
           {/* ANALYTICS TAB */}
           {tab === 'analytics' && (
             <div className="analytics-tab">
-              <FloatingParticles />
-              
+
               {selectedCandidates.length === 0 ? (
-                <div className="empty-state glass-card" style={{ padding: '60px' }}>
-                  <div className="empty-icon"><BarChart2 size={40} /></div>
+                <div className="clean-empty">
+                  <BarChart2 size={32} strokeWidth={1.5} />
                   <h3>No candidates selected</h3>
-                  <p>Select candidates in Upload tab</p>
+                  <p>Select candidates in Upload tab to see analytics</p>
                 </div>
               ) : (
                 <>
-                  <div className="analytics-grid">
+                  {/* Overview Stats */}
+                  <div className="clean-stat-grid">
                     {[
-                      { label: 'Selected', value: analytics.total, color: 'var(--accent)', icon: <Users size={24} /> },
-                      { label: 'Avg Experience', value: `${analytics.avgExperience}y`, color: 'var(--success)', icon: <Briefcase size={24} /> },
-                      { label: 'Unique Skills', value: analytics.totalSkills, color: 'var(--info)', icon: <Sparkles size={24} /> }
+                      { label: 'Candidates', value: analytics.total, sub: 'selected', icon: <Users size={18} /> },
+                      { label: 'Avg Experience', value: `${analytics.avgExperience}y`, sub: 'years average', icon: <Briefcase size={18} /> },
+                      { label: 'Unique Skills', value: analytics.totalSkills, sub: 'across pool', icon: <Sparkles size={18} /> }
                     ].map((stat, i) => (
-                      <div key={i} className="analytics-card glass-card floating-card" style={{ animationDelay: `${i * 0.1}s` }}>
-                        <div className="analytics-glow" style={{ background: stat.color }} />
-                        <div className="analytics-icon" style={{ color: stat.color }}>{stat.icon}</div>
-                        <div className="analytics-label">{stat.label}</div>
-                        <div className="analytics-value" style={{ color: stat.color }}>{stat.value}</div>
+                      <div key={i} className="clean-stat-card">
+                        <div className="clean-stat-icon">{stat.icon}</div>
+                        <div className="clean-stat-value">{stat.value}</div>
+                        <div className="clean-stat-label">{stat.label}</div>
+                        <div className="clean-stat-sub">{stat.sub}</div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="chart-section">
-                    <h3 className="chart-title"><TrendingUp size={20} /> Experience Comparison</h3>
-                    <div className="experience-grid">
+                  {/* Experience Comparison */}
+                  <div className="clean-section">
+                    <h3 className="clean-section-title">Experience Comparison</h3>
+                    <div className="clean-card clean-card--padded">
                       {selectedCandidates.filter(c => c.is_resume !== false).map((c, i) => {
                         const maxExp = Math.max(...selectedCandidates.map(x => x.total_experience_years || 0), 1);
                         const pct = ((c.total_experience_years || 0) / maxExp) * 100;
                         return (
-                          <div key={c.id} className="experience-card glass-card floating-card" style={{ animationDelay: `${i * 0.1}s` }}>
-                            <div className="exp-glow" />
-                            <div className="exp-header">
+                          <div key={c.id} className="clean-exp-row">
+                            <div className="clean-exp-info">
                               <div className="avatar-sm" style={{ background: getAvatarGradient(c.name) }}>
                                 {getDisplayName(c, i)[0]}
                               </div>
                               <div>
-                                <div className="exp-name">{getDisplayName(c, i)}</div>
-                                <div className="exp-role">{c.predicted_role}</div>
+                                <div className="clean-exp-name">{getDisplayName(c, i)}</div>
+                                <div className="clean-exp-role">{c.predicted_role}</div>
                               </div>
                             </div>
-                            <div className="exp-value">{c.total_experience_years || 0}<span>years</span></div>
-                            <div className="exp-bar">
-                              <div className="exp-bar-fill" style={{ width: `${pct}%` }} />
+                            <div className="clean-exp-bar-area">
+                              <div className="clean-bar-track">
+                                <div className="clean-bar-fill" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
+                              </div>
                             </div>
+                            <div className="clean-exp-years">{c.total_experience_years || 0}y</div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div className="chart-section">
-                    <h3 className="chart-title"><Sparkles size={20} /> Top Skills</h3>
-                    <div className="glass-card skills-chart-card">
-                      {analytics.topSkills.map((s, i) => (
-                        <div key={i} className="chart-bar" style={{ animationDelay: `${i * 0.05}s` }}>
-                          <div className="chart-bar-header">
-                            <span>{s.name}</span>
-                            <span className="chart-bar-value">{s.count} ({s.percentage}%)</span>
-                          </div>
-                          <div className="chart-bar-track">
-                            <div className="chart-bar-fill animated-fill" style={{ '--target-width': `${s.percentage}%` }} />
-                          </div>
+                  {/* Top Skills */}
+                  <div className="clean-section">
+                    <h3 className="clean-section-title">Top Skills</h3>
+                    <div className="clean-card clean-card--padded">
+                      {analytics.topSkills.length === 0 ? (
+                        <p style={{ color: 'var(--text3)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>No skills data</p>
+                      ) : (
+                        <div className="clean-bar-chart">
+                          {analytics.topSkills.map((s, i) => (
+                            <div key={i} className="clean-bar-row">
+                              <span className="clean-bar-label">{s.name}</span>
+                              <div className="clean-bar-track">
+                                <div className="clean-bar-fill" style={{ width: `${s.percentage}%` }} />
+                              </div>
+                              <span className="clean-bar-count">{s.count}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                      {analytics.topSkills.length === 0 && <p className="no-data">No skills data</p>}
+                      )}
                     </div>
                   </div>
 
-                  <div className="distributions-grid">
-                    <div className="glass-card distribution-card floating-card">
-                      <div className="dist-glow" />
-                      <h3 className="chart-title"><Users size={18} /> Roles</h3>
-                      {analytics.roleDistribution.map((r, i) => (
-                        <div key={i} className="dist-row">
-                          <span>{r.name}</span>
-                          <span className="badge badge-orange">{r.count}</span>
-                        </div>
-                      ))}
+                  {/* Distributions */}
+                  <div className="clean-two-col">
+                    <div className="clean-section">
+                      <h3 className="clean-section-title">Roles</h3>
+                      <div className="clean-card">
+                        {analytics.roleDistribution.map((r, i) => (
+                          <div key={i} className="clean-list-row">
+                            <span className="clean-list-label">{r.name}</span>
+                            <span className="clean-pill">{r.count}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="glass-card distribution-card floating-card" style={{ animationDelay: '0.1s' }}>
-                      <div className="dist-glow" />
-                      <h3 className="chart-title"><Award size={18} /> Levels</h3>
-                      {analytics.levelDistribution.map((l, i) => (
-                        <div key={i} className="dist-row">
-                          <span>{l.name}</span>
-                          <span className="badge badge-green">{l.count}</span>
-                        </div>
-                      ))}
+                    <div className="clean-section">
+                      <h3 className="clean-section-title">Levels</h3>
+                      <div className="clean-card">
+                        {analytics.levelDistribution.map((l, i) => (
+                          <div key={i} className="clean-list-row">
+                            <span className="clean-list-label">{l.name}</span>
+                            <span className="clean-pill clean-pill--green">{l.count}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Interview Analytics */}
               <InterviewAnalytics />
             </div>
           )}
