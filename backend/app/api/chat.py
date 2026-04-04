@@ -510,6 +510,94 @@ async def credibility_analysis(req: CredibilityRequest, user=Depends(get_current
     analysis = await technical_agent.analyze_credibility(candidate, report_data)
     return {"credibility": analysis, "candidate_id": req.candidate_id, "email": req.candidate_email}
 
+class AutomateRankingRequest(BaseModel):
+    role: str = ""
+    candidate_ids: list = []
+
+@router.post("/automate-ranking")
+async def automate_ranking(req: AutomateRankingRequest, user=Depends(get_current_user)):
+    """Rank all uploaded candidates for a role — full automated analysis."""
+    # Gather candidates
+    candidate_ids = req.candidate_ids or list(resume_rag.candidates.keys())
+    candidates_data = []
+    for cid in candidate_ids:
+        c = resume_rag.candidates.get(cid)
+        if c and c.get("is_resume", True):
+            candidates_data.append(c)
+
+    if len(candidates_data) == 0:
+        raise HTTPException(400, "No candidates found to rank")
+
+    target_role = req.role or "best matching role"
+
+    # Build candidate summaries for comparison
+    candidate_summaries = ""
+    for i, c in enumerate(candidates_data):
+        work = c.get("work_experience", [])
+        work_str = ", ".join(f"{w.get('title','')} at {w.get('company','')}" for w in work[:3]) or "N/A"
+        candidate_summaries += f"""
+--- Candidate {i+1}: {c.get('name', 'Unknown')} (ID: {c.get('id', 0)}) ---
+Role: {c.get('predicted_role', 'N/A')} | Level: {c.get('experience_level', 'N/A')} | Exp: {c.get('total_experience_years', 0)} years
+Location: {c.get('location', 'N/A')}
+Skills: {', '.join((c.get('skills') or [])[:12])}
+Key Strengths: {', '.join((c.get('key_strengths') or [])[:4])}
+Summary: {(c.get('summary') or 'N/A')[:200]}
+Work History: {work_str}
+Education: {', '.join(f"{e.get('degree','')} from {e.get('institution','')}" for e in (c.get('education') or [])[:2]) or 'N/A'}
+"""
+
+    prompt = f"""You are a senior hiring manager. Analyze and rank these {len(candidates_data)} candidates for the role: "{target_role}".
+
+{candidate_summaries}
+
+Provide a COMPREHENSIVE comparison and ranking. Return ONLY valid JSON:
+{{
+    "target_role": "{target_role}",
+    "rankings": [
+        {{
+            "rank": 1,
+            "candidate_id": <id>,
+            "name": "name",
+            "score": 0-100,
+            "verdict": "Strong Fit / Good Fit / Potential Fit / Not a Fit",
+            "strengths": ["why this candidate is good for the role"],
+            "gaps": ["what they're missing"],
+            "standout": "one sentence — what makes this person unique",
+            "interview_priority": "High / Medium / Low",
+            "suggested_focus_areas": ["what to probe in interview"]
+        }}
+    ],
+    "comparison_summary": "2-3 sentences comparing the top candidates",
+    "best_candidate": {{
+        "name": "the top pick",
+        "candidate_id": <id>,
+        "reason": "why this person is the best fit"
+    }},
+    "interview_order": ["name1", "name2", "name3"],
+    "role_insights": "any observations about the candidate pool for this role"
+}}
+
+RULES:
+- Rank by ACTUAL fit for the role, not just experience years
+- Skills match matters more than years of experience
+- Consider growth potential for junior candidates
+- Be specific — reference actual skills and experience from their data
+- If role is generic, infer the best role from the candidate pool"""
+
+    try:
+        content = await openai_tool.structured_call(prompt, "You are an expert hiring manager who ranks candidates fairly based on role fit, skills, and potential.")
+        content = content.strip()
+        if '```' in content:
+            for part in content.split('```'):
+                part = part.strip()
+                if part.startswith('json'): content = part[4:].strip(); break
+                elif part.startswith('{'): content = part; break
+        result = json.loads(content)
+        return {"ranking": result, "total_candidates": len(candidates_data)}
+    except Exception as e:
+        print(f"⚠️ Automate ranking error: {e}")
+        raise HTTPException(500, f"Ranking failed: {str(e)}")
+
 @router.post("/score-answer")
 async def score_answer(req: ScoreAnswerRequest, user=Depends(get_current_user)):
     return await technical_agent.score_answer(req.question, req.answer, req.role, req.candidate_name)
