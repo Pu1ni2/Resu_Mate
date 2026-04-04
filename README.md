@@ -86,74 +86,14 @@ AI career advisor with resume coaching, interview prep — then step into a live
 ## Architecture
 
 ### System Overview
-
-```
-                         ┌─────────────────────────────────┐
-                         │        ResuMate AI Platform       │
-                         └────────────────┬──────────────────┘
-                                          │
-                    ┌─────────────────────┼─────────────────────┐
-                    │                     │                     │
-            ┌───────▼───────┐    ┌───────▼────────┐   ┌───────▼───────┐
-            │    Hiring     │    │   Candidate    │   │   Interview   │
-            │    Manager    │    │    Portal      │   │    System     │
-            │    Portal     │    │               │   │               │
-            └───────┬───────┘    └───────┬────────┘   └───────┬───────┘
-                    │                    │                     │
-                    ▼                    ▼                     ▼
-       ┌─────────────────────────────────────────────────────────────┐
-       │                    FastAPI Backend                          │
-       │                  (25+ REST Endpoints)                      │
-       └─────────────────────────┬───────────────────────────────────┘
-                                 │
-       ┌────────────┬────────────┼────────────┬────────────┐
-       │            │            │            │            │
-  ┌────▼────┐ ┌────▼────┐ ┌────▼─────┐ ┌───▼─────┐ ┌───▼──────┐
-  │  Data   │ │   HR    │ │Technical │ │Research │ │ Advisor  │
-  │  Agent  │ │  Agent  │ │  Agent   │ │  Agent  │ │  Agent   │
-  └─────────┘ └─────────┘ └────┬─────┘ └─────────┘ └────┬─────┘
-                               │                         │
-                         ┌─────┴─────┐            ┌──────┼──────┐
-                         │           │            │      │      │
-                    ┌────▼───┐ ┌────▼────┐  ┌────▼──┐ ┌▼────┐ ┌▼──────┐
-                    │Interview│ │Scoring  │  │Resume │ │Int. │ │Career │
-                    │ Agent  │ │ Agent   │  │Coach  │ │Prep │ │Advisor│
-                    └────────┘ └─────────┘  └───────┘ └─────┘ └───────┘
-```
+<p align="center">
+  <img src="screenshots/Architecture.png" alt="ResuMate AI System Architecture" width="800" />
+</p>
 
 ### Agent Framework
-
-Each agent follows the **Plan → Execute → Reflect → Output** pipeline:
-
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│   PLAN   │ ──▶ │ EXECUTE  │ ──▶ │ REFLECT  │ ──▶ │  OUTPUT  │
-│          │     │          │     │          │     │          │
-│ Analyze  │     │ Run      │     │ Quality  │     │ Format   │
-│ task     │     │ tools    │     │ check    │     │ results  │
-└──────────┘     └──────────┘     └──────────┘     └──────────┘
-```
-
-### Interview System Architecture
-
-```
-┌──────────────────┐              ┌──────────────────────┐
-│                  │   LiveKit    │                      │
-│  Candidate       │   WebRTC    │   Interview Agent     │
-│  Browser         │◄──────────►│   (Python Process)    │
-│                  │    Room     │                      │
-│  ┌────────────┐  │              │  ┌────────────────┐  │
-│  │ Camera     │  │              │  │ OpenAI         │  │
-│  │ + Mic      │  │              │  │ Realtime API   │  │
-│  ├────────────┤  │              │  │ (Voice-to-     │  │
-│  │ Face       │  │              │  │  Voice)        │  │
-│  │ Tracking   │  │              │  ├────────────────┤  │
-│  ├────────────┤  │              │  │ Simli Avatar   │  │
-│  │ Tab        │  │              │  │ (Lip-synced    │  │
-│  │ Monitor    │  │              │  │  Face)         │  │
-│  └────────────┘  │              │  └────────────────┘  │
-└──────────────────┘              └──────────────────────┘
-```
+<p align="center">
+  <img src="screenshots/Agent_framework.png" alt="Agent Framework — Plan, Execute, Reflect, Output" width="800" />
+</p>
 
 ---
 
