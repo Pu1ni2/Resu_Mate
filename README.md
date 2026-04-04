@@ -18,7 +18,7 @@ ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system wh
 
 ## Demo
 
-> **Live Demo:** [resumate-2vad.onrender.com](https://resumate-2vad.onrender.com)
+> **Live Demo:** [resumate-ui.onrender.com](https://resumate-ui.onrender.com)
 >
 > *Free-tier hosting — first load may take ~30s to wake up.*
 
