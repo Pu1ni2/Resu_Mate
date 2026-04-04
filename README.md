@@ -274,7 +274,7 @@ Report → scores, eye contact, credibility analysis, PDF export
 
 ## License
 
-MIT
+All Rights Reserved. See [LICENSE](LICENSE) for details.
 
 ---
 
