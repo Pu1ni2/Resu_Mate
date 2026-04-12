@@ -397,49 +397,58 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
 
     } else if (action === 'batch_action') {
-      // batch_action produces a direct reply — NO recursive API call to avoid
-      // the infinite "want me to send?" loop
       setStatus('CREATING INTERVIEWS…');
       try {
+        const batchBody = {
+          candidate_ids: params.candidate_ids || ctx.shortlistedIds,
+          role: params.role || ctx.role || 'Engineer',
+          level: params.level || 'Mid-Level',
+          num_questions: params.num_questions || 8,
+          email_type: params.email_type || 'interview',
+          send_emails: params.send_emails || false,
+        };
         const res = await fetch(`${API_BASE}/api/pipeline/batch-action`, {
           method: 'POST', headers: hdrs,
-          body: JSON.stringify({
-            candidate_ids: params.candidate_ids || ctx.shortlistedIds,
-            role: params.role || ctx.role || 'Engineer',
-            level: params.level || 'Mid-Level',
-            num_questions: params.num_questions || 8,
-            email_type: params.email_type || 'interview',
-            send_emails: params.send_emails || false,
-          }),
+          body: JSON.stringify(batchBody),
         });
         if (!res.ok) throw new Error(`Batch ${res.status}`);
         const d = await res.json();
         const sent = d.emails_sent || 0;
         const created = d.interviews_created || 0;
-        const drafted = d.total || 0;
+        const outcomes = d.outcomes || [];
 
-        appendMsg({
-          role: 'action',
-          content: `Created ${created} interview${created !== 1 ? 's' : ''}` +
-            (params.send_emails
-              ? ` · Sent ${sent} email${sent !== 1 ? 's' : ''}`
-              : ` · ${drafted} email${drafted !== 1 ? 's' : ''} drafted`),
-        });
-        setContext(c => ({ ...c, lastAction: 'batch_action' }));
-        setStatus(params.send_emails && sent > 0 ? 'EMAILS SENT' : 'DONE');
+        setContext(c => ({ ...c, lastAction: 'batch_action', pendingAction: null }));
 
-        // Direct spoken reply — no API round-trip, no loop
         if (params.send_emails) {
+          // ── Send mode ─────────────────────────────────────────────────────
+          appendMsg({
+            role: 'action',
+            content: `${created} interview${created !== 1 ? 's' : ''} created · ${sent} email${sent !== 1 ? 's' : ''} sent`,
+          });
+          setStatus(sent > 0 ? 'EMAILS SENT' : 'DONE');
           if (sent > 0) {
-            directSay(`Done! Sent the interview invitation to ${sent} candidate${sent !== 1 ? 's' : ''}. You're all set!`);
+            directSay(`Done! Sent ${sent} interview invitation${sent !== 1 ? 's' : ''}. You're all set!`);
           } else {
-            directSay(`Interview created, but the email couldn't be sent — you may need to send it manually from your email client.`);
+            directSay(`Interview created, but email couldn't be sent — check your email settings.`);
           }
         } else {
-          const names = (ctx.shortlistedIds.length > 0)
-            ? ` for the shortlisted candidate${ctx.shortlistedIds.length !== 1 ? 's' : ''}`
-            : '';
-          directSay(`Interview set up${names} and the invitation email is drafted. Want me to send it now?`);
+          // ── Draft mode — show email card with inline Send button ──────────
+          const first = outcomes[0] || {};
+          const emailSubject = first.email_subject || `Interview Invitation — ${batchBody.role}`;
+          const emailBody    = first.email_body    || '';
+          const toNames      = outcomes.map(o => o.name || '?').join(', ');
+          // Store params needed for the Send button (send_emails excluded — added when clicked)
+          const storedParams = { ...batchBody, send_emails: undefined };
+          delete storedParams.send_emails;
+
+          appendMsg({
+            role: 'action',
+            content: 'Email draft ready',
+            emailDraftData: { subject: emailSubject, body: emailBody, to: toNames, count: outcomes.length },
+            batchParams: storedParams,
+          });
+          setStatus('EMAIL DRAFTED');
+          directSay(`Interview set up for ${toNames}. Here's the email draft — review it and hit Send when you're ready.`);
         }
       } catch (err) {
         appendMsg({ role: 'action', content: `Batch failed: ${err.message}` });
@@ -448,7 +457,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
 
     } else if (action === 'list_candidates') {
-      // Direct reply — no API round-trip
       const list = buildCandidateList(candidatesSummary);
       directSay(`Here's who you've uploaded: ${list}`);
 
@@ -456,6 +464,189 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       const ctx2 = contextRef.current;
       if (ctx2.lastAtsResults) setResultsData(ctx2.lastAtsResults);
       else directSay("No results yet — tell me the role and I'll screen the candidates.");
+
+    // ── Research / Intelligence actions ────────────────────────────────────
+
+    } else if (action === 'research_web') {
+      setStatus('SEARCHING…');
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/web-search`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({
+            query: params.query || '',
+            candidate_name: ctx.role || null,
+          }),
+        });
+        if (!res.ok) throw new Error(`Search ${res.status}`);
+        const d = await res.json();
+
+        // Build a compact summary for Jarvis to narrate
+        const webCtx = d.web_context || '';
+        const sources = (d.sources || []).slice(0, 2).map(s => s.title).join(', ');
+        const snippet = webCtx.slice(0, 500);
+
+        appendMsg({
+          role: 'action',
+          content: `Web search: "${params.query}"`,
+          searchData: { query: params.query, sources: d.sources || [], snippet: webCtx.slice(0, 200) },
+        });
+        setStatus(candidatesSummary.length > 0 ? `${candidatesSummary.length} CANDIDATES READY` : 'READY');
+        await handleSendMessageRef.current(
+          `[RESEARCH_RESULT] Query: "${params.query}". ${snippet}${sources ? ` Sources: ${sources}.` : ''}`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`Couldn't complete the search — ${err.message}.`);
+      }
+
+    } else if (action === 'analyze_github') {
+      setStatus('SCANNING GITHUB…');
+      try {
+        // Pass github_url from candidatesSummary if available (extracted from PDF hyperlinks)
+        const candidateMeta = candidatesSummary.find(c => c.id === params.candidate_id);
+        const githubUrl = candidateMeta?.github_url || '';
+        const res = await fetch(`${API_BASE}/api/chat/github-analyze`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ candidate_id: params.candidate_id, github_url: githubUrl || undefined }),
+        });
+        if (!res.ok) throw new Error(`GitHub ${res.status}`);
+        const d = await res.json();
+
+        if (d.error) {
+          directSay(`Couldn't find a GitHub profile for ${params.candidate_name || 'this candidate'} — ${d.error}`);
+          setStatus('DONE');
+          return;
+        }
+
+        const profile = d.profile || {};
+        const analysis = profile.ai_analysis || '';
+        const name = profile.name || params.candidate_name || 'Candidate';
+        const repos = profile.public_repos ?? '?';
+        const stars = (profile.top_repos || []).reduce((s, r) => s + (r.stars || r.stargazers_count || 0), 0);
+        // GitHub tool returns `languages` as {Python: 3, JS: 1}, not top_languages array
+        const langsDict = profile.languages || {};
+        const langs = Object.keys(langsDict).slice(0, 4).join(', ') || 'N/A';
+        const topRepos = (profile.top_repos || []).slice(0, 4);
+        const repoNames = topRepos.map(r => r.name).join(', ');
+
+        appendMsg({
+          role: 'action',
+          content: `GitHub: ${name}`,
+          githubData: { name, repos, stars, langs, analysis, topRepos, profile },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[GITHUB_RESULT] ${name}: ${repos} repos, languages: ${langs}, top projects: ${repoNames || 'N/A'}. ${analysis.slice(0, 300)}`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`GitHub analysis failed — ${err.message}.`);
+      }
+
+    } else if (action === 'deep_evaluate') {
+      setStatus('EVALUATING…');
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({
+            candidate_id: params.candidate_id,
+            role: params.role || ctx.role || 'Engineer',
+          }),
+        });
+        if (!res.ok) throw new Error(`Eval ${res.status}`);
+        const d = await res.json();
+
+        const report = d.report || d.output || '';
+        appendMsg({
+          role: 'action',
+          content: `Deep evaluation complete`,
+          evalData: { report: report.slice(0, 600) },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[EVAL_RESULT] Evaluation for candidate ID ${params.candidate_id} (${params.role || ctx.role}): ${report.slice(0, 500)}`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`Evaluation failed — ${err.message}.`);
+      }
+
+    } else if (action === 'scan_candidate') {
+      setStatus('SCANNING PROFILE…');
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/scan-resume`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ candidate_id: params.candidate_id }),
+        });
+        if (!res.ok) throw new Error(`Scan ${res.status}`);
+        const d = await res.json();
+
+        if (d.error) {
+          directSay(`Couldn't scan ${params.candidate_name || 'this candidate'} — ${d.error}`);
+          setStatus('DONE');
+          return;
+        }
+
+        const profiles = d.profiles || {};
+        const gh = profiles.github;
+        const li = profiles.linkedin;
+        const contact = d.contact || {};
+        const summary = d.ai_summary || '';
+
+        const parts = [];
+        if (gh?.username) parts.push(`GitHub: github.com/${gh.username}`);
+        if (li?.profile_url || li?.headline) parts.push(`LinkedIn: ${li?.headline || li?.profile_url || 'found'}`);
+        if (contact?.email) parts.push(`Email: ${contact.email}`);
+        if (contact?.phone) parts.push(`Phone: ${contact.phone}`);
+
+        appendMsg({
+          role: 'action',
+          content: `Profile scan: ${params.candidate_name || 'Candidate'}`,
+          scanData: { profiles, contact, summary },
+        });
+        setStatus('DONE');
+        const resultText = parts.length
+          ? parts.join(' | ')
+          : (summary.slice(0, 300) || 'No public profiles found');
+        await handleSendMessageRef.current(
+          `[SCAN_RESULT] ${params.candidate_name || 'Candidate'}: ${resultText}. ${summary.slice(0, 200)}`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`Profile scan failed — ${err.message}.`);
+      }
+
+    } else if (action === 'get_calendly') {
+      setStatus('FETCHING CALENDLY…');
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/calendly-link`, {
+          method: 'GET', headers: hdrs,
+        });
+        if (!res.ok) throw new Error(`Calendly ${res.status}`);
+        const d = await res.json();
+
+        if (d.error) {
+          directSay(`Calendly isn't connected yet — ${d.error}. You can set it up in your account settings.`);
+          setStatus('DONE');
+          return;
+        }
+
+        const url = d.scheduling_url || '';
+        const eventTypes = (d.event_types || []).map(e => e.name).slice(0, 3).join(', ');
+
+        appendMsg({
+          role: 'action',
+          content: 'Calendly link',
+          calendlyData: { url, eventTypes },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[CALENDLY_RESULT] Scheduling URL: ${url}. Available event types: ${eventTypes || 'standard meeting'}.`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`Couldn't fetch Calendly — ${err.message}.`);
+      }
     }
   }, [candidatesSummary, appendMsg]);
 
@@ -866,7 +1057,236 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     </div>
                   );
                 }
-                // Simple action status line
+                // ── GitHub card
+                if (msg.githubData) {
+                  const g = msg.githubData;
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 12, padding: '12px 16px',
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)', marginBottom: 8 }}>
+                          GITHUB · {g.name}
+                        </div>
+                        <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap' }}>
+                          {[
+                            { label: 'REPOS', val: g.repos },
+                            { label: 'STARS', val: g.stars },
+                            { label: 'LANGUAGES', val: g.langs },
+                          ].map(({ label, val }) => (
+                            <div key={label}>
+                              <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginTop: 2 }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {g.topRepos?.length > 0 && (
+                          <div style={{ marginBottom: 8 }}>
+                            <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em', marginBottom: 5 }}>TOP PROJECTS</div>
+                            {g.topRepos.slice(0, 3).map((r, i) => (
+                              <div key={i} style={{ fontSize: 12, color: '#A1A1AA', marginBottom: 3, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                                <span style={{ color: '#E4E4E7', fontWeight: 600 }}>{r.name}</span>
+                                {r.language && <span style={{ fontSize: 10, color: '#52525B' }}>{r.language}</span>}
+                                {r.description && <span style={{ fontSize: 11, color: '#71717A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{r.description}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {g.analysis && (
+                          <p style={{ margin: 0, fontSize: 12, color: '#71717A', lineHeight: 1.5, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
+                            {g.analysis.slice(0, 220)}{g.analysis.length > 220 ? '…' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Email draft card
+                if (msg.emailDraftData) {
+                  const e = msg.emailDraftData;
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(245,158,11,0.2)',
+                        borderRadius: 12, padding: '14px 16px',
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.5)', marginBottom: 10 }}>
+                          EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more)` : ''}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>
+                          {e.subject}
+                        </div>
+                        {e.body && (
+                          <div style={{
+                            fontSize: 12, color: '#A1A1AA', lineHeight: 1.65,
+                            background: 'rgba(0,0,0,0.25)', borderRadius: 8,
+                            padding: '10px 12px', marginBottom: 12,
+                            maxHeight: 140, overflowY: 'auto',
+                            whiteSpace: 'pre-wrap',
+                          }}>
+                            {e.body.slice(0, 600)}{e.body.length > 600 ? '…' : ''}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => executeAction('batch_action', { ...msg.batchParams, send_emails: true })}
+                          style={{
+                            padding: '7px 18px', borderRadius: 100,
+                            background: 'rgba(217,119,6,0.2)',
+                            border: '1px solid rgba(245,158,11,0.4)',
+                            color: '#FDE68A', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.35)'; }}
+                          onMouseLeave={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.2)'; }}
+                        >
+                          Send Email →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Web search card
+                if (msg.searchData) {
+                  const s = msg.searchData;
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: 10, padding: '10px 14px',
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(56,189,248,0.5)', marginBottom: 6 }}>
+                          WEB SEARCH · {s.query}
+                        </div>
+                        {s.snippet && (
+                          <p style={{ margin: '0 0 6px', fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>
+                            {s.snippet.slice(0, 160)}…
+                          </p>
+                        )}
+                        {(s.sources || []).slice(0, 2).map((src, i) => (
+                          <div key={i} style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
+                            · {src.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Evaluation / Deep analysis card
+                if (msg.evalData) {
+                  const ev = msg.evalData;
+                  const rpt = ev.report || '';
+                  // Try to extract score and verdict from the text report
+                  const scoreMatch = rpt.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
+                  const score = scoreMatch ? scoreMatch[1] : null;
+                  const verdictMatch = rpt.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
+                  const verdict = verdictMatch ? verdictMatch[1].trim() : null;
+                  // Split into rough sections
+                  const weaknessSection = rpt.match(/(?:weakness|drawback|gap|concern|limitation)[s]?[^:]*?:([^]+?)(?=\n[A-Z]|$)/i);
+                  const weakText = weaknessSection ? weaknessSection[1].trim().slice(0, 400) : null;
+
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(248,113,113,0.18)',
+                        borderRadius: 12, padding: '14px 16px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(248,113,113,0.5)' }}>
+                            EVALUATION REPORT
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {score && (
+                              <span style={{ fontSize: 11, fontWeight: 800, color: '#4ADE80', background: 'rgba(74,222,128,0.1)', padding: '2px 8px', borderRadius: 100 }}>
+                                {score}/100
+                              </span>
+                            )}
+                            {verdict && (
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#FCD34D', background: 'rgba(252,211,77,0.1)', padding: '2px 8px', borderRadius: 100 }}>
+                                {verdict}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {weakText && (
+                          <div style={{ marginBottom: 8 }}>
+                            <div style={{ fontSize: 9, color: '#F87171', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
+                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                              {weakText.slice(0, 300)}{weakText.length > 300 ? '…' : ''}
+                            </div>
+                          </div>
+                        )}
+                        <div style={{
+                          fontSize: 11, color: '#71717A', lineHeight: 1.65,
+                          background: 'rgba(0,0,0,0.2)', borderRadius: 8,
+                          padding: '8px 10px', maxHeight: 130, overflowY: 'auto',
+                          whiteSpace: 'pre-wrap',
+                        }}>
+                          {rpt.slice(0, 600)}{rpt.length > 600 ? '…' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Scan / LinkedIn card
+                if (msg.scanData) {
+                  const sc = msg.scanData;
+                  const gh = sc.profiles?.github;
+                  const li = sc.profiles?.linkedin;
+                  const ct = sc.contact || {};
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 10, padding: '10px 14px',
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)', marginBottom: 8 }}>
+                          PROFILE SCAN
+                        </div>
+                        {gh?.username && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>GitHub: github.com/{gh.username}</div>}
+                        {li?.headline && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>LinkedIn: {li.headline}</div>}
+                        {ct.email    && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>Email: {ct.email}</div>}
+                        {ct.phone    && <div style={{ fontSize: 12, color: '#71717A' }}>Phone: {ct.phone}</div>}
+                        {sc.summary  && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#52525B', lineHeight: 1.5 }}>{sc.summary.slice(0, 160)}</p>}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Calendly card
+                if (msg.calendlyData) {
+                  const ca = msg.calendlyData;
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(99,102,241,0.25)',
+                        borderRadius: 10, padding: '12px 14px',
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(99,102,241,0.6)', marginBottom: 8 }}>
+                          CALENDLY SCHEDULING LINK
+                        </div>
+                        {ca.url && (
+                          <a href={ca.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#818CF8', wordBreak: 'break-all', display: 'block', marginBottom: 6 }}>
+                            {ca.url}
+                          </a>
+                        )}
+                        {ca.eventTypes && <div style={{ fontSize: 11, color: '#52525B' }}>{ca.eventTypes}</div>}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Simple action status line
                 return (
                   <div key={msg.id} className="j-msg" style={{
                     marginBottom: 18, padding: '7px 14px',

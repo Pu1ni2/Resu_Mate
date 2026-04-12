@@ -2566,6 +2566,8 @@ export default function Dashboard() {
                           predicted_role: c.predicted_role || '',
                           total_experience_years: c.total_experience_years || 0,
                           skills: c.skills || [],
+                          github_url: c.embedded_links?.github_url || '',
+                          linkedin_url: c.embedded_links?.linkedin_url || '',
                         }))}
                       onClose={() => setShowPipeline(false)}
                       onComplete={(result) => {

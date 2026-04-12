@@ -71,6 +71,7 @@ class EmailDraftRequest(BaseModel):
 class GitHubRequest(BaseModel):
     candidate_id: int
     github_username: Optional[str] = None
+    github_url: Optional[str] = None     # direct URL override from frontend (PDF hyperlinks)
     anonymize: bool = False
     candidate_data: Optional[dict] = None
 
@@ -356,29 +357,65 @@ async def draft_email(req: EmailDraftRequest, user=Depends(get_current_user)):
 
 @router.post("/github-analyze")
 async def github_analyze(req: GitHubRequest, user=Depends(get_current_user)):
-    """GitHub analysis"""
+    """GitHub analysis — multi-strategy with name validation"""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data)
         username = req.github_username
-
-        if not username and candidate:
-            text = candidate.get('text', '') or candidate.get('raw_text', '')
-            from app.tools.pdf_tool import pdf_tool
-            contact = pdf_tool.extract_contact_from_text(text)
-            username = contact.get("github_username")
+        candidate_name = (candidate.get('name', '') if candidate else '') or ''
 
         if not username:
-            return {"error": "Could not find GitHub username.", "needs_username": True}
+            # Strategy 0: Explicit URL passed from frontend (highest priority)
+            if req.github_url:
+                m = re.search(r'github\.com/([a-zA-Z0-9_-]+)', req.github_url)
+                if m and m.group(1).lower() not in ('org', 'repos', 'issues', 'blob', 'tree', 'raw', 'wiki'):
+                    username = m.group(1)
+
+        if not username and candidate:
+            # Strategy 1: Use PDF-embedded hyperlinks (most reliable — actual URLs in the PDF)
+            embedded_links = candidate.get('embedded_links') or {}
+            github_url = embedded_links.get('github_url', '')
+            if github_url:
+                m = re.search(r'github\.com/([a-zA-Z0-9_-]+)', github_url)
+                if m and m.group(1).lower() not in ('org', 'repos', 'issues', 'blob', 'tree', 'raw', 'wiki'):
+                    username = m.group(1)
+
+            # Strategy 2: Text regex fallback
+            if not username:
+                text = candidate.get('text', '') or candidate.get('raw_text', '')
+                from app.tools.pdf_tool import pdf_tool
+                contact = pdf_tool.extract_contact_from_text(text)
+                username = contact.get("github_username")
+
+        if not username:
+            return {"error": f"No GitHub profile found for {candidate_name or 'this candidate'}.", "needs_username": True}
 
         profile = await github_tool.call({"username": username})
         if profile.get("error"):
             return {"error": profile["error"]}
 
+        # Validate: reject if profile name shares no words with candidate name (wrong person)
+        profile_display = (profile.get("name") or "").lower()
+        if candidate_name and profile_display:
+            candidate_parts = set(candidate_name.lower().split())
+            profile_parts   = set(profile_display.split())
+            if not (candidate_parts & profile_parts):
+                return {
+                    "error": (
+                        f"Found GitHub user '{profile.get('name')}' but that doesn't match "
+                        f"'{candidate_name}'. The resume may reference someone else's GitHub. "
+                        f"Ask the candidate for their correct GitHub username."
+                    ),
+                    "wrong_profile": True,
+                    "found_name": profile.get("name"),
+                    "expected_name": candidate_name,
+                }
+
         # AI analysis
         if openai_tool.llm:
             analysis = await openai_tool.structured_call(
-                f"Analyze this GitHub profile for hiring: {json.dumps(profile, default=str)[:500]}. 3-4 sentences.",
-                "You are a technical recruiter. Be concise."
+                f"Analyze this GitHub profile for hiring: {json.dumps(profile, default=str)[:600]}. "
+                f"Candidate is {candidate_name}. 3-4 sentences on their technical activity.",
+                "You are a technical recruiter. Be concise and specific."
             )
             profile["ai_analysis"] = analysis
 
