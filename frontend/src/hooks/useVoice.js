@@ -1,13 +1,16 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const MIN_RECORDING_MS = 800;   // discard recordings shorter than this
 const MIN_BLOB_BYTES   = 1500;  // discard silent/empty blobs
+const SILENCE_RMS_THRESHOLD = 0.014;
+const SILENCE_STOP_MS = 1600;
 
 export default function useVoice({
   apiBase,
   onTranscribed,       // (text: string) => void
   onSpeakingDone,      // () => void  — fires when TTS finishes naturally
   onTranscribeFail,    // (err: string) => void — silent error callback
+  onAutoStop,          // () => void  — fires when silence detection auto-stops recording
 }) {
   const [isRecording,      setIsRecording]      = useState(false);
   const [isTranscribing,   setIsTranscribing]   = useState(false);
@@ -18,7 +21,35 @@ export default function useVoice({
   const audioChunksRef     = useRef([]);
   const currentAudioRef    = useRef(null);
   const abortControllerRef = useRef(null);
-  const recordingStartRef  = useRef(null);  // timestamp when recording began
+  const recordingStartRef  = useRef(null);
+  const speechDetectedRef  = useRef(false);
+  const maxRmsRef          = useRef(0);
+
+  // Silence detection refs
+  const audioContextRef    = useRef(null);
+  const analyserRef        = useRef(null);
+  const silenceTimerRef    = useRef(0);
+  const silenceIntervalRef = useRef(null);
+  const onAutoStopRef      = useRef(null);
+
+  useEffect(() => { onAutoStopRef.current = onAutoStop; }, [onAutoStop]);
+
+  // ── Stop silence detection ────────────────────────────────────────────────────
+  const stopSilenceDetection = useCallback(() => {
+    if (silenceIntervalRef.current) {
+      clearInterval(silenceIntervalRef.current);
+      silenceIntervalRef.current = null;
+    }
+    silenceTimerRef.current = 0;
+    if (analyserRef.current) {
+      try { analyserRef.current.disconnect(); } catch (_) {}
+      analyserRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch (_) {}
+      audioContextRef.current = null;
+    }
+  }, []);
 
   // ── Stop TTS ─────────────────────────────────────────────────────────────────
   const stopSpeaking = useCallback(() => {
@@ -66,7 +97,7 @@ export default function useVoice({
         URL.revokeObjectURL(audioUrl);
         currentAudioRef.current = null;
         setSpeakingMsgIndex(null);
-        onSpeakingDone?.();   // ← tell Jarvis AI is done speaking → auto-listen
+        onSpeakingDone?.();
       };
       audio.onerror = () => {
         URL.revokeObjectURL(audioUrl);
@@ -88,7 +119,6 @@ export default function useVoice({
 
   // ── STT ───────────────────────────────────────────────────────────────────────
   const transcribeAudio = useCallback(async (audioBlob) => {
-    // Guard: discard tiny/silent recordings
     if (audioBlob.size < MIN_BLOB_BYTES) {
       onTranscribeFail?.('too_short');
       return;
@@ -111,7 +141,6 @@ export default function useVoice({
         onTranscribeFail?.('no_speech');
       }
     } catch (err) {
-      // Silent fail — no alerts, just log and callback
       console.warn('STT error:', err.message);
       onTranscribeFail?.(err.message);
     } finally {
@@ -119,13 +148,78 @@ export default function useVoice({
     }
   }, [apiBase, onTranscribed, onTranscribeFail]);
 
-  // ── Recording (click-to-toggle, not hold) ────────────────────────────────────
+  // ── Silence detection ─────────────────────────────────────────────────────────
+  // Must be defined before startRecording so it can be called inside it.
+  // Uses a ref to stopRecording to avoid circular dependency.
+  const stopRecordingRef = useRef(null);
+
+  const startSilenceDetection = useCallback((stream) => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      audioContextRef.current = ctx;
+      analyserRef.current     = analyser;
+      silenceTimerRef.current = 0;
+      speechDetectedRef.current = false;
+      maxRmsRef.current = 0;
+
+      const dataArray = new Float32Array(analyser.fftSize);
+
+      silenceIntervalRef.current = setInterval(() => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getFloatTimeDomainData(dataArray);
+
+        let sumSq = 0;
+        for (let i = 0; i < dataArray.length; i++) sumSq += dataArray[i] ** 2;
+        const rms = Math.sqrt(sumSq / dataArray.length);
+        maxRmsRef.current = Math.max(maxRmsRef.current, rms);
+
+        if (rms >= SILENCE_RMS_THRESHOLD) {
+          speechDetectedRef.current = true;
+          silenceTimerRef.current = 0;
+        } else {
+          silenceTimerRef.current += 200;
+          if (silenceTimerRef.current >= SILENCE_STOP_MS) {
+            stopSilenceDetection();
+            stopRecordingRef.current?.();
+            onAutoStopRef.current?.();
+          }
+        }
+      }, 200);
+    } catch (err) {
+      console.warn('Silence detection unavailable:', err.message);
+      // Gracefully degrade — recording works without silence detection
+    }
+  }, [stopSilenceDetection]);
+
+  // ── Recording ─────────────────────────────────────────────────────────────────
+  const stopRecording = useCallback(() => {
+    stopSilenceDetection();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  }, [stopSilenceDetection]);
+
+  // Keep stopRecordingRef in sync for use inside silence detection closure
+  useEffect(() => { stopRecordingRef.current = stopRecording; }, [stopRecording]);
+
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,   // prevents speaker audio bleeding into mic
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current   = [];
+      mediaRecorderRef.current  = mediaRecorder;
+      audioChunksRef.current    = [];
       recordingStartRef.current = Date.now();
 
       mediaRecorder.ondataavailable = (e) => {
@@ -138,30 +232,41 @@ export default function useVoice({
           onTranscribeFail?.('too_short');
           return;
         }
+        if (!speechDetectedRef.current && maxRmsRef.current < SILENCE_RMS_THRESHOLD) {
+          onTranscribeFail?.('no_speech');
+          return;
+        }
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await transcribeAudio(audioBlob);
       };
 
-      mediaRecorder.start(100);   // collect chunks every 100ms
+      mediaRecorder.start(100);
       setIsRecording(true);
+      startSilenceDetection(stream);   // ← silence detection starts with recording
     } catch (err) {
       console.error('Mic access denied:', err);
       onTranscribeFail?.('mic_denied');
     }
-  }, [transcribeAudio, onTranscribeFail]);
+  }, [transcribeAudio, onTranscribeFail, startSilenceDetection]);
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  }, [isRecording]);
-
-  // Toggle: if recording → stop, if not → start
   const toggleRecording = useCallback(() => {
-    if (isRecording) stopRecording();
-    else startRecording();
-  }, [isRecording, startRecording, stopRecording]);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [startRecording, stopRecording]);
+
+  // ── Unmount cleanup ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      stopSilenceDetection();
+      stopSpeaking();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch (_) {}
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     isRecording, isTranscribing, speakingMsgIndex, loadingMsgIndex,

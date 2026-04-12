@@ -2570,8 +2570,7 @@ export default function Dashboard() {
                       onClose={() => setShowPipeline(false)}
                       onComplete={(result) => {
                         setPipelineResult(result);
-                        setShowPipeline(false);
-                        navigate('/hiring/pipeline', { state: { pipelineResult: result } });
+                        // Don't close Jarvis — results are shown inline within JarvisAgent
                       }}
                     />
                   )}
