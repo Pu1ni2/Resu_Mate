@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import CandidateLogin from './components/CandidateLogin';
@@ -8,6 +8,20 @@ import CandidateFocus from './components/CandidateFocus';
 import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ATSResultsView from './components/pipeline/ATSResultsView';
+
+function PipelineResultsPage() {
+  const location = useLocation();
+  const result = location.state?.pipelineResult;
+  if (!result) return <Navigate to="/hiring" replace />;
+  return (
+    <ATSResultsView
+      pipelineResult={result}
+      onBack={() => window.history.back()}
+      onRunAgain={() => window.history.back()}
+    />
+  );
+}
 
 export default function App() {
   return (
@@ -20,6 +34,7 @@ export default function App() {
 
       {/* Hiring manager dashboard — protected */}
       <Route path="/hiring/focus" element={<ProtectedRoute><CandidateFocus /></ProtectedRoute>} />
+      <Route path="/hiring/pipeline" element={<ProtectedRoute><PipelineResultsPage /></ProtectedRoute>} />
       <Route path="/hiring/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
       {/* Candidate portal */}

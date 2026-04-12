@@ -1719,6 +1719,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { marked } from 'marked';
 import CandidateFocus from './CandidateFocus';
+import PipelineWizard from './pipeline/PipelineWizard';
 import { 
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
@@ -2123,6 +2124,8 @@ export default function Dashboard() {
 
   const [sampleLoading, setSampleLoading] = useState(false);
   const [showAutomate, setShowAutomate] = useState(false);
+  const [showPipeline, setShowPipeline] = useState(false);
+  const [pipelineResult, setPipelineResult] = useState(null);
   const handleLoadSample = async () => {
     setSampleLoading(true);
     try {
@@ -2458,9 +2461,14 @@ export default function Dashboard() {
                   <div className="candidates-header">
                     <h2>Candidates ({candidates.length})</h2>
                     <div className="candidates-actions">
+                      {candidates.filter(c => c.is_resume !== false).length >= 1 && (
+                        <button onClick={() => setShowPipeline(true)} className="btn btn-sm" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Zap size={14} /> AutoHire
+                        </button>
+                      )}
                       {candidates.filter(c => c.is_resume !== false).length >= 2 && (
                         <button onClick={() => setShowAutomate(true)} className="btn btn-sm" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Zap size={14} /> Automate
+                          <Zap size={14} /> Rank
                         </button>
                       )}
                       <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
@@ -2481,6 +2489,18 @@ export default function Dashboard() {
 
                   {showAutomate && (
                     <AutomatePanel candidates={candidates.filter(c => c.is_resume !== false)} onClose={() => setShowAutomate(false)} navigate={navigate} />
+                  )}
+
+                  {showPipeline && (
+                    <PipelineWizard
+                      candidateCount={candidates.filter(c => c.is_resume !== false).length}
+                      onClose={() => setShowPipeline(false)}
+                      onComplete={(result) => {
+                        setPipelineResult(result);
+                        setShowPipeline(false);
+                        navigate('/hiring/pipeline', { state: { pipelineResult: result } });
+                      }}
+                    />
                   )}
 
                   <div className="candidates-slider">
