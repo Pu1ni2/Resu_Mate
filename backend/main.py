@@ -11,9 +11,13 @@ if sys.platform == "win32":
         pass
 
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -31,7 +35,7 @@ logger = logging.getLogger("resumate")
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     print("\n🚀 Starting ResuMate AI...")
-    
+
     try:
         await init_db()
     except Exception as e:
@@ -59,6 +63,9 @@ async def lifespan(app: FastAPI):
     
 
 
+# ═══ Rate limiter ═══
+limiter = Limiter(key_func=get_remote_address)
+
 # ═══ ONE app instance — everything registers here ═══
 app = FastAPI(
     title="ResuMate AI",
@@ -66,6 +73,9 @@ app = FastAPI(
     version="3.0.0",
     lifespan=lifespan
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS
 app.add_middleware(
@@ -77,17 +87,19 @@ app.add_middleware(
 )
 
 # Routes — ALL registered on the SAME app
+from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.candidates import router as candidates_router
 from app.api.livekit_routes import router as livekit_router
 from app.api.advisor_agent import router as advisor_router
 
+app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
 app.include_router(livekit_router)
 app.include_router(advisor_router, prefix="/api")
 
-print("✅ All routers registered (chat, candidates, livekit, advisor)")
+print("✅ All routers registered (auth, chat, candidates, livekit, advisor)")
 
 
 @app.get("/")

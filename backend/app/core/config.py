@@ -8,30 +8,40 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
-    
+
     # Tavily
     tavily_api_key: str = ""
-    
+
     # GitHub
     github_token: str = ""
-    
+
     # Calendly
     calendly_token: str = ""
-    
+
     # Database
     database_url: str = "sqlite+aiosqlite:///./resumate.db"
-    
+
     # ChromaDB
     chroma_dir: str = "chroma_db"
     chroma_collection: str = "resumes"
-    
+
     # Server
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = False
-    
+
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173"
+
+    # JWT Auth
+    secret_key: str = "change-me-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 30
+
+    # Email (SendGrid)
+    sendgrid_api_key: str = ""
+    from_email: str = "noreply@resumate.ai"
     
     @property
     def cors_origins_list(self) -> List[str]:

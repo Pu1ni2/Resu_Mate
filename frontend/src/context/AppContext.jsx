@@ -46,6 +46,31 @@ export const AppProvider = ({ children }) => {
     } catch { return null; }
   });
 
+  // Hiring manager auth
+  const [hiringManager, setHiringManager] = useState(() => {
+    try {
+      const stored = localStorage.getItem('resumate_hm_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+
+  const loginHiringManager = useCallback((token, refreshToken, user) => {
+    localStorage.setItem('resumate_hm_token', token);
+    localStorage.setItem('resumate_hm_refresh', refreshToken);
+    localStorage.setItem('resumate_hm_user', JSON.stringify(user));
+    setHiringManager(user);
+  }, []);
+
+  const logoutHiringManager = useCallback(() => {
+    localStorage.removeItem('resumate_hm_token');
+    localStorage.removeItem('resumate_hm_refresh');
+    localStorage.removeItem('resumate_hm_user');
+    localStorage.removeItem('resumate_candidates');
+    setHiringManager(null);
+    setCandidates([]);
+    setSelectedIds([]);
+  }, []);
+
   useEffect(() => {
     storeCandidates(candidates);
   }, [candidates]);
@@ -297,7 +322,8 @@ export const AppProvider = ({ children }) => {
       anonymize, setAnonymize, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,
       getDisplayName, getAvatarGradient,
-      candidateSession, setCandidateSession
+      candidateSession, setCandidateSession,
+      hiringManager, loginHiringManager, logoutHiringManager,
     }}>
       {children}
     </AppContext.Provider>

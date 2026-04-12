@@ -137,7 +137,7 @@
 
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.PROD 
+const API_BASE_URL = import.meta.env.PROD
   ? 'https://resumate-api-74dm.onrender.com'
   : '';
 
@@ -147,8 +147,10 @@ const api = axios.create({
   timeout: 120000
 });
 
+// Attach the hiring manager JWT if available, otherwise fall back to demo-token
 api.interceptors.request.use(config => {
-  config.headers.Authorization = 'Bearer demo-token';
+  const token = localStorage.getItem('resumate_hm_token');
+  config.headers.Authorization = token ? `Bearer ${token}` : 'Bearer demo-token';
   return config;
 });
 
@@ -156,6 +158,16 @@ api.interceptors.response.use(
   response => response,
   error => {
     console.error('API Error:', error.response?.data || error.message);
+    // On 401, clear saved auth and redirect to hiring login
+    if (error.response?.status === 401) {
+      const isHiringRoute = window.location.pathname.startsWith('/hiring');
+      if (isHiringRoute) {
+        localStorage.removeItem('resumate_hm_token');
+        localStorage.removeItem('resumate_hm_refresh');
+        localStorage.removeItem('resumate_hm_user');
+        window.location.href = '/hiring/login';
+      }
+    }
     return Promise.reject(error);
   }
 );

@@ -1,6 +1,6 @@
 """Database models"""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -9,6 +9,7 @@ class Candidate(Base):
     __tablename__ = "candidates"
 
     id = Column(Integer, primary_key=True, index=True)
+    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     email = Column(String(200), nullable=True)
     file_name = Column(String(500))
@@ -78,6 +79,9 @@ class Interview(Base):
     report = Column(Text)
     status = Column(String(20), default="pending")  # pending, in_progress, completed
     duration = Column(Integer, default=0)
+    room_name = Column(String(200), nullable=True, index=True)
+    room_config = Column(JSON, nullable=True)
+    transcript = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
@@ -108,6 +112,7 @@ class Evaluation(Base):
     __tablename__ = "evaluations"
 
     id = Column(Integer, primary_key=True, index=True)
+    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
     role = Column(String(200))
     level = Column(String(50))
@@ -124,7 +129,12 @@ class CandidateAccess(Base):
     __tablename__ = "candidate_access"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(200), unique=True, index=True)
+    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
+    email = Column(String(200), index=True)
     candidate_id = Column(Integer, nullable=True)
     name = Column(String(200))
     granted_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("email", "manager_id", name="uq_access_email_manager"),
+    )

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, FileText } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, FileText, KeyRound } from 'lucide-react';
 
 const DEMO_EMAIL = 'saipunithkolla@gmail.com';
 const DEMO_SESSION = {
@@ -18,39 +18,34 @@ const DEMO_SESSION = {
   interview_completed: false,
   interview_report: null,
   is_demo: true,
-  // Pre-filled profile (shown before resume upload)
   profile: {
     name: 'Sai Punith Kolla',
     predicted_role: 'AI/ML Engineer',
     experience_level: 'Mid-Level',
     total_experience_years: 3,
     location: 'Boston, MA',
-    summary: 'AI/ML engineer with 3 years of experience building production-grade systems at Wipro Technologies and Northeastern University. Specializes in multi-agent AI platforms, NLP pipelines, RAG-based retrieval, and full-stack development with React and FastAPI. Currently pursuing MS in Artificial Intelligence at Northeastern University.',
-    skills: ['Python', 'PyTorch', 'TensorFlow', 'LangChain', 'LangGraph', 'FastAPI', 'React', 'Next.js', 'RAG', 'NLP', 'Multi-Agent Systems', 'Transformer Architectures', 'ChromaDB', 'AWS', 'Docker', 'SQL', 'Hugging Face', 'OpenCV', 'Snowflake', 'Tableau'],
+    summary: 'AI/ML engineer with 3 years of experience building production-grade systems at Wipro Technologies and Northeastern University. Specializes in multi-agent AI platforms, NLP pipelines, RAG-based retrieval, and full-stack development with React and FastAPI.',
+    skills: ['Python', 'PyTorch', 'TensorFlow', 'LangChain', 'FastAPI', 'React', 'RAG', 'NLP', 'Multi-Agent Systems', 'ChromaDB', 'AWS', 'Docker'],
     key_strengths: [
       'Multi-agent AI system design and orchestration',
-      'LLM integration with RAG and vector search (ChromaDB, FAISS)',
-      'Full-stack AI application development (React + FastAPI)',
-      'ETL pipelines and data engineering (Informatica IICS, Tableau)',
-      'Real-time conversational AI with WebRTC and OpenAI APIs',
+      'LLM integration with RAG and vector search',
+      'Full-stack AI application development',
     ],
     work_experience: [
       {
         title: 'Generative AI Product Development Fellow',
         company: 'Burnes Center for Social Change, Northeastern University',
         duration: 'Jan 2026 – Present',
-        description: 'Designed a privacy-first AI feedback platform using LLM pipelines for vagueness classification, adaptive follow-up generation, and structured data extraction. Built React/Next.js frontend with Python backend using OpenAI Realtime API and WebRTC.',
       },
       {
         title: 'Python Developer L2 / IICS Developer',
         company: 'Wipro Technologies, Bengaluru, India',
         duration: 'Apr 2022 – Oct 2024',
-        description: 'Built Flask-based LSTM error prediction system, automated ETL workflows in Informatica IICS, and developed Tableau dashboards. Reduced manual investigation time by 40% and saved ~20 developer hours per week.',
       },
     ],
     education: [
       { degree: 'MS in Artificial Intelligence', institution: 'Northeastern University, Boston, MA', year: '2025–2027' },
-      { degree: 'B.Tech in ECE (Sensors & Wearable Tech)', institution: 'VIT, India', year: '2018–2022' },
+      { degree: 'B.Tech in ECE', institution: 'VIT, India', year: '2018–2022' },
     ],
   },
 };
@@ -69,15 +64,19 @@ const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com'
 export default function CandidateLogin() {
   const navigate = useNavigate();
   const { setCandidateSession } = useApp();
+
+  const [step, setStep] = useState(1); // 1 = email, 2 = OTP
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async () => {
+  // Step 1: Send OTP
+  const handleSendOTP = async () => {
     if (!email.trim()) return;
     const trimmed = email.trim().toLowerCase();
 
-    // Demo account — always works, no API needed
+    // Demo account bypass
     if (trimmed === DEMO_EMAIL) {
       localStorage.removeItem('resumate_interview_report');
       localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
@@ -89,30 +88,58 @@ export default function CandidateLogin() {
     setLoading(true);
     setError('');
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/verify-email`, {
+      const resp = await fetch(`${API_BASE}/api/auth/candidate/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed })
+        body: JSON.stringify({ email: trimmed }),
       });
       const data = await resp.json();
-
-      if (data.access) {
-        const session = {
-          email: trimmed,
-          name: data.name || '',
-          candidate_id: data.candidate_id,
-          has_interview: data.has_interview || false,
-          interview_config: data.interview_config || null,
-          interview_completed: data.interview_completed || false,
-          interview_report: data.interview_report || null,
-        };
-        localStorage.setItem('resumate_candidate', JSON.stringify(session));
-        setCandidateSession(session);
-        setTimeout(() => navigate('/candidate/dashboard'), 300);
-      } else {
-        setError(data.message || 'No access found for this email. Please contact your recruiter.');
+      if (!resp.ok) {
+        setError(data.detail || 'No access found for this email. Please contact your hiring manager.');
+        return;
       }
-    } catch (err) {
+      setStep(2);
+    } catch {
+      setError('Could not connect to server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Verify OTP
+  const handleVerifyOTP = async () => {
+    if (!otp.trim() || otp.length < 6) return;
+    setLoading(true);
+    setError('');
+    try {
+      const resp = await fetch(`${API_BASE}/api/auth/candidate/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code: otp.trim() }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data.detail || 'Invalid or expired code. Please try again.');
+        return;
+      }
+      const { candidate_data, access_token } = data;
+      if (access_token) {
+        localStorage.setItem('resumate_candidate_token', access_token);
+      }
+      const session = {
+        email: candidate_data.email,
+        name: candidate_data.name,
+        candidate_id: candidate_data.candidate_id,
+        has_interview: candidate_data.has_interview,
+        interview_config: candidate_data.interview_config,
+        interview_completed: candidate_data.interview_completed,
+        interview_report: candidate_data.interview_report,
+        profile: candidate_data.profile,
+      };
+      localStorage.setItem('resumate_candidate', JSON.stringify(session));
+      setCandidateSession(session);
+      navigate('/candidate/dashboard');
+    } catch {
       setError('Could not connect to server. Please try again.');
     } finally {
       setLoading(false);
@@ -131,57 +158,112 @@ export default function CandidateLogin() {
       <div className="cl-bg-gradient" />
 
       <nav className="cl-nav">
-        <button className="cl-back" onClick={() => navigate('/')}>
-          <ArrowLeft size={18} /> Back
+        <button className="cl-back" onClick={() => step === 2 ? setStep(1) : navigate('/')}>
+          <ArrowLeft size={18} /> {step === 2 ? 'Back' : 'Back'}
         </button>
         <div className="cl-nav-logo"><Logo size={28} /> ResuMate AI</div>
       </nav>
 
       <div className="cl-container">
         <div className="cl-card">
-          <div className="cl-icon"><Mail size={32} /></div>
-          <h1 className="cl-title">Candidate Portal</h1>
-          <p className="cl-subtitle">Enter the email associated with your application to access your dashboard.</p>
 
-          <div className="cl-form">
-            <div className="cl-input-wrap">
-              <Mail size={18} className="cl-input-icon" />
-              <input
-                type="email"
-                className="cl-input"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(''); }}
-                onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }}
-                placeholder="Enter your email address"
-                disabled={loading}
-              />
-            </div>
+          {step === 1 ? (
+            <>
+              <div className="cl-icon"><Mail size={32} /></div>
+              <h1 className="cl-title">Candidate Portal</h1>
+              <p className="cl-subtitle">Enter the email associated with your application to receive an access code.</p>
 
-            {error && (
-              <div className="cl-error">
-                <AlertCircle size={16} />
-                <span>{error}</span>
+              <div className="cl-form">
+                <div className="cl-input-wrap">
+                  <Mail size={18} className="cl-input-icon" />
+                  <input
+                    type="email"
+                    className="cl-input"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSendOTP(); }}
+                    placeholder="Enter your email address"
+                    disabled={loading}
+                  />
+                </div>
+
+                {error && (
+                  <div className="cl-error">
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button className="cl-submit" onClick={handleSendOTP} disabled={!email.trim() || loading}>
+                  {loading ? <Loader size={18} className="spin" /> : <ArrowRight size={18} />}
+                  <span>{loading ? 'Sending code...' : 'Send Access Code'}</span>
+                </button>
               </div>
-            )}
 
-            <button className="cl-submit" onClick={handleLogin} disabled={!email.trim() || loading}>
-              {loading ? <Loader size={18} className="spin" /> : <ArrowRight size={18} />}
-              <span>{loading ? 'Verifying...' : 'Access Dashboard'}</span>
-            </button>
-          </div>
+              <div className="cl-divider"><span>or</span></div>
 
-          <div className="cl-divider"><span>or</span></div>
+              <button className="cl-demo-btn" onClick={handleDemoAccess}>
+                <FileText size={16} />
+                <span>Try Sample Resume</span>
+                <span className="cl-demo-badge">Demo</span>
+              </button>
 
-          <button className="cl-demo-btn" onClick={handleDemoAccess}>
-            <FileText size={16} />
-            <span>Try Sample Resume</span>
-            <span className="cl-demo-badge">Demo</span>
-          </button>
+              <div className="cl-info">
+                <Shield size={14} />
+                <span>Your email must be registered by a hiring manager to access the portal.</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="cl-icon"><KeyRound size={32} /></div>
+              <h1 className="cl-title">Enter Access Code</h1>
+              <p className="cl-subtitle">
+                We sent a 6-digit code to <strong>{email}</strong>. It expires in 15 minutes.
+              </p>
 
-          <div className="cl-info">
-            <Shield size={14} />
-            <span>Your email must be registered by a hiring manager to access the portal.</span>
-          </div>
+              <div className="cl-form">
+                <div className="cl-input-wrap">
+                  <KeyRound size={18} className="cl-input-icon" />
+                  <input
+                    type="text"
+                    className="cl-input"
+                    value={otp}
+                    onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') handleVerifyOTP(); }}
+                    placeholder="6-digit code"
+                    maxLength={6}
+                    disabled={loading}
+                    style={{ letterSpacing: '6px', fontSize: '20px', textAlign: 'center' }}
+                  />
+                </div>
+
+                {error && (
+                  <div className="cl-error">
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button className="cl-submit" onClick={handleVerifyOTP} disabled={otp.length < 6 || loading}>
+                  {loading ? <Loader size={18} className="spin" /> : <ArrowRight size={18} />}
+                  <span>{loading ? 'Verifying...' : 'Verify Code'}</span>
+                </button>
+
+                <button
+                  className="cl-demo-btn"
+                  onClick={() => { setStep(1); setOtp(''); setError(''); }}
+                  style={{ marginTop: '8px' }}
+                >
+                  <span>Use a different email</span>
+                </button>
+              </div>
+
+              <div className="cl-info">
+                <Shield size={14} />
+                <span>Didn't receive a code? Check your spam folder or go back to resend.</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

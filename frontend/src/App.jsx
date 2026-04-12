@@ -5,17 +5,30 @@ import Dashboard from './components/Dashboard';
 import CandidateLogin from './components/CandidateLogin';
 import CandidateDashboard from './components/CandidateDashboard';
 import CandidateFocus from './components/CandidateFocus';
+import HiringLogin from './components/auth/HiringLogin';
+import HiringRegister from './components/auth/HiringRegister';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/hiring/*" element={<Dashboard />} />
-      <Route path="/hiring/focus" element={<CandidateFocus />} />
+
+      {/* Hiring manager auth pages — public */}
+      <Route path="/hiring/login" element={<HiringLogin />} />
+      <Route path="/hiring/register" element={<HiringRegister />} />
+
+      {/* Hiring manager dashboard — protected */}
+      <Route path="/hiring/focus" element={<ProtectedRoute><CandidateFocus /></ProtectedRoute>} />
+      <Route path="/hiring/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+      {/* Candidate portal */}
       <Route path="/candidate/login" element={<CandidateLogin />} />
       <Route path="/candidate/dashboard/*" element={<CandidateDashboard />} />
-      {/* Keep old route working */}
-      <Route path="/dashboard/*" element={<Dashboard />} />
+
+      {/* Legacy route */}
+      <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
