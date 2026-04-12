@@ -11,9 +11,14 @@ Then: app.include_router(advisor_router, prefix="/api")
 """
 import os
 import json
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Depends
 from pydantic import BaseModel
 from typing import Optional, List
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.services import state_service
+
 try:
     from openai import OpenAI
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -23,36 +28,29 @@ except ImportError:
 
 router = APIRouter(prefix="/advisor", tags=["advisor"])
 
-# Store candidate contexts (resume text per email)
-candidate_contexts = {}
-# Store chat histories per session
-advisor_chat_histories = {}
+# In-memory cache (warm path — avoids DB hit for same-request-cycle access)
+_session_cache = {}
 
 
 # ═══ RESUME UPLOAD FOR CANDIDATES ═══
 @router.post("/upload-resume")
 async def candidate_upload_resume(
     file: UploadFile = File(...),
-    email: str = Form("")
+    email: str = Form(""),
+    db: AsyncSession = Depends(get_db),
 ):
     """Upload resume from candidate side — no auth required"""
     import hashlib
     content = await file.read()
     text = ""
-    
-    # Extract text — try packages if available, fallback to raw decode
+
     if file.filename.endswith('.pdf'):
         try:
             import PyPDF2
             import io
             reader = PyPDF2.PdfReader(io.BytesIO(content))
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        except ImportError:
-            # PyPDF2 not installed — try raw decode
-            text = content.decode('utf-8', errors='ignore')
-            # Clean up binary PDF artifacts
-            text = ''.join(c for c in text if c.isprintable() or c in '\n\r\t')
-        except Exception as e:
+        except Exception:
             text = content.decode('utf-8', errors='ignore')
     elif file.filename.endswith('.docx'):
         try:
@@ -60,23 +58,19 @@ async def candidate_upload_resume(
             import io
             doc = docx.Document(io.BytesIO(content))
             text = "\n".join(p.text for p in doc.paragraphs)
-        except ImportError:
-            text = content.decode('utf-8', errors='ignore')
         except Exception:
             text = content.decode('utf-8', errors='ignore')
     else:
         text = content.decode('utf-8', errors='ignore')
-    
-    # Store context
+
     cid = hashlib.md5(f"{email}-{file.filename}".encode()).hexdigest()[:12]
-    candidate_contexts[email] = {
+    metadata = {
         "id": cid,
         "name": email.split("@")[0].title(),
         "filename": file.filename,
-        "text": text[:8000],  # Limit for context window
         "email": email,
     }
-    
+
     # Quick analysis
     try:
         analysis = client.chat.completions.create(
@@ -91,21 +85,16 @@ async def candidate_upload_resume(
             response_format={"type": "json_object"},
             max_tokens=500,
         )
-        data = json.loads(analysis.choices[0].message.content)
-        candidate_contexts[email].update(data)
+        metadata.update(json.loads(analysis.choices[0].message.content))
     except Exception as e:
         print(f"Analysis failed: {e}")
-        candidate_contexts[email].update({
-            "predicted_role": "Professional",
-            "experience_level": "Mid",
-            "skills": [],
-            "summary": "Resume uploaded successfully."
-        })
-    
-    return {
-        "success": True,
-        "data": candidate_contexts[email]
-    }
+        metadata.update({"predicted_role": "Professional", "experience_level": "Mid", "skills": [], "summary": "Resume uploaded."})
+
+    # Persist to DB
+    await state_service.update_advisor_session(db, email, resume_text=text[:8000], resume_metadata=metadata)
+    _session_cache[email] = {"text": text[:8000], **metadata}
+
+    return {"success": True, "data": metadata}
 
 
 # ═══ SUB-AGENT SYSTEM PROMPTS ═══
@@ -176,55 +165,49 @@ class AdvisorChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def advisor_chat(req: AdvisorChatRequest):
-    """Chat with the Advisor Agent — routes to appropriate sub-agent"""
-    
-    # Get candidate context
-    context = candidate_contexts.get(req.email, {})
-    resume_text = context.get("text", "No resume uploaded yet.")
-    candidate_name = context.get("name", "Candidate")
-    
-    # Also check if resume was uploaded by hiring manager
-    if not context:
+async def advisor_chat(req: AdvisorChatRequest, db: AsyncSession = Depends(get_db)):
+    """Chat with the Advisor Agent — routes to appropriate sub-agent (DB-backed sessions)"""
+
+    # Load session from cache or DB
+    cached = _session_cache.get(req.email)
+    if not cached:
+        session = await state_service.get_or_create_advisor_session(db, req.email)
+        cached = {"text": session.resume_text or "", **(session.resume_metadata or {})}
+        _session_cache[req.email] = cached
+
+    resume_text = cached.get("text", "No resume uploaded yet.")
+    candidate_name = cached.get("name", req.email.split("@")[0].title())
+
+    # Fallback: try hiring manager resume store
+    if not resume_text or resume_text == "No resume uploaded yet.":
         try:
             from app.api.chat import resume_rag
             for cid, c in resume_rag.candidates.items():
                 c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
                 if req.email.lower() in c_text:
                     resume_text = c.get('text', '') or c.get('raw_text', '')[:8000]
-                    candidate_name = c.get('name', 'Candidate')
+                    candidate_name = c.get('name', candidate_name)
                     break
-        except:
+        except Exception:
             pass
-    
-    # Pick system prompt based on mode
+
     mode_prompts = {
         "resume_coach": RESUME_COACH_PROMPT,
         "interview_prep": INTERVIEW_PREP_PROMPT,
         "career_advisor": CAREER_ADVISOR_PROMPT,
-        "general": f"""You are a friendly AI Career Assistant for {candidate_name}. 
-You can help with resume review, interview preparation, and career advice.
-If the user asks about their resume, act as a Resume Coach.
-If they ask about interviews, act as an Interview Prep Coach.
-If they ask about career growth, act as a Career Advisor.
-Be warm, encouraging, and practical."""
+        "general": f"You are a friendly AI Career Assistant for {candidate_name}. Help with resume review, interview preparation, and career advice. Be warm, encouraging, and practical.",
     }
-    
+
     system_prompt = mode_prompts.get(req.mode, mode_prompts["general"])
     system_prompt += f"\n\nCandidate: {candidate_name}\nResume Context:\n{resume_text[:4000]}"
-    
-    # Get/create chat history
-    sid = req.session_id or f"{req.email}-{req.mode}"
-    if sid not in advisor_chat_histories:
-        advisor_chat_histories[sid] = []
-    
-    history = advisor_chat_histories[sid]
+
+    # Load chat history for this mode from DB
+    session = await state_service.get_or_create_advisor_session(db, req.email)
+    history = list(session.chat_history.get(req.mode, []) if session.chat_history else [])
     history.append({"role": "user", "content": req.message})
-    
-    # Build messages
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(history[-20:])  # Last 20 messages
-    
+
+    messages = [{"role": "system", "content": system_prompt}] + history[-20:]
+
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -234,15 +217,12 @@ Be warm, encouraging, and practical."""
         )
         reply = response.choices[0].message.content
         history.append({"role": "assistant", "content": reply})
-        
-        # Always generate follow-up suggestions
+
+        # Persist updated history to DB
+        await state_service.update_advisor_session(db, req.email, mode=req.mode, messages=history)
+
         suggestions = get_suggestions(req.mode, len(history), reply)
-        
-        return {
-            "reply": reply,
-            "mode": req.mode,
-            "suggestions": suggestions,
-        }
+        return {"reply": reply, "mode": req.mode, "suggestions": suggestions}
     except Exception as e:
         return {"reply": f"Sorry, I encountered an error: {str(e)}", "mode": req.mode, "suggestions": ["Try again", "Ask something else"]}
 
@@ -300,18 +280,21 @@ def get_suggestions(mode: str, history_len: int, last_reply: str = "") -> List[s
 
 
 @router.get("/context/{email}")
-async def get_candidate_context(email: str):
-    """Get candidate context for the advisor"""
-    ctx = candidate_contexts.get(email, {})
-    if not ctx:
-        # Try to find from hiring manager uploads
-        try:
-            from app.api.chat import resume_rag
-            for cid, c in resume_rag.candidates.items():
-                c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
-                if email.lower() in c_text:
-                    return {"found": True, "name": c.get('name', ''), "role": c.get('predicted_role', ''), "skills": c.get('skills', [])}
-        except:
-            pass
-        return {"found": False}
-    return {"found": True, **{k: v for k, v in ctx.items() if k != 'text'}}
+async def get_candidate_context(email: str, db: AsyncSession = Depends(get_db)):
+    """Get candidate context for the advisor — DB-backed"""
+    session = await state_service.get_or_create_advisor_session(db, email)
+    if session.resume_text:
+        meta = session.resume_metadata or {}
+        return {"found": True, **{k: v for k, v in meta.items() if k != 'text'}}
+
+    # Fallback: hiring manager uploads
+    try:
+        from app.api.chat import resume_rag
+        for cid, c in resume_rag.candidates.items():
+            c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
+            if email.lower() in c_text:
+                return {"found": True, "name": c.get('name', ''), "role": c.get('predicted_role', ''), "skills": c.get('skills', [])}
+    except Exception:
+        pass
+
+    return {"found": False}
