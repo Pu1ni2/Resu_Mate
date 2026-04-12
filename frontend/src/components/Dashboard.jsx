@@ -2048,7 +2048,8 @@ export default function Dashboard() {
     loadCandidates, uploadResume, deleteCandidate, toggleSelection, selectAll, clearSelection,
     anonymize, setAnonymize, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
-    getDisplayName, getAvatarGradient
+    getDisplayName, getAvatarGradient,
+    hiringManager, logoutHiringManager,
   } = useApp();
 
   const [tab, setTab] = useState('upload');
@@ -2399,6 +2400,48 @@ export default function Dashboard() {
               <span className="sidebar-stat-label">Selected</span>
             </div>
           </div>
+
+          {/* Signed-in user */}
+          {hiringManager && (
+            <div style={{
+              marginTop: 14, padding: '10px 12px',
+              background: 'rgba(245,158,11,0.07)',
+              border: '1px solid rgba(245,158,11,0.18)',
+              borderRadius: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#F59E0B,#D97706)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0,
+                }}>
+                  {(hiringManager.name || 'U')[0].toUpperCase()}
+                </div>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {hiringManager.name}
+                  </div>
+                  {hiringManager.company && (
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {hiringManager.company}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => { logoutHiringManager(); navigate('/hiring/login'); }}
+                style={{
+                  width: '100%', padding: '6px 0',
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                  borderRadius: 7, color: '#F87171', fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -2421,6 +2464,27 @@ export default function Dashboard() {
                 <div className="toggle-knob" />
               </div>
             </div>
+            {hiringManager && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '5px 12px 5px 8px',
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                borderRadius: 20,
+              }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#F59E0B,#D97706)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, color: '#000',
+                }}>
+                  {(hiringManager.name || 'U')[0].toUpperCase()}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {hiringManager.name}
+                </span>
+              </div>
+            )}
           </div>
         </header>
 

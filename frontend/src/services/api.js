@@ -147,21 +147,23 @@ const api = axios.create({
   timeout: 120000
 });
 
-// Attach the hiring manager JWT if available, otherwise fall back to demo-token
+// Attach the hiring manager JWT on every request
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('resumate_hm_token');
-  config.headers.Authorization = token ? `Bearer ${token}` : `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('API Error:', error.response?.data || error.message);
-    // On 401, clear saved auth and redirect to hiring login
+    // On 401, clear auth and redirect — but NOT if we're already on auth pages
+    // and NOT if the 401 came from the auth endpoints themselves
     if (error.response?.status === 401) {
-      const isHiringRoute = window.location.pathname.startsWith('/hiring');
-      if (isHiringRoute) {
+      const path = window.location.pathname;
+      const isAuthPage = path === '/hiring/login' || path === '/hiring/register';
+      const isAuthEndpoint = error.config?.url?.includes('/auth/');
+      if (!isAuthPage && !isAuthEndpoint) {
         localStorage.removeItem('resumate_hm_token');
         localStorage.removeItem('resumate_hm_refresh');
         localStorage.removeItem('resumate_hm_user');

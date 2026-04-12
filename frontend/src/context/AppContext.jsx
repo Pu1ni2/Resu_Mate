@@ -75,31 +75,26 @@ export const AppProvider = ({ children }) => {
     storeCandidates(candidates);
   }, [candidates]);
 
-  // FIX: Sync with backend on mount - clear stale localStorage if backend restarted
+  // Fetch candidates from backend whenever a hiring manager session is active.
+  // Runs on mount (picks up persisted session) AND after login (hiringManager changes).
   useEffect(() => {
+    if (!hiringManager) return; // not logged in
+
     const syncWithBackend = async () => {
       try {
         const res = await candidatesAPI.getAll();
         const backendCandidates = res.data.candidates || [];
-        
-        if (backendCandidates.length === 0 && candidates.length > 0) {
-          // Backend has no candidates (probably restarted) but localStorage does
-          // Clear stale data
-          console.log('Backend empty, clearing stale localStorage candidates');
-          setCandidates([]);
+        setCandidates(backendCandidates);
+        if (backendCandidates.length === 0) {
           setSelectedIds([]);
           localStorage.removeItem('resumate_candidates');
-        } else if (backendCandidates.length > 0) {
-          // Use backend as source of truth
-          setCandidates(backendCandidates);
         }
-      } catch (err) {
-        // Backend not reachable, keep localStorage data
-        console.log('Backend not reachable, using cached data');
+      } catch {
+        // Backend not reachable — keep whatever is cached
       }
     };
     syncWithBackend();
-  }, []);
+  }, [hiringManager]); // re-runs on login / logout
 
   const selectedCandidates = useMemo(
     () => candidates.filter(c => selectedIds.includes(c.id)),

@@ -1,8 +1,24 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Building2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import api from '../../services/api';
+
+const inputStyle = {
+  width: '100%', boxSizing: 'border-box',
+  padding: '10px 12px 10px 38px',
+  background: 'var(--bg-secondary)',
+  border: '1px solid var(--border)',
+  borderRadius: '8px',
+  color: 'var(--text-primary)',
+  fontSize: '14px',
+  outline: 'none',
+};
+
+const labelStyle = {
+  display: 'block', fontSize: '13px', fontWeight: 500,
+  color: 'var(--text-secondary)', marginBottom: '6px',
+};
 
 export default function HiringRegister() {
   const navigate = useNavigate();
@@ -26,50 +42,27 @@ export default function HiringRegister() {
       setError('Password must be at least 8 characters');
       return;
     }
+    if (!form.name.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.post('/auth/register', {
-        name: form.name,
-        email: form.email,
+        name: form.name.trim(),
+        email: form.email.trim(),
         password: form.password,
-        company: form.company || undefined,
+        company: form.company.trim() || undefined,
       });
       const { access_token, refresh_token, user } = res.data;
       loginHiringManager(access_token, refresh_token, user);
       navigate('/hiring');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  const inputStyle = {
-    width: '100%', boxSizing: 'border-box',
-    padding: '10px 12px 10px 38px',
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border)',
-    borderRadius: '8px',
-    color: 'var(--text-primary)',
-    fontSize: '14px',
-    outline: 'none',
-  };
-
-  const labelStyle = {
-    display: 'block', fontSize: '13px', fontWeight: 500,
-    color: 'var(--text-secondary)', marginBottom: '6px',
-  };
-
-  const Field = ({ label, icon: Icon, type = 'text', field, placeholder, extra }) => (
-    <div style={{ marginBottom: '14px' }}>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ position: 'relative' }}>
-        <Icon size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-        <input type={type} value={form[field]} onChange={update(field)} placeholder={placeholder} style={inputStyle} />
-        {extra}
-      </div>
-    </div>
-  );
 
   return (
     <div style={{
@@ -109,10 +102,54 @@ export default function HiringRegister() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <Field label="Full Name" icon={User} field="name" placeholder="Jane Smith" />
-          <Field label="Email" icon={Mail} type="email" field="email" placeholder="jane@company.com" />
-          <Field label="Company (optional)" icon={Building2} field="company" placeholder="Acme Inc." />
+          {/* Full Name */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Full Name</label>
+            <div style={{ position: 'relative' }}>
+              <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input
+                type="text"
+                value={form.name}
+                onChange={update('name')}
+                placeholder="Jane Smith"
+                required
+                style={inputStyle}
+              />
+            </div>
+          </div>
 
+          {/* Email */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Email</label>
+            <div style={{ position: 'relative' }}>
+              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input
+                type="email"
+                value={form.email}
+                onChange={update('email')}
+                placeholder="jane@company.com"
+                required
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* Company */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Company (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <Building2 size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input
+                type="text"
+                value={form.company}
+                onChange={update('company')}
+                placeholder="Acme Inc."
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* Password */}
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
@@ -122,15 +159,20 @@ export default function HiringRegister() {
                 value={form.password}
                 onChange={update('password')}
                 placeholder="Min 8 characters"
+                required
                 style={{ ...inputStyle, paddingRight: '38px' }}
               />
-              <button type="button" onClick={() => setShowPassword(v => !v)}
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}>
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}
+              >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
 
+          {/* Confirm Password */}
           <div style={{ marginBottom: '24px' }}>
             <label style={labelStyle}>Confirm Password</label>
             <div style={{ position: 'relative' }}>
@@ -140,18 +182,23 @@ export default function HiringRegister() {
                 value={form.confirm}
                 onChange={update('confirm')}
                 placeholder="••••••••"
+                required
                 style={inputStyle}
               />
             </div>
           </div>
 
-          <button type="submit" disabled={loading} style={{
-            width: '100%', padding: '11px',
-            background: loading ? 'var(--bg-secondary)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
-            color: loading ? 'var(--text-secondary)' : '#000',
-            border: 'none', borderRadius: '8px', fontWeight: 600,
-            fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer',
-          }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%', padding: '11px',
+              background: loading ? 'var(--bg-secondary)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
+              color: loading ? 'var(--text-secondary)' : '#000',
+              border: 'none', borderRadius: '8px', fontWeight: 600,
+              fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
