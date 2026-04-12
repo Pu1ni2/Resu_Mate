@@ -1,11 +1,12 @@
 """JWT Authentication — real token validation with bcrypt password hashing"""
+import hashlib
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,14 +14,17 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.auth import HiringManager
 
-# ── Password hashing ──────────────────────────────────────────────────────────
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ── Password hashing (direct bcrypt, no passlib) ──────────────────────────────
+
+def _prepare(password: str) -> bytes:
+    """SHA-256 pre-hash keeps bcrypt input under 72 bytes for any password length."""
+    return hashlib.sha256(password.encode()).hexdigest().encode()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(_prepare(plain_password), hashed_password.encode())
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_prepare(password), bcrypt.gensalt()).decode()
 
 
 # ── JWT token creation ────────────────────────────────────────────────────────

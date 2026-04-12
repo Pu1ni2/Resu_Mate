@@ -13,7 +13,7 @@ export default function ResumeIntelPanel({ focusCandidate, showToast }) {
     try {
       const resp = await fetch(`${API_BASE}/api/chat/resume-intelligence`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ candidate_id: focusCandidate.id }),
       });
       if (!resp.ok) throw new Error('Analysis failed');

@@ -178,7 +178,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       // 2. Create LiveKit room via our backend
       const roomResp = await fetch(`${API_BASE}/api/livekit/create-room`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({
           candidate_email: candidateEmail,
           candidate_name: candidateName,
@@ -289,7 +289,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     // Try to fetch transcript/scores from backend (agent may have saved them)
     try {
       const resp = await fetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
-        headers: { 'Authorization': 'Bearer demo-token' }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` }
       });
       const data = await resp.json();
       if (data.results?.length > 0) {

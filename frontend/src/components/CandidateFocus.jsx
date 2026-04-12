@@ -216,7 +216,7 @@ export default function CandidateFocus() {
     try {
       const resp = await fetch(`${API_BASE}/api/chat/scan-resume`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({
           candidate_id: candidateId,
           anonymize,
@@ -328,7 +328,7 @@ export default function CandidateFocus() {
     try {
       const response = await fetch(`${API_BASE}/api/chat/web-search`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ query: q, candidate_id: focusCandidate?.id, candidate_name: anonymize ? null : focusCandidate?.name }),
       });
       const data = await response.json();
@@ -356,7 +356,7 @@ export default function CandidateFocus() {
     try {
       const resp = await fetch(`${API_BASE}/api/chat/github-analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), github_username: username || null, anonymize }),
       });
       const data = await resp.json();
@@ -370,7 +370,7 @@ export default function CandidateFocus() {
   const fetchCalendly = async () => {
     setCalLoading(true); setCalError(''); setCalData(null);
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/calendly-link`, { headers: { 'Authorization': 'Bearer demo-token' } });
+      const resp = await fetch(`${API_BASE}/api/chat/calendly-link`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` } });
       const data = await resp.json();
       if (data.error) setCalError(data.error);
       else setCalData(data);
@@ -388,7 +388,7 @@ export default function CandidateFocus() {
     try {
       const response = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), role, experience_required: selectedExperience, level: selectedLevel, job_description: jdText || null, anonymize }),
       });
       const data = await response.json();
@@ -403,7 +403,7 @@ export default function CandidateFocus() {
     try {
       const response = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), job_description: jdText, role: null, experience_required: null, level: null, anonymize }),
       });
       const data = await response.json();

@@ -82,14 +82,22 @@ async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
 
 
 @router.delete("/{candidate_id}")
-async def delete_candidate(candidate_id: int, user=Depends(get_current_user)):
-    """Delete a candidate"""
+async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Delete a candidate from memory and DB"""
+    from sqlalchemy import delete as sql_delete
+    from app.models.candidate import Candidate
     resume_rag.delete_candidate(candidate_id)
+    await db.execute(sql_delete(Candidate).where(Candidate.id == candidate_id))
+    await db.commit()
     return {"message": "Candidate deleted"}
 
 
 @router.delete("")
-async def delete_all_candidates(user=Depends(get_current_user)):
-    """Delete ALL candidates and clear all data"""
+async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Delete ALL candidates from memory and DB"""
+    from sqlalchemy import delete as sql_delete
+    from app.models.candidate import Candidate
     resume_rag.clear_all()
+    await db.execute(sql_delete(Candidate))
+    await db.commit()
     return {"message": "All candidates and data deleted"}

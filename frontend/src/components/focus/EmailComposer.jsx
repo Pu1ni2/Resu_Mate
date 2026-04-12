@@ -27,7 +27,7 @@ export default function EmailComposer({ focusCandidate, agentResult, anonymize, 
     try {
       const response = await fetch(`${API_BASE}/api/chat/draft-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
           candidate_data: getCandidatePayload(),

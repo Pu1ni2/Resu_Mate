@@ -37,7 +37,7 @@ export default function useVoice({ apiBase, onTranscribed }) {
 
       const response = await fetch(`${apiBase}/api/chat/text-to-speech`, {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer demo-token', 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: cleanText, voice: 'nova' }),
         signal: abortControllerRef.current.signal,
       });
@@ -64,7 +64,7 @@ export default function useVoice({ apiBase, onTranscribed }) {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
       const response = await fetch(`${apiBase}/api/chat/speech-to-text`, {
-        method: 'POST', headers: { 'Authorization': 'Bearer demo-token' }, body: formData,
+        method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` }, body: formData,
       });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();

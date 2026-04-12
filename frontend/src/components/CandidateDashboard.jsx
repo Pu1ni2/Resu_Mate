@@ -183,7 +183,7 @@ export default function CandidateDashboard() {
     }
     try {
       fetch(`${API_BASE}/api/chat/save-interview-result`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: reportData })
       }).catch(() => {});
     } catch {}

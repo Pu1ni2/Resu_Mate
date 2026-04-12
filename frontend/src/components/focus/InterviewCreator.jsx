@@ -23,7 +23,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
     try {
       const resp = await fetch(`${API_BASE}/api/chat/create-interview`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
           candidate_email: interviewEmail.trim(),

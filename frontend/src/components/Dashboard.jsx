@@ -1153,7 +1153,7 @@
 
 //       const response = await fetch('/api/chat/speech-to-text', {
 //         method: 'POST',
-//         headers: { 'Authorization': 'Bearer demo-token' },
+//         headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
 //         body: formData
 //       });
 
@@ -1215,7 +1215,7 @@
 //       const response = await fetch('/api/chat/text-to-speech', {
 //         method: 'POST',
 //         headers: {
-//           'Authorization': 'Bearer demo-token',
+//           'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
 //           'Content-Type': 'application/json'
 //         },
 //         body: JSON.stringify({ text: cleanText, voice: 'nova' })
@@ -1754,7 +1754,7 @@ function AutomatePanel({ candidates, onClose, navigate }) {
     try {
       const resp = await fetch(`${API}/api/chat/automate-ranking`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({ role: role.trim(), candidate_ids: candidates.map(c => c.id) }),
       });
       if (!resp.ok) throw new Error('Ranking failed');
@@ -1903,7 +1903,7 @@ function InterviewAnalytics() {
     setLoading(true);
     try {
       const resp = await fetch(`${API}/api/chat/get-all-interview-results`, {
-        headers: { 'Authorization': 'Bearer demo-token' },
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
       });
       const json = await resp.json();
       setData(json.results || []);
@@ -2212,7 +2212,7 @@ export default function Dashboard() {
 
     const response = await fetch('https://resumate-api-74dm.onrender.com/api/chat/speech-to-text', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer demo-token' },
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
       body: formData
     });
 
@@ -2300,7 +2300,7 @@ export default function Dashboard() {
       const response = await fetch('https://resumate-api-74dm.onrender.com/api/chat/text-to-speech', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer demo-token',
+          'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ text: cleanText, voice: 'nova' }),
@@ -2450,14 +2450,6 @@ export default function Dashboard() {
                     </div>
                   ))}
 
-                  <div className="upload-sample-row">
-                    <span className="upload-sample-label">No resume? Try the sample:</span>
-                    <button className="upload-sample-btn" onClick={handleLoadSample} disabled={sampleLoading}>
-                      {sampleLoading ? <span className="spin" style={{display:'inline-block',width:14,height:14,border:'2px solid currentColor',borderTopColor:'transparent',borderRadius:'50%'}} /> : <FileText size={14} />}
-                      {sampleLoading ? 'Loading...' : 'Load Sample Resume'}
-                      <span className="upload-sample-tag">Demo</span>
-                    </button>
-                  </div>
                 </div>
               </div>
 

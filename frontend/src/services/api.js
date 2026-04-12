@@ -7,7 +7,7 @@
 
 // // // Add token to requests
 // // api.interceptors.request.use(config => {
-// //   config.headers.Authorization = 'Bearer demo-token';
+// //   config.headers.Authorization = `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`;
 // //   return config;
 // // });
 
@@ -48,7 +48,7 @@
 
 // // // Add auth header
 // // api.interceptors.request.use(config => {
-// //   config.headers.Authorization = 'Bearer demo-token';
+// //   config.headers.Authorization = `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`;
 // //   return config;
 // // });
 
@@ -99,7 +99,7 @@
 // });
 
 // api.interceptors.request.use(config => {
-//   config.headers.Authorization = 'Bearer demo-token';
+//   config.headers.Authorization = `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`;
 //   return config;
 // });
 
@@ -150,7 +150,7 @@ const api = axios.create({
 // Attach the hiring manager JWT if available, otherwise fall back to demo-token
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('resumate_hm_token');
-  config.headers.Authorization = token ? `Bearer ${token}` : 'Bearer demo-token';
+  config.headers.Authorization = token ? `Bearer ${token}` : `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`;
   return config;
 });
 

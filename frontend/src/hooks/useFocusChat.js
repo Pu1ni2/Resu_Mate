@@ -36,7 +36,7 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
     try {
       const response = await fetch(`${apiBase}/api/chat/focus`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo-token' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: JSON.stringify({
           message: text,
           candidate_id: focusCandidate.id,

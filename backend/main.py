@@ -51,7 +51,44 @@ async def lifespan(app: FastAPI):
     orchestrator.register("hr", hr_agent)
     orchestrator.register("technical", technical_agent)
     orchestrator.register("research", research_agent)
-    
+
+    # Warm the in-memory candidate store from DB on startup
+    try:
+        from app.core.database import async_session as AsyncSessionLocal
+        from app.models.candidate import Candidate
+        from sqlalchemy import select
+        from app.services.resume_rag import resume_rag
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Candidate).order_by(Candidate.id))
+            rows = result.scalars().all()
+            for row in rows:
+                resume_rag.candidates[row.id] = {
+                    "id": row.id,
+                    "name": row.name or "",
+                    "email": row.email or "",
+                    "file_name": row.file_name or "",
+                    "file_hash": row.file_hash or "",
+                    "predicted_role": row.predicted_role or "",
+                    "experience_level": row.experience_level or "",
+                    "total_experience_years": row.total_experience_years or 0,
+                    "location": row.location or "",
+                    "summary": row.summary or "",
+                    "skills": row.skills or [],
+                    "work_experience": row.work_experience or [],
+                    "education": row.education or [],
+                    "key_strengths": row.key_strengths or [],
+                    "badges": row.badges or [],
+                    "embedded_links": row.embedded_links or {},
+                    "text": row.full_text or row.raw_text or "",
+                    "raw_text": row.raw_text or "",
+                    "is_resume": row.is_resume,
+                }
+                if row.file_hash:
+                    resume_rag.uploaded_hashes.add(row.file_hash)
+            print(f"✅ Loaded {len(rows)} candidates from DB into memory")
+    except Exception as e:
+        print(f"⚠️ Could not warm candidate cache: {e}")
+
     print("✅ All agents registered")
     print(f"✅ ResuMate AI ready!\n")
 
