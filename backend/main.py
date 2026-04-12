@@ -130,6 +130,7 @@ from app.api.candidates import router as candidates_router
 from app.api.livekit_routes import router as livekit_router
 from app.api.advisor_agent import router as advisor_router
 from app.api.pipeline import router as pipeline_router
+from app.api.jarvis import router as jarvis_router
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
@@ -137,8 +138,9 @@ app.include_router(candidates_router, prefix="/api")
 app.include_router(livekit_router)
 app.include_router(advisor_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
+app.include_router(jarvis_router, prefix="/api")
 
-print("✅ All routers registered (auth, chat, candidates, livekit, advisor, pipeline)")
+print("✅ All routers registered (auth, chat, candidates, livekit, advisor, pipeline, jarvis)")
 
 
 @app.get("/")

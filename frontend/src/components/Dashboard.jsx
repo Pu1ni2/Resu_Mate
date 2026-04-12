@@ -1720,6 +1720,7 @@ import { useApp } from '../context/AppContext';
 import { marked } from 'marked';
 import CandidateFocus from './CandidateFocus';
 import PipelineWizard from './pipeline/PipelineWizard';
+import JarvisAgent from './pipeline/JarvisAgent';
 import { 
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
@@ -2556,8 +2557,16 @@ export default function Dashboard() {
                   )}
 
                   {showPipeline && (
-                    <PipelineWizard
-                      candidateCount={candidates.filter(c => c.is_resume !== false).length}
+                    <JarvisAgent
+                      candidatesSummary={candidates
+                        .filter(c => c.is_resume !== false)
+                        .map(c => ({
+                          id: c.id,
+                          name: c.name || 'Unknown',
+                          predicted_role: c.predicted_role || '',
+                          total_experience_years: c.total_experience_years || 0,
+                          skills: c.skills || [],
+                        }))}
                       onClose={() => setShowPipeline(false)}
                       onComplete={(result) => {
                         setPipelineResult(result);
