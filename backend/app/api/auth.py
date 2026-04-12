@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.models.auth import HiringManager, OTPCode
@@ -23,6 +25,7 @@ from app.services.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ── Request / Response schemas ────────────────────────────────────────────────
@@ -51,7 +54,8 @@ class VerifyOTPRequest(BaseModel):
 # ── Hiring Manager Auth ───────────────────────────────────────────────────────
 
 @router.post("/register", status_code=201)
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Create a new hiring manager account."""
     result = await db.execute(select(HiringManager).where(HiringManager.email == req.email.lower().strip()))
     existing = result.scalar_one_or_none()
@@ -83,7 +87,8 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login")
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, req: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate a hiring manager and return JWT tokens."""
     result = await db.execute(select(HiringManager).where(HiringManager.email == req.email.lower().strip()))
     manager = result.scalar_one_or_none()
@@ -138,7 +143,8 @@ def _generate_otp() -> str:
 
 
 @router.post("/candidate/send-otp")
-async def send_otp(req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
     """Send a 6-digit OTP to the candidate's email."""
     email = req.email.lower().strip()
 
