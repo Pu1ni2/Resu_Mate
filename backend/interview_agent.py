@@ -4,6 +4,7 @@ Run: python interview_agent.py dev
 """
 import os
 import sys
+import time
 import logging
 import requests
 from dotenv import load_dotenv
@@ -59,11 +60,49 @@ STRUCTURE: 1. IMMEDIATELY greet: "Hi {candidate}! I'm Alex, interviewing you for
 VOICE: Conversational, medium pace, friendly but professional. No emojis or markdown."""
 
 
+def post_transcript(config: dict, transcript: list):
+    """POST accumulated transcript to the backend interview-report endpoint."""
+    candidate_email = config.get("candidate_email", "")
+    candidate_name = config.get("candidate_name", "Candidate")
+    role = config.get("role", "General")
+
+    if not candidate_email or not transcript:
+        return
+
+    payload = {
+        "candidate_name": candidate_name,
+        "candidate_email": candidate_email,
+        "role": role,
+        "questions": [],
+        "answers": [],
+        "scores": [],
+        "duration": 0,
+        "transcript": transcript,
+    }
+
+    for url in [BACKEND_URL, "http://localhost:8001"]:
+        try:
+            # Agent-to-backend call — use a service token or no-auth endpoint
+            resp = requests.post(
+                f"{url}/api/chat/save-transcript",
+                json=payload,
+                timeout=10,
+            )
+            if resp.ok:
+                logger.info(f"Transcript saved ({len(transcript)} turns) for {candidate_email}")
+                return
+        except Exception as e:
+            logger.warning(f"Transcript POST failed to {url}: {e}")
+
+
 # ═══ ENTRYPOINT — MUST be at module level for multiprocessing to pickle it ═══
 async def entrypoint(ctx: JobContext):
-    logger.info(f"🎯 Interview agent joining room: {ctx.room.name}")
+    logger.info(f"Interview agent joining room: {ctx.room.name}")
     config = get_interview_config(ctx.room.name)
-    logger.info(f"📋 Config: {config.get('role')} | {config.get('num_questions')} Qs")
+    logger.info(f"Config: {config.get('role')} | {config.get('num_questions')} Qs")
+
+    # Transcript accumulator — list of {role, text, timestamp}
+    transcript: list = []
 
     session = AgentSession(
         llm=lk_openai.realtime.RealtimeModel(
@@ -73,6 +112,23 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
+    # Hook into session events to capture conversation turns
+    @session.on("agent_speech_committed")
+    def on_agent_speech(message):
+        try:
+            text = getattr(message, "content", None) or str(message)
+            transcript.append({"role": "interviewer", "text": text, "timestamp": time.time()})
+        except Exception:
+            pass
+
+    @session.on("user_speech_committed")
+    def on_user_speech(message):
+        try:
+            text = getattr(message, "content", None) or str(message)
+            transcript.append({"role": "candidate", "text": text, "timestamp": time.time()})
+        except Exception:
+            pass
+
     if SIMLI_API_KEY and SIMLI_FACE_ID:
         try:
             avatar = lk_simli.AvatarSession(
@@ -81,17 +137,24 @@ async def entrypoint(ctx: JobContext):
                     face_id=SIMLI_FACE_ID,
                 ),
             )
-            logger.info("🎭 Starting Simli avatar...")
+            logger.info("Starting Simli avatar...")
             await avatar.start(session, room=ctx.room)
-            logger.info("✅ Simli avatar started")
+            logger.info("Simli avatar started")
         except Exception as e:
-            logger.warning(f"⚠️ Simli failed: {e}")
+            logger.warning(f"Simli failed: {e}")
 
     await session.start(
         agent=Agent(instructions=build_system_prompt(config)),
         room=ctx.room,
     )
-    logger.info("✅ Interview agent running!")
+    logger.info("Interview agent running!")
+
+    # Wait for the session to end, then POST transcript
+    try:
+        await ctx.wait_for_disconnect()
+    finally:
+        post_transcript(config, transcript)
+        logger.info("Interview session ended, transcript posted.")
 
 
 if __name__ == "__main__":

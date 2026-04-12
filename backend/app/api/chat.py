@@ -100,6 +100,7 @@ class InterviewReportRequest(BaseModel):
     answers: list
     scores: list
     duration: int = 0
+    transcript: Optional[list] = None
 
 class CreateInterviewRequest(BaseModel):
     candidate_id: int
@@ -113,6 +114,16 @@ class CreateInterviewRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     email: str
+
+class SaveTranscriptRequest(BaseModel):
+    candidate_email: str
+    candidate_name: str = "Candidate"
+    role: str = "General"
+    questions: list = []
+    answers: list = []
+    scores: list = []
+    duration: int = 0
+    transcript: Optional[list] = None
 
 # ═══════ HELPER ═══════
 
@@ -608,11 +619,30 @@ async def interview_report(req: InterviewReportRequest, user=Depends(get_current
         req.candidate_name, req.candidate_email, req.role,
         req.questions, req.answers, req.scores, req.duration
     )
-    # Save to database
+    # Save to database (include transcript if provided)
     await db_service.save_interview_result(db, req.candidate_email, {
-        "report": report, "scores": req.scores, "timer": req.duration
+        "report": report, "scores": req.scores, "timer": req.duration,
+        "transcript": req.transcript,
     })
     return {"report": report}
+
+
+@router.post("/save-transcript")
+async def save_transcript(req: SaveTranscriptRequest, db: AsyncSession = Depends(get_db)):
+    """Called by the interview agent (no browser auth) to persist transcript after session ends."""
+    from sqlalchemy import select
+    from app.models.candidate import Interview
+    result = await db.execute(
+        select(Interview)
+        .where(Interview.candidate_email == req.candidate_email.strip().lower())
+        .order_by(Interview.created_at.desc())
+    )
+    interview = result.scalars().first()
+    if interview and req.transcript:
+        interview.transcript = req.transcript
+        await db.commit()
+        return {"saved": True, "turns": len(req.transcript)}
+    return {"saved": False, "reason": "No interview record found or empty transcript"}
 
 # ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════
 
@@ -680,6 +710,9 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
                     iv_report = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
                 except:
                     iv_report = {"report": interview.report}
+                if interview.transcript:
+                    if isinstance(iv_report, dict):
+                        iv_report["transcript"] = interview.transcript
 
         print(f"  ✅ Found in DB. has_interview={has_iv}, completed={completed}")
         return {

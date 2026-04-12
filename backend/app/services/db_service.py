@@ -118,6 +118,7 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
             status="completed",
             report=json.dumps(report_data),
             completed_at=datetime.utcnow(),
+            transcript=report_data.get("transcript"),
         )
         session.add(interview)
     else:
@@ -128,6 +129,8 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
             interview.scores = report_data["scores"]
         if report_data.get("timer"):
             interview.duration = report_data["timer"]
+        if report_data.get("transcript") is not None:
+            interview.transcript = report_data["transcript"]
 
     try:
         await session.commit()

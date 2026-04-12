@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { marked } from 'marked';
-import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download } from 'lucide-react';
+import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 
 const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 
@@ -169,6 +169,51 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   );
 }
 
+function TranscriptSection({ transcript }) {
+  const [open, setOpen] = useState(false);
+  if (!transcript || transcript.length === 0) return null;
+
+  return (
+    <div className="cd-card" style={{ padding: '20px', marginBottom: '16px' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+      >
+        <h3 style={{ fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
+          <MessageSquare size={16} style={{ color: '#3B82F6' }} /> Conversation Transcript
+          <span style={{ fontSize: '12px', fontWeight: '400', color: '#94A3B8' }}>({transcript.length} turns)</span>
+        </h3>
+        {open ? <ChevronUp size={16} style={{ color: '#94A3B8' }} /> : <ChevronDown size={16} style={{ color: '#94A3B8' }} />}
+      </button>
+
+      {open && (
+        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {transcript.map((turn, i) => {
+            const isInterviewer = turn.role === 'interviewer';
+            return (
+              <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flexDirection: isInterviewer ? 'row' : 'row-reverse' }}>
+                <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700',
+                  background: isInterviewer ? 'linear-gradient(135deg,#3B82F6,#6D28D9)' : 'rgba(255,255,255,0.08)',
+                  color: isInterviewer ? '#fff' : '#94A3B8', border: isInterviewer ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  {isInterviewer ? 'AI' : 'C'}
+                </div>
+                <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: '12px', fontSize: '13px', lineHeight: '1.5',
+                  background: isInterviewer ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)',
+                  border: isInterviewer ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(255,255,255,0.08)',
+                  color: 'var(--text, #E2E8F0)'
+                }}>
+                  {turn.text}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InterviewReportView({ report, candidateId, candidateEmail }) {
   if (!report) return <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
@@ -253,6 +298,9 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           <SafeMarkdown text={reportText} />
         </div>
       )}
+
+      {/* Conversation Transcript */}
+      <TranscriptSection transcript={r.transcript} />
 
       {/* Credibility Analysis */}
       <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} />
