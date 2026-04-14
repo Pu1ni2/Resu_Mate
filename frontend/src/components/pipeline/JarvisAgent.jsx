@@ -29,6 +29,71 @@ function isUsableTranscription(text) {
   return true;
 }
 
+// ── Markdown renderer (for eval reports and other agent outputs) ──────────────
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.trim()) { elements.push(<div key={i} style={{ height: 8 }} />); i++; continue; }
+
+    // h2 / h3
+    if (/^#{2,3}\s/.test(line)) {
+      const level = line.match(/^(#{2,3})/)[1].length;
+      const txt = line.replace(/^#{2,3}\s*/, '').replace(/[🎯📊✅⚠️❌💡🔍]/gu, '').trim();
+      elements.push(
+        <div key={i} style={{ fontSize: level === 2 ? 15 : 13, fontWeight: 800, color: level === 2 ? '#E4E4E7' : '#A1A1AA', marginTop: 16, marginBottom: 4, letterSpacing: '-0.01em' }}>
+          {txt}
+        </div>
+      );
+      i++; continue;
+    }
+    // List items
+    if (/^[\-\*]\s/.test(line) || /^\d+\.\s/.test(line)) {
+      const items = [];
+      while (i < lines.length && (/^[\-\*]\s/.test(lines[i]) || /^\d+\.\s/.test(lines[i]))) {
+        items.push(lines[i].replace(/^[\-\*\d\.]+\s*/, ''));
+        i++;
+      }
+      elements.push(
+        <ul key={i} style={{ margin: '4px 0 8px', paddingLeft: 18 }}>
+          {items.map((it, j) => (
+            <li key={j} style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.7, marginBottom: 2 }}>
+              {it.replace(/\*\*([^*]+)\*\*/g, '$1')}
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+    // Normal paragraph with inline bold
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    elements.push(
+      <p key={i} style={{ margin: '0 0 6px', fontSize: 13, color: '#A1A1AA', lineHeight: 1.7 }}>
+        {parts.map((p, j) =>
+          p.startsWith('**') ? <strong key={j} style={{ color: '#D4D4D8', fontWeight: 700 }}>{p.slice(2, -2)}</strong> : p
+        )}
+      </p>
+    );
+    i++;
+  }
+  return <div>{elements}</div>;
+}
+
+function stripMarkdown(text) {
+  if (!text) return '';
+  return text
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[🎯📊✅⚠️❌💡🔍]/gu, '')
+    .replace(/^[\-\*]\s/gm, '• ')
+    .trim();
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildAtsSummary(data) {
@@ -562,7 +627,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         appendMsg({
           role: 'action',
           content: `Deep evaluation complete`,
-          evalData: { report: report.slice(0, 600) },
+          evalData: { report },   // full report — no truncation
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
@@ -931,7 +996,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       {score   && <span style={{ fontSize: 22, fontWeight: 900, color: '#4ADE80' }}>{score}<span style={{ fontSize: 13, color: '#52525B' }}>/100</span></span>}
                       {verdict && <span style={{ fontSize: 13, fontWeight: 700, color: '#FCD34D', background: 'rgba(252,211,77,0.1)', padding: '4px 14px', borderRadius: 100, alignSelf: 'center' }}>{verdict}</span>}
                     </div>
-                    <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{rpt}</div>
+                    <div>{renderMarkdown(rpt)}</div>
                   </>
                 );
               })()}
@@ -1363,31 +1428,48 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 if (msg.evalData) {
                   const ev = msg.evalData;
                   const rpt = ev.report || '';
-                  const scoreMatch = rpt.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
+                  const plain = stripMarkdown(rpt);
+                  const scoreMatch = plain.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
                   const score = scoreMatch ? scoreMatch[1] : null;
-                  const verdictMatch = rpt.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
+                  const verdictMatch = plain.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
                   const verdict = verdictMatch ? verdictMatch[1].trim() : null;
-                  const weakSection = rpt.match(/(?:weakness|drawback|gap|concern|limitation)[s]?[^:]*?:([^]+?)(?=\n[A-Z]|$)/i);
-                  const weakText = weakSection ? weakSection[1].trim() : null;
+                  // Extract weakness/drawback section
+                  const weakSection = rpt.match(/(?:weakness|drawback|gap|concern|limitation)[s]?[^:]*?:\n([^]+?)(?=\n###|\n##|$)/i);
+                  const weakText = weakSection ? stripMarkdown(weakSection[1].trim()) : null;
+                  // Extract strengths section
+                  const strengthSection = rpt.match(/(?:strength|match)[es]?[^:]*?:\n([^]+?)(?=\n###|\n##|$)/i);
+                  const strengthText = strengthSection ? stripMarkdown(strengthSection[1].trim()) : null;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 12, padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(248,113,113,0.5)' }}>EVALUATION REPORT</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            {score && <span style={{ fontSize: 11, fontWeight: 800, color: '#4ADE80', background: 'rgba(74,222,128,0.1)', padding: '2px 8px', borderRadius: 100 }}>{score}/100</span>}
+                            {score && <span style={{ fontSize: 13, fontWeight: 900, color: '#4ADE80' }}>{score}/100</span>}
                             {verdict && <span style={{ fontSize: 10, fontWeight: 700, color: '#FCD34D', background: 'rgba(252,211,77,0.1)', padding: '2px 8px', borderRadius: 100 }}>{verdict}</span>}
                             {expandBtn(msg)}
                           </div>
                         </div>
-                        {weakText && (
-                          <div style={{ marginBottom: 8 }}>
-                            <div style={{ fontSize: 9, color: '#F87171', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
-                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{weakText.slice(0, 280)}{weakText.length > 280 ? '…' : ''}</div>
+                        {strengthText && (
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 9, color: '#4ADE80', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>STRENGTHS</div>
+                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65 }}>{strengthText.slice(0, 250)}{strengthText.length > 250 ? '…' : ''}</div>
                           </div>
                         )}
-                        <div style={{ fontSize: 11, color: '#71717A', lineHeight: 1.65, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: '8px 10px', maxHeight: 110, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-                          {rpt.slice(0, 500)}{rpt.length > 500 ? '…' : ''}
+                        {weakText && (
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 9, color: '#F87171', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
+                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65 }}>{weakText.slice(0, 250)}{weakText.length > 250 ? '…' : ''}</div>
+                          </div>
+                        )}
+                        {!strengthText && !weakText && (
+                          <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.65 }}>
+                            {plain.slice(0, 320)}{plain.length > 320 ? '…' : ''}
+                          </div>
+                        )}
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#3F3F46', cursor: 'pointer' }}
+                          onClick={() => setExpandedCard(msg)}>
+                          Tap ↗ for full report
                         </div>
                       </div>
                     </div>
