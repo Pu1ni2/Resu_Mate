@@ -677,8 +677,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           evalData: { report },   // full report — no truncation
         });
         setStatus('DONE');
+        // Send full report so Jarvis can read Growth Areas and score accurately
         await handleSendMessageRef.current(
-          `[EVAL_RESULT] Evaluation for candidate ID ${params.candidate_id} (${params.role || ctx.role}): ${report.slice(0, 500)}`
+          `[EVAL_RESULT] ${report}`
         );
       } catch (err) {
         setStatus('ERROR');

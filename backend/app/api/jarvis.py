@@ -54,19 +54,44 @@ SCHEDULING:
 9. If has_ats_results is true in context, do NOT re-run ATS unless user explicitly asks to re-screen.
 10. If interrupted=true in context: acknowledge it naturally, fold the new input into your reply.
 
-TRIGGER MAPPINGS (when to use each action):
-- "github" / "code" / "repos" / "his profile" / "projects" / "what did he build" → analyze_github ONLY if no [GITHUB_RESULT] exists in history for this candidate
+═══ TRIGGER RULES (MANDATORY — follow exactly) ═══
+
+DEEP_EVALUATE IS REQUIRED when the user says ANY of these words — do NOT answer from memory, ALWAYS trigger the action:
+- "drawbacks" → deep_evaluate (MANDATORY, even if you think you know the answer)
+- "weaknesses" → deep_evaluate (MANDATORY)
+- "cons" / "flaws" / "negatives" → deep_evaluate (MANDATORY)
+- "report" / "evaluation report" / "full report" → deep_evaluate (MANDATORY)
+- "detailed analysis" / "deep dive" / "assess" / "evaluate" → deep_evaluate (MANDATORY)
+- "how good is" / "more analysis" → deep_evaluate (MANDATORY)
+
+RULE: If you have NOT yet seen [EVAL_RESULT] in conversation history, trigger deep_evaluate. If [EVAL_RESULT] already exists in history, read the Growth Areas from it directly — do NOT re-trigger. Never answer drawbacks/weaknesses from ATS scores or GitHub data alone — that is not a full evaluation.
+
+ANALYZE_GITHUB triggers:
+- "github" / "code" / "repos" / "projects" / "what did he build" → analyze_github ONLY if no [GITHUB_RESULT] in history for this candidate
+
+SCAN triggers:
 - "linkedin" / "full profile" / "enrich" / "scan" / "find his linkedin" → scan_candidate
+
+RESEARCH triggers:
 - "search" / "market rate" / "salary" / "research" / "what's the going rate" / "company info" → research_web
-- "evaluate" / "full report" / "deep dive" / "assessment" / "how good is" / "drawbacks" / "weaknesses" / "cons" / "flaws" / "negatives" / "more analysis" / "detailed analysis" → deep_evaluate
+
+CALENDLY triggers:
 - "calendly" / "schedule" / "booking link" / "send calendar link" → get_calendly
 
-GITHUB CACHE RULE (CRITICAL): If [GITHUB_RESULT] already appears in conversation history, NEVER trigger analyze_github again. Instead answer directly from that data. If user asks "what projects does he have", list the project names from [GITHUB_RESULT]. If user asks about a specific project, describe it from the result.
+GITHUB CACHE RULE (CRITICAL): If [GITHUB_RESULT] already appears in conversation history, NEVER trigger analyze_github again. Answer directly from that cached data — name the specific projects listed there.
 
-After receiving any [RESULT] system message: narrate 2-3 key findings in plain spoken language. Be specific — names, numbers, project names. No markdown. No asterisks. Read aloud naturally.
+═══ RESULT NARRATION RULES ═══
 
-[GITHUB_RESULT] narration rule: Say the top 2-3 project NAMES specifically. Say the primary language. Give a 1-sentence technical impression. Example: "He has 13 repos — his main projects are Resu_Mate and SomeOtherProject, both in Python. Strong AI focus."
-[EVAL_RESULT] narration rule: The report has a "Growth Areas" section — these are the weaknesses/drawbacks. ALWAYS state the score AND name at least 2 specific items from "Growth Areas" AND at least 1 strength. If user asked about drawbacks/weaknesses/cons, lead with the Growth Areas first and be specific — name each gap, not generic "limited experience".
+After receiving any [RESULT] system message: narrate 2-3 key findings in plain spoken language. Be specific — names, numbers, project names. No markdown. No asterisks.
+
+[GITHUB_RESULT] narration: Name top 2-3 project names specifically. State the primary language. Give a 1-sentence technical impression. Example: "He has 13 repos. His main projects are Resu_Mate and DataPipeline, both in Python. Strong AI focus."
+
+[EVAL_RESULT] narration RULES (FOLLOW EXACTLY):
+1. Always state the score number (e.g. "He scored 82 out of 100").
+2. Always read at least 2 specific bullet points from the "Growth Areas" section — these are the actual weaknesses. Be literal — copy the specific gaps mentioned (e.g. "Limited cloud deployment experience" not just "some gaps").
+3. State at least 1 strength from "Strengths & Matches".
+4. If user asked specifically about drawbacks/weaknesses, lead with Growth Areas FIRST, then strengths after.
+5. Never give a generic one-liner. Never say "he could improve in some areas". Always be specific.
 
 ═══ RESPONSE FORMAT ═══
 
@@ -89,9 +114,11 @@ action_params shapes:
 - get_calendly:   {}
 
 ABSOLUTE RULES:
-- Resolve "top candidates", "strong fits", "him/her" to actual IDs from context.shortlisted_ids or the candidates list
+- Resolve "top candidates", "strong fits", "him/her/this candidate" to context.active_candidate.id first, then context.shortlisted_ids[0]
+- For deep_evaluate: use context.active_candidate.id and context.role when user says "drawbacks/report/evaluate" without naming someone
 - Never invent names, scores, GitHub usernames, or facts
-- No markdown in the reply field — it will be read aloud"""
+- No markdown in the reply field — it will be read aloud
+- NEVER answer drawbacks/weaknesses questions from ATS or GitHub data — always trigger deep_evaluate first"""
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -141,12 +168,26 @@ async def jarvis_chat(
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
     # Build context block for GPT-4o
+    # Resolve the "active" candidate — most recently discussed shortlisted candidate
+    first_shortlisted_id = (req.context.shortlisted_ids or [None])[0]
+    active_candidate = None
+    if first_shortlisted_id and req.candidates_summary:
+        for c in req.candidates_summary:
+            cid = c["id"] if isinstance(c, dict) else c.id
+            if cid == first_shortlisted_id:
+                active_candidate = {
+                    "id": cid,
+                    "name": c["name"] if isinstance(c, dict) else c.name,
+                }
+                break
+
     context_block = {
         "role": req.context.role,
         "last_action": req.context.last_action,
         "shortlisted_ids": req.context.shortlisted_ids,
         "has_ats_results": req.context.last_ats_results is not None,
         "pending_action": req.context.pending_action,   # non-null = confirmation already asked
+        "active_candidate": active_candidate,  # use this ID for deep_evaluate / analyze_github when user says "him"
     }
 
     # Include a brief ATS summary if available (not the full blob — too large)
@@ -194,8 +235,8 @@ async def jarvis_chat(
             model="gpt-4o",
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=0.7,
-            max_tokens=400,
+            temperature=0.3,
+            max_tokens=500,
         )
         raw = response.choices[0].message.content or ""
         data = json.loads(raw)
