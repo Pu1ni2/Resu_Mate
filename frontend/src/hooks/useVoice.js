@@ -86,6 +86,7 @@ export default function useVoice({
         body: JSON.stringify({ text: clean, voice: 'nova' }),
         signal: abortControllerRef.current.signal,
       });
+      if (response.status === 401) throw new Error('SESSION_EXPIRED');
       if (!response.ok) throw new Error('TTS failed');
 
       const audioBlob = await response.blob();
@@ -110,7 +111,14 @@ export default function useVoice({
       setSpeakingMsgIndex(msgIndex);
       await audio.play();
     } catch (err) {
-      if (err.name !== 'AbortError') console.error('TTS error:', err);
+      if (err.name !== 'AbortError') {
+        if (err.message === 'SESSION_EXPIRED') {
+          console.warn('TTS: session expired — token needs refresh');
+          onTranscribeFail?.('session_expired');
+        } else {
+          console.error('TTS error:', err);
+        }
+      }
       setLoadingMsgIndex(null);
       setSpeakingMsgIndex(null);
       // Don't call onSpeakingDone on abort — user interrupted intentionally
@@ -132,6 +140,7 @@ export default function useVoice({
         headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: formData,
       });
+      if (response.status === 401) throw new Error('SESSION_EXPIRED');
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
       if (data.error) throw new Error(data.error);
@@ -141,8 +150,12 @@ export default function useVoice({
         onTranscribeFail?.('no_speech');
       }
     } catch (err) {
-      console.warn('STT error:', err.message);
-      onTranscribeFail?.(err.message);
+      if (err.message === 'SESSION_EXPIRED') {
+        onTranscribeFail?.('session_expired');
+      } else {
+        console.warn('STT error:', err.message);
+        onTranscribeFail?.(err.message);
+      }
     } finally {
       setIsTranscribing(false);
     }

@@ -4,7 +4,7 @@ import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
 
 const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
-const SESSION_KEY = 'jarvis_session';
+const SESSION_KEY = 'jarvis_session_v2';
 const AUTO_LISTEN_DELAY_MS = 900;
 
 // ── Transcription quality filter ──────────────────────────────────────────────
@@ -314,10 +314,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     setHint('');
     if (reason === 'mic_denied') {
       setHint('Mic access denied — use the text box below.');
+    } else if (reason === 'session_expired') {
+      const msg = 'Your session has expired. Please log out and log back in to continue.';
+      appendMsg({ role: 'assistant', content: msg });
+      setHint('Session expired — please log in again.');
     }
     // too_short / no_speech / error: do NOT auto-restart (prevents infinite loop)
     // User can click the mic button or orb to try again
-  }, []);
+  }, [appendMsg]);
 
   const voice = useVoice({
     apiBase: API_BASE,
@@ -394,6 +398,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         }),
       });
 
+      if (res.status === 401) {
+        const msg = 'Your session has expired. Please log out and log back in.';
+        appendMsg({ role: 'assistant', content: msg });
+        setIsProcessing(false);
+        setStatus('SESSION EXPIRED');
+        setHint('Session expired — please log in again.');
+        return;
+      }
       if (!res.ok) throw new Error(`API ${res.status}`);
       const data = await res.json();
       const { reply, action, action_params, awaiting_confirmation, updated_context } = data;
@@ -455,6 +467,17 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       voiceRef.current?.speakText(text, msgIndexRef.current++);
     };
 
+    // Helper: check for 401 and show session-expired message
+    const handle401 = (res) => {
+      if (res.status === 401) {
+        setStatus('SESSION EXPIRED');
+        setHint('Session expired — please log in again.');
+        directSay('Your session has expired. Please log out and log back in to continue.');
+        return true;
+      }
+      return false;
+    };
+
     if (action === 'run_ats') {
       // ATS DOES recurse so Jarvis can summarize results conversationally
       setStatus('RUNNING ATS…');
@@ -469,6 +492,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             auto_shortlist_count: params.auto_shortlist_count || 5,
           }),
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`Pipeline ${res.status}`);
         const d = await res.json();
         const shortlisted = (d.shortlist || []).map(r => r.candidate_id);
@@ -497,6 +521,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           method: 'POST', headers: hdrs,
           body: JSON.stringify(batchBody),
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`Batch ${res.status}`);
         const d = await res.json();
         const sent = d.emails_sent || 0;
@@ -563,6 +588,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             candidate_name: ctx.role || null,
           }),
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`Search ${res.status}`);
         const d = await res.json();
 
@@ -595,6 +621,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id, github_url: githubUrl || undefined }),
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`GitHub ${res.status}`);
         const d = await res.json();
 
@@ -639,6 +666,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             role: params.role || ctx.role || 'Engineer',
           }),
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`Eval ${res.status}`);
         const d = await res.json();
 
@@ -664,6 +692,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id }),
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`Scan ${res.status}`);
         const d = await res.json();
 
@@ -708,6 +737,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const res = await fetch(`${API_BASE}/api/chat/calendly-link`, {
           method: 'GET', headers: hdrs,
         });
+        if (handle401(res)) return;
         if (!res.ok) throw new Error(`Calendly ${res.status}`);
         const d = await res.json();
 
@@ -1256,7 +1286,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     margin: 0, flex: 1, fontSize: 15, lineHeight: 1.7,
                     color: '#D4D4D8', fontWeight: 400, letterSpacing: '-0.01em',
                   }}>
-                    {msg.content}
+                    {stripMarkdown(msg.content)}
                   </p>
                 </div>
               );
