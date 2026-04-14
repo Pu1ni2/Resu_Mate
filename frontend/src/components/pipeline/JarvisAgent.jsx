@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Send, Mic, MicOff, Loader, ArrowLeft, RotateCcw } from 'lucide-react';
+import { X, Send, Mic, MicOff, Loader, RotateCcw, Maximize2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
 
@@ -160,6 +160,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const [hint,         setHint]         = useState('');
   // Show full ATS results inline (no navigation away)
   const [resultsData,  setResultsData]  = useState(null);
+  // Full-screen expanded card modal
+  const [expandedCard, setExpandedCard] = useState(null);
 
   const hasGreetedRef  = useRef(!!savedSession);   // skip greeting if restoring
   const msgIndexRef    = useRef(0);
@@ -781,6 +783,23 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     );
   }
 
+  // ── Expanded card modal ────────────────────────────────────────────────────
+  const expandBtn = (msg) => (
+    <button
+      onClick={() => setExpandedCard(msg)}
+      title="Expand"
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+        color: '#52525B', display: 'flex', alignItems: 'center',
+        transition: 'color 0.15s', flexShrink: 0,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.color = '#A1A1AA'; }}
+      onMouseLeave={e => { e.currentTarget.style.color = '#52525B'; }}
+    >
+      <Maximize2 size={12} />
+    </button>
+  );
+
   // ── Orb animation ──────────────────────────────────────────────────────────
   const orbAnim = {
     idle:      'jBreathe 4s ease-in-out infinite',
@@ -799,6 +818,201 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   return (
     <>
       <style>{CSS}</style>
+
+      {/* ── Full-screen card detail modal ────────────────────────────────────── */}
+      {expandedCard && (() => {
+        const g  = expandedCard.githubData;
+        const ev = expandedCard.evalData;
+        const s  = expandedCard.searchData;
+        const em = expandedCard.emailDraftData;
+        const sc = expandedCard.scanData;
+        return (
+          <div
+            onClick={() => setExpandedCard(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 3500,
+              background: 'rgba(0,0,0,0.85)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 24,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: '#0F0F17',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 18, width: '100%', maxWidth: 680,
+                maxHeight: '85vh', overflowY: 'auto',
+                padding: '28px 32px',
+                fontFamily: "'DM Sans', -apple-system, sans-serif",
+              }}
+            >
+              {/* Close */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+                <button
+                  onClick={() => setExpandedCard(null)}
+                  style={{ background: 'none', border: 'none', color: '#52525B', cursor: 'pointer', padding: 4 }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#52525B'; }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* ── GitHub expanded ── */}
+              {g && (() => {
+                const profile = g.profile || {};
+                const allLangs = Object.entries(profile.languages || {});
+                const allRepos = profile.top_repos || [];
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(245,158,11,0.5)', marginBottom: 6 }}>GITHUB PROFILE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{g.name}</div>
+                    {profile.login && <div style={{ fontSize: 13, color: '#52525B', marginBottom: 16 }}>@{profile.login} · Member since {profile.created_at || '?'}</div>}
+                    <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+                      {[['Public Repos', g.repos], ['Total Stars', g.stars], ['Followers', profile.followers ?? '?'], ['Following', profile.following ?? '?']].map(([l, v]) => (
+                        <div key={l}>
+                          <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{l.toUpperCase()}</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: '#E4E4E7' }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {profile.location && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>📍 {profile.location}</div>}
+                    {profile.company  && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>🏢 {profile.company}</div>}
+                    {profile.blog     && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 16 }}>🔗 {profile.blog}</div>}
+                    {allLangs.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>LANGUAGES</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {allLangs.map(([lang, count]) => (
+                            <span key={lang} style={{ fontSize: 12, fontWeight: 600, color: '#D97706', background: 'rgba(217,119,6,0.1)', padding: '3px 10px', borderRadius: 100 }}>
+                              {lang} ({count})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {allRepos.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>ALL PROJECTS</div>
+                        {allRepos.map((r, i) => (
+                          <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7' }}>{r.name}</span>
+                              {r.language && <span style={{ fontSize: 10, color: '#D97706', background: 'rgba(217,119,6,0.1)', padding: '1px 7px', borderRadius: 100 }}>{r.language}</span>}
+                              <span style={{ fontSize: 11, color: '#52525B', marginLeft: 'auto' }}>⭐ {r.stars || 0}  🍴 {r.forks || 0}</span>
+                            </div>
+                            {r.description && <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{r.description}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {g.analysis && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>AI ANALYSIS</div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#A1A1AA', lineHeight: 1.7 }}>{g.analysis}</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* ── Evaluation expanded ── */}
+              {ev && (() => {
+                const rpt = ev.report || '';
+                const scoreMatch = rpt.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
+                const score = scoreMatch ? scoreMatch[1] : null;
+                const verdictMatch = rpt.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
+                const verdict = verdictMatch ? verdictMatch[1].trim() : null;
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(248,113,113,0.5)', marginBottom: 6 }}>EVALUATION REPORT</div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                      {score   && <span style={{ fontSize: 22, fontWeight: 900, color: '#4ADE80' }}>{score}<span style={{ fontSize: 13, color: '#52525B' }}>/100</span></span>}
+                      {verdict && <span style={{ fontSize: 13, fontWeight: 700, color: '#FCD34D', background: 'rgba(252,211,77,0.1)', padding: '4px 14px', borderRadius: 100, alignSelf: 'center' }}>{verdict}</span>}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{rpt}</div>
+                  </>
+                );
+              })()}
+
+              {/* ── Web search expanded ── */}
+              {s && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(56,189,248,0.5)', marginBottom: 6 }}>WEB SEARCH RESULTS</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#E4E4E7', marginBottom: 16 }}>"{s.query}"</div>
+                  <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.75, marginBottom: 20, whiteSpace: 'pre-wrap' }}>{s.snippet}</div>
+                  {(s.sources || []).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>SOURCES</div>
+                      {s.sources.map((src, i) => (
+                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#60A5FA', marginBottom: 2 }}>{src.title}</div>
+                          {src.url && <div style={{ fontSize: 11, color: '#52525B', wordBreak: 'break-all' }}>{src.url}</div>}
+                          {src.content && <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.5, marginTop: 4 }}>{src.content.slice(0, 300)}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Email draft expanded ── */}
+              {em && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(245,158,11,0.5)', marginBottom: 6 }}>EMAIL DRAFT</div>
+                  <div style={{ fontSize: 13, color: '#52525B', marginBottom: 4 }}>To: {em.to}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#E4E4E7', marginBottom: 16 }}>{em.subject}</div>
+                  <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.8, background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '16px 18px', whiteSpace: 'pre-wrap', marginBottom: 20 }}>{em.body}</div>
+                  <button
+                    onClick={() => { setExpandedCard(null); executeAction('batch_action', { ...expandedCard.batchParams, send_emails: true }); }}
+                    style={{ padding: '10px 24px', borderRadius: 100, background: 'rgba(217,119,6,0.25)', border: '1px solid rgba(245,158,11,0.45)', color: '#FDE68A', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                  >Send Email →</button>
+                </>
+              )}
+
+              {/* ── Scan expanded ── */}
+              {sc && (() => {
+                const ghP = sc.profiles?.github;
+                const liP = sc.profiles?.linkedin;
+                const ct  = sc.contact || {};
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(245,158,11,0.5)', marginBottom: 16 }}>FULL PROFILE SCAN</div>
+                    {ghP && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>GITHUB</div>
+                        {ghP.username && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>@{ghP.username}</div>}
+                        {ghP.bio      && <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{ghP.bio}</div>}
+                      </div>
+                    )}
+                    {liP && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>LINKEDIN</div>
+                        {liP.name      && <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 3 }}>{liP.name}</div>}
+                        {liP.headline  && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>{liP.headline}</div>}
+                        {liP.about     && <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{liP.about.slice(0, 400)}</div>}
+                      </div>
+                    )}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>CONTACT</div>
+                      {ct.email && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>✉ {ct.email}</div>}
+                      {ct.phone && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>📞 {ct.phone}</div>}
+                    </div>
+                    {sc.summary && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>AI SUMMARY</div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#A1A1AA', lineHeight: 1.7 }}>{sc.summary}</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{
         position: 'fixed', inset: 0, zIndex: 2000,
         background: '#080810',
@@ -1062,20 +1276,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const g = msg.githubData;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 12, padding: '12px 16px',
-                      }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)', marginBottom: 8 }}>
-                          GITHUB · {g.name}
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)' }}>GITHUB · {g.name}</div>
+                          {expandBtn(msg)}
                         </div>
                         <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap' }}>
-                          {[
-                            { label: 'REPOS', val: g.repos },
-                            { label: 'STARS', val: g.stars },
-                            { label: 'LANGUAGES', val: g.langs },
-                          ].map(({ label, val }) => (
+                          {[{ label: 'REPOS', val: g.repos }, { label: 'STARS', val: g.stars }, { label: 'LANGUAGES', val: g.langs }].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginTop: 2 }}>{val}</div>
@@ -1096,7 +1303,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         )}
                         {g.analysis && (
                           <p style={{ margin: 0, fontSize: 12, color: '#71717A', lineHeight: 1.5, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
-                            {g.analysis.slice(0, 220)}{g.analysis.length > 220 ? '…' : ''}
+                            {g.analysis.slice(0, 200)}{g.analysis.length > 200 ? '…' : ''}
                           </p>
                         )}
                       </div>
@@ -1109,42 +1316,25 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const e = msg.emailDraftData;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(245,158,11,0.2)',
-                        borderRadius: 12, padding: '14px 16px',
-                      }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.5)', marginBottom: 10 }}>
-                          EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more)` : ''}
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.5)' }}>
+                            EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more)` : ''}
+                          </div>
+                          {expandBtn(msg)}
                         </div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>
-                          {e.subject}
-                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{e.subject}</div>
                         {e.body && (
-                          <div style={{
-                            fontSize: 12, color: '#A1A1AA', lineHeight: 1.65,
-                            background: 'rgba(0,0,0,0.25)', borderRadius: 8,
-                            padding: '10px 12px', marginBottom: 12,
-                            maxHeight: 140, overflowY: 'auto',
-                            whiteSpace: 'pre-wrap',
-                          }}>
-                            {e.body.slice(0, 600)}{e.body.length > 600 ? '…' : ''}
+                          <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65, background: 'rgba(0,0,0,0.25)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxHeight: 120, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                            {e.body.slice(0, 400)}{e.body.length > 400 ? '…' : ''}
                           </div>
                         )}
                         <button
                           onClick={() => executeAction('batch_action', { ...msg.batchParams, send_emails: true })}
-                          style={{
-                            padding: '7px 18px', borderRadius: 100,
-                            background: 'rgba(217,119,6,0.2)',
-                            border: '1px solid rgba(245,158,11,0.4)',
-                            color: '#FDE68A', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                            transition: 'all 0.15s',
-                          }}
+                          style={{ padding: '7px 18px', borderRadius: 100, background: 'rgba(217,119,6,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: '#FDE68A', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                           onMouseEnter={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.35)'; }}
                           onMouseLeave={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.2)'; }}
-                        >
-                          Send Email →
-                        </button>
+                        >Send Email →</button>
                       </div>
                     </div>
                   );
@@ -1155,23 +1345,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const s = msg.searchData;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        borderRadius: 10, padding: '10px 14px',
-                      }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(56,189,248,0.5)', marginBottom: 6 }}>
-                          WEB SEARCH · {s.query}
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(56,189,248,0.5)' }}>WEB SEARCH · {s.query}</div>
+                          {expandBtn(msg)}
                         </div>
-                        {s.snippet && (
-                          <p style={{ margin: '0 0 6px', fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>
-                            {s.snippet.slice(0, 160)}…
-                          </p>
-                        )}
+                        {s.snippet && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{s.snippet.slice(0, 160)}…</p>}
                         {(s.sources || []).slice(0, 2).map((src, i) => (
-                          <div key={i} style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
-                            · {src.title}
-                          </div>
+                          <div key={i} style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>· {src.title}</div>
                         ))}
                       </div>
                     </div>
@@ -1182,54 +1363,31 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 if (msg.evalData) {
                   const ev = msg.evalData;
                   const rpt = ev.report || '';
-                  // Try to extract score and verdict from the text report
                   const scoreMatch = rpt.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
                   const score = scoreMatch ? scoreMatch[1] : null;
                   const verdictMatch = rpt.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
                   const verdict = verdictMatch ? verdictMatch[1].trim() : null;
-                  // Split into rough sections
-                  const weaknessSection = rpt.match(/(?:weakness|drawback|gap|concern|limitation)[s]?[^:]*?:([^]+?)(?=\n[A-Z]|$)/i);
-                  const weakText = weaknessSection ? weaknessSection[1].trim().slice(0, 400) : null;
-
+                  const weakSection = rpt.match(/(?:weakness|drawback|gap|concern|limitation)[s]?[^:]*?:([^]+?)(?=\n[A-Z]|$)/i);
+                  const weakText = weakSection ? weakSection[1].trim() : null;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(248,113,113,0.18)',
-                        borderRadius: 12, padding: '14px 16px',
-                      }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 12, padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(248,113,113,0.5)' }}>
-                            EVALUATION REPORT
-                          </div>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            {score && (
-                              <span style={{ fontSize: 11, fontWeight: 800, color: '#4ADE80', background: 'rgba(74,222,128,0.1)', padding: '2px 8px', borderRadius: 100 }}>
-                                {score}/100
-                              </span>
-                            )}
-                            {verdict && (
-                              <span style={{ fontSize: 10, fontWeight: 700, color: '#FCD34D', background: 'rgba(252,211,77,0.1)', padding: '2px 8px', borderRadius: 100 }}>
-                                {verdict}
-                              </span>
-                            )}
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(248,113,113,0.5)' }}>EVALUATION REPORT</div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            {score && <span style={{ fontSize: 11, fontWeight: 800, color: '#4ADE80', background: 'rgba(74,222,128,0.1)', padding: '2px 8px', borderRadius: 100 }}>{score}/100</span>}
+                            {verdict && <span style={{ fontSize: 10, fontWeight: 700, color: '#FCD34D', background: 'rgba(252,211,77,0.1)', padding: '2px 8px', borderRadius: 100 }}>{verdict}</span>}
+                            {expandBtn(msg)}
                           </div>
                         </div>
                         {weakText && (
                           <div style={{ marginBottom: 8 }}>
                             <div style={{ fontSize: 9, color: '#F87171', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
-                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                              {weakText.slice(0, 300)}{weakText.length > 300 ? '…' : ''}
-                            </div>
+                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{weakText.slice(0, 280)}{weakText.length > 280 ? '…' : ''}</div>
                           </div>
                         )}
-                        <div style={{
-                          fontSize: 11, color: '#71717A', lineHeight: 1.65,
-                          background: 'rgba(0,0,0,0.2)', borderRadius: 8,
-                          padding: '8px 10px', maxHeight: 130, overflowY: 'auto',
-                          whiteSpace: 'pre-wrap',
-                        }}>
-                          {rpt.slice(0, 600)}{rpt.length > 600 ? '…' : ''}
+                        <div style={{ fontSize: 11, color: '#71717A', lineHeight: 1.65, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: '8px 10px', maxHeight: 110, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                          {rpt.slice(0, 500)}{rpt.length > 500 ? '…' : ''}
                         </div>
                       </div>
                     </div>
@@ -1244,19 +1402,16 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const ct = sc.contact || {};
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: 10, padding: '10px 14px',
-                      }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)', marginBottom: 8 }}>
-                          PROFILE SCAN
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)' }}>PROFILE SCAN</div>
+                          {expandBtn(msg)}
                         </div>
                         {gh?.username && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>GitHub: github.com/{gh.username}</div>}
                         {li?.headline && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>LinkedIn: {li.headline}</div>}
                         {ct.email    && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>Email: {ct.email}</div>}
                         {ct.phone    && <div style={{ fontSize: 12, color: '#71717A' }}>Phone: {ct.phone}</div>}
-                        {sc.summary  && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#52525B', lineHeight: 1.5 }}>{sc.summary.slice(0, 160)}</p>}
+                        {sc.summary  && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#52525B', lineHeight: 1.5 }}>{sc.summary.slice(0, 120)}…</p>}
                       </div>
                     </div>
                   );
@@ -1267,19 +1422,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const ca = msg.calendlyData;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(99,102,241,0.25)',
-                        borderRadius: 10, padding: '12px 14px',
-                      }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(99,102,241,0.6)', marginBottom: 8 }}>
-                          CALENDLY SCHEDULING LINK
-                        </div>
-                        {ca.url && (
-                          <a href={ca.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#818CF8', wordBreak: 'break-all', display: 'block', marginBottom: 6 }}>
-                            {ca.url}
-                          </a>
-                        )}
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10, padding: '12px 14px' }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(99,102,241,0.6)', marginBottom: 8 }}>CALENDLY SCHEDULING LINK</div>
+                        {ca.url && <a href={ca.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#818CF8', wordBreak: 'break-all', display: 'block', marginBottom: 6 }}>{ca.url}</a>}
                         {ca.eventTypes && <div style={{ fontSize: 11, color: '#52525B' }}>{ca.eventTypes}</div>}
                       </div>
                     </div>
