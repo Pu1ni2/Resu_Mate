@@ -89,9 +89,28 @@ function stripMarkdown(text) {
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/[🎯📊✅⚠️❌💡🔍]/gu, '')
+    .replace(/[🎯📊✅⚠️❌💡🔍🔄🌐📌]/gu, '')
     .replace(/^[\-\*]\s/gm, '• ')
     .trim();
+}
+
+// Extract a markdown section by keywords — handles any header format
+function extractSection(text, keywords) {
+  const lines = text.split('\n');
+  let inSection = false;
+  const content = [];
+  for (const line of lines) {
+    if (/^#{1,4}\s/.test(line)) {
+      const lower = line.toLowerCase().replace(/[🎯📊✅⚠️❌💡🔍🔄🌐📌]/gu, '');
+      const matches = keywords.some(kw => lower.includes(kw));
+      if (matches) { inSection = true; continue; }
+      if (inSection) break; // hit next section — stop
+      inSection = false;
+    } else if (inSection && line.trim()) {
+      content.push(line);
+    }
+  }
+  return stripMarkdown(content.join('\n').trim()) || null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -985,10 +1004,10 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               {/* ── Evaluation expanded ── */}
               {ev && (() => {
                 const rpt = ev.report || '';
-                const scoreMatch = rpt.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
+                const scoreMatch = rpt.match(/(?:overall\s+fit\s+score|fit\s+score|overall\s+score)[^:]*?:\s*(\d+)/i);
                 const score = scoreMatch ? scoreMatch[1] : null;
-                const verdictMatch = rpt.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
-                const verdict = verdictMatch ? verdictMatch[1].trim() : null;
+                const verdictMatch = rpt.match(/recommendation[^:]*?:\s*([^\n]{3,50})/i);
+                const verdict = verdictMatch ? stripMarkdown(verdictMatch[1].trim()).split('\n')[0] : null;
                 return (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(248,113,113,0.5)', marginBottom: 6 }}>EVALUATION REPORT</div>
@@ -1429,16 +1448,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const ev = msg.evalData;
                   const rpt = ev.report || '';
                   const plain = stripMarkdown(rpt);
-                  const scoreMatch = plain.match(/(?:overall[^:]{0,30}|fit\s+score[^:]{0,10}):\s*(\d+)/i);
+                  const scoreMatch = rpt.match(/(?:overall\s+fit\s+score|fit\s+score|overall\s+score)[^:]*?:\s*(\d+)/i);
                   const score = scoreMatch ? scoreMatch[1] : null;
-                  const verdictMatch = plain.match(/verdict[^:]*?:\s*([^\n.]{3,40})/i);
-                  const verdict = verdictMatch ? verdictMatch[1].trim() : null;
-                  // Extract weakness/drawback section
-                  const weakSection = rpt.match(/(?:weakness|drawback|gap|concern|limitation)[s]?[^:]*?:\n([^]+?)(?=\n###|\n##|$)/i);
-                  const weakText = weakSection ? stripMarkdown(weakSection[1].trim()) : null;
-                  // Extract strengths section
-                  const strengthSection = rpt.match(/(?:strength|match)[es]?[^:]*?:\n([^]+?)(?=\n###|\n##|$)/i);
-                  const strengthText = strengthSection ? stripMarkdown(strengthSection[1].trim()) : null;
+                  const verdictMatch = rpt.match(/recommendation[^:]*?:\s*([^\n]{3,50})/i);
+                  const verdict = verdictMatch ? stripMarkdown(verdictMatch[1].trim()).split('\n')[0] : null;
+                  // Extract sections by keyword — HR agent uses "Growth Areas" for weaknesses
+                  const weakText = extractSection(rpt, ['growth', 'area', 'concern', 'weakness', 'drawback', 'improvement', 'gap', 'limitation']);
+                  const strengthText = extractSection(rpt, ['strength', 'match']);
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 12, padding: '14px 16px' }}>
