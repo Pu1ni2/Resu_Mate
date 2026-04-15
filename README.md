@@ -6,13 +6,14 @@
   <img src="https://img.shields.io/badge/LiveKit-WebRTC-FF6B35?logo=webrtc&logoColor=white" />
   <img src="https://img.shields.io/badge/Simli-Avatar-8B5CF6" />
   <img src="https://img.shields.io/badge/ChromaDB-Vector--Store-green" />
+  <img src="https://img.shields.io/badge/Jarvis-Auto--Hire-F59E0B?logo=openai&logoColor=white" />
 </p>
 
 # ResuMate AI
 
-**A full-stack multi-agent AI hiring platform** with real-time avatar interviews, career coaching, and intelligent candidate evaluation.
+**A full-stack multi-agent AI hiring platform** with real-time avatar interviews, career coaching, intelligent candidate evaluation, and an autonomous AI hiring agent that runs your entire pipeline through voice conversation.
 
-ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system where **5 specialized AI agents** orchestrate the entire hiring pipeline, from resume parsing to live video interviews with a lip-synced AI avatar.
+ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system where **5 specialized AI agents** orchestrate the entire hiring pipeline, from resume parsing to live video interviews with a lip-synced AI avatar — all controllable through **Jarvis**, a conversational AI that automates hiring end-to-end.
 
 ---
 
@@ -99,6 +100,24 @@ AI career advisor with resume coaching, interview prep — then step into a live
 
 ## Features
 
+### Jarvis — Auto-Hire AI Agent
+
+**Jarvis** is a conversational AI hiring chief-of-staff that runs your entire hiring pipeline through voice or text — no clicking through dashboards.
+
+Talk to Jarvis like a colleague:
+
+- *"Screen everyone for a Python Developer role"* → Jarvis runs ATS scoring on all uploaded resumes and names the top candidates with scores
+- *"Check his GitHub"* → live GitHub profile analysis: repos, languages, top projects, AI technical impression
+- *"Give me his drawbacks"* → full AI evaluation report with specific Growth Areas, fit score, and strengths
+- *"Set up interviews for the top 3"* → creates interviews and shows a ready-to-send email draft with a single Send button
+- *"What's the market rate for this role in Bangalore?"* → live web search with sourced findings
+- *"Find his LinkedIn"* → full profile enrichment: GitHub, LinkedIn, contact info, AI summary
+- *"Share my Calendly link"* → fetches your scheduling link to send to candidates
+
+Every result appears as an interactive card in the chat — expand any card for full untruncated detail. All actions execute against the existing agent infrastructure; Jarvis narrates the key findings in plain spoken language and auto-reads them aloud.
+
+---
+
 ### Hiring Manager Portal
 - **Resume Upload & RAG** — PDF/DOCX parsing, ChromaDB vector storage, contextual AI chat
 - **Automated Candidate Ranking** — AI compares all candidates and recommends who to interview first
@@ -155,10 +174,11 @@ AI career advisor with resume coaching, interview prep — then step into a live
 
 ---
 
-## 5 Specialized Agents
+## 6 Specialized Agents
 
 | Agent | Role | Tools |
 |-------|------|-------|
+| **Jarvis** | Conversational auto-hire agent — runs the full pipeline through voice/text | GPT-4o, all agents below, TTS/STT |
 | **Data Agent** | Resume parsing, profile scraping, data enrichment | PyPDF2, Playwright, GitHub API, Tavily |
 | **HR Agent** | Candidate evaluation, email drafting, hiring recommendations | GPT-4o, salary research |
 | **Technical Agent** | Interview orchestration, credibility analysis, smart questions | LiveKit, Simli, OpenAI Realtime |
@@ -172,6 +192,8 @@ AI career advisor with resume coaching, interview prep — then step into a live
 ## How It Works
 
 ### Hiring Manager Flow
+
+**Manual (dashboard):**
 ```
 Upload Resumes → Data Agent parses + enriches
      ↓
@@ -186,6 +208,20 @@ Create Interview → Smart questions from resume analysis
 Email Candidate → AI-drafted invitation
      ↓
 Post-Interview → Credibility analysis + PDF export
+```
+
+**Automated via Jarvis (voice or text):**
+```
+"Screen everyone for a Python Developer"
+     → Jarvis runs ATS, names top candidates
+     ↓
+"Check his GitHub" / "Give me his drawbacks"
+     → Jarvis fetches GitHub profile / full evaluation report, narrates findings
+     ↓
+"Set up interviews for the top 3"
+     → Jarvis creates interviews, shows email draft card with Send button
+     ↓
+"Send it" → emails dispatched
 ```
 
 ### Candidate Flow
