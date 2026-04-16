@@ -6,6 +6,8 @@ import ATSResultsView from './ATSResultsView';
 const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
 const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
+const AUTO_RETRY_DELAY_MS = 650;
+const HANDS_FREE_DEFAULT = true;
 
 // ── Transcription quality filter ──────────────────────────────────────────────
 // Common single words that come from speaker echo / background noise
@@ -416,7 +418,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const interruptedRef = useRef(false);
   const voiceRef       = useRef(null);
   const listenAfterRef = useRef(null);   // timeout for auto-listen after TTS
-  const autoListenEnabledRef = useRef(false);
+  const autoListenEnabledRef = useRef(HANDS_FREE_DEFAULT);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { contextRef.current = context; }, [context]);
@@ -444,6 +446,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     return next;
   }, []);
 
+  const queueAutoListen = useCallback((delay = AUTO_LISTEN_DELAY_MS, nextHint = 'Listening…') => {
+    if (!autoListenEnabledRef.current) return;
+    if (listenAfterRef.current) clearTimeout(listenAfterRef.current);
+    listenAfterRef.current = setTimeout(() => {
+      const v = voiceRef.current;
+      if (!autoListenEnabledRef.current || !v) return;
+      if (processingRef.current || v.isRecording || v.isTranscribing || v.speakingMsgIndex !== null) return;
+      v.startRecording();
+      setHint(nextHint);
+    }, delay);
+  }, []);
+
   // ── Voice callbacks ───────────────────────────────────────────────────────
 
   // Transcription received — quality-filter, then send
@@ -451,28 +465,20 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     setHint('');
     if (!isUsableTranscription(text)) {
       // Silently discard garbage (background noise, non-Latin script)
-      autoListenEnabledRef.current = false;
       console.warn('Jarvis: discarded low-quality transcription:', text);
+      queueAutoListen(AUTO_RETRY_DELAY_MS);
       return;
     }
     autoListenEnabledRef.current = true;
     handleSendMessageRef.current?.(text); // eslint-disable-line
-  }, []);
+  }, [queueAutoListen]);
 
   // TTS finished — auto-start listening (conversational loop)
   const handleSpeakingDone = useCallback(() => {
     setHint('');
     if (!autoListenEnabledRef.current) return;
-    // Clear any pending auto-listen timer
-    if (listenAfterRef.current) clearTimeout(listenAfterRef.current);
-    // Give speakers/headphones a beat to settle before reopening the mic.
-    listenAfterRef.current = setTimeout(() => {
-      if (!processingRef.current) {
-        voiceRef.current?.startRecording();
-        setHint('Listening…');
-      }
-    }, AUTO_LISTEN_DELAY_MS);
-  }, []);
+    queueAutoListen(AUTO_LISTEN_DELAY_MS);
+  }, [queueAutoListen]);
 
   // Silence auto-stopped recording
   const handleAutoStop = useCallback(() => {
@@ -481,18 +487,19 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
   // Transcription failed — stop the loop, wait for user to speak or type again
   const handleTranscribeFail = useCallback((reason) => {
-    autoListenEnabledRef.current = false;
     setHint('');
     if (reason === 'mic_denied') {
+      autoListenEnabledRef.current = false;
       setHint('Mic access denied — use the text box below.');
     } else if (reason === 'session_expired') {
+      autoListenEnabledRef.current = false;
       const msg = 'Your session has expired. Please log out and log back in to continue.';
       appendMsg({ role: 'assistant', content: msg });
       setHint('Session expired — please log in again.');
+    } else if (autoListenEnabledRef.current && (reason === 'too_short' || reason === 'no_speech')) {
+      queueAutoListen(AUTO_RETRY_DELAY_MS);
     }
-    // too_short / no_speech / error: do NOT auto-restart (prevents infinite loop)
-    // User can click the mic button or orb to try again
-  }, [appendMsg]);
+  }, [appendMsg, queueAutoListen]);
 
   const voice = useVoice({
     apiBase: API_BASE,
@@ -1208,6 +1215,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       : "Hey, I'm Jarvis. No resumes uploaded yet — head back, add some, then come talk to me.";
 
     setStatus(n > 0 ? `${n} CANDIDATE${n !== 1 ? 'S' : ''} READY` : 'NO CANDIDATES');
+    autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
 
     setTimeout(() => {
       appendMsg({ role: 'assistant', content: greeting });
@@ -1224,21 +1232,24 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     if (v.speakingMsgIndex !== null) {
       interruptedRef.current = true;
       v.stopSpeaking();
-      setHint('');
+      autoListenEnabledRef.current = true;
+      queueAutoListen(120, 'Listening…');
       return;
     }
 
     // Toggle manual recording
     if (v.isRecording) {
+      autoListenEnabledRef.current = false;
       v.stopRecording();
-      setHint('');
+      if (listenAfterRef.current) clearTimeout(listenAfterRef.current);
+      setHint('Hands-free paused');
     } else {
       if (processingRef.current) return;
       autoListenEnabledRef.current = true;
       v.startRecording();
-      setHint('Listening… speak, then pause');
+      setHint('Listening…');
     }
-  }, []);
+  }, [queueAutoListen]);
 
   // ── Orb click — same as mic (interrupt or start) ──────────────────────────
   const handleOrbClick = useCallback(() => {
@@ -1250,7 +1261,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     if (e.key === 'Enter' && !e.shiftKey && textInput.trim() && !isProcessing) {
       e.preventDefault();
       const t = textInput.trim();
-      autoListenEnabledRef.current = false;
+      autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
       setTextInput('');
       handleSendMessage(t);
     }
@@ -1259,7 +1270,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const handleSendClick = () => {
     const t = textInput.trim();
     if (!t || isProcessing) return;
-    autoListenEnabledRef.current = false;
+    autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
     setTextInput('');
     handleSendMessage(t);
   };
@@ -1294,7 +1305,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     setTextInput('');
     setHint('');
     setResultsData(null);
-    autoListenEnabledRef.current = false;
+    autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
 
     // Allow greeting to fire again
     hasGreetedRef.current = false;
@@ -1308,6 +1319,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         ? `Hey, I'm Jarvis. I can see ${n} resume${n !== 1 ? 's' : ''} loaded. What role are you hiring for?`
         : "Hey, I'm Jarvis. No resumes uploaded yet — head back, add some, then come talk to me.";
       setStatus(n > 0 ? `${n} CANDIDATE${n !== 1 ? 'S' : ''} READY` : 'NO CANDIDATES');
+      autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
       appendMsg({ role: 'assistant', content: greeting });
       voiceRef.current?.speakText(greeting, msgIndexRef.current++);
       hasGreetedRef.current = true;
@@ -1886,7 +1898,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           {/* Orb */}
           <div
             onClick={handleOrbClick}
-            title={voice.speakingMsgIndex !== null ? 'Click to interrupt' : voice.isRecording ? 'Click to stop' : 'Click to speak'}
+            title={voice.speakingMsgIndex !== null ? 'Interrupt and reply' : voice.isRecording ? 'Pause listening' : 'Resume listening'}
             style={{ position: 'relative', width: 120, height: 120, cursor: 'pointer', marginBottom: 18 }}
           >
             {orbMode === 'listening' && [0, 1, 2].map(i => (
@@ -2459,7 +2471,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 voice.isRecording    ? 'Recording… (or type here)' :
                 voice.isTranscribing ? 'Transcribing…' :
                 isProcessing         ? 'Jarvis is thinking…' :
-                'Type a message, or click the mic to speak'
+                'Type a message, or let Jarvis keep listening'
               }
               disabled={isProcessing || voice.isTranscribing}
               style={{
@@ -2489,9 +2501,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               onClick={handleMicClick}
               disabled={isProcessing && !micActive}
               title={
-                voice.speakingMsgIndex !== null ? 'Click to interrupt Jarvis' :
-                voice.isRecording               ? 'Click to stop recording' :
-                                                  'Click to speak'
+                voice.speakingMsgIndex !== null ? 'Interrupt Jarvis and reply' :
+                voice.isRecording               ? 'Pause listening' :
+                                                  'Resume listening'
               }
               style={{
                 width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
