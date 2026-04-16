@@ -102,19 +102,26 @@ AI career advisor with resume coaching, interview prep — then step into a live
 
 ### Jarvis — Auto-Hire AI Agent
 
-**Jarvis** is a conversational AI hiring chief-of-staff that runs your entire hiring pipeline through voice or text — no clicking through dashboards.
+**Jarvis** is a conversational AI hiring chief-of-staff that turns the hiring manager dashboard into one continuous voice/text workflow. It sits on top of the existing ATS, evaluation, enrichment, interview, reporting, and export features and orchestrates them through natural conversation.
 
 Talk to Jarvis like a colleague:
 
 - *"Screen everyone for a Python Developer role"* → Jarvis runs ATS scoring on all uploaded resumes and names the top candidates with scores
 - *"Check his GitHub"* → live GitHub profile analysis: repos, languages, top projects, AI technical impression
 - *"Give me his drawbacks"* → full AI evaluation report with specific Growth Areas, fit score, and strengths
+- *"Show me her resume red flags"* → resume intelligence with confidence score, gaps, verification targets, and red flags
 - *"Set up interviews for the top 3"* → creates interviews and shows a ready-to-send email draft with a single Send button
+- *"Create an interview for Maya"* → builds a single-candidate interview with role, level, focus areas, and candidate access
+- *"How did his interview go?"* → fetches the completed interview report with scores, violations, eye contact, and summary
+- *"Did he exaggerate on the resume?"* → runs credibility analysis by comparing resume claims against interview performance
+- *"Open the PDF report"* → launches the branded downloadable assessment report
 - *"What's the market rate for this role in Bangalore?"* → live web search with sourced findings
 - *"Find his LinkedIn"* → full profile enrichment: GitHub, LinkedIn, contact info, AI summary
 - *"Share my Calendly link"* → fetches your scheduling link to send to candidates
 
-Every result appears as an interactive card in the chat — expand any card for full untruncated detail. All actions execute against the existing agent infrastructure; Jarvis narrates the key findings in plain spoken language and auto-reads them aloud.
+Jarvis keeps session state for the active role, active candidate, shortlisted candidates, interruption state, and cached artifacts such as GitHub analysis, resume intelligence, evaluations, interview configs, interview reports, credibility checks, and research notes. That lets follow-ups like *"check his GitHub"*, *"give me her drawbacks"*, or *"send it"* resolve naturally without restating context.
+
+Every result appears as an interactive card in the chat — expand any card for full untruncated detail. Jarvis keeps spoken replies short and human while the cards expose the full operational output from the underlying agents and APIs.
 
 ---
 
@@ -216,12 +223,15 @@ Post-Interview → Credibility analysis + PDF export
      → Jarvis runs ATS, names top candidates
      ↓
 "Check his GitHub" / "Give me his drawbacks"
-     → Jarvis fetches GitHub profile / full evaluation report, narrates findings
+     → Jarvis resolves the active candidate, reuses cached context when possible, and narrates findings
+     ↓
+"Show me her resume red flags" / "How did his interview go?"
+     → Jarvis loads resume intelligence or the interview report directly in-chat
      ↓
 "Set up interviews for the top 3"
      → Jarvis creates interviews, shows email draft card with Send button
      ↓
-"Send it" → emails dispatched
+"Send it" / "Open the PDF report" → emails dispatch or export completes without leaving the conversation
 ```
 
 ### Candidate Flow
