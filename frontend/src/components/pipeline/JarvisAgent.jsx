@@ -4,7 +4,7 @@ import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
 
 const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
-const SESSION_KEY = 'jarvis_session_v2';
+const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
 
 // ── Transcription quality filter ──────────────────────────────────────────────
@@ -141,6 +141,155 @@ function verdictColor(v = '') {
   return '#F87171';
 }
 
+function createDefaultJarvisContext() {
+  return {
+    role: null,
+    lastAtsResults: null,
+    shortlistedIds: [],
+    lastAction: null,
+    pendingAction: null,
+    activeCandidateId: null,
+    activeCandidateName: null,
+    interrupted: false,
+    artifacts: {
+      github: {},
+      scans: {},
+      evaluations: {},
+      resumeIntel: {},
+      interviews: {},
+      interviewReports: {},
+      credibility: {},
+      research: {},
+    },
+  };
+}
+
+function normalizeContextPatch(patch = {}) {
+  const next = { ...(patch || {}) };
+
+  if (next.last_ats_results !== undefined && next.lastAtsResults === undefined) next.lastAtsResults = next.last_ats_results;
+  if (next.shortlisted_ids !== undefined && next.shortlistedIds === undefined) next.shortlistedIds = next.shortlisted_ids;
+  if (next.last_action !== undefined && next.lastAction === undefined) next.lastAction = next.last_action;
+  if (next.pending_action !== undefined && next.pendingAction === undefined) next.pendingAction = next.pending_action;
+  if (next.active_candidate_id !== undefined && next.activeCandidateId === undefined) next.activeCandidateId = next.active_candidate_id;
+  if (next.active_candidate_name !== undefined && next.activeCandidateName === undefined) next.activeCandidateName = next.active_candidate_name;
+
+  delete next.last_ats_results;
+  delete next.shortlisted_ids;
+  delete next.last_action;
+  delete next.pending_action;
+  delete next.active_candidate_id;
+  delete next.active_candidate_name;
+
+  return next;
+}
+
+function mergeArtifacts(current = {}, patch = {}) {
+  const next = { ...current };
+  Object.entries(patch || {}).forEach(([bucket, value]) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      next[bucket] = { ...(current?.[bucket] || {}), ...value };
+    } else {
+      next[bucket] = value;
+    }
+  });
+  return next;
+}
+
+function mergeJarvisContext(current, patch = {}) {
+  const normalized = normalizeContextPatch(patch);
+  const next = { ...current, ...normalized };
+  if (normalized.shortlistedIds !== undefined) next.shortlistedIds = normalized.shortlistedIds;
+  if (normalized.lastAtsResults !== undefined) next.lastAtsResults = normalized.lastAtsResults;
+  if (normalized.pendingAction !== undefined) next.pendingAction = normalized.pendingAction;
+  if (normalized.artifacts) next.artifacts = mergeArtifacts(current?.artifacts, normalized.artifacts);
+  else next.artifacts = current?.artifacts || createDefaultJarvisContext().artifacts;
+  return next;
+}
+
+function normalizeSavedContext(raw) {
+  return mergeJarvisContext(createDefaultJarvisContext(), raw || {});
+}
+
+function extractScore(text) {
+  const match = String(text || '').match(/(?:overall\s+fit\s+score|fit\s+score|overall\s+score)[^:]*?:\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function extractVerdict(text) {
+  const match = String(text || '').match(/recommendation[^:]*?:\s*([^\n]{3,50})/i);
+  return match ? stripMarkdown(match[1].trim()).split('\n')[0] : '';
+}
+
+function buildEvaluationArtifact(report, role) {
+  const strengths = (extractSection(report, ['strength', 'match']) || '')
+    .split(/[.;]\s+/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const weaknesses = (extractSection(report, ['growth', 'area', 'concern', 'weakness', 'drawback', 'improvement', 'gap', 'limitation']) || '')
+    .split(/[.;]\s+/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+  return {
+    role: role || '',
+    score: extractScore(report),
+    verdict: extractVerdict(report),
+    strengths,
+    weaknesses,
+    summary: stripMarkdown(report).slice(0, 320),
+    report,
+  };
+}
+
+function buildResumeIntelArtifact(intel) {
+  return {
+    confidence: intel?.resume_confidence_score || 0,
+    gaps: (intel?.gaps || []).map(g => g.detail).filter(Boolean).slice(0, 3),
+    redFlags: (intel?.red_flags || []).slice(0, 3),
+    verificationTargets: (intel?.verification_targets || []).map(t => t.skill || t.claim).filter(Boolean).slice(0, 4),
+    intelligence: intel,
+  };
+}
+
+function buildInterviewArtifact(config = {}, candidateEmail = '') {
+  return {
+    candidateEmail,
+    role: config.role || '',
+    level: config.level || '',
+    numQuestions: config.num_questions || config.numQuestions || 0,
+    focusAreas: config.focus_areas || config.focusAreas || [],
+    status: config.status || 'pending',
+    config,
+  };
+}
+
+function buildInterviewReportArtifact(report = {}, candidateEmail = '') {
+  const scores = Array.isArray(report.scores) ? report.scores : [];
+  const avgScore = report.avgScore || (scores.length
+    ? Number((scores.reduce((sum, item) => sum + (item?.score || 0), 0) / scores.length).toFixed(1))
+    : null);
+  return {
+    candidateEmail,
+    avgScore,
+    eyeContact: report.eyeContact || 0,
+    violations: report.violations || 0,
+    summary: stripMarkdown(report.report || '').slice(0, 320),
+    report,
+  };
+}
+
+function buildCredibilityArtifact(credibility = {}, candidateEmail = '') {
+  return {
+    candidateEmail,
+    credibilityScore: credibility.credibility_score || 0,
+    recommendation: credibility.hiring_recommendation || '',
+    keyInsights: (credibility.key_insights || []).slice(0, 3),
+    details: credibility,
+  };
+}
+
+function buildResearchArtifact(query, results = []) {
+  const sources = (results || []).filter(r => r?.url).slice(0, 4).map(r => ({ title: r.title, url: r.url }));
+  const summary = (results || []).map(r => r?.snippet || '').filter(Boolean).join(' ').slice(0, 500);
+  return { lastQuery: query, summary, sources };
+}
+
 let _id = 0;
 const newId = () => ++_id;
 
@@ -231,12 +380,23 @@ function TypingDots() {
 
 export default function JarvisAgent({ candidatesSummary = [], onClose, onComplete }) {
   // ── Session restore ────────────────────────────────────────────────────────
+  const candidateSignature = candidatesSummary
+    .map(c => `${c.id}:${c.name || ''}`)
+    .sort()
+    .join('|');
+
   const savedSession = (() => {
-    try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+      if (!saved || saved.signature !== candidateSignature) return null;
+      return saved;
+    } catch {
+      return null;
+    }
   })();
 
   const [messages,     setMessages]     = useState(savedSession?.messages     || []);
-  const [context,      setContext]      = useState(savedSession?.context      || { role: null, lastAtsResults: null, shortlistedIds: [], lastAction: null, pendingAction: null });
+  const [context,      setContext]      = useState(normalizeSavedContext(savedSession?.context));
   const [isProcessing, setIsProcessing] = useState(false);
   const [orbMode,      setOrbMode]      = useState('idle');
   const [status,       setStatus]       = useState(savedSession?.status       || '');
@@ -250,6 +410,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const hasGreetedRef  = useRef(!!savedSession);   // skip greeting if restoring
   const msgIndexRef    = useRef(0);
   const messagesEndRef = useRef(null);
+  const messagesRef    = useRef(messages);
   const contextRef     = useRef(context);
   const processingRef  = useRef(false);
   const interruptedRef = useRef(false);
@@ -257,20 +418,30 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const listenAfterRef = useRef(null);   // timeout for auto-listen after TTS
   const autoListenEnabledRef = useRef(false);
 
-  useEffect(() => { contextRef.current   = context;      }, [context]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { contextRef.current = context; }, [context]);
   useEffect(() => { processingRef.current = isProcessing; }, [isProcessing]);
 
   // ── Persist session to storage on every change ────────────────────────────
   useEffect(() => {
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ messages, context, status }));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ signature: candidateSignature, messages, context, status }));
     } catch {}
-  }, [messages, context, status]);
+  }, [candidateSignature, messages, context, status]);
 
   // ── Append message ────────────────────────────────────────────────────────
   const appendMsg = useCallback((msg) => {
     setMessages(prev => [...prev, { id: newId(), ...msg }]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+  }, []);
+
+  const updateContext = useCallback((patch) => {
+    const current = contextRef.current;
+    const patchValue = typeof patch === 'function' ? patch(current) : patch;
+    const next = mergeJarvisContext(current, patchValue || {});
+    contextRef.current = next;
+    setContext(next);
+    return next;
   }, []);
 
   // ── Voice callbacks ───────────────────────────────────────────────────────
@@ -367,16 +538,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     const wasInterrupted = interruptedRef.current;
     interruptedRef.current = false;
 
-    // Snapshot conversation history synchronously
-    const history = [];
-    setMessages(prev => {
-      prev.forEach(m => {
-        if ((m.role === 'user' || m.role === 'assistant') && !m.content?.startsWith('[')) {
-          history.push({ role: m.role, content: m.content });
-        }
-      });
-      return prev;
-    });
+    const history = messagesRef.current
+      .filter(m => (m.role === 'user' || m.role === 'assistant') && !m.content?.startsWith('['))
+      .map(m => ({ role: m.role, content: m.content }));
 
     try {
       const token = localStorage.getItem('resumate_hm_token') || '';
@@ -392,7 +556,10 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             last_ats_results: currentCtx.lastAtsResults,
             shortlisted_ids: currentCtx.shortlistedIds,
             last_action: currentCtx.lastAction,
-            pending_action: currentCtx.pendingAction,   // tells GPT-4o if confirmation was already asked
+            pending_action: currentCtx.pendingAction,
+            active_candidate_id: currentCtx.activeCandidateId,
+            active_candidate_name: currentCtx.activeCandidateName,
+            artifacts: currentCtx.artifacts,
             interrupted: wasInterrupted,
           },
         }),
@@ -415,20 +582,22 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
       // Track pending action for confirmation loop prevention
       if (awaiting_confirmation && action) {
-        setContext(c => ({ ...c, pendingAction: { action, params: action_params } }));
+        updateContext({
+          ...updated_context,
+          pendingAction: { action, params: action_params },
+        });
       } else {
-        setContext(c => ({
-          ...c,
+        updateContext({
+          ...updated_context,
           pendingAction: null,
-          ...(updated_context?.role        ? { role: updated_context.role }              : {}),
-          ...(updated_context?.last_action ? { lastAction: updated_context.last_action } : {}),
-        }));
+        });
       }
 
       setIsProcessing(false);
+      const latestCtx = contextRef.current;
       setStatus(
-        currentCtx.shortlistedIds.length > 0
-          ? `${currentCtx.shortlistedIds.length} SHORTLISTED`
+        latestCtx.shortlistedIds.length > 0
+          ? `${latestCtx.shortlistedIds.length} SHORTLISTED`
           : candidatesSummary.length > 0
             ? `${candidatesSummary.length} CANDIDATE${candidatesSummary.length !== 1 ? 'S' : ''} READY`
             : 'READY'
@@ -451,6 +620,44 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   // Stable ref so callbacks can call handleSendMessage without circular deps
   const handleSendMessageRef = useRef(handleSendMessage);
   useEffect(() => { handleSendMessageRef.current = handleSendMessage; }, [handleSendMessage]);
+
+  const getCandidateMeta = useCallback((candidateId) => (
+    candidatesSummary.find(c => Number(c.id) === Number(candidateId))
+  ), [candidatesSummary]);
+
+  const getKnownEmail = useCallback((candidateId) => {
+    const ctx = contextRef.current;
+    const key = String(candidateId);
+    return (
+      getCandidateMeta(candidateId)?.email ||
+      ctx.artifacts?.scans?.[key]?.contact?.email ||
+      ctx.artifacts?.interviews?.[key]?.candidateEmail ||
+      ctx.artifacts?.interviewReports?.[key]?.candidateEmail ||
+      ctx.artifacts?.credibility?.[key]?.candidateEmail ||
+      ''
+    );
+  }, [getCandidateMeta]);
+
+  const focusCandidate = useCallback((candidateId, fallbackName = '') => {
+    const candidate = getCandidateMeta(candidateId);
+    const name = candidate?.name || fallbackName || contextRef.current.activeCandidateName || 'Candidate';
+    updateContext({
+      activeCandidateId: candidateId ?? contextRef.current.activeCandidateId,
+      activeCandidateName: name,
+    });
+    return { id: candidateId, name, candidate };
+  }, [getCandidateMeta, updateContext]);
+
+  const cacheCandidateArtifact = useCallback((bucket, candidateId, payload) => {
+    if (candidateId == null) return;
+    updateContext({
+      artifacts: {
+        [bucket]: {
+          [String(candidateId)]: payload,
+        },
+      },
+    });
+  }, [updateContext]);
 
   // ── Action executor ───────────────────────────────────────────────────────
   // IMPORTANT: batch_action and list_candidates do NOT recurse back into
@@ -496,7 +703,15 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         if (!res.ok) throw new Error(`Pipeline ${res.status}`);
         const d = await res.json();
         const shortlisted = (d.shortlist || []).map(r => r.candidate_id);
-        setContext(c => ({ ...c, role: params.role || c.role, lastAtsResults: d, shortlistedIds: shortlisted, lastAction: 'run_ats' }));
+        const firstCandidate = (d.shortlist || [])[0] || (d.results || [])[0] || null;
+        updateContext({
+          role: params.role || ctx.role,
+          lastAtsResults: d,
+          shortlistedIds: shortlisted,
+          lastAction: 'run_ats',
+          activeCandidateId: firstCandidate?.candidate_id || null,
+          activeCandidateName: firstCandidate?.name || null,
+        });
         appendMsg({ role: 'action', content: `Screened ${d.total_screened} candidates`, actionData: d });
         setStatus(`${shortlisted.length} SHORTLISTED`);
         // Send result summary to Jarvis so it can narrate the top candidates
@@ -527,8 +742,27 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const sent = d.emails_sent || 0;
         const created = d.interviews_created || 0;
         const outcomes = d.outcomes || [];
+        const firstOutcome = outcomes[0] || {};
+        updateContext({
+          lastAction: 'batch_action',
+          pendingAction: null,
+          ...(firstOutcome.candidate_id ? { activeCandidateId: firstOutcome.candidate_id } : {}),
+          ...(firstOutcome.name ? { activeCandidateName: firstOutcome.name } : {}),
+        });
 
-        setContext(c => ({ ...c, lastAction: 'batch_action', pendingAction: null }));
+        outcomes.forEach((outcome) => {
+          if (outcome?.candidate_id && outcome?.email) {
+            cacheCandidateArtifact('interviews', outcome.candidate_id, {
+              candidateEmail: outcome.email,
+              role: batchBody.role,
+              level: batchBody.level,
+              numQuestions: batchBody.num_questions,
+              focusAreas: batchBody.focus_areas || [],
+              status: outcome.interview_created ? 'created' : 'failed',
+              interviewId: outcome.interview_id || null,
+            });
+          }
+        });
 
         if (params.send_emails) {
           // ── Send mode ─────────────────────────────────────────────────────
@@ -581,26 +815,32 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     } else if (action === 'research_web') {
       setStatus('SEARCHING…');
       try {
+        const candidateName = params.candidate_name || ctx.activeCandidateName || null;
         const res = await fetch(`${API_BASE}/api/chat/web-search`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({
             query: params.query || '',
-            candidate_name: ctx.role || null,
+            candidate_id: ctx.activeCandidateId || null,
+            candidate_name: candidateName,
           }),
         });
         if (handle401(res)) return;
         if (!res.ok) throw new Error(`Search ${res.status}`);
         const d = await res.json();
+        const results = d.results || [];
+        const artifact = buildResearchArtifact(params.query, results);
+        const snippet = artifact.summary || 'No useful results came back.';
+        const sources = (artifact.sources || []).slice(0, 3).map(s => s.title).join(', ');
 
-        // Build a compact summary for Jarvis to narrate
-        const webCtx = d.web_context || '';
-        const sources = (d.sources || []).slice(0, 2).map(s => s.title).join(', ');
-        const snippet = webCtx.slice(0, 500);
+        updateContext({
+          lastAction: 'research_web',
+          artifacts: { research: artifact },
+        });
 
         appendMsg({
           role: 'action',
           content: `Web search: "${params.query}"`,
-          searchData: { query: params.query, sources: d.sources || [], snippet: webCtx.slice(0, 200) },
+          searchData: { query: params.query, sources: artifact.sources || [], snippet: snippet.slice(0, 260) },
         });
         setStatus(candidatesSummary.length > 0 ? `${candidatesSummary.length} CANDIDATES READY` : 'READY');
         await handleSendMessageRef.current(
@@ -614,8 +854,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     } else if (action === 'analyze_github') {
       setStatus('SCANNING GITHUB…');
       try {
-        // Pass github_url from candidatesSummary if available (extracted from PDF hyperlinks)
-        const candidateMeta = candidatesSummary.find(c => c.id === params.candidate_id);
+        focusCandidate(params.candidate_id, params.candidate_name);
+        const candidateMeta = getCandidateMeta(params.candidate_id);
         const githubUrl = candidateMeta?.github_url || '';
         const res = await fetch(`${API_BASE}/api/chat/github-analyze`, {
           method: 'POST', headers: hdrs,
@@ -636,11 +876,19 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const name = profile.name || params.candidate_name || 'Candidate';
         const repos = profile.public_repos ?? '?';
         const stars = (profile.top_repos || []).reduce((s, r) => s + (r.stars || r.stargazers_count || 0), 0);
-        // GitHub tool returns `languages` as {Python: 3, JS: 1}, not top_languages array
         const langsDict = profile.languages || {};
         const langs = Object.keys(langsDict).slice(0, 4).join(', ') || 'N/A';
         const topRepos = (profile.top_repos || []).slice(0, 4);
         const repoNames = topRepos.map(r => r.name).join(', ');
+
+        cacheCandidateArtifact('github', params.candidate_id, {
+          name,
+          summary: stripMarkdown(analysis).slice(0, 320),
+          topProjects: topRepos.map(r => r.name).filter(Boolean).slice(0, 4),
+          languages: Object.keys(langsDict).slice(0, 4),
+          profile,
+        });
+        updateContext({ lastAction: 'analyze_github' });
 
         appendMsg({
           role: 'action',
@@ -659,6 +907,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     } else if (action === 'deep_evaluate') {
       setStatus('EVALUATING…');
       try {
+        focusCandidate(params.candidate_id, params.candidate_name);
         const res = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({
@@ -669,8 +918,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         if (handle401(res)) return;
         if (!res.ok) throw new Error(`Eval ${res.status}`);
         const d = await res.json();
+        if (d.error) throw new Error(d.error);
 
         const report = d.report || d.output || '';
+        const artifact = buildEvaluationArtifact(report, params.role || ctx.role || '');
+        cacheCandidateArtifact('evaluations', params.candidate_id, artifact);
+        updateContext({ lastAction: 'deep_evaluate' });
         appendMsg({
           role: 'action',
           content: `Deep evaluation complete`,
@@ -689,6 +942,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     } else if (action === 'scan_candidate') {
       setStatus('SCANNING PROFILE…');
       try {
+        focusCandidate(params.candidate_id, params.candidate_name);
         const res = await fetch(`${API_BASE}/api/chat/scan-resume`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id }),
@@ -715,6 +969,15 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         if (contact?.email) parts.push(`Email: ${contact.email}`);
         if (contact?.phone) parts.push(`Phone: ${contact.phone}`);
 
+        cacheCandidateArtifact('scans', params.candidate_id, {
+          summary: summary.slice(0, 320),
+          contact,
+          githubUsername: gh?.username || '',
+          linkedinHeadline: li?.headline || li?.profile_url || '',
+          profiles,
+        });
+        updateContext({ lastAction: 'scan_candidate' });
+
         appendMsg({
           role: 'action',
           content: `Profile scan: ${params.candidate_name || 'Candidate'}`,
@@ -731,6 +994,173 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         setStatus('ERROR');
         directSay(`Profile scan failed — ${err.message}.`);
       }
+
+    } else if (action === 'resume_intelligence') {
+      setStatus('ANALYZING RESUME…');
+      try {
+        focusCandidate(params.candidate_id, params.candidate_name);
+        const res = await fetch(`${API_BASE}/api/chat/resume-intelligence`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ candidate_id: params.candidate_id }),
+        });
+        if (handle401(res)) return;
+        if (!res.ok) throw new Error(`Resume intel ${res.status}`);
+        const d = await res.json();
+        const intel = d.intelligence;
+        const artifact = buildResumeIntelArtifact(intel);
+        cacheCandidateArtifact('resumeIntel', params.candidate_id, artifact);
+        updateContext({ lastAction: 'resume_intelligence' });
+        appendMsg({
+          role: 'action',
+          content: 'Resume intelligence ready',
+          resumeIntelData: { intelligence: intel, candidateName: params.candidate_name || contextRef.current.activeCandidateName || 'Candidate' },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[RESUME_INTEL_RESULT] ${params.candidate_name || 'Candidate'}: confidence ${artifact.confidence}. Gaps: ${(artifact.gaps || []).join('; ') || 'none called out'}. Red flags: ${(artifact.redFlags || []).join('; ') || 'none'}. Verification targets: ${(artifact.verificationTargets || []).join(', ') || 'none'}.`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`Resume analysis failed — ${err.message}.`);
+      }
+
+    } else if (action === 'create_interview') {
+      setStatus('CREATING INTERVIEW…');
+      try {
+        focusCandidate(params.candidate_id, params.candidate_name);
+        const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
+        if (!candidateEmail) {
+          directSay(`I need the candidate's email before I can create the interview. Ask me to scan their profile first.`);
+          setStatus('DONE');
+          return;
+        }
+
+        const candidateMeta = getCandidateMeta(params.candidate_id);
+        const body = {
+          candidate_id: params.candidate_id,
+          candidate_email: candidateEmail,
+          candidate_name: params.candidate_name || candidateMeta?.name || 'Candidate',
+          role: params.role || ctx.role || candidateMeta?.predicted_role || 'General',
+          level: params.level || candidateMeta?.experience_level || 'Mid-Level',
+          num_questions: params.num_questions || 8,
+          focus_areas: params.focus_areas || [],
+        };
+        const res = await fetch(`${API_BASE}/api/chat/create-interview`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify(body),
+        });
+        if (handle401(res)) return;
+        if (!res.ok) throw new Error(`Create interview ${res.status}`);
+        const d = await res.json();
+        const interviewConfig = d.interview_config || body;
+        cacheCandidateArtifact('interviews', params.candidate_id, buildInterviewArtifact(interviewConfig, candidateEmail));
+        updateContext({ lastAction: 'create_interview' });
+        appendMsg({
+          role: 'action',
+          content: `Interview created for ${body.candidate_name}`,
+          interviewData: { candidateName: body.candidate_name, candidateEmail, config: interviewConfig },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[INTERVIEW_CREATED_RESULT] Created an interview for ${body.candidate_name} at ${candidateEmail}. Role: ${interviewConfig.role || body.role}. ${interviewConfig.num_questions || body.num_questions} questions. Focus: ${(interviewConfig.focus_areas || body.focus_areas || []).join(', ') || 'general skills'}.`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`I couldn't create the interview — ${err.message}.`);
+      }
+
+    } else if (action === 'get_interview_report') {
+      setStatus('FETCHING REPORT…');
+      try {
+        focusCandidate(params.candidate_id, params.candidate_name);
+        const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
+        if (!candidateEmail) {
+          directSay(`I don't have an email for that candidate yet, so I can't fetch the interview report.`);
+          setStatus('DONE');
+          return;
+        }
+        const res = await fetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (handle401(res)) return;
+        if (!res.ok) throw new Error(`Interview report ${res.status}`);
+        const d = await res.json();
+        const report = d.results?.[0]?.report;
+        if (!report) {
+          directSay(`There isn't a completed interview report for ${params.candidate_name || 'this candidate'} yet.`);
+          setStatus('DONE');
+          return;
+        }
+        const artifact = buildInterviewReportArtifact(report, candidateEmail);
+        cacheCandidateArtifact('interviewReports', params.candidate_id, artifact);
+        updateContext({ lastAction: 'get_interview_report' });
+        appendMsg({
+          role: 'action',
+          content: `Interview report: ${params.candidate_name || 'Candidate'}`,
+          reportData: { candidateName: params.candidate_name || 'Candidate', candidateEmail, report },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.avgScore ?? 'N/A'} on average. Eye contact ${artifact.eyeContact} percent. Violations ${artifact.violations}. ${artifact.summary || ''}`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`I couldn't fetch the interview report — ${err.message}.`);
+      }
+
+    } else if (action === 'credibility_analysis') {
+      setStatus('CHECKING CREDIBILITY…');
+      try {
+        focusCandidate(params.candidate_id, params.candidate_name);
+        const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
+        if (!candidateEmail) {
+          directSay(`I need the candidate's email before I can run credibility analysis.`);
+          setStatus('DONE');
+          return;
+        }
+        const res = await fetch(`${API_BASE}/api/chat/credibility-analysis`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ candidate_id: params.candidate_id, candidate_email: candidateEmail }),
+        });
+        if (handle401(res)) return;
+        if (!res.ok) throw new Error(`Credibility ${res.status}`);
+        const d = await res.json();
+        const credibility = d.credibility;
+        const artifact = buildCredibilityArtifact(credibility, candidateEmail);
+        cacheCandidateArtifact('credibility', params.candidate_id, artifact);
+        updateContext({ lastAction: 'credibility_analysis' });
+        appendMsg({
+          role: 'action',
+          content: `Credibility analysis: ${params.candidate_name || 'Candidate'}`,
+          credibilityData: { candidateName: params.candidate_name || 'Candidate', candidateEmail, credibility },
+        });
+        setStatus('DONE');
+        await handleSendMessageRef.current(
+          `[CREDIBILITY_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.credibilityScore} out of 100 for credibility. Recommendation: ${artifact.recommendation || 'not provided'}. Key insights: ${(artifact.keyInsights || []).join('; ') || 'none'}.`
+        );
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`Credibility analysis failed — ${err.message}.`);
+      }
+
+    } else if (action === 'export_report') {
+      const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
+      if (!candidateEmail) {
+        directSay(`I don't have the candidate email, so I can't export the PDF yet.`);
+        setStatus('DONE');
+        return;
+      }
+      const url = `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`;
+      window.open(url, '_blank');
+      appendMsg({
+        role: 'action',
+        content: `Opened PDF report for ${params.candidate_name || 'Candidate'}`,
+        exportData: { url, candidateName: params.candidate_name || 'Candidate' },
+      });
+      updateContext({ lastAction: 'export_report' });
+      setStatus('DONE');
+      directSay(`I opened the PDF report for ${params.candidate_name || 'that candidate'}.`);
 
     } else if (action === 'get_calendly') {
       setStatus('FETCHING CALENDLY…');
@@ -765,7 +1195,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         directSay(`Couldn't fetch Calendly — ${err.message}.`);
       }
     }
-  }, [candidatesSummary, appendMsg]);
+  }, [appendMsg, cacheCandidateArtifact, candidatesSummary, focusCandidate, getCandidateMeta, getKnownEmail, updateContext]);
 
   // ── Greeting (once) ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -856,7 +1286,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
     // Reset all state
     setMessages([]);
-    setContext({ role: null, lastAtsResults: null, shortlistedIds: [], lastAction: null, pendingAction: null });
+    const freshContext = createDefaultJarvisContext();
+    contextRef.current = freshContext;
+    setContext(freshContext);
     setIsProcessing(false);
     setOrbMode('idle');
     setTextInput('');
@@ -941,6 +1373,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const s  = expandedCard.searchData;
         const em = expandedCard.emailDraftData;
         const sc = expandedCard.scanData;
+        const ri = expandedCard.resumeIntelData;
+        const iv = expandedCard.interviewData;
+        const rp = expandedCard.reportData;
+        const cr = expandedCard.credibilityData;
+        const ex = expandedCard.exportData;
         return (
           <div
             onClick={() => setExpandedCard(null)}
@@ -1123,6 +1560,244 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   </>
                 );
               })()}
+
+              {/* Resume intelligence expanded */}
+              {ri && (() => {
+                const intel = ri.intelligence || {};
+                const gaps = intel.gaps || [];
+                const targets = intel.verification_targets || [];
+                const strengths = intel.strong_points || [];
+                const redFlags = intel.red_flags || [];
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(139,92,246,0.55)', marginBottom: 6 }}>RESUME INTELLIGENCE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 6 }}>{ri.candidateName || 'Candidate'}</div>
+                    <div style={{ fontSize: 30, fontWeight: 900, color: intel.resume_confidence_score >= 70 ? '#4ADE80' : intel.resume_confidence_score >= 50 ? '#F59E0B' : '#F87171', marginBottom: 18 }}>
+                      {intel.resume_confidence_score || 0}
+                      <span style={{ fontSize: 13, color: '#52525B', marginLeft: 6 }}>resume confidence</span>
+                    </div>
+                    {gaps.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>GAPS AND INCONSISTENCIES</div>
+                        {gaps.map((gap, i) => (
+                          <div key={i} style={{ padding: '10px 0', borderBottom: i < gaps.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: gap.severity === 'high' ? '#F87171' : gap.severity === 'medium' ? '#FCD34D' : '#94A3B8', marginBottom: 4 }}>
+                              {(gap.type || 'gap').replace(/_/g, ' ').toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.6 }}>{gap.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {targets.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>VERIFICATION TARGETS</div>
+                        {targets.map((target, i) => (
+                          <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', marginBottom: 8 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{target.skill || target.claim || `Target ${i + 1}`}</div>
+                            {target.claim && <div style={{ fontSize: 12, color: '#A1A1AA', marginBottom: 4 }}>Claim: {target.claim}</div>}
+                            {target.question_angle && <div style={{ fontSize: 12, color: '#8B5CF6' }}>{target.question_angle}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {strengths.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>STRONG POINTS</div>
+                        {strengths.map((point, i) => (
+                          <div key={i} style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.6, padding: '4px 0' }}>{point}</div>
+                        ))}
+                      </div>
+                    )}
+                    {redFlags.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>RED FLAGS</div>
+                        {redFlags.map((flag, i) => (
+                          <div key={i} style={{ fontSize: 13, color: '#F87171', lineHeight: 1.6, padding: '4px 0' }}>{flag}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Interview setup expanded */}
+              {iv && (() => {
+                const config = iv.config || {};
+                const intel = config.resume_intelligence || {};
+                const focusAreas = config.focus_areas || config.focusAreas || [];
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(59,130,246,0.55)', marginBottom: 6 }}>INTERVIEW CREATED</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{iv.candidateName}</div>
+                    <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{iv.candidateEmail}</div>
+                    <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+                      {[['Role', config.role || 'General'], ['Level', config.level || 'Mid-Level'], ['Questions', config.num_questions || config.numQuestions || 0], ['Status', config.status || 'pending']].map(([label, value]) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {focusAreas.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>FOCUS AREAS</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {focusAreas.map((area, i) => (
+                            <span key={i} style={{ fontSize: 12, fontWeight: 600, color: '#60A5FA', background: 'rgba(59,130,246,0.1)', padding: '3px 10px', borderRadius: 100 }}>
+                              {area}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {intel && Object.keys(intel).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>ATTACHED RESUME INTELLIGENCE</div>
+                        <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.7, marginBottom: 8 }}>
+                          Confidence: {intel.resume_confidence_score || 0}. Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
+                        </div>
+                        {(intel.verification_targets || []).slice(0, 4).map((target, i) => (
+                          <div key={i} style={{ fontSize: 12, color: '#71717A', lineHeight: 1.6, padding: '3px 0' }}>
+                            {target.skill || target.claim || `Target ${i + 1}`}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Interview report expanded */}
+              {rp && (() => {
+                const report = rp.report || {};
+                const scores = Array.isArray(report.scores) ? report.scores : [];
+                const textReport = typeof report.report === 'string' ? report.report : '';
+                const transcript = Array.isArray(report.transcript) ? report.transcript : [];
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(34,197,94,0.55)', marginBottom: 6 }}>INTERVIEW REPORT</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{rp.candidateName}</div>
+                    <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{rp.candidateEmail}</div>
+                    <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+                      {[['Avg Score', report.avgScore ?? (scores.length ? Number((scores.reduce((sum, item) => sum + (item?.score || 0), 0) / scores.length).toFixed(1)) : 'N/A')], ['Eye Contact', `${report.eyeContact || 0}%`], ['Violations', report.violations || 0], ['Questions', scores.length]].map(([label, value]) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {scores.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>QUESTION SCORES</div>
+                        {scores.map((item, i) => (
+                          <div key={i} style={{ padding: '10px 0', borderBottom: i < scores.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7' }}>{item.question || `Question ${i + 1}`}</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: '#4ADE80' }}>{item.score ?? 'N/A'}</div>
+                            </div>
+                            {item.feedback && <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.6 }}>{item.feedback}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {textReport && (
+                      <div style={{ marginBottom: transcript.length > 0 ? 20 : 0 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>ASSESSMENT SUMMARY</div>
+                        <div>{renderMarkdown(textReport)}</div>
+                      </div>
+                    )}
+                    {transcript.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>TRANSCRIPT</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {transcript.slice(0, 12).map((turn, i) => (
+                            <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: turn.role === 'interviewer' ? 'rgba(59,130,246,0.09)' : 'rgba(255,255,255,0.03)' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 4 }}>
+                                {(turn.role || 'speaker').toUpperCase()}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.6 }}>{turn.text}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Credibility expanded */}
+              {cr && (() => {
+                const credibility = cr.credibility || {};
+                const rvi = credibility.resume_vs_interview || {};
+                const levelAssessment = credibility.level_assessment || {};
+                const groups = [
+                  { label: 'Confirmed Skills', color: '#4ADE80', items: rvi.confirmed_skills || [] },
+                  { label: 'Overrated Skills', color: '#F87171', items: rvi.overrated_skills || [] },
+                  { label: 'Hidden Strengths', color: '#60A5FA', items: rvi.hidden_strengths || [] },
+                  { label: 'Unverified Skills', color: '#A1A1AA', items: rvi.unverified_skills || [] },
+                ];
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(139,92,246,0.55)', marginBottom: 6 }}>CREDIBILITY ANALYSIS</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{cr.candidateName}</div>
+                    <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{cr.candidateEmail}</div>
+                    <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+                      {[['Credibility', `${credibility.credibility_score || 0}/100`], ['Recommendation', credibility.hiring_recommendation || 'N/A'], ['Confidence', credibility.confidence_in_assessment || 'N/A']].map(([label, value]) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {groups.filter(group => group.items.length > 0).map(group => (
+                      <div key={group.label} style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>{group.label.toUpperCase()}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {group.items.map((item, i) => (
+                            <span key={i} style={{ fontSize: 12, fontWeight: 600, color: group.color, background: `${group.color}15`, padding: '3px 10px', borderRadius: 100 }}>
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {(levelAssessment.resume_claims || levelAssessment.interview_suggests || levelAssessment.explanation) && (
+                      <div style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>LEVEL ASSESSMENT</div>
+                        <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.7 }}>
+                          Resume claims: {levelAssessment.resume_claims || 'N/A'}. Interview suggests: {levelAssessment.interview_suggests || 'N/A'}.
+                          {levelAssessment.explanation ? ` ${levelAssessment.explanation}` : ''}
+                        </div>
+                      </div>
+                    )}
+                    {(credibility.key_insights || []).length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>KEY INSIGHTS</div>
+                        {(credibility.key_insights || []).map((insight, i) => (
+                          <div key={i} style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.6, padding: '4px 0' }}>{insight}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Export expanded */}
+              {ex && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(59,130,246,0.55)', marginBottom: 6 }}>PDF REPORT</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 18 }}>{ex.candidateName}</div>
+                  <a
+                    href={ex.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '12px 24px', borderRadius: 100, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)', color: '#93C5FD', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
+                  >
+                    Open PDF report
+                  </a>
+                </>
+              )}
             </div>
           </div>
         );
@@ -1547,6 +2222,154 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 }
 
                 // ── Calendly card
+                if (msg.resumeIntelData) {
+                  const ri = msg.resumeIntelData;
+                  const intel = ri.intelligence || {};
+                  const gaps = intel.gaps || [];
+                  const targets = intel.verification_targets || [];
+                  const redFlags = intel.red_flags || [];
+                  const confidence = intel.resume_confidence_score || 0;
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(139,92,246,0.55)' }}>
+                            RESUME INTELLIGENCE {ri.candidateName ? `· ${ri.candidateName}` : ''}
+                          </div>
+                          {expandBtn(msg)}
+                        </div>
+                        <div style={{ display: 'flex', gap: 18, marginBottom: 10, flexWrap: 'wrap' }}>
+                          {[{ label: 'CONFIDENCE', val: confidence }, { label: 'GAPS', val: gaps.length }, { label: 'TARGETS', val: targets.length }, { label: 'RED FLAGS', val: redFlags.length }].map(({ label, val }) => (
+                            <div key={label}>
+                              <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: label === 'CONFIDENCE' ? (confidence >= 70 ? '#4ADE80' : confidence >= 50 ? '#FCD34D' : '#F87171') : '#E4E4E7' }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {targets.slice(0, 2).map((target, i) => (
+                          <div key={i} style={{ fontSize: 12, color: '#A1A1AA', marginBottom: 4 }}>
+                            {target.skill || target.claim || `Verification target ${i + 1}`}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (msg.interviewData) {
+                  const iv = msg.interviewData;
+                  const config = iv.config || {};
+                  const focusAreas = config.focus_areas || config.focusAreas || [];
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(59,130,246,0.22)', borderRadius: 12, padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(59,130,246,0.6)' }}>INTERVIEW CREATED</div>
+                          {expandBtn(msg)}
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{iv.candidateName}</div>
+                        <div style={{ fontSize: 12, color: '#60A5FA', marginBottom: 10 }}>{iv.candidateEmail}</div>
+                        <div style={{ display: 'flex', gap: 18, marginBottom: focusAreas.length > 0 ? 10 : 0, flexWrap: 'wrap' }}>
+                          {[{ label: 'ROLE', val: config.role || 'General' }, { label: 'LEVEL', val: config.level || 'Mid-Level' }, { label: 'QUESTIONS', val: config.num_questions || config.numQuestions || 0 }].map(({ label, val }) => (
+                            <div key={label}>
+                              <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#E4E4E7' }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {focusAreas.length > 0 && (
+                          <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.5 }}>
+                            Focus: {focusAreas.slice(0, 3).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (msg.reportData) {
+                  const rp = msg.reportData;
+                  const report = rp.report || {};
+                  const scores = Array.isArray(report.scores) ? report.scores : [];
+                  const avgScore = report.avgScore ?? (scores.length ? Number((scores.reduce((sum, item) => sum + (item?.score || 0), 0) / scores.length).toFixed(1)) : 'N/A');
+                  const summary = stripMarkdown(report.report || '');
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 12, padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(34,197,94,0.55)' }}>INTERVIEW REPORT</div>
+                          {expandBtn(msg)}
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{rp.candidateName}</div>
+                        <div style={{ display: 'flex', gap: 18, marginBottom: summary ? 8 : 0, flexWrap: 'wrap' }}>
+                          {[{ label: 'AVG', val: avgScore }, { label: 'EYE CONTACT', val: `${report.eyeContact || 0}%` }, { label: 'VIOLATIONS', val: report.violations || 0 }].map(({ label, val }) => (
+                            <div key={label}>
+                              <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {summary && (
+                          <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.5 }}>
+                            {summary.slice(0, 180)}{summary.length > 180 ? '...' : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (msg.credibilityData) {
+                  const cr = msg.credibilityData;
+                  const credibility = cr.credibility || {};
+                  const insights = credibility.key_insights || [];
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.22)', borderRadius: 12, padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(139,92,246,0.6)' }}>CREDIBILITY ANALYSIS</div>
+                          {expandBtn(msg)}
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{cr.candidateName}</div>
+                        <div style={{ display: 'flex', gap: 18, marginBottom: insights.length > 0 ? 8 : 0, flexWrap: 'wrap' }}>
+                          {[{ label: 'SCORE', val: `${credibility.credibility_score || 0}/100` }, { label: 'RECOMMENDATION', val: credibility.hiring_recommendation || 'N/A' }].map(({ label, val }) => (
+                            <div key={label}>
+                              <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {insights.slice(0, 2).map((insight, i) => (
+                          <div key={i} style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.5, marginBottom: 4 }}>{insight}</div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (msg.exportData) {
+                  const ex = msg.exportData;
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(59,130,246,0.22)', borderRadius: 12, padding: '12px 16px' }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(59,130,246,0.6)', marginBottom: 8 }}>PDF REPORT READY</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 10 }}>{ex.candidateName}</div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <a
+                            href={ex.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', padding: '7px 16px', borderRadius: 100, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)', color: '#93C5FD', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}
+                          >
+                            Open PDF
+                          </a>
+                          {expandBtn(msg)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 if (msg.calendlyData) {
                   const ca = msg.calendlyData;
                   return (
