@@ -140,6 +140,50 @@ CANDIDATE_ACTIONS = {
     "export_report",
 }
 
+ROLE_REQUIRED_ACTIONS = {
+    "run_ats",
+    "batch_action",
+    "deep_evaluate",
+    "create_interview",
+}
+
+EMAIL_REQUIRED_ACTIONS = {
+    "create_interview",
+    "get_interview_report",
+    "credibility_analysis",
+    "export_report",
+}
+
+AMBIGUOUS_KICKOFF_MESSAGES = {
+    "hi",
+    "hello",
+    "hey",
+    "start",
+    "go",
+    "go ahead",
+    "continue",
+    "yes",
+    "ok",
+    "okay",
+    "sure",
+    "proceed",
+}
+
+AMBIGUOUS_KICKOFF_WORDS = {
+    "hi",
+    "hello",
+    "hey",
+    "start",
+    "go",
+    "continue",
+    "yes",
+    "ok",
+    "okay",
+    "sure",
+    "proceed",
+    "please",
+}
+
 COUNT_WORDS = {
     "one": 1,
     "two": 2,
@@ -191,6 +235,18 @@ class JarvisChatResponse(BaseModel):
 
 def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _is_ambiguous_kickoff(message: str) -> bool:
+    msg = _normalize_text(message)
+    if not msg:
+        return True
+    if msg in AMBIGUOUS_KICKOFF_MESSAGES:
+        return True
+    words = [w for w in re.split(r"[^a-z0-9]+", msg) if w]
+    if words and len(words) <= 3 and all(w in AMBIGUOUS_KICKOFF_WORDS for w in words):
+        return True
+    return False
 
 
 def _candidate_to_dict(candidate: Any) -> Dict[str, Any]:
@@ -440,6 +496,40 @@ def _normalize_action_payload(
         updated_context["role"] = req.context.role
 
     return action, params, updated_context
+
+
+def _apply_action_guards(
+    req: JarvisChatRequest,
+    candidates: List[Dict[str, Any]],
+    reply: str,
+    action: Optional[str],
+    action_params: Optional[Dict[str, Any]],
+    awaiting_confirmation: bool,
+) -> tuple[str, Optional[str], Optional[Dict[str, Any]], bool]:
+    params = dict(action_params or {})
+
+    effective_role = str(params.get("role") or req.context.role or "").strip()
+    if action in ROLE_REQUIRED_ACTIONS and not effective_role:
+        return (
+            "Happy to help. What role are you hiring for?",
+            None,
+            None,
+            False,
+        )
+
+    if action in EMAIL_REQUIRED_ACTIONS and not str(params.get("candidate_email") or "").strip():
+        target = _get_candidate_by_id(candidates, params.get("candidate_id")) or _resolve_active_candidate(
+            req.message, req.context, candidates
+        )
+        candidate_name = params.get("candidate_name") or (target or {}).get("name") or "that candidate"
+        return (
+            f"I can do that for {candidate_name}, but I need their email first. Want me to scan their profile to find it?",
+            None,
+            None,
+            False,
+        )
+
+    return reply, action, params, awaiting_confirmation
 
 
 @router.post("/chat", response_model=JarvisChatResponse)
