@@ -281,8 +281,12 @@ def _candidate_to_dict(candidate: Any) -> Dict[str, Any]:
 def _get_candidate_by_id(candidates: List[Dict[str, Any]], candidate_id: Optional[int]) -> Optional[Dict[str, Any]]:
     if candidate_id is None:
         return None
+    try:
+        candidate_id_num = int(candidate_id)
+    except (TypeError, ValueError):
+        candidate_id_num = candidate_id
     for candidate in candidates:
-        if candidate.get("id") == candidate_id:
+        if candidate.get("id") == candidate_id_num:
             return candidate
     return None
 
@@ -452,7 +456,16 @@ def _normalize_action_payload(
     if action in CANDIDATE_ACTIONS:
         target = _get_candidate_by_id(candidates, params.get("candidate_id"))
         if not target:
-            target = _find_candidate_mentioned(req.message, candidates) or resolved_candidate
+            target = _find_candidate_mentioned(req.message, candidates)
+        if not target:
+            target = _get_candidate_by_id(candidates, req.context.active_candidate_id)
+        if not target:
+            for candidate_id in req.context.shortlisted_ids or []:
+                target = _get_candidate_by_id(candidates, candidate_id)
+                if target:
+                    break
+        if not target and len(candidates) == 1:
+            target = candidates[0]
         if target:
             params.setdefault("candidate_id", target["id"])
             params.setdefault("candidate_name", target["name"])
@@ -485,7 +498,11 @@ def _normalize_action_payload(
         params.setdefault("query", req.message.strip())
 
     elif action in {"deep_evaluate", "create_interview"}:
-        params.setdefault("role", req.context.role or "")
+        inferred_role = req.context.role or ""
+        target = _get_candidate_by_id(candidates, params.get("candidate_id"))
+        if not inferred_role and target:
+            inferred_role = target.get("predicted_role", "") or ""
+        params.setdefault("role", inferred_role)
 
     if action == "create_interview":
         params.setdefault("level", "Mid-Level")
@@ -508,6 +525,26 @@ def _apply_action_guards(
     awaiting_confirmation: bool,
 ) -> tuple[str, Optional[str], Optional[Dict[str, Any]], bool]:
     params = dict(action_params or {})
+
+    if action == "batch_action" and not (params.get("candidate_ids") or []):
+        return (
+            "I can do that, but I need candidates first. Want me to run ATS and shortlist the top matches?",
+            None,
+            None,
+            False,
+        )
+
+    if action in CANDIDATE_ACTIONS and params.get("candidate_id") is None:
+        if len(candidates) > 1:
+            return (
+                "Which candidate should I use? Tell me their name.",
+                None,
+                None,
+                False,
+            )
+        if len(candidates) == 1:
+            params["candidate_id"] = candidates[0].get("id")
+            params.setdefault("candidate_name", candidates[0].get("name", "Candidate"))
 
     effective_role = str(params.get("role") or req.context.role or "").strip()
     if action in ROLE_REQUIRED_ACTIONS and not effective_role:
@@ -647,6 +684,7 @@ async def jarvis_chat(
             action_params=action_params,
             updated_context=updated_context,
         )
+        normalized_action = action
 
         reply, action, action_params, awaiting_confirmation = _apply_action_guards(
             req=req,
@@ -656,6 +694,8 @@ async def jarvis_chat(
             action_params=action_params,
             awaiting_confirmation=bool(data.get("awaiting_confirmation", False)),
         )
+        if normalized_action and action is None and updated_context.get("last_action") == normalized_action:
+            updated_context["last_action"] = "awaiting_input"
 
         return JarvisChatResponse(
             reply=reply,
