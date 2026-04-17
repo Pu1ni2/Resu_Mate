@@ -53,6 +53,7 @@ WORKFLOW RULES:
 6. If the user says send it, yes send, go ahead, or similar after an email draft flow, trigger batch_action with send_emails=true.
 7. Prefer cached GitHub, scan, evaluation, resume intelligence, interview report, and credibility artifacts when available.
 8. Only ask a short follow-up when a required field is truly missing, like candidate email for create_interview with no known email.
+9. Ask at most one follow-up question per turn.
 
 TRIGGER GUIDE:
 - ATS / ranking / shortlist / screen / best fit -> run_ats
@@ -545,6 +546,17 @@ async def jarvis_chat(
     candidates = [_candidate_to_dict(candidate) for candidate in req.candidates_summary]
     active_candidate = _resolve_active_candidate(req.message, req.context, candidates)
 
+    # Deterministic kickoff guard: if role is still unknown and the user sends
+    # an ambiguous prompt, explicitly ask for the hiring role.
+    if not req.context.role and req.context.last_ats_results is None and _is_ambiguous_kickoff(req.message):
+        return JarvisChatResponse(
+            reply="Happy to help. What role are you hiring for?",
+            action=None,
+            action_params=None,
+            awaiting_confirmation=False,
+            updated_context={"last_action": "ask_role"},
+        )
+
     context_block: Dict[str, Any] = {
         "role": req.context.role,
         "last_action": req.context.last_action,
@@ -636,11 +648,20 @@ async def jarvis_chat(
             updated_context=updated_context,
         )
 
-        return JarvisChatResponse(
+        reply, action, action_params, awaiting_confirmation = _apply_action_guards(
+            req=req,
+            candidates=candidates,
             reply=data.get("reply", "I'm not sure what to say. Could you rephrase that?"),
             action=action,
             action_params=action_params,
             awaiting_confirmation=bool(data.get("awaiting_confirmation", False)),
+        )
+
+        return JarvisChatResponse(
+            reply=reply,
+            action=action,
+            action_params=action_params,
+            awaiting_confirmation=awaiting_confirmation,
             updated_context=updated_context,
         )
 
