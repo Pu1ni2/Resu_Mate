@@ -5,12 +5,18 @@ const MIN_BLOB_BYTES   = 1500;  // discard silent/empty blobs
 const SILENCE_RMS_THRESHOLD = 0.014;
 const SILENCE_STOP_MS = 1600;
 
+// Barge-in: user speaking while TTS plays. Threshold is higher than the silence
+// detector because echoCancellation can leak some of Jarvis's own speech back in.
+const BARGEIN_RMS_THRESHOLD = 0.04;
+const BARGEIN_SUSTAIN_MS    = 250; // must exceed threshold continuously
+
 export default function useVoice({
   apiBase,
   onTranscribed,       // (text: string) => void
   onSpeakingDone,      // () => void  — fires when TTS finishes naturally
   onTranscribeFail,    // (err: string) => void — silent error callback
   onAutoStop,          // () => void  — fires when silence detection auto-stops recording
+  onBargeIn,           // () => void  — fires when user speaks while TTS is playing
 }) {
   const [isRecording,      setIsRecording]      = useState(false);
   const [isTranscribing,   setIsTranscribing]   = useState(false);
@@ -32,7 +38,16 @@ export default function useVoice({
   const silenceIntervalRef = useRef(null);
   const onAutoStopRef      = useRef(null);
 
+  // Barge-in (mic-while-speaking) refs
+  const bargeStreamRef     = useRef(null);
+  const bargeCtxRef        = useRef(null);
+  const bargeAnalyserRef   = useRef(null);
+  const bargeIntervalRef   = useRef(null);
+  const bargeSustainedRef  = useRef(0);
+  const onBargeInRef       = useRef(null);
+
   useEffect(() => { onAutoStopRef.current = onAutoStop; }, [onAutoStop]);
+  useEffect(() => { onBargeInRef.current = onBargeIn; }, [onBargeIn]);
 
   // ── Stop silence detection ────────────────────────────────────────────────────
   const stopSilenceDetection = useCallback(() => {
@@ -51,8 +66,72 @@ export default function useVoice({
     }
   }, []);
 
+  // ── Barge-in detection (listen for user speech while TTS plays) ──────────────
+  const stopBargeInDetection = useCallback(() => {
+    if (bargeIntervalRef.current) {
+      clearInterval(bargeIntervalRef.current);
+      bargeIntervalRef.current = null;
+    }
+    bargeSustainedRef.current = 0;
+    if (bargeAnalyserRef.current) {
+      try { bargeAnalyserRef.current.disconnect(); } catch (_) {}
+      bargeAnalyserRef.current = null;
+    }
+    if (bargeCtxRef.current) {
+      try { bargeCtxRef.current.close(); } catch (_) {}
+      bargeCtxRef.current = null;
+    }
+    if (bargeStreamRef.current) {
+      try { bargeStreamRef.current.getTracks().forEach(t => t.stop()); } catch (_) {}
+      bargeStreamRef.current = null;
+    }
+  }, []);
+
+  const startBargeInDetection = useCallback(async () => {
+    // Don't layer on top of an active recording (that mic is busy).
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') return;
+    if (bargeIntervalRef.current) return; // already running
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      bargeStreamRef.current   = stream;
+      bargeCtxRef.current      = ctx;
+      bargeAnalyserRef.current = analyser;
+      bargeSustainedRef.current = 0;
+
+      const dataArray = new Float32Array(analyser.fftSize);
+      bargeIntervalRef.current = setInterval(() => {
+        if (!bargeAnalyserRef.current) return;
+        bargeAnalyserRef.current.getFloatTimeDomainData(dataArray);
+        let sumSq = 0;
+        for (let i = 0; i < dataArray.length; i++) sumSq += dataArray[i] ** 2;
+        const rms = Math.sqrt(sumSq / dataArray.length);
+        if (rms >= BARGEIN_RMS_THRESHOLD) {
+          bargeSustainedRef.current += 100;
+          if (bargeSustainedRef.current >= BARGEIN_SUSTAIN_MS) {
+            stopBargeInDetection();
+            onBargeInRef.current?.();
+          }
+        } else {
+          bargeSustainedRef.current = 0;
+        }
+      }, 100);
+    } catch (err) {
+      // Mic unavailable during TTS — silently skip barge-in (not fatal).
+      console.warn('Barge-in detection unavailable:', err.message);
+    }
+  }, [stopBargeInDetection]);
+
   // ── Stop TTS ─────────────────────────────────────────────────────────────────
   const stopSpeaking = useCallback(() => {
+    stopBargeInDetection();
     if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null; }
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -62,9 +141,12 @@ export default function useVoice({
     }
     setSpeakingMsgIndex(null);
     setLoadingMsgIndex(null);
-  }, []);
+  }, [stopBargeInDetection]);
 
   // ── TTS ───────────────────────────────────────────────────────────────────────
+  // Resolves when playback ends (naturally, on error, or on abort) — so callers
+  // can `await speakText(...)` before running follow-up actions (like rendering
+  // a card or chaining into another request).
   const speakText = useCallback(async (text, msgIndex) => {
     if (speakingMsgIndex === msgIndex) { stopSpeaking(); return; }
     stopSpeaking();
@@ -94,22 +176,27 @@ export default function useVoice({
       const audio     = new Audio(audioUrl);
       currentAudioRef.current = audio;
 
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        currentAudioRef.current = null;
-        setSpeakingMsgIndex(null);
-        onSpeakingDone?.();
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        currentAudioRef.current = null;
-        setSpeakingMsgIndex(null);
-        onSpeakingDone?.();
-      };
-
-      setLoadingMsgIndex(null);
-      setSpeakingMsgIndex(msgIndex);
-      await audio.play();
+      await new Promise((resolve) => {
+        const cleanup = () => {
+          stopBargeInDetection();
+          URL.revokeObjectURL(audioUrl);
+          if (currentAudioRef.current === audio) currentAudioRef.current = null;
+          setSpeakingMsgIndex(null);
+        };
+        audio.onended = () => { cleanup(); onSpeakingDone?.(); resolve(); };
+        audio.onerror = () => { cleanup(); onSpeakingDone?.(); resolve(); };
+        audio.onpause = () => {
+          // Pause fires when stopSpeaking() is called externally (barge-in).
+          if (audio.ended) return; // natural end already handled above
+          cleanup();
+          resolve();
+        };
+        setLoadingMsgIndex(null);
+        setSpeakingMsgIndex(msgIndex);
+        audio.play()
+          .then(() => { startBargeInDetection(); })
+          .catch(() => { cleanup(); resolve(); });
+      });
     } catch (err) {
       if (err.name !== 'AbortError') {
         if (err.message === 'SESSION_EXPIRED') {
@@ -123,7 +210,7 @@ export default function useVoice({
       setSpeakingMsgIndex(null);
       // Don't call onSpeakingDone on abort — user interrupted intentionally
     }
-  }, [speakingMsgIndex, stopSpeaking, apiBase, onSpeakingDone]);
+  }, [speakingMsgIndex, stopSpeaking, apiBase, onSpeakingDone, onTranscribeFail]);
 
   // ── STT ───────────────────────────────────────────────────────────────────────
   const transcribeAudio = useCallback(async (audioBlob) => {

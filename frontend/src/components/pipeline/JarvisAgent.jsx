@@ -84,6 +84,27 @@ function renderMarkdown(text) {
   return <div>{elements}</div>;
 }
 
+// ── Close-out detector ────────────────────────────────────────────────────────
+// Returns true when Jarvis's reply is a conversational sign-off, so the caller
+// can auto-close the panel after TTS finishes.
+const CLOSEOUT_PATTERNS = [
+  /\b(you're|you are) welcome\b/i,
+  /\bhave a (good|great|nice) (day|one|evening)\b/i,
+  /\btalk (to you )?(later|soon)\b/i,
+  /\bgoodbye\b/i,
+  /\bbye( now| for now)?\b/i,
+  /\bsee you (later|soon)\b/i,
+  /\banything else\?$/i,
+  /\bglad to help\b/i,
+  /\bhappy to help(,| -| —)? (talk|reach out|come back)/i,
+];
+function shouldCloseChat(reply) {
+  if (!reply || typeof reply !== 'string') return false;
+  const t = reply.trim();
+  if (t.length > 160) return false; // long replies are mid-conversation
+  return CLOSEOUT_PATTERNS.some(re => re.test(t));
+}
+
 function stripMarkdown(text) {
   if (!text) return '';
   return text
@@ -485,6 +506,21 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     setHint('Processing…');
   }, []);
 
+  // User spoke while Jarvis was speaking — stop TTS, capture their interruption
+  const handleBargeIn = useCallback(() => {
+    const v = voiceRef.current;
+    if (!v) return;
+    v.stopSpeaking();
+    autoListenEnabledRef.current = true;
+    setHint('Listening…');
+    setTimeout(() => {
+      const vv = voiceRef.current;
+      if (!vv) return;
+      if (vv.isRecording || vv.isTranscribing) return;
+      vv.startRecording();
+    }, 80);
+  }, []);
+
   // Transcription failed — stop the loop, wait for user to speak or type again
   const handleTranscribeFail = useCallback((reason) => {
     setHint('');
@@ -507,6 +543,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     onSpeakingDone:   handleSpeakingDone,
     onTranscribeFail: handleTranscribeFail,
     onAutoStop:       handleAutoStop,
+    onBargeIn:        handleBargeIn,
   });
 
   voiceRef.current = voice;   // always current, no stale closure
@@ -585,7 +622,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       const { reply, action, action_params, awaiting_confirmation, updated_context } = data;
 
       appendMsg({ role: 'assistant', content: reply });
-      voiceRef.current?.speakText(reply, msgIndexRef.current++);
 
       // Track pending action for confirmation loop prevention
       if (awaiting_confirmation && action) {
@@ -609,6 +645,17 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             ? `${candidatesSummary.length} CANDIDATE${candidatesSummary.length !== 1 ? 'S' : ''} READY`
             : 'READY'
       );
+
+      // Speak the reply first, then run the action. Awaiting TTS prevents
+      // the card (or the chained follow-up API call) from cutting off speech.
+      await voiceRef.current?.speakText(reply, msgIndexRef.current++);
+
+      // If the reply looks like a conversation close-out ("you're welcome",
+      // "have a good day"), auto-close the panel.
+      if (shouldCloseChat(reply)) {
+        setTimeout(() => { onClose?.(); }, 400);
+        return;
+      }
 
       if (action && !awaiting_confirmation) {
         await executeAction(action, action_params || {}); // eslint-disable-line no-use-before-define
