@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI):
                     "is_resume": row.is_resume,
                 }
                 if row.file_hash:
-                    resume_rag.uploaded_hashes.add(row.file_hash)
+                    resume_rag.uploaded_file_hashes.add(row.file_hash)
             print(f"✅ Loaded {len(rows)} candidates from DB into memory")
     except Exception as e:
         print(f"⚠️ Could not warm candidate cache: {e}")
