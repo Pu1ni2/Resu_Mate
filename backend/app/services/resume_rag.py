@@ -73,17 +73,33 @@ class ResumeRAGService:
         """Initialize ChromaDB vector store"""
         if not self.embeddings:
             return
-        
-        try:
-            os.makedirs(self.chroma_dir, exist_ok=True)
-            self.vectordb = Chroma(
+
+        os.makedirs(self.chroma_dir, exist_ok=True)
+
+        def _open():
+            return Chroma(
                 collection_name=self.collection_name,
                 persist_directory=self.chroma_dir,
-                embedding_function=self.embeddings
+                embedding_function=self.embeddings,
             )
+
+        # Catch BaseException — chromadb-rust raises PanicException (not Exception)
+        # on schema mismatches, which would otherwise crash module import and kill the app.
+        try:
+            self.vectordb = _open()
             print(f"✅ ChromaDB initialized at {self.chroma_dir}")
-        except Exception as e:
-            print(f"❌ Error initializing ChromaDB: {e}")
+            return
+        except BaseException as e:
+            print(f"⚠️ ChromaDB open failed ({type(e).__name__}: {e}); resetting store.")
+
+        # Recovery: wipe the corrupted directory and retry once.
+        try:
+            shutil.rmtree(self.chroma_dir, ignore_errors=True)
+            os.makedirs(self.chroma_dir, exist_ok=True)
+            self.vectordb = _open()
+            print(f"✅ ChromaDB re-initialized at {self.chroma_dir} (fresh store)")
+        except BaseException as e:
+            print(f"❌ ChromaDB disabled — resume search unavailable: {type(e).__name__}: {e}")
             self.vectordb = None
     
     # ... rest of the file remains the same ...
