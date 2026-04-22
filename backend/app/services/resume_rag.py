@@ -70,11 +70,26 @@ class ResumeRAGService:
 
     
     def _init_vectordb(self):
-        """Initialize ChromaDB vector store"""
+        """Initialize ChromaDB vector store.
+
+        ChromaDB on Windows is unstable — the Rust bindings panic on schema
+        mismatches and langchain-chroma raises KeyError on embedding-config
+        mismatches. Both failures are non-fatal for auth/chat-without-RAG, so
+        we catch BaseException (PanicException inherits from BaseException)
+        and fall back to vectordb=None. App continues to boot.
+        """
         if not self.embeddings:
             return
 
         os.makedirs(self.chroma_dir, exist_ok=True)
+
+        def _clear_chroma_singletons():
+            """Drop cached chromadb clients so a wiped directory doesn't leave stale state."""
+            try:
+                from chromadb.api.shared_system_client import SharedSystemClient
+                SharedSystemClient.clear_system_cache()
+            except Exception:
+                pass
 
         def _open():
             return Chroma(
@@ -83,8 +98,7 @@ class ResumeRAGService:
                 embedding_function=self.embeddings,
             )
 
-        # Catch BaseException — chromadb-rust raises PanicException (not Exception)
-        # on schema mismatches, which would otherwise crash module import and kill the app.
+        # First attempt — open existing store.
         try:
             self.vectordb = _open()
             print(f"✅ ChromaDB initialized at {self.chroma_dir}")
@@ -92,15 +106,22 @@ class ResumeRAGService:
         except BaseException as e:
             print(f"⚠️ ChromaDB open failed ({type(e).__name__}: {e}); resetting store.")
 
-        # Recovery: wipe the corrupted directory and retry once.
+        # Second attempt — wipe directory + clear singletons, then open fresh.
         try:
+            _clear_chroma_singletons()
             shutil.rmtree(self.chroma_dir, ignore_errors=True)
             os.makedirs(self.chroma_dir, exist_ok=True)
+            _clear_chroma_singletons()
             self.vectordb = _open()
             print(f"✅ ChromaDB re-initialized at {self.chroma_dir} (fresh store)")
+            return
         except BaseException as e:
-            print(f"❌ ChromaDB disabled — resume search unavailable: {type(e).__name__}: {e}")
-            self.vectordb = None
+            print(f"⚠️ ChromaDB fresh-open failed ({type(e).__name__}: {e}); disabling vector store.")
+
+        # Give up — the app boots without RAG. Upload/chat-with-RAG will be disabled
+        # until chromadb is reinstalled (see requirements.txt: chromadb<0.6.0).
+        self.vectordb = None
+        print("❌ ChromaDB disabled — run: pip uninstall -y chromadb chromadb-rust-bindings langchain-chroma && pip install -r requirements.txt")
     
     # ... rest of the file remains the same ...
     

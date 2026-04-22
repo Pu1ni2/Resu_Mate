@@ -185,11 +185,18 @@ async def speech_to_text(audio: UploadFile = File(...), user=Depends(get_current
 async def text_to_speech(req: dict, user=Depends(get_current_user)):
     try:
         text = req.get("text", "")
+        if not text or not text.strip():
+            raise HTTPException(400, "No text provided")
         voice_name = req.get("voice", "nova")
         audio_bytes = await voice_tool.text_to_speech(text, voice_name)
         return StreamingResponse(io.BytesIO(audio_bytes), media_type="audio/mpeg")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, str(e))
+        import traceback
+        print(f"[TTS] 500 error: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        raise HTTPException(500, f"TTS failed: {type(e).__name__}: {e}")
 
 # ═══════ FOCUS CHAT → Research Agent + LLM ═══════
 

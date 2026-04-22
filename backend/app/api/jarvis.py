@@ -710,5 +710,6 @@ async def jarvis_chat(
         return JarvisChatResponse(reply=raw[:300] if raw else "Something went wrong. Try again.")
 
     except Exception as exc:
-        logger.error("Jarvis error: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Jarvis error: {str(exc)}")
+        import traceback
+        logger.error("Jarvis error: %s\n%s", exc, traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Jarvis error ({type(exc).__name__}): {str(exc)}")
