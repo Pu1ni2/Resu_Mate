@@ -88,20 +88,21 @@ function renderMarkdown(text) {
 // Returns true when Jarvis's reply is a conversational sign-off, so the caller
 // can auto-close the panel after TTS finishes.
 const CLOSEOUT_PATTERNS = [
-  /\b(you're|you are) welcome\b/i,
-  /\bhave a (good|great|nice) (day|one|evening)\b/i,
+  /\bhave a (good|great|nice) (day|one|evening|night)\b/i,
   /\btalk (to you )?(later|soon)\b/i,
   /\bgoodbye\b/i,
   /\bbye( now| for now)?\b/i,
   /\bsee you (later|soon)\b/i,
-  /\banything else\?$/i,
-  /\bglad to help\b/i,
-  /\bhappy to help(,| -| —)? (talk|reach out|come back)/i,
+  /\bcatch you (later|soon)\b/i,
+  /\btake care\b/i,
 ];
 function shouldCloseChat(reply) {
   if (!reply || typeof reply !== 'string') return false;
   const t = reply.trim();
-  if (t.length > 160) return false; // long replies are mid-conversation
+  // Only treat short, standalone farewells as close-outs. Longer replies and
+  // replies ending in a question are always mid-conversation.
+  if (t.length > 120) return false;
+  if (/\?\s*$/.test(t)) return false;
   return CLOSEOUT_PATTERNS.some(re => re.test(t));
 }
 
@@ -510,15 +511,16 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const handleBargeIn = useCallback(() => {
     const v = voiceRef.current;
     if (!v) return;
+    interruptedRef.current = true;
     v.stopSpeaking();
-    autoListenEnabledRef.current = true;
     setHint('Listening…');
+    // Short debounce so the mic that TTS was using is fully released
     setTimeout(() => {
       const vv = voiceRef.current;
       if (!vv) return;
       if (vv.isRecording || vv.isTranscribing) return;
       vv.startRecording();
-    }, 80);
+    }, 120);
   }, []);
 
   // Transcription failed — stop the loop, wait for user to speak or type again
@@ -564,7 +566,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
     // If AI is speaking, stop it and note the interruption
     const v = voiceRef.current;
-    if (v?.speakingMsgIndex !== null) {
+    if (v && v.speakingMsgIndex !== null) {
       interruptedRef.current = true;
       v.stopSpeaking();
     }
