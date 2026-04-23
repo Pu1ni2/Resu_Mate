@@ -441,6 +441,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const voiceRef       = useRef(null);
   const listenAfterRef = useRef(null);   // timeout for auto-listen after TTS
   const autoListenEnabledRef = useRef(HANDS_FREE_DEFAULT);
+  const chainDepthRef  = useRef(0);      // guard against action→result→action loops
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { contextRef.current = context; }, [context]);
@@ -574,7 +575,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     if (v?.isRecording) v.stopRecording();
 
     const isSystem = text.startsWith('[');
-    if (!isSystem) appendMsg({ role: 'user', content: text });
+    if (isSystem) {
+      // Cap action→result→action chains at 3 hops to prevent runaway loops.
+      if (chainDepthRef.current >= 3) {
+        console.warn('Jarvis: chain depth cap hit, dropping result feedback');
+        chainDepthRef.current = 0;
+        return;
+      }
+      chainDepthRef.current += 1;
+    } else {
+      chainDepthRef.current = 0;
+      appendMsg({ role: 'user', content: text });
+    }
 
     setIsProcessing(true);
     setStatus('THINKING');
@@ -670,6 +682,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       voiceRef.current?.speakText(msg, msgIndexRef.current++);
       setIsProcessing(false);
       setStatus('ERROR');
+      chainDepthRef.current = 0;
+      interruptedRef.current = false;
     }
   }, [candidatesSummary, appendMsg]); // eslint-disable-line react-hooks/exhaustive-deps
 
