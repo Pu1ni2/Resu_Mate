@@ -7,7 +7,7 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8001',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on('error', (err, req, res) => {
