@@ -2,6 +2,7 @@
 ResuMate AI — Interview Agent (LiveKit + Simli + OpenAI Realtime)
 Run: python interview_agent.py dev
 """
+import asyncio
 import os
 import sys
 import time
@@ -14,7 +15,7 @@ load_dotenv(override=True)
 logger = logging.getLogger("resumate-interview-agent")
 logger.setLevel(logging.INFO)
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8001")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID", "tmp9i8bbq7c")
 OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")
@@ -26,7 +27,7 @@ from livekit.plugins import openai as lk_openai, simli as lk_simli
 
 def get_interview_config(room_name):
     try:
-        for url in [BACKEND_URL, "http://localhost:8001"]:
+        for url in [BACKEND_URL, "http://localhost:8000"]:
             try:
                 resp = requests.get(f"{url}/api/livekit/interview-room-config/{room_name}", timeout=5)
                 if resp.ok:
@@ -80,7 +81,7 @@ def post_transcript(config: dict, transcript: list):
         "transcript": transcript,
     }
 
-    for url in [BACKEND_URL, "http://localhost:8001"]:
+    for url in [BACKEND_URL, "http://localhost:8000"]:
         try:
             # Agent-to-backend call — use a service token or no-auth endpoint
             resp = requests.post(
@@ -97,6 +98,10 @@ def post_transcript(config: dict, transcript: list):
 
 # ═══ ENTRYPOINT — MUST be at module level for multiprocessing to pickle it ═══
 async def entrypoint(ctx: JobContext):
+    # Join the LiveKit room. Without this the worker accepts the job but
+    # never actually connects, and the entrypoint falls through immediately.
+    await ctx.connect()
+
     logger.info(f"Interview agent joining room: {ctx.room.name}")
     config = get_interview_config(ctx.room.name)
     logger.info(f"Config: {config.get('role')} | {config.get('num_questions')} Qs")
@@ -108,26 +113,28 @@ async def entrypoint(ctx: JobContext):
         llm=lk_openai.realtime.RealtimeModel(
             voice=OPENAI_VOICE,
             temperature=0.7,
-            model="gpt-4o-realtime-preview",
+            model="gpt-realtime-2",
         ),
     )
 
-    # Hook into session events to capture conversation turns
-    @session.on("agent_speech_committed")
-    def on_agent_speech(message):
+    # Hook into session events to capture conversation turns. In
+    # livekit-agents >=1.x the per-turn events are named
+    # "conversation_item_added" (both sides) — the older
+    # "agent_speech_committed" / "user_speech_committed" names never fire,
+    # which is why the transcript was always empty.
+    @session.on("conversation_item_added")
+    def on_item_added(ev):
         try:
-            text = getattr(message, "content", None) or str(message)
-            transcript.append({"role": "interviewer", "text": text, "timestamp": time.time()})
-        except Exception:
-            pass
-
-    @session.on("user_speech_committed")
-    def on_user_speech(message):
-        try:
-            text = getattr(message, "content", None) or str(message)
-            transcript.append({"role": "candidate", "text": text, "timestamp": time.time()})
-        except Exception:
-            pass
+            item = getattr(ev, "item", None)
+            if item is None:
+                return
+            text = getattr(item, "text_content", None)
+            if not text:
+                return
+            role = "interviewer" if getattr(item, "role", "") == "assistant" else "candidate"
+            transcript.append({"role": role, "text": text, "timestamp": time.time()})
+        except Exception as e:
+            logger.warning(f"transcript capture failed: {e}")
 
     if SIMLI_API_KEY and SIMLI_FACE_ID:
         try:
@@ -149,12 +156,19 @@ async def entrypoint(ctx: JobContext):
     )
     logger.info("Interview agent running!")
 
-    # Wait for the session to end, then POST transcript
-    try:
-        await ctx.wait_for_disconnect()
-    finally:
-        post_transcript(config, transcript)
-        logger.info("Interview session ended, transcript posted.")
+    # POST the transcript when the worker tears down (room ends or candidate leaves).
+    async def _on_shutdown():
+        try:
+            post_transcript(config, transcript)
+            logger.info("Interview session ended, transcript posted.")
+        except Exception as e:
+            logger.warning(f"Transcript post on shutdown failed: {e}")
+
+    ctx.add_shutdown_callback(_on_shutdown)
+
+    # Hold the entrypoint open until the framework shuts the worker down. Without
+    # this the function returns, the job ends, and the agent leaves the room.
+    await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
