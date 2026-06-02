@@ -1,7 +1,11 @@
 """Configuration settings for the application"""
 import os
+import warnings
 from pydantic_settings import BaseSettings
 from typing import List
+
+_DEFAULT_SECRET = "change-me-in-production"
+_MIN_SECRET_LEN = 32
 
 
 class Settings(BaseSettings):
@@ -52,4 +56,25 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         extra = "ignore"
 
+
+def _validate_secret_key(s: "Settings") -> None:
+    """Ensure SECRET_KEY isn't the public default or trivially short in production.
+
+    In debug mode we only warn — local dev shouldn't be blocked. In production we
+    refuse to boot, because a known/short key means anyone can forge JWTs.
+    """
+    weak = (not s.secret_key) or s.secret_key == _DEFAULT_SECRET or len(s.secret_key) < _MIN_SECRET_LEN
+    if not weak:
+        return
+    msg = (
+        f"SECRET_KEY is missing, the public default, or shorter than {_MIN_SECRET_LEN} chars. "
+        "Set a strong SECRET_KEY env var (e.g. `python -c \"import secrets; print(secrets.token_urlsafe(64))\"`)."
+    )
+    if s.debug:
+        warnings.warn(msg, RuntimeWarning, stacklevel=2)
+    else:
+        raise RuntimeError(msg)
+
+
 settings = Settings()
+_validate_secret_key(settings)
