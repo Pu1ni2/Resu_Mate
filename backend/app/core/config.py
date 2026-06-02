@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     # Email (SendGrid)
     sendgrid_api_key: str = ""
     from_email: str = "noreply@resumate.ai"
+
+    # Shared secret the interview worker uses to authenticate machine-to-machine
+    # calls like /save-transcript. Set in both backend and worker env vars.
+    agent_shared_secret: str = ""
     
     @property
     def cors_origins_list(self) -> List[str]:

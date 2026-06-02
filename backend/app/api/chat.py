@@ -7,7 +7,7 @@ import re
 import json
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import io
@@ -672,8 +672,24 @@ async def interview_report(req: InterviewReportRequest, user=Depends(get_current
 
 
 @router.post("/save-transcript")
-async def save_transcript(req: SaveTranscriptRequest, db: AsyncSession = Depends(get_db)):
-    """Called by the interview agent (no browser auth) to persist transcript after session ends."""
+async def save_transcript(
+    req: SaveTranscriptRequest,
+    db: AsyncSession = Depends(get_db),
+    x_agent_token: Optional[str] = Header(default=None, alias="X-Agent-Token"),
+):
+    """Called by the interview worker to persist a transcript after the session ends.
+
+    The worker is a service, not a browser session, so it can't use JWT. Instead it
+    sends X-Agent-Token equal to settings.agent_shared_secret. The shared secret must
+    be configured in both backend and worker env. Without it, anyone could overwrite
+    interview transcripts by guessing an email.
+    """
+    expected = (settings.agent_shared_secret or "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="Agent shared secret not configured on server")
+    if not x_agent_token or x_agent_token.strip() != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Agent-Token")
+
     from sqlalchemy import select
     from app.models.candidate import Interview
     result = await db.execute(

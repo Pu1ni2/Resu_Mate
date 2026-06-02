@@ -19,6 +19,7 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID", "tmp9i8bbq7c")
 OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")
+AGENT_SHARED_SECRET = os.getenv("AGENT_SHARED_SECRET", "")
 
 # Import LiveKit at module level
 from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, WorkerType, cli
@@ -81,17 +82,25 @@ def post_transcript(config: dict, transcript: list):
         "transcript": transcript,
     }
 
+    if not AGENT_SHARED_SECRET:
+        logger.warning(
+            "AGENT_SHARED_SECRET not set; backend will reject /save-transcript "
+            "with 401. Set AGENT_SHARED_SECRET on both backend and worker."
+        )
+    headers = {"X-Agent-Token": AGENT_SHARED_SECRET} if AGENT_SHARED_SECRET else {}
+
     for url in [BACKEND_URL, "http://localhost:8000"]:
         try:
-            # Agent-to-backend call — use a service token or no-auth endpoint
             resp = requests.post(
                 f"{url}/api/chat/save-transcript",
                 json=payload,
+                headers=headers,
                 timeout=10,
             )
             if resp.ok:
                 logger.info(f"Transcript saved ({len(transcript)} turns) for {candidate_email}")
                 return
+            logger.warning(f"Transcript POST to {url} returned {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
             logger.warning(f"Transcript POST failed to {url}: {e}")
 
