@@ -698,11 +698,41 @@ async def save_transcript(
         .order_by(Interview.created_at.desc())
     )
     interview = result.scalars().first()
-    if interview and req.transcript:
-        interview.transcript = req.transcript
-        await db.commit()
-        return {"saved": True, "turns": len(req.transcript)}
-    return {"saved": False, "reason": "No interview record found or empty transcript"}
+    if not (interview and req.transcript):
+        return {"saved": False, "reason": "No interview record found or empty transcript"}
+
+    interview.transcript = req.transcript
+
+    # Auto-generate a lightweight report from the transcript so the hiring
+    # manager has something to read immediately after the candidate disconnects.
+    # The full per-question scoring path runs via /interview-report when the
+    # frontend can provide question/answer pairs.
+    try:
+        joined = "\n".join(
+            f"[{t.get('role', '?')}] {t.get('text', '')}" for t in (req.transcript or [])
+        )[:8000]
+        report_prompt = (
+            f"You're reviewing a recorded interview transcript for {req.candidate_name} "
+            f"applying for {req.role}. Produce a short hiring report in markdown:\n\n"
+            "## Interview Summary (2-3 sentences)\n"
+            "## Strengths (2-3 bullets, evidence-backed)\n"
+            "## Concerns (2-3 bullets, kind tone)\n"
+            "## Recommendation (Strong Hire / Hire / Consider / Pass)\n\n"
+            f"Transcript:\n{joined}"
+        )
+        report_text = await openai_tool.structured_call(
+            prompt=report_prompt,
+            system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
+        )
+        if report_text:
+            interview.report = report_text
+            interview.status = "completed"
+    except Exception as exc:
+        # Don't fail the transcript save if report generation hiccups.
+        print(f"[save-transcript] report generation failed: {exc}")
+
+    await db.commit()
+    return {"saved": True, "turns": len(req.transcript), "report_generated": bool(interview.report)}
 
 # ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════
 
