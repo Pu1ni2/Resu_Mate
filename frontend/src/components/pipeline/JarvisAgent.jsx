@@ -535,8 +535,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       const msg = 'Your session has expired. Please log out and log back in to continue.';
       appendMsg({ role: 'assistant', content: msg });
       setHint('Session expired â€” please log in again.');
-    } else if (autoListenEnabledRef.current && (reason === 'too_short' || reason === 'no_speech')) {
-      queueAutoListen(AUTO_RETRY_DELAY_MS);
+    } else if (reason === 'too_short') {
+      // Recording cut off too quickly. Quietly retry but show a brief nudge.
+      setHint("Didn't catch that â€” keep talking a bit longer.");
+      if (autoListenEnabledRef.current) queueAutoListen(AUTO_RETRY_DELAY_MS);
+    } else if (reason === 'no_speech') {
+      setHint('No speech detected â€” try again or type your message.');
+      if (autoListenEnabledRef.current) queueAutoListen(AUTO_RETRY_DELAY_MS);
+    } else if (reason && reason.toLowerCase().includes('network')) {
+      setHint('Network hiccup â€” try again in a moment.');
+    } else if (reason) {
+      // Unknown reason â€” show it so debugging in prod is possible.
+      setHint(`Voice error: ${reason}`);
     }
   }, [appendMsg, queueAutoListen]);
 
