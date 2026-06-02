@@ -11,13 +11,17 @@ Then: app.include_router(advisor_router, prefix="/api")
 """
 import os
 import json
-from fastapi import APIRouter, UploadFile, File, Form, Depends
+from fastapi import APIRouter, UploadFile, File, Form, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.services import state_service
+
+limiter = Limiter(key_func=get_remote_address)
 
 try:
     from openai import OpenAI
@@ -34,7 +38,9 @@ _session_cache = {}
 
 # ═══ RESUME UPLOAD FOR CANDIDATES ═══
 @router.post("/upload-resume")
+@limiter.limit("10/hour")
 async def candidate_upload_resume(
+    request: Request,
     file: UploadFile = File(...),
     email: str = Form(""),
     db: AsyncSession = Depends(get_db),
@@ -165,7 +171,8 @@ class AdvisorChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def advisor_chat(req: AdvisorChatRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def advisor_chat(request: Request, req: AdvisorChatRequest, db: AsyncSession = Depends(get_db)):
     """Chat with the Advisor Agent — routes to appropriate sub-agent (DB-backed sessions)"""
 
     # Load session from cache or DB

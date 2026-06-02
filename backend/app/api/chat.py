@@ -7,7 +7,9 @@ import re
 import json
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import io
@@ -29,6 +31,11 @@ from app.tools.github_tool import github_tool
 from app.tools.tavily_tool import tavily_tool
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+# Per-IP rate limiter for the LLM-heavy endpoints. slowapi reads app.state.limiter
+# (registered in main.py) at request time, so this Limiter only contributes the
+# decorator — limits are still tracked globally.
+limiter = Limiter(key_func=get_remote_address)
 
 # ═══════ REQUEST MODELS ═══════
 
@@ -140,7 +147,8 @@ def _get_candidate(candidate_id: int, candidate_data: dict = None) -> dict:
 chat_histories = {}
 
 @router.post("/send")
-async def send_message(req: ChatRequest, user=Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def send_message(request: Request, req: ChatRequest, user=Depends(get_current_user)):
     """Multi-candidate RAG chat"""
     try:
         # Get conversation history from in-memory store
@@ -319,7 +327,8 @@ Respond helpfully with **bold** for key points."""
 # ═══════ WEB SEARCH → Research Agent ═══════
 
 @router.post("/web-search")
-async def web_search(req: WebSearchRequest, user=Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def web_search(request: Request, req: WebSearchRequest, user=Depends(get_current_user)):
     """Web search powered by Research Agent"""
     result = await research_agent.standalone_search(req.query, req.candidate_id, req.candidate_name)
     return result
@@ -327,7 +336,8 @@ async def web_search(req: WebSearchRequest, user=Depends(get_current_user)):
 # ═══════ HIRING AGENT → HR Agent ═══════
 
 @router.post("/hiring-agent")
-async def hiring_agent(req: HiringAgentRequest, user=Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(get_current_user)):
     """Candidate evaluation powered by HR Agent"""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data)
@@ -363,7 +373,8 @@ async def draft_email(req: EmailDraftRequest, user=Depends(get_current_user)):
 # ═══════ GITHUB → Data Agent tools ═══════
 
 @router.post("/github-analyze")
-async def github_analyze(req: GitHubRequest, user=Depends(get_current_user)):
+@limiter.limit("15/minute")
+async def github_analyze(request: Request, req: GitHubRequest, user=Depends(get_current_user)):
     """GitHub analysis — multi-strategy with name validation"""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data)
@@ -508,7 +519,8 @@ async def get_calendly_link(user=Depends(get_current_user)):
 # ═══════ INTERVIEW → Technical Agent ═══════
 
 @router.post("/generate-interview-questions")
-async def generate_interview_questions(req: GenerateQuestionsRequest, user=Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def generate_interview_questions(request: Request, req: GenerateQuestionsRequest, user=Depends(get_current_user)):
     questions = await technical_agent.generate_questions(req.role, req.level, req.num_questions, req.focus_areas, req.candidate_name)
     return {"questions": questions}
 
