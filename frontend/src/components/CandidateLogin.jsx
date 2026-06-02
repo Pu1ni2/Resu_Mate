@@ -76,8 +76,8 @@ export default function CandidateLogin() {
     if (!email.trim()) return;
     const trimmed = email.trim().toLowerCase();
 
-    // Demo account bypass
-    if (trimmed === DEMO_EMAIL) {
+    // Demo account bypass — DEV ONLY. In production a real OTP is required.
+    if (import.meta.env.DEV && trimmed === DEMO_EMAIL) {
       localStorage.removeItem('resumate_interview_report');
       localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
       setCandidateSession(DEMO_SESSION);
@@ -200,13 +200,16 @@ export default function CandidateLogin() {
                 </button>
               </div>
 
-              <div className="cl-divider"><span>or</span></div>
-
-              <button className="cl-demo-btn" onClick={handleDemoAccess}>
-                <FileText size={16} />
-                <span>Try Sample Resume</span>
-                <span className="cl-demo-badge">Demo</span>
-              </button>
+              {import.meta.env.DEV && (
+                <>
+                  <div className="cl-divider"><span>or</span></div>
+                  <button className="cl-demo-btn" onClick={handleDemoAccess}>
+                    <FileText size={16} />
+                    <span>Try Sample Resume</span>
+                    <span className="cl-demo-badge">Demo</span>
+                  </button>
+                </>
+              )}
 
               <div className="cl-info">
                 <Shield size={14} />
