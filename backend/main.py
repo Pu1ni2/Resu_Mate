@@ -114,6 +114,61 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+# ═══ Uniform error response shape ═══
+# All unhandled server errors are returned as {"error": {"type", "message"}}
+# so the frontend doesn't have to special-case 3 different shapes.
+from fastapi import Request as _Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as _StarletteHTTPException
+
+
+@app.exception_handler(_StarletteHTTPException)
+async def _http_exception_handler(_request: _Request, exc: _StarletteHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "type": "http_error",
+                "message": exc.detail if isinstance(exc.detail, str) else "Request failed",
+            },
+            # Keep `detail` for backwards compatibility with existing frontend handlers.
+            "detail": exc.detail,
+        },
+        headers=getattr(exc, "headers", None),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_exception_handler(_request: _Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "type": "validation_error",
+                "message": "Request validation failed",
+                "fields": exc.errors(),
+            },
+            "detail": exc.errors(),
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(_request: _Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "type": exc.__class__.__name__,
+                "message": "Internal server error",
+            },
+            "detail": "Internal server error",
+        },
+    )
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
