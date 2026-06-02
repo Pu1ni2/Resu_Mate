@@ -1,8 +1,10 @@
+import asyncio
 import os
 import shutil
 import json
 import hashlib
 import re
+import threading
 from typing import List, Dict, Optional, Set, Tuple
 from pathlib import Path
 
@@ -30,6 +32,11 @@ class ResumeRAGService:
         self.candidate_counter = 0
         self.recently_discussed: List[str] = []
         self.uploaded_file_hashes: Set[str] = set()
+        # Sync lock for sync paths (register_file, delete_candidate) and an
+        # async lock for async paths (add_resume). Both guard the same shared
+        # state — concurrent upload + delete used to leave the dict half-written.
+        self._sync_lock = threading.Lock()
+        self._async_lock = asyncio.Lock()
         
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -142,33 +149,19 @@ class ResumeRAGService:
     
     def register_file(self, content: bytes):
         file_hash = self._get_file_hash(content)
-        self.uploaded_file_hashes.add(file_hash)
+        with self._sync_lock:
+            self.uploaded_file_hashes.add(file_hash)
         return file_hash
-    
+
     def unregister_file(self, file_hash: str):
         """Remove file hash when candidate is deleted"""
-        if file_hash in self.uploaded_file_hashes:
+        with self._sync_lock:
             self.uploaded_file_hashes.discard(file_hash)
-    
-    def delete_candidate(self, candidate_id: int):
-        """Delete a candidate and remove their file hash"""
-        if candidate_id in self.candidates:
-            candidate = self.candidates[candidate_id]
-        
-        # Remove file hash if stored
-            if 'file_hash' in candidate:
-              self.unregister_file(candidate['file_hash'])
-        
-        # Remove from candidates
-        del self.candidates[candidate_id]
 
-    def clear_all(self):
-        """Clear ALL data"""
-        self.candidates = {}
-        self.candidate_counter = 0
-        self.recently_discussed = []
-        self.uploaded_file_hashes = set()  # Clear ALL hashes
-    
+    # Note: a second `delete_candidate` and `clear_all` further below are the
+    # real implementations (they also clean ChromaDB). The earlier stubs that
+    # used to live here were buggy duplicates that Python silently shadowed.
+
     # Clear ChromaDB
         if os.path.exists(self.chroma_dir):
             try:
@@ -304,9 +297,13 @@ class ResumeRAGService:
     
         is_resume = self._is_valid_resume(text)
         name = self._extract_candidate_name(text, file_name)
-    
-        self.candidate_counter += 1
-        candidate_id = self.candidate_counter
+
+        # Serialise counter increment + id assignment so two concurrent uploads
+        # cannot get the same candidate_id (which would then overwrite each other
+        # in the candidates dict).
+        async with self._async_lock:
+            self.candidate_counter += 1
+            candidate_id = self.candidate_counter
     
         chunks = self.text_splitter.split_text(text)
         documents = []
@@ -339,7 +336,8 @@ class ResumeRAGService:
             **summary_data
         }
     
-        self.candidates[candidate_id] = candidate_data
+        async with self._async_lock:
+            self.candidates[candidate_id] = candidate_data
         return candidate_data
     
     async def _analyze_resume(self, text: str, name: str, is_resume: bool) -> Dict:
@@ -449,42 +447,44 @@ BADGES (pick 2-3):
     
     def delete_candidate(self, candidate_id: int):
         """Delete a candidate and remove their file hash so re-upload works."""
-        if candidate_id not in self.candidates:
-            return
+        with self._sync_lock:
+            if candidate_id not in self.candidates:
+                return
 
-        candidate = self.candidates[candidate_id]
+            candidate = self.candidates[candidate_id]
 
-        # Free up the file hash so the same resume can be re-uploaded.
-        file_hash = candidate.get("file_hash")
-        if file_hash:
-            self.uploaded_file_hashes.discard(file_hash)
-            print(f"Removed file hash for candidate {candidate_id}")
+            # Free up the file hash so the same resume can be re-uploaded.
+            file_hash = candidate.get("file_hash")
+            if file_hash:
+                self.uploaded_file_hashes.discard(file_hash)
+                print(f"Removed file hash for candidate {candidate_id}")
 
-        # Remove from ChromaDB vector store.
-        if self.vectordb:
-            try:
-                self.vectordb._collection.delete(where={"candidate_id": candidate_id})
-            except Exception as exc:
-                print(f"ChromaDB delete failed for candidate {candidate_id}: {exc}")
+            # Remove from ChromaDB vector store.
+            if self.vectordb:
+                try:
+                    self.vectordb._collection.delete(where={"candidate_id": candidate_id})
+                except Exception as exc:
+                    print(f"ChromaDB delete failed for candidate {candidate_id}: {exc}")
 
-        del self.candidates[candidate_id]
-        print(f"Deleted candidate {candidate_id}")
+            del self.candidates[candidate_id]
+            print(f"Deleted candidate {candidate_id}")
 
         
     
     def clear_all(self):
         """Clear ALL data"""
-        self.candidates = {}
-        self.candidate_counter = 0
-        self.recently_discussed = []
-        self.uploaded_file_hashes = set()
-        if os.path.exists(self.chroma_dir):
-            try:
-                shutil.rmtree(self.chroma_dir)
-            except Exception as e:
-                print(f"Error clearing ChromaDB: {e}")
-        self._init_vectordb()
-        print("All data cleared")  
+        with self._sync_lock:
+            self.candidates = {}
+            self.candidate_counter = 0
+            self.recently_discussed = []
+            self.uploaded_file_hashes = set()
+            if os.path.exists(self.chroma_dir):
+                try:
+                    shutil.rmtree(self.chroma_dir)
+                except Exception as e:
+                    print(f"Error clearing ChromaDB: {e}")
+            self._init_vectordb()
+            print("All data cleared")
         
           
     def _create_name_mapping(self, candidate_ids: List[int]) -> Tuple[Dict[str, str], Dict[str, str]]:
