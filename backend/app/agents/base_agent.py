@@ -101,15 +101,18 @@ class AgentMemoryStore:
         try:
             with open(self.FILE, 'r') as f:
                 return json.load(f)
-        except:
+        except FileNotFoundError:
+            return {}
+        except Exception as exc:
+            print(f"[memory_store] could not load {self.FILE}: {exc}")
             return {}
 
     def _save(self):
         try:
             with open(self.FILE, 'w') as f:
                 json.dump(self._store, f, indent=2, default=str)
-        except:
-            pass
+        except Exception as exc:
+            print(f"[memory_store] could not save {self.FILE}: {exc}")
 
     def get(self, agent: str) -> List[Dict]:
         return self._store.get(agent, [])
