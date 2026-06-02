@@ -1,5 +1,7 @@
 """Candidates API"""
 import os
+import re
+import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,36 +15,52 @@ router = APIRouter(prefix="/candidates", tags=["Candidates"])
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+_SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _safe_upload_path(original_filename: str, allowed_ext: set[str]) -> tuple[str, str]:
+    """Return (absolute_path, safe_basename) for a freshly uploaded file.
+
+    Drops directory components, normalises the basename, and prefixes a uuid so
+    different users uploading "resume.pdf" never collide and a malicious
+    "../../etc/passwd" can never escape UPLOAD_DIR.
+    """
+    base = os.path.basename(original_filename or "")
+    ext = os.path.splitext(base)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(400, f"File type not allowed. Allowed: {', '.join(sorted(allowed_ext))}")
+    stem = _SAFE_NAME_RE.sub("_", os.path.splitext(base)[0]) or "resume"
+    safe = f"{uuid.uuid4().hex[:8]}_{stem[:60]}{ext}"
+    return os.path.join(UPLOAD_DIR, safe), safe
+
 
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Upload and analyze a resume"""
-    
-    allowed_extensions = ['.pdf', '.docx', '.doc', '.txt']
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in allowed_extensions:
-        raise HTTPException(400, f"File type not allowed. Allowed: {', '.join(allowed_extensions)}")
-    
+
+    allowed_extensions = {'.pdf', '.docx', '.doc', '.txt'}
+    file_path, safe_name = _safe_upload_path(file.filename or "", allowed_extensions)
+
     content = await file.read()
-    
+
     size_error = resume_rag.check_file_size(len(content))
     if size_error:
         raise HTTPException(400, size_error)
-    
+
     dup_error = resume_rag.check_duplicate(content)
     if dup_error:
         raise HTTPException(400, dup_error)
-    
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+
     with open(file_path, "wb") as f:
         f.write(content)
-    
+
     try:
         # Register file and get hash
         file_hash = resume_rag.register_file(content)
-        
-        # Process resume with hash
-        result = await resume_rag.add_resume(file_path, file.filename, file_hash)
+
+        # Process resume with hash. Pass the safe name so downstream display uses
+        # something stable; the original filename is never trusted as a path.
+        result = await resume_rag.add_resume(file_path, safe_name, file_hash)
         
         if "error" in result:
             # If error, unregister the hash
