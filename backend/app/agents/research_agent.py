@@ -45,8 +45,8 @@ class ResearchAgent(BaseAgent):
                 prompt = f"Should a web search help answer this about a job candidate? Reply ONLY 'YES' or 'NO'.\nQuestion: {message}\nCandidate: {candidate_name}"
                 resp = await openai_tool.structured_call(prompt, "You decide if web search would help. Reply ONLY YES or NO.")
                 return 'YES' in resp.upper()
-            except:
-                pass
+            except Exception as exc:
+                self.log("should_search_error", f"LLM gating failed; defaulting to no-search: {exc}")
         return False
 
     async def search_for_chat(self, query: str, candidate_name: str = "") -> Dict:

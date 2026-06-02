@@ -67,10 +67,10 @@ class ResumeRAGService:
             )
             
             self._init_vectordb()
-            print("✅ OpenAI services initialized successfully")
+            print("[OK] OpenAI services initialized successfully")
             
         except Exception as e:
-            print(f"❌ Error initializing services: {e}")
+            print(f"[ERR] Error initializing services: {e}")
             self.embeddings = None
             self.llm = None
 
@@ -108,10 +108,10 @@ class ResumeRAGService:
         # First attempt — open existing store.
         try:
             self.vectordb = _open()
-            print(f"✅ ChromaDB initialized at {self.chroma_dir}")
+            print(f"[OK] ChromaDB initialized at {self.chroma_dir}")
             return
         except BaseException as e:
-            print(f"⚠️ ChromaDB open failed ({type(e).__name__}: {e}); resetting store.")
+            print(f"[WARN] ChromaDB open failed ({type(e).__name__}: {e}); resetting store.")
 
         # Second attempt — wipe directory + clear singletons, then open fresh.
         try:
@@ -120,15 +120,15 @@ class ResumeRAGService:
             os.makedirs(self.chroma_dir, exist_ok=True)
             _clear_chroma_singletons()
             self.vectordb = _open()
-            print(f"✅ ChromaDB re-initialized at {self.chroma_dir} (fresh store)")
+            print(f"[OK] ChromaDB re-initialized at {self.chroma_dir} (fresh store)")
             return
         except BaseException as e:
-            print(f"⚠️ ChromaDB fresh-open failed ({type(e).__name__}: {e}); disabling vector store.")
+            print(f"[WARN] ChromaDB fresh-open failed ({type(e).__name__}: {e}); disabling vector store.")
 
         # Give up — the app boots without RAG. Upload/chat-with-RAG will be disabled
         # until chromadb is reinstalled (see requirements.txt: chromadb<0.6.0).
         self.vectordb = None
-        print("❌ ChromaDB disabled — run: pip uninstall -y chromadb chromadb-rust-bindings langchain-chroma && pip install -r requirements.txt")
+        print("[ERR] ChromaDB disabled — run: pip uninstall -y chromadb chromadb-rust-bindings langchain-chroma && pip install -r requirements.txt")
     
     # ... rest of the file remains the same ...
     
@@ -158,19 +158,10 @@ class ResumeRAGService:
         with self._sync_lock:
             self.uploaded_file_hashes.discard(file_hash)
 
-    # Note: a second `delete_candidate` and `clear_all` further below are the
-    # real implementations (they also clean ChromaDB). The earlier stubs that
-    # used to live here were buggy duplicates that Python silently shadowed.
-
-    # Clear ChromaDB
-        if os.path.exists(self.chroma_dir):
-            try:
-                shutil.rmtree(self.chroma_dir)
-            except Exception as e:
-                print(f"Error clearing ChromaDB: {e}")
-    
-        self._init_vectordb()
-        print("✅ All data cleared")
+    # Note: the real `delete_candidate` and `clear_all` are defined further
+    # below in this class (they also clean ChromaDB). The earlier stubs that
+    # used to live here were buggy duplicates that Python silently shadowed,
+    # so they have been removed.
 
     def _extract_text(self, file_path: str, file_name: str) -> str:
         ext = Path(file_name).suffix.lower()
@@ -236,12 +227,12 @@ class ResumeRAGService:
                             links["portfolio_url"] = uri
             
             doc.close()
-            print(f"✅ Extracted {len(links['all_urls'])} embedded links from PDF")
+            print(f"[OK] Extracted {len(links['all_urls'])} embedded links from PDF")
             
         except ImportError:
-            print("⚠️ PyMuPDF not installed. Run: pip install PyMuPDF")
+            print("[WARN] PyMuPDF not installed. Run: pip install PyMuPDF")
         except Exception as e:
-            print(f"⚠️ Error extracting PDF links: {e}")
+            print(f"[WARN] Error extracting PDF links: {e}")
         
         return links
     
@@ -715,7 +706,7 @@ Respond helpfully using **bold** for names and key points."""
 
 I'm your resume analysis assistant powered by **GPT-5.2**.
 
-⚠️ **Important:** I can ONLY help with questions about uploaded resumes and candidates.
+**Important:** I can ONLY help with questions about uploaded resumes and candidates.
 
 **I can help with:**
 - Analyzing candidate profiles and skills
