@@ -267,11 +267,18 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
     } catch (e) {
       console.error('Failed to start interview:', e);
-      setSetupError({
-        message: e.message || 'Could not connect to the interview server.',
-        hint:
-          'If you are testing locally, make sure the backend is running on port 8000, the LiveKit credentials are configured, and `python interview_agent.py dev` is running.',
-      });
+      // Inline error UI â€” no alert() so the user can copy/paste the message
+      // and the page stays interactive.
+      const msg = e?.message || 'Could not connect to the interview server.';
+      let hint = 'Try again in a moment, or contact your hiring manager if the issue persists.';
+      if (/livekit/i.test(msg)) {
+        hint = 'LiveKit room could not be created. The server is missing LiveKit credentials â€” contact your hiring manager.';
+      } else if (/mic|microphone|permission/i.test(msg)) {
+        hint = 'Please allow microphone access in your browser settings and reload.';
+      } else if (/network|fetch/i.test(msg)) {
+        hint = 'Network error reaching the interview server. Check your connection and try again.';
+      }
+      setSetupError({ message: msg, hint });
       setPhase('setup');
       setConnecting(false);
     }
