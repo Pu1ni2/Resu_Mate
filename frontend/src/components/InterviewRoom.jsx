@@ -38,6 +38,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const [agentJoined, setAgentJoined] = useState(false);
   const [muted, setMuted] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [setupError, setSetupError] = useState(null);
 
   // Face tracking
   const [faceDetected, setFaceDetected] = useState(false);
@@ -266,7 +267,11 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
     } catch (e) {
       console.error('Failed to start interview:', e);
-      alert(`Failed to start: ${e.message}\n\nMake sure:\n1. Backend is running on port 8001\n2. LiveKit credentials are in backend .env\n3. Interview Agent is running (python interview_agent.py dev)`);
+      setSetupError({
+        message: e.message || 'Could not connect to the interview server.',
+        hint:
+          'If you are testing locally, make sure the backend is running on port 8000, the LiveKit credentials are configured, and `python interview_agent.py dev` is running.',
+      });
       setPhase('setup');
       setConnecting(false);
     }
@@ -363,10 +368,31 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
               ))}
             </div>
 
+            {setupError && (
+              <div
+                role="alert"
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  padding: '14px 16px', marginBottom: '20px',
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+                  borderRadius: '12px', textAlign: 'left',
+                }}
+              >
+                <AlertTriangle size={18} style={{ color: '#F87171', flexShrink: 0, marginTop: 2 }} />
+                <div style={{ fontSize: '13px', color: '#FCA5A5', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Could not start interview</div>
+                  <div style={{ color: '#FECACA' }}>{setupError.message}</div>
+                  {setupError.hint && (
+                    <div style={{ color: '#A1A1AA', marginTop: 6, fontSize: '12px' }}>{setupError.hint}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button onClick={onExit} style={{ padding: '14px 24px', background: 'none', color: '#71717A', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={startInterview} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                <Phone size={18} /> Join Interview
+              <button onClick={() => { setSetupError(null); startInterview(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <Phone size={18} /> {setupError ? 'Try again' : 'Join Interview'}
               </button>
             </div>
           </div>
