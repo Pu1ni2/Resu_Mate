@@ -144,7 +144,20 @@ export const AppProvider = ({ children }) => {
   }, [selectedCandidates]);
 
   const loadCandidates = useCallback(async () => {
-    setLoading(false);
+    setLoading(true);
+    try {
+      const res = await candidatesAPI.getAll();
+      const list = res?.data?.candidates || [];
+      setCandidates(list);
+      if (list.length === 0) {
+        setSelectedIds([]);
+        localStorage.removeItem('resumate_candidates');
+      }
+    } catch (err) {
+      console.warn('loadCandidates: backend fetch failed, keeping cached list:', err?.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const uploadResume = useCallback(async (file) => {
