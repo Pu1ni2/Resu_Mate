@@ -166,7 +166,7 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
     code = _generate_otp()
     otp_record = OTPCode(
         email=email,
-        code=code,
+        code=get_password_hash(code),  # store bcrypt hash, never the plaintext OTP
         expires_at=datetime.utcnow() + timedelta(minutes=15),
     )
     db.add(otp_record)
@@ -184,21 +184,31 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
 
 
 @router.post("/candidate/verify-otp")
-async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     """Verify OTP and return a candidate session token + profile data."""
     email = req.email.lower().strip()
+    submitted = (req.code or "").strip()
     now = datetime.utcnow()
 
-    # Find a valid, unused, non-expired OTP
+    # Find all valid, unused, non-expired OTPs for this email; bcrypt-compare each.
+    # We cannot SQL-match on the code since it is now stored as a bcrypt hash.
     result = await db.execute(
         select(OTPCode).where(
             OTPCode.email == email,
-            OTPCode.code == req.code,
             OTPCode.used == False,
             OTPCode.expires_at > now,
-        )
+        ).order_by(OTPCode.created_at.desc())
     )
-    otp_record = result.scalar_one_or_none()
+    candidates = result.scalars().all()
+    otp_record = None
+    for rec in candidates:
+        try:
+            if verify_password(submitted, rec.code):
+                otp_record = rec
+                break
+        except Exception:
+            continue
 
     if not otp_record:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")

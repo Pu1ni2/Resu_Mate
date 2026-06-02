@@ -31,7 +31,9 @@ class OTPCode(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(200), nullable=False, index=True)
-    code = Column(String(6), nullable=False)
+    # Stores a bcrypt hash of the 6-digit code, not the code itself. Verified
+    # by hashing the submitted code and comparing — never by SQL equality.
+    code = Column(String(255), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
