@@ -148,7 +148,12 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain }) {
 
   const { role, total_screened, stats, results = [], jd_requirements } = pipelineResult;
 
-  const filtered = activeTab === 'All' ? results : results.filter(r => r.verdict === activeTab);
+  // Default sort: highest ATS score first. The backend usually returns sorted
+  // already, but a defensive sort here makes the UI behave even if it doesn't.
+  const sortedResults = [...results].sort(
+    (a, b) => (b?.ats_score ?? 0) - (a?.ats_score ?? 0)
+  );
+  const filtered = activeTab === 'All' ? sortedResults : sortedResults.filter(r => r.verdict === activeTab);
 
   const toggleSelect = (id) => {
     setSelectedIds(prev =>
