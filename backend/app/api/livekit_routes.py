@@ -25,9 +25,9 @@ LIVEKIT_URL = os.getenv("LIVEKIT_URL", "")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
 
-print(f"🔑 LiveKit URL: {'✅ set' if LIVEKIT_URL else '❌ MISSING'}")
-print(f"🔑 LiveKit API Key: {'✅ set' if LIVEKIT_API_KEY else '❌ MISSING'}")
-print(f"🔑 LiveKit API Secret: {'✅ ' + LIVEKIT_API_SECRET[:8] + '...' if LIVEKIT_API_SECRET else '❌ MISSING'}")
+print(f"LiveKit URL: {'set' if LIVEKIT_URL else 'MISSING'}")
+print(f"LiveKit API Key: {'set' if LIVEKIT_API_KEY else 'MISSING'}")
+print(f"LiveKit API Secret: {'set' if LIVEKIT_API_SECRET else 'MISSING'}")
 
 # In-memory fallback (for rooms created without a DB Interview record)
 room_configs = {}
