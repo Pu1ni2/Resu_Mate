@@ -117,15 +117,22 @@ export default function ProductLayer({ children }) {
   // ═══ KEYBOARD SHORTCUTS ═══
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't trigger when typing in inputs
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      // Don't trigger when typing anywhere editable. Covers <input>, <textarea>,
+      // <select>, AND contenteditable elements (e.g. rich-text composers). Without
+      // the contenteditable check, pressing "t" inside a Jarvis chat composer
+      // would flip the theme instead of typing the letter.
+      const tag = e.target?.tagName;
+      const inEditable =
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) ||
+        e.target?.isContentEditable;
+      if (inEditable) {
         // Ctrl+Enter to send in chat
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           const sendBtn = document.querySelector('.send-btn, .cd-chat-input button');
           if (sendBtn && !sendBtn.disabled) sendBtn.click();
         }
         // Escape to blur
-        if (e.key === 'Escape') e.target.blur();
+        if (e.key === 'Escape' && typeof e.target.blur === 'function') e.target.blur();
         return;
       }
 
