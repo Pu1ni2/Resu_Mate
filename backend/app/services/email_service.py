@@ -1,5 +1,8 @@
 """Email Service — SendGrid with graceful console fallback"""
+import logging
 from app.core.config import settings
+
+logger = logging.getLogger("resumate.email")
 
 
 class EmailService:
@@ -10,13 +13,23 @@ class EmailService:
                 import sendgrid as sg_module
                 self._sg = sg_module.SendGridAPIClient(api_key=settings.sendgrid_api_key)
             except Exception as e:
-                print(f"[EmailService] SendGrid init failed: {e}")
+                logger.warning("SendGrid init failed: %s", e)
+
+    @property
+    def configured(self) -> bool:
+        """True only when SendGrid is set up and emails will actually be delivered."""
+        return self._sg is not None
 
     async def send(self, to_email: str, subject: str, html_body: str) -> bool:
-        """Send an email. Falls back to console print if SendGrid not configured."""
+        """Send an email. Returns True only if SendGrid accepted it.
+
+        When SendGrid is not configured (local dev), prints to console and returns
+        False so callers can detect the no-op and decide how to respond (e.g. include
+        the OTP code in the dev response, or fail loudly in production).
+        """
         if not self._sg:
             print(f"\n[EMAIL STUB] To: {to_email}\nSubject: {subject}\n{html_body}\n")
-            return True
+            return False
         try:
             from sendgrid.helpers.mail import Mail
             message = Mail(
@@ -28,10 +41,10 @@ class EmailService:
             response = self._sg.send(message)
             success = 200 <= response.status_code < 300
             if not success:
-                print(f"[EmailService] Send failed: {response.status_code}")
+                logger.warning("SendGrid rejected message: status=%s", response.status_code)
             return success
         except Exception as e:
-            print(f"[EmailService] Send error: {e}")
+            logger.exception("SendGrid send error: %s", e)
             return False
 
     async def send_otp(self, to_email: str, code: str) -> bool:

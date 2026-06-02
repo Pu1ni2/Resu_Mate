@@ -172,15 +172,26 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
     db.add(otp_record)
     await db.commit()
 
-    # Send email (import lazily to avoid circular imports)
+    # Send email. In dev we expose the OTP code in the response so the candidate
+    # portal works without SendGrid configured. In production a delivery failure
+    # is a 503 so the candidate isn't left wondering why no email arrived.
+    from app.services.email_service import email_service
+    from app.core.config import settings as _settings
     try:
-        from app.services.email_service import email_service
-        await email_service.send_otp(email, code)
-    except Exception:
-        # Fallback: print to console so development still works
-        print(f"[OTP] {email} → {code}")
+        delivered = await email_service.send_otp(email, code)
+    except Exception as exc:
+        delivered = False
+        print(f"[OTP] send error: {exc}")
 
-    return {"message": "OTP sent to your email", "email": email}
+    if delivered:
+        return {"message": "OTP sent to your email", "email": email}
+
+    if _settings.debug:
+        # Dev convenience: include the code in the response so flows work without SendGrid.
+        print(f"[OTP] dev fallback for {email}: {code}")
+        return {"message": "OTP generated (dev mode)", "email": email, "debug_code": code}
+
+    raise HTTPException(status_code=503, detail="Could not send OTP email. Try again shortly.")
 
 
 @router.post("/candidate/verify-otp")
