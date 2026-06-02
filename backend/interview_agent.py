@@ -15,7 +15,7 @@ load_dotenv(override=True)
 logger = logging.getLogger("resumate-interview-agent")
 logger.setLevel(logging.INFO)
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8006")
 SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID", "tmp9i8bbq7c")
 OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")
@@ -28,7 +28,7 @@ from livekit.plugins import openai as lk_openai, simli as lk_simli
 
 def get_interview_config(room_name):
     try:
-        for url in [BACKEND_URL, "http://localhost:8000"]:
+        for url in [BACKEND_URL, "http://localhost:8006"]:
             try:
                 resp = requests.get(f"{url}/api/livekit/interview-room-config/{room_name}", timeout=5)
                 if resp.ok:
@@ -89,7 +89,7 @@ def post_transcript(config: dict, transcript: list):
         )
     headers = {"X-Agent-Token": AGENT_SHARED_SECRET} if AGENT_SHARED_SECRET else {}
 
-    for url in [BACKEND_URL, "http://localhost:8000"]:
+    for url in [BACKEND_URL, "http://localhost:8006"]:
         try:
             resp = requests.post(
                 f"{url}/api/chat/save-transcript",

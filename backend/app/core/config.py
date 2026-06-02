@@ -38,7 +38,8 @@ class Settings(BaseSettings):
     # 5173) and the Render frontend URL so the app boots usable even if the
     # CORS_ORIGINS env var isn't set. Override in production for security.
     cors_origins: str = (
-        "http://localhost:3000,http://localhost:3001,http://localhost:5173,"
+        "http://localhost:3000,http://localhost:3001,http://localhost:3006,"
+        "http://localhost:5173,"
         "https://resumate-ui.onrender.com"
     )
 
