@@ -143,26 +143,35 @@ def _get_candidate(candidate_id: int, candidate_data: dict = None) -> dict:
     return candidate
 
 # ═══════ CHAT ENDPOINTS ═══════
+#
+# chat_histories is a bounded LRU. Without a cap the dict grew with every new
+# conversation_id and was never evicted, which leaked memory under load and
+# survived only until restart anyway. For real cross-restart persistence the
+# advisor_sessions DB pattern is the right answer; for the dashboard's
+# free-form chat the value of persistence isn't worth the DB hit.
+from collections import OrderedDict
+_CHAT_MAX_CONVERSATIONS = 256
+_CHAT_MAX_MESSAGES_PER_CONVO = 20
+chat_histories: "OrderedDict[str, list]" = OrderedDict()
 
-chat_histories = {}
+
+def _remember_chat(conversation_id: str, user_msg: str, assistant_msg: str) -> None:
+    convo = chat_histories.pop(conversation_id, [])
+    convo.append({"role": "user", "content": user_msg})
+    convo.append({"role": "assistant", "content": assistant_msg})
+    chat_histories[conversation_id] = convo[-_CHAT_MAX_MESSAGES_PER_CONVO:]
+    while len(chat_histories) > _CHAT_MAX_CONVERSATIONS:
+        chat_histories.popitem(last=False)  # drop the oldest conversation
+
 
 @router.post("/send")
 @limiter.limit("30/minute")
 async def send_message(request: Request, req: ChatRequest, user=Depends(get_current_user)):
     """Multi-candidate RAG chat"""
     try:
-        # Get conversation history from in-memory store
         history = chat_histories.get(req.conversation_id, [])
         response = await resume_rag.chat(req.message, req.candidate_ids, history, req.anonymize)
-        
-        # Save to history
-        if req.conversation_id not in chat_histories:
-            chat_histories[req.conversation_id] = []
-        chat_histories[req.conversation_id].append({"role": "user", "content": req.message})
-        chat_histories[req.conversation_id].append({"role": "assistant", "content": response.get("response", "")})
-        # Keep last 20 messages
-        chat_histories[req.conversation_id] = chat_histories[req.conversation_id][-20:]
-        
+        _remember_chat(req.conversation_id, req.message, response.get("response", ""))
         return response
     except Exception as e:
         return {"response": f"Error: {str(e)}", "suggestions": []}
