@@ -11,9 +11,12 @@ class Candidate(Base):
     id = Column(Integer, primary_key=True, index=True)
     manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
-    email = Column(String(200), nullable=True)
+    # Indexed: queried for owner-lookup, candidate-portal sign-in, and
+    # candidate-access linking. file_hash is queried on every upload to detect
+    # duplicate resumes — without an index this is O(n) per upload.
+    email = Column(String(200), nullable=True, index=True)
     file_name = Column(String(500))
-    file_hash = Column(String(64), nullable=True)
+    file_hash = Column(String(64), nullable=True, index=True)
     is_resume = Column(Boolean, default=True)
     raw_text = Column(Text)
     full_text = Column(Text)
