@@ -447,31 +447,26 @@ BADGES (pick 2-3):
     def get_candidate(self, candidate_id: int) -> Optional[Dict]:
         return self.candidates.get(candidate_id)
     
-    # def delete_candidate(self, candidate_id: int):
-    #     if candidate_id in self.candidates:
-    #         candidate=self.candidates[candidate_id]
-    #         del self.candidates[candidate_id]
-
     def delete_candidate(self, candidate_id: int):
-        """Delete a candidate and remove their file hash so re-upload works"""
-        if candidate_id in self.candidates:
-            candidate = self.candidates[candidate_id]
-        
-            # Remove file hash — THIS IS THE KEY FIX
-            file_hash = candidate.get('file_hash')
+        """Delete a candidate and remove their file hash so re-upload works."""
+        if candidate_id not in self.candidates:
+            return
+
+        candidate = self.candidates[candidate_id]
+
+        # Free up the file hash so the same resume can be re-uploaded.
+        file_hash = candidate.get("file_hash")
         if file_hash:
             self.uploaded_file_hashes.discard(file_hash)
             print(f"Removed file hash for candidate {candidate_id}")
-        
-        # Remove from ChromaDB
+
+        # Remove from ChromaDB vector store.
         if self.vectordb:
             try:
-                self.vectordb._collection.delete(
-                    where={"candidate_id": candidate_id}
-                )
-            except:
-                pass
-        
+                self.vectordb._collection.delete(where={"candidate_id": candidate_id})
+            except Exception as exc:
+                print(f"ChromaDB delete failed for candidate {candidate_id}: {exc}")
+
         del self.candidates[candidate_id]
         print(f"Deleted candidate {candidate_id}")
 
