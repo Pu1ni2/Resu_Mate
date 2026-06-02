@@ -157,8 +157,9 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   response => response,
   error => {
-    // On 401, clear auth and redirect — but NOT if we're already on auth pages
-    // and NOT if the 401 came from the auth endpoints themselves
+    // On 401, clear auth and dispatch an event for App.jsx to handle via React
+    // Router. We deliberately avoid window.location.href because the hard reload
+    // kills in-progress Jarvis conversations, voice sessions, and uploads.
     if (error.response?.status === 401) {
       const path = window.location.pathname;
       const isAuthPage = path === '/hiring/login' || path === '/hiring/register';
@@ -167,7 +168,12 @@ api.interceptors.response.use(
         localStorage.removeItem('resumate_hm_token');
         localStorage.removeItem('resumate_hm_refresh');
         localStorage.removeItem('resumate_hm_user');
-        window.location.href = '/hiring/login';
+        try {
+          window.dispatchEvent(new CustomEvent('resumate:unauthorized'));
+        } catch (_) {
+          // Fallback for old browsers that lack CustomEvent — last-resort hard nav.
+          window.location.href = '/hiring/login';
+        }
       }
     }
     return Promise.reject(error);

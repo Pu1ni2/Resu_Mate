@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import CandidateLogin from './components/CandidateLogin';
@@ -23,8 +23,25 @@ function PipelineResultsPage() {
   );
 }
 
+function UnauthorizedHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onUnauth = () => {
+      // services/api.js dispatches this when a 401 reaches the interceptor.
+      // We do a soft navigation so React state (e.g. an in-progress Jarvis
+      // session) survives the redirect.
+      navigate('/hiring/login', { replace: true });
+    };
+    window.addEventListener('resumate:unauthorized', onUnauth);
+    return () => window.removeEventListener('resumate:unauthorized', onUnauth);
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   return (
+    <>
+    <UnauthorizedHandler />
     <Routes>
       <Route path="/" element={<Landing />} />
 
@@ -46,5 +63,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
