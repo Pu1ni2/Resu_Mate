@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header,
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import io
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,24 +40,24 @@ limiter = Limiter(key_func=get_remote_address)
 # ═══════ REQUEST MODELS ═══════
 
 class ChatRequest(BaseModel):
-    message: str
-    candidate_ids: list = []
-    conversation_id: str = "default"
+    message: str = Field(..., max_length=4000)
+    candidate_ids: list = Field(default_factory=list, max_length=100)
+    conversation_id: str = Field(default="default", max_length=120)
     anonymize: bool = False
 
 class FocusChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=4000)
     candidate_id: int
-    conversation_history: list = []
+    conversation_history: list = Field(default_factory=list, max_length=40)
     anonymize: bool = False
     candidate_data: Optional[dict] = None
     scan_data: Optional[dict] = None
     scan_contact: Optional[dict] = None
 
 class WebSearchRequest(BaseModel):
-    query: str
+    query: str = Field(..., max_length=500)
     candidate_id: Optional[int] = None
-    candidate_name: Optional[str] = None
+    candidate_name: Optional[str] = Field(default=None, max_length=200)
 
 class HiringAgentRequest(BaseModel):
     candidate_id: int
@@ -88,11 +88,11 @@ class ScanRequest(BaseModel):
     candidate_data: Optional[dict] = None
 
 class GenerateQuestionsRequest(BaseModel):
-    role: str = "General"
-    level: str = "Mid-Level"
-    num_questions: int = 8
-    focus_areas: list = []
-    candidate_name: str = "Candidate"
+    role: str = Field(default="General", max_length=120)
+    level: str = Field(default="Mid-Level", max_length=60)
+    num_questions: int = Field(default=8, ge=1, le=25)
+    focus_areas: list = Field(default_factory=list, max_length=20)
+    candidate_name: str = Field(default="Candidate", max_length=200)
 
 class ScoreAnswerRequest(BaseModel):
     question: str
@@ -101,37 +101,37 @@ class ScoreAnswerRequest(BaseModel):
     candidate_name: str = "Candidate"
 
 class InterviewReportRequest(BaseModel):
-    candidate_name: str
-    candidate_email: str
-    role: str
-    questions: list
-    answers: list
-    scores: list
-    duration: int = 0
-    transcript: Optional[list] = None
+    candidate_name: str = Field(..., max_length=200)
+    candidate_email: str = Field(..., max_length=320)
+    role: str = Field(..., max_length=200)
+    questions: list = Field(..., max_length=50)
+    answers: list = Field(..., max_length=50)
+    scores: list = Field(..., max_length=50)
+    duration: int = Field(default=0, ge=0, le=24 * 60 * 60)
+    transcript: Optional[list] = Field(default=None, max_length=2000)
 
 class CreateInterviewRequest(BaseModel):
     candidate_id: int
-    candidate_email: str
-    candidate_name: Optional[str] = None
-    role: Optional[str] = None
-    level: Optional[str] = None
-    experience_required: Optional[str] = None
-    num_questions: int = 8
-    focus_areas: Optional[list] = None
+    candidate_email: str = Field(..., max_length=320)
+    candidate_name: Optional[str] = Field(default=None, max_length=200)
+    role: Optional[str] = Field(default=None, max_length=200)
+    level: Optional[str] = Field(default=None, max_length=60)
+    experience_required: Optional[str] = Field(default=None, max_length=120)
+    num_questions: int = Field(default=8, ge=1, le=25)
+    focus_areas: Optional[list] = Field(default=None, max_length=20)
 
 class VerifyEmailRequest(BaseModel):
     email: str
 
 class SaveTranscriptRequest(BaseModel):
-    candidate_email: str
-    candidate_name: str = "Candidate"
-    role: str = "General"
-    questions: list = []
-    answers: list = []
-    scores: list = []
-    duration: int = 0
-    transcript: Optional[list] = None
+    candidate_email: str = Field(..., max_length=320)
+    candidate_name: str = Field(default="Candidate", max_length=200)
+    role: str = Field(default="General", max_length=200)
+    questions: list = Field(default_factory=list, max_length=50)
+    answers: list = Field(default_factory=list, max_length=50)
+    scores: list = Field(default_factory=list, max_length=50)
+    duration: int = Field(default=0, ge=0, le=24 * 60 * 60)
+    transcript: Optional[list] = Field(default=None, max_length=2000)
 
 # ═══════ HELPER ═══════
 
