@@ -5,13 +5,27 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.core.config import settings
 
 
+_REQUEST_TIMEOUT_S = 45.0  # cover GPT-4o p99 latency without blocking forever
+
+
 class OpenAITool:
     def __init__(self):
         self.llm = None
         self.embeddings = None
         if settings.openai_api_key:
-            self.llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0.3)
-            self.embeddings = OpenAIEmbeddings(api_key=settings.openai_api_key, model="text-embedding-3-small")
+            self.llm = ChatOpenAI(
+                model=settings.openai_model,
+                api_key=settings.openai_api_key,
+                temperature=0.3,
+                timeout=_REQUEST_TIMEOUT_S,
+                max_retries=1,
+            )
+            self.embeddings = OpenAIEmbeddings(
+                api_key=settings.openai_api_key,
+                model="text-embedding-3-small",
+                timeout=_REQUEST_TIMEOUT_S,
+                max_retries=1,
+            )
 
     async def call(self, params: Dict, context: Dict = None) -> str:
         """Make an LLM call"""

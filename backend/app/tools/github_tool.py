@@ -19,7 +19,9 @@ class GitHubTool:
             headers["Authorization"] = f"token {self.token}"
 
         try:
-            async with httpx.AsyncClient() as client:
+            # Default httpx timeout is 5s connect / no read cap; bound it so a
+            # slow GitHub response doesn't tie up a worker.
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 user_resp = await client.get(f"https://api.github.com/users/{username}", headers=headers)
                 if user_resp.status_code != 200:
                     return {"error": f"GitHub user '{username}' not found"}

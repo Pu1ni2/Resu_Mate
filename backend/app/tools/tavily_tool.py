@@ -1,6 +1,9 @@
 """Tavily Web Search Tool"""
+import asyncio
 from typing import Dict, Any, List
 from app.core.config import settings
+
+_TAVILY_TIMEOUT_S = 20.0
 
 
 class TavilyTool:
@@ -18,17 +21,23 @@ class TavilyTool:
         """Search the web"""
         if not self.client:
             return {"error": "Tavily not configured", "results": [], "answer": ""}
-        
+
         query = params.get("query", "")
         max_results = params.get("max_results", 5)
         search_depth = params.get("search_depth", "basic")
-        
+
         try:
-            response = self.client.search(
-                query=query,
-                search_depth=search_depth,
-                max_results=max_results,
-                include_answer=True
+            # TavilyClient.search is synchronous; run in a thread so it can be
+            # cancelled by the asyncio.wait_for timeout instead of blocking the loop.
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.client.search,
+                    query=query,
+                    search_depth=search_depth,
+                    max_results=max_results,
+                    include_answer=True,
+                ),
+                timeout=_TAVILY_TIMEOUT_S,
             )
             return {
                 "answer": response.get("answer", ""),
@@ -37,6 +46,8 @@ class TavilyTool:
                     for r in response.get("results", [])
                 ]
             }
+        except asyncio.TimeoutError:
+            return {"error": "tavily timeout", "results": [], "answer": ""}
         except Exception as e:
             return {"error": str(e), "results": [], "answer": ""}
 
