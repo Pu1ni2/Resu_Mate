@@ -34,8 +34,13 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = False
 
-    # CORS
-    cors_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173"
+    # CORS — comma-separated origin list. The defaults cover local dev (3000, 3001,
+    # 5173) and the Render frontend URL so the app boots usable even if the
+    # CORS_ORIGINS env var isn't set. Override in production for security.
+    cors_origins: str = (
+        "http://localhost:3000,http://localhost:3001,http://localhost:5173,"
+        "https://resumate-ui.onrender.com"
+    )
 
     # JWT Auth
     secret_key: str = "change-me-in-production"
