@@ -21,7 +21,7 @@ import InterviewCreator from './focus/InterviewCreator';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
 
 const API_BASE = import.meta.env.PROD
-  ? 'https://resumate-api-74dm.onrender.com'
+  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
   : '';
 
 // ─── Full-Screen Matrix Rain ───

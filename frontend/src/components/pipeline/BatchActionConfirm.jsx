@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { X, Zap, Mail, Video, CheckCircle, Loader, AlertCircle, Send, Edit2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function BatchActionConfirm({ selectedCandidates, role, onClose, onDone }) {
   const [level, setLevel] = useState('Mid-Level');
@@ -59,7 +59,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
     }
   };
 
-  // ── Results view ────────────────────────────────────────────────────────────
+  // â”€â”€ Results view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (results) {
     return (
@@ -80,10 +80,10 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <div key={o.candidate_id} style={styles.outcomeRow}>
                 <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{o.name}</span>
                 <span style={{ fontSize: 12, color: o.interview_created ? '#22C55E' : '#EF4444' }}>
-                  {o.interview_created ? '✓ Interview' : '✗ Interview'}
+                  {o.interview_created ? 'âœ“ Interview' : 'âœ— Interview'}
                 </span>
                 <span style={{ fontSize: 12, color: o.email_drafted ? '#3B82F6' : '#64748B', marginLeft: 10 }}>
-                  {o.email_drafted ? '✓ Email drafted' : '✗ Email'}
+                  {o.email_drafted ? 'âœ“ Email drafted' : 'âœ— Email'}
                 </span>
               </div>
             ))}
@@ -99,7 +99,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
     );
   }
 
-  // ── Confirm view ────────────────────────────────────────────────────────────
+  // â”€â”€ Confirm view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div style={styles.overlay}>
@@ -155,8 +155,8 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{c.name}</p>
                   <p style={{ margin: 0, fontSize: 11, color: '#64748B' }}>
-                    ATS {c.ats_score} · {c.verdict}
-                    {c.email ? ` · ${c.email}` : ' · no email'}
+                    ATS {c.ats_score} Â· {c.verdict}
+                    {c.email ? ` Â· ${c.email}` : ' Â· no email'}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -190,7 +190,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         <button onClick={handleConfirm} disabled={running || activeIds.length === 0} style={{ ...styles.primaryBtn, opacity: activeIds.length > 0 ? 1 : 0.5 }}>
           {running
             ? <><Loader size={14} className="spin" /> Processing {selectedCandidates.length} candidates...</>
-            : <><Zap size={14} /> Confirm — {selectedCandidates.length} candidate{selectedCandidates.length !== 1 ? 's' : ''}</>}
+            : <><Zap size={14} /> Confirm â€” {selectedCandidates.length} candidate{selectedCandidates.length !== 1 ? 's' : ''}</>}
         </button>
       </div>
     </div>

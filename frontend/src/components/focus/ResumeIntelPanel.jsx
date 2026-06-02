@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Target, AlertTriangle, CheckCircle, Shield, Loader, ChevronRight } from 'lucide-react';
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function ResumeIntelPanel({ focusCandidate, showToast }) {
   const [intel, setIntel] = useState(null);

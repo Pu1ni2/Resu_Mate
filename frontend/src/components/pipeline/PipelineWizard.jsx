@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, X, Zap, FileText, ChevronRight, Loader, Volume2, Edit2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 const STEPS = [
   { key: 'role',         question: "What role are you hiring for?",                           placeholder: "e.g. Senior Backend Engineer" },
@@ -21,7 +21,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const inputRef = useRef(null);
 
-  // Voice hook — onTranscribed fills the current input
+  // Voice hook â€” onTranscribed fills the current input
   const voice = useVoice({
     apiBase: API_BASE,
     onTranscribed: (text) => setInputVal(prev => prev ? prev + ' ' + text : text),
@@ -130,7 +130,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
     }
   };
 
-  // ── Form mode ──────────────────────────────────────────────────────────────
+  // â”€â”€ Form mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const [formData, setFormData] = useState({ role: '', jdText: '', skills: '', minExp: '' });
   const [formRunning, setFormRunning] = useState(false);
@@ -165,7 +165,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
     }
   };
 
-  // ── Render: Mode selection ─────────────────────────────────────────────────
+  // â”€â”€ Render: Mode selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (!mode) {
     return (
@@ -193,7 +193,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
     );
   }
 
-  // ── Render: Form mode ──────────────────────────────────────────────────────
+  // â”€â”€ Render: Form mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (mode === 'form') {
     return (
@@ -211,7 +211,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
               value={formData.role} onChange={e => setFormData(f => ({ ...f, role: e.target.value }))} />
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Job Description <span style={{ color: '#64748B' }}>(optional — paste for better ATS scoring)</span></label>
+            <label style={styles.label}>Job Description <span style={{ color: '#64748B' }}>(optional â€” paste for better ATS scoring)</span></label>
             <textarea style={{ ...styles.input, height: 120, resize: 'vertical' }}
               placeholder="Paste your JD here..."
               value={formData.jdText} onChange={e => setFormData(f => ({ ...f, jdText: e.target.value }))} />
@@ -235,7 +235,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
     );
   }
 
-  // ── Render: Voice mode ─────────────────────────────────────────────────────
+  // â”€â”€ Render: Voice mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const progressPct = ((step) / (STEPS.length - 1)) * 100;
 
@@ -318,14 +318,14 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
               {step > 0
-                ? <button onClick={() => { setStep(s => s - 1); setInputVal(''); }} style={styles.ghostBtn}>← Back</button>
+                ? <button onClick={() => { setStep(s => s - 1); setInputVal(''); }} style={styles.ghostBtn}>â† Back</button>
                 : <div />}
               <button
                 onClick={advanceStep}
                 disabled={currentStep.key === 'role' && !inputVal.trim()}
                 style={{ ...styles.primaryBtn, padding: '10px 24px', opacity: (currentStep.key === 'role' && !inputVal.trim()) ? 0.5 : 1 }}
               >
-                {currentStep.key === 'experience' ? 'Review →' : 'Next'} <ChevronRight size={14} />
+                {currentStep.key === 'experience' ? 'Review â†’' : 'Next'} <ChevronRight size={14} />
               </button>
             </div>
           </>

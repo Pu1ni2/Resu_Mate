@@ -1749,7 +1749,7 @@ function AutomatePanel({ candidates, onClose, navigate }) {
   const [role, setRole] = useState('');
   const [ranking, setRanking] = useState(null);
   const [loading, setLoading] = useState(false);
-  const API = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+  const API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
   const runRanking = async () => {
     setLoading(true);
@@ -1899,7 +1899,7 @@ function AutomatePanel({ candidates, onClose, navigate }) {
 function InterviewAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const API = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+  const API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
   const fetchData = async () => {
     setLoading(true);
@@ -2215,7 +2215,8 @@ export default function Dashboard() {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
 
-    const response = await fetch('https://resumate-api-74dm.onrender.com/api/chat/speech-to-text', {
+    const STT_API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
+    const response = await fetch(`${STT_API}/api/chat/speech-to-text`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
       body: formData
@@ -2302,7 +2303,8 @@ export default function Dashboard() {
         cleanText = cleanText.substring(0, 4000) + '...';
       }
       
-      const response = await fetch('https://resumate-api-74dm.onrender.com/api/chat/text-to-speech', {
+      const TTS_API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
+      const response = await fetch(`${TTS_API}/api/chat/text-to-speech`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,

@@ -138,7 +138,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.PROD
-  ? 'https://resumate-api-74dm.onrender.com'
+  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
   : '';
 
 const api = axios.create({

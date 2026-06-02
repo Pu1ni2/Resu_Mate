@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Mail, Loader, Check, Clipboard } from 'lucide-react';
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function EmailComposer({ focusCandidate, agentResult, anonymize, getCandidatePayload }) {
   const [emailTo, setEmailTo] = useState('');

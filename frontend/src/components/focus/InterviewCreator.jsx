@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Video, Loader, Check } from 'lucide-react';
 
-const API_BASE = import.meta.env.PROD ? 'https://resumate-api-74dm.onrender.com' : '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact, showToast }) {
   const [interviewEmail, setInterviewEmail] = useState('');
@@ -55,7 +55,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>Interview Created!</h3>
           <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '4px' }}>Candidate can now login with:</p>
           <p style={{ fontSize: '16px', fontWeight: '600', color: 'var(--info)', marginBottom: '12px' }}>{interviewEmail}</p>
-          <p style={{ color: 'var(--text3)', fontSize: '13px' }}>{interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions</p>
+          <p style={{ color: 'var(--text3)', fontSize: '13px' }}>{interviewRole || focusCandidate?.predicted_role || 'General'} Â· {interviewNumQuestions} questions</p>
           {interviewFocusAreas && <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Focus: {interviewFocusAreas}</p>}
         </div>
       </div>
