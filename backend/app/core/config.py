@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     # Shared secret the interview worker uses to authenticate machine-to-machine
     # calls like /save-transcript. Set in both backend and worker env vars.
     agent_shared_secret: str = ""
+
+    # OpenAI Realtime API — used by the conversational interview mode (audio-only,
+    # no LiveKit). Both the model name and the voice are allow-listed in
+    # app/api/realtime.py so a typo here surfaces as a clean 400, not an opaque
+    # WebRTC failure.
+    realtime_model: str = "gpt-realtime-2"
+    realtime_voice: str = "marin"
+    realtime_max_total_minutes: int = 8
     
     @property
     def cors_origins_list(self) -> List[str]:

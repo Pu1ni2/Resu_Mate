@@ -81,6 +81,10 @@ class Interview(Base):
     scores = Column(JSON, default=list)
     report = Column(Text)
     status = Column(String(20), default="pending")  # pending, in_progress, completed
+    # Interview format: "avatar" (existing LiveKit + Simli flow with the
+    # camera + lip-synced face) or "conversational" (audio-only OpenAI Realtime
+    # over WebRTC, no LiveKit). Defaults to avatar to preserve existing rows.
+    mode = Column(String(20), default="avatar", nullable=False)
     duration = Column(Integer, default=0)
     room_name = Column(String(200), nullable=True, index=True)
     room_config = Column(JSON, nullable=True)
@@ -107,6 +111,7 @@ class Interview(Base):
             "scores": self.scores or [],
             "report": self.report,
             "status": self.status,
+            "mode": self.mode or "avatar",
             "duration": self.duration,
         }
 
