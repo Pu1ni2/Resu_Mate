@@ -56,6 +56,7 @@ async def create_interview(session: AsyncSession, data: dict) -> Optional[Interv
             num_questions=data.get("num_questions", 8),
             focus_areas=data.get("focus_areas", []),
             status="pending",
+            mode=data.get("mode", "avatar"),
         )
         session.add(interview)
         await session.commit()

@@ -272,6 +272,8 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
             "num_questions": interview.num_questions,
             "focus_areas": interview.focus_areas or [],
             "questions": interview.questions or [],
+            "mode": interview.mode or "avatar",
+            "interview_id": interview.id,
         }
         if interview_completed:
             interview_report = {

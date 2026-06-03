@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Video, Loader, Check } from 'lucide-react';
+import { Video, Loader, Check, Mic } from 'lucide-react';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -8,6 +8,10 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   const [interviewRole, setInterviewRole] = useState('');
   const [interviewNumQuestions, setInterviewNumQuestions] = useState('8');
   const [interviewFocusAreas, setInterviewFocusAreas] = useState('');
+  // Interview format: "avatar" (LiveKit + lip-synced Simli face on camera) or
+  // "conversational" (audio-only OpenAI Realtime via WebRTC — no video, no
+  // avatar, lower latency). Defaults to avatar so existing flows are unchanged.
+  const [interviewMode, setInterviewMode] = useState('avatar');
   const [interviewCreating, setInterviewCreating] = useState(false);
   const [interviewCreated, setInterviewCreated] = useState(false);
 
@@ -33,6 +37,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
           experience_required: selectedExperience || '',
           num_questions: parseInt(interviewNumQuestions) || 8,
           focus_areas: interviewFocusAreas ? interviewFocusAreas.split(',').map(s => s.trim()) : [],
+          mode: interviewMode,
         }),
       });
       const data = await resp.json();
@@ -69,6 +74,45 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
           <Video size={18} /> Create AI Interview
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Interview format toggle â€” avatar (existing) vs conversational (new MVP) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Interview Format</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setInterviewMode('avatar')}
+                className="btn"
+                style={{
+                  padding: '12px 14px', textAlign: 'left',
+                  background: interviewMode === 'avatar' ? 'rgba(139,92,246,0.18)' : 'var(--surface)',
+                  border: `1px solid ${interviewMode === 'avatar' ? 'rgba(139,92,246,0.6)' : 'var(--surface-border)'}`,
+                  display: 'flex', flexDirection: 'column', gap: '4px',
+                }}
+              >
+                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Video size={14} /> Avatar interview
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Camera + lip-synced AI face. Slower but richer.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInterviewMode('conversational')}
+                className="btn"
+                style={{
+                  padding: '12px 14px', textAlign: 'left',
+                  background: interviewMode === 'conversational' ? 'rgba(34,197,94,0.18)' : 'var(--surface)',
+                  border: `1px solid ${interviewMode === 'conversational' ? 'rgba(34,197,94,0.6)' : 'var(--surface-border)'}`,
+                  display: 'flex', flexDirection: 'column', gap: '4px',
+                }}
+              >
+                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Mic size={14} /> Voice conversation
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Audio-only, low-latency. No camera, no avatar.</span>
+              </button>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Candidate Email *</label>
             <input type="email" className="input" value={interviewEmail} onChange={e => setInterviewEmail(e.target.value)} placeholder="candidate@email.com" style={{ padding: '11px 14px' }} />

@@ -119,6 +119,10 @@ class CreateInterviewRequest(BaseModel):
     experience_required: Optional[str] = Field(default=None, max_length=120)
     num_questions: int = Field(default=8, ge=1, le=25)
     focus_areas: Optional[list] = Field(default=None, max_length=20)
+    # Interview format: "avatar" = LiveKit + Simli avatar; "conversational" =
+    # audio-only OpenAI Realtime via WebRTC. Defaults to avatar to preserve
+    # existing client behaviour.
+    mode: str = Field(default="avatar", max_length=20)
 
 class VerifyEmailRequest(BaseModel):
     email: str
@@ -773,6 +777,7 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
         "experience_required": req.experience_required,
         "num_questions": req.num_questions,
         "focus_areas": req.focus_areas or [],
+        "mode": (req.mode or "avatar").strip().lower(),
     })
 
     # Generate resume intelligence for smart interview questions
@@ -815,6 +820,8 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
                 "role": interview.role, "level": interview.level,
                 "num_questions": interview.num_questions, "focus_areas": interview.focus_areas or [],
                 "status": interview.status,
+                "mode": interview.mode or "avatar",
+                "interview_id": interview.id,
             }
             if completed and interview.report:
                 try:

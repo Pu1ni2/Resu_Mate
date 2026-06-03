@@ -10,6 +10,7 @@ import {
   Code, Star, TrendingUp, Target
 } from 'lucide-react';
 import InterviewRoom from './InterviewRoom';
+import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
 
 const Logo = ({ size = 32 }) => (
@@ -195,6 +196,22 @@ export default function CandidateDashboard() {
   }
 
   if (showInterviewRoom) {
+    // Route by interview.mode â€” "conversational" launches the audio-only
+    // OpenAI Realtime room, anything else (default "avatar") uses the existing
+    // LiveKit + Simli flow.
+    const mode = (candidateSession.interview_config?.mode || 'avatar').toLowerCase();
+    const interviewId = candidateSession.interview_config?.interview_id;
+    if (mode === 'conversational') {
+      return (
+        <ConversationalInterviewRoom
+          interviewId={interviewId}
+          candidateName={candidateSession.name || 'Candidate'}
+          candidateEmail={candidateSession.email}
+          onComplete={handleInterviewComplete}
+          onExit={() => setShowInterviewRoom(false)}
+        />
+      );
+    }
     return (
       <InterviewRoom
         config={candidateSession.interview_config}
