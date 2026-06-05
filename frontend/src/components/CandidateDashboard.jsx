@@ -7,7 +7,8 @@ import {
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
   LogOut, Camera, Clock, ChevronRight, X, CheckCircle,
   EyeOff, XCircle, Shield, Eye, GraduationCap,
-  Code, Star, TrendingUp, Target
+  Code, Star, TrendingUp, Target,
+  Mic, Volume2
 } from 'lucide-react';
 import InterviewRoom from './InterviewRoom';
 import ConversationalInterviewRoom from './ConversationalInterviewRoom';
@@ -604,20 +605,56 @@ export default function CandidateDashboard() {
               {hasInterview && (!interviewCompleted || isDemo) && (
                 <div className="cd-interview-pending">
                   <div className="cd-card cd-interview-ready-card">
-                    <div className="cd-interview-ready-icon"><Camera size={28} /></div>
-                    <h3>AI Interview Ready</h3>
-                    <p className="cd-interview-meta">
-                      {candidateSession.interview_config?.role || 'General'} Â· {candidateSession.interview_config?.num_questions || 8} questions Â· {candidateSession.interview_config?.level || 'Mid-Level'}
-                    </p>
-                    <div className="cd-interview-rules">
-                      <div className="cd-rule"><Camera size={14} /> Camera & mic required</div>
-                      <div className="cd-rule"><Eye size={14} /> Face tracking enabled</div>
-                      <div className="cd-rule"><Shield size={14} /> Tab switching monitored</div>
-                      <div className="cd-rule"><AlertCircle size={14} /> 3 violations = auto-termination</div>
-                    </div>
-                    <button className="cd-start-interview" onClick={() => setShowInterviewRoom(true)}>
-                      <Camera size={18} /> Enter Interview Room
-                    </button>
+                    {(() => {
+                      const ivMode = (candidateSession.interview_config?.mode || 'avatar').toLowerCase();
+                      const isVoice = ivMode === 'conversational';
+                      return (
+                        <>
+                          <div className="cd-interview-ready-icon">
+                            {isVoice ? <Mic size={28} /> : <Camera size={28} />}
+                          </div>
+                          <h3>
+                            AI Interview Ready
+                            <span
+                              style={{
+                                marginLeft: 10, fontSize: 11, fontWeight: 600,
+                                padding: '3px 9px', borderRadius: 999,
+                                background: isVoice ? 'rgba(34,197,94,0.15)' : 'rgba(139,92,246,0.15)',
+                                color: isVoice ? '#22C55E' : '#8B5CF6',
+                                border: `1px solid ${isVoice ? 'rgba(34,197,94,0.4)' : 'rgba(139,92,246,0.4)'}`,
+                                textTransform: 'uppercase', letterSpacing: '0.04em',
+                                verticalAlign: 'middle',
+                              }}
+                            >
+                              {isVoice ? 'Voice' : 'Avatar'}
+                            </span>
+                          </h3>
+                          <p className="cd-interview-meta">
+                            {candidateSession.interview_config?.role || 'General'} Â· {candidateSession.interview_config?.num_questions || 8} questions Â· {candidateSession.interview_config?.level || 'Mid-Level'}
+                          </p>
+                          <div className="cd-interview-rules">
+                            {isVoice ? (
+                              <>
+                                <div className="cd-rule"><Mic size={14} /> Microphone required (no camera)</div>
+                                <div className="cd-rule"><Volume2 size={14} /> You can interrupt the interviewer anytime</div>
+                                <div className="cd-rule"><Shield size={14} /> Find a quiet space</div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="cd-rule"><Camera size={14} /> Camera & mic required</div>
+                                <div className="cd-rule"><Eye size={14} /> Face tracking enabled</div>
+                                <div className="cd-rule"><Shield size={14} /> Tab switching monitored</div>
+                                <div className="cd-rule"><AlertCircle size={14} /> 3 violations = auto-termination</div>
+                              </>
+                            )}
+                          </div>
+                          <button className="cd-start-interview" onClick={() => setShowInterviewRoom(true)}>
+                            {isVoice ? <Mic size={18} /> : <Camera size={18} />}
+                            {isVoice ? ' Start Voice Interview' : ' Enter Interview Room'}
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
