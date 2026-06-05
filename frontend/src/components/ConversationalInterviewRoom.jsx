@@ -50,7 +50,12 @@ export default function ConversationalInterviewRoom({
   const timerRef = useRef(null);
   const userTurnCountRef = useRef(0);
   const turnsRef = useRef([]);
+  const phaseRef = useRef('setup');
+  const interviewIdRef = useRef(interviewId);
+  const finalizedRef = useRef(false); // guard against double-finalize on unload + manual end
   useEffect(() => { turnsRef.current = turns; }, [turns]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { interviewIdRef.current = interviewId; }, [interviewId]);
 
   const authHeader = () => {
     const token =
@@ -93,6 +98,8 @@ export default function ConversationalInterviewRoom({
 
   // ─── Finalize ─────────────────────────────────────────────────────────────
   const finalize = useCallback(async () => {
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
     try {
       const resp = await fetch(`${API_BASE}/api/realtime/finalize`, {
         method: 'POST',
@@ -111,6 +118,40 @@ export default function ConversationalInterviewRoom({
       console.warn('finalize failed:', e?.message);
     }
   }, [interviewId, onComplete, timer]);
+
+  // Auto-finalize when the tab is closed mid-interview. Uses `keepalive: true`
+  // so the request survives unload — sendBeacon would too, but it can't carry
+  // the Authorization header. Without this the transcript is lost when the
+  // candidate closes the tab.
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      if (finalizedRef.current) return;
+      if (phaseRef.current !== 'live') return;
+      const ivId = interviewIdRef.current;
+      if (!ivId || turnsRef.current.length === 0) return;
+      finalizedRef.current = true;
+      try {
+        fetch(`${API_BASE}/api/realtime/finalize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+          body: JSON.stringify({
+            interview_id: ivId,
+            transcript: turnsRef.current,
+            duration: 0,
+          }),
+          keepalive: true,
+        });
+      } catch (_) {
+        // Best-effort â€” nothing else to do, the tab is closing.
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', onBeforeUnload);
+    };
+  }, []);
 
   // ─── Append a turn (dedupe consecutive empty / duplicate text) ────────────
   const appendTurn = useCallback((role, text) => {
