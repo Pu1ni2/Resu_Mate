@@ -914,6 +914,33 @@ async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSes
     results = await db_service.get_all_completed_interviews(db)
     return {"results": results, "count": len(results)}
 
+
+@router.get("/interview-statuses")
+async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Compact email -> {status, mode, id} map for the ATS results badges.
+
+    Lighter than get-all-interview-results (no report bodies, no transcripts).
+    Used by ATSResultsView to render Pending / In progress / Completed badges
+    per candidate without N round trips.
+    """
+    from sqlalchemy import select
+    from app.models.candidate import Interview
+    rows = (await db.execute(
+        select(
+            Interview.candidate_email,
+            Interview.status,
+            Interview.mode,
+            Interview.id,
+        ).order_by(Interview.created_at.desc())
+    )).all()
+    # Latest interview per email wins (rows are ordered desc by created_at).
+    out: dict = {}
+    for email, status, mode, iv_id in rows:
+        key = (email or "").lower()
+        if key and key not in out:
+            out[key] = {"status": status, "mode": mode or "avatar", "id": iv_id}
+    return {"statuses": out, "count": len(out)}
+
 # ═══════ PDF REPORT EXPORT ═══════
 
 @router.get("/export-report/{email}")

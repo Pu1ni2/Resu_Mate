@@ -1,6 +1,35 @@
-import React, { useState } from 'react';
-import { CheckCircle, AlertCircle, MinusCircle, XCircle, Zap, Users, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, AlertCircle, MinusCircle, XCircle, Zap, Users, ChevronDown, ChevronUp, ArrowLeft, Mic, Video, Clock } from 'lucide-react';
 import BatchActionConfirm from './BatchActionConfirm';
+
+const API_BASE = import.meta.env.PROD
+  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
+  : '';
+
+// Maps backend Interview.status to a small badge style + label.
+const STATUS_BADGE = {
+  pending:     { label: 'Invited',     color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.3)' },
+  in_progress: { label: 'In progress', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.4)'  },
+  completed:   { label: 'Done',        color: '#22C55E', bg: 'rgba(34,197,94,0.15)',   border: 'rgba(34,197,94,0.4)'   },
+};
+
+function InterviewStatusBadge({ info }) {
+  if (!info) return null;
+  const cfg = STATUS_BADGE[info.status] || null;
+  if (!cfg) return null;
+  const ModeIcon = info.mode === 'conversational' ? Mic : Video;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
+      background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
+      textTransform: 'uppercase', letterSpacing: '0.03em',
+    }} title={`${info.mode === 'conversational' ? 'Voice' : 'Avatar'} interview — ${cfg.label}`}>
+      {info.status === 'in_progress' ? <Clock size={10} /> : <ModeIcon size={10} />}
+      {cfg.label}
+    </span>
+  );
+}
 
 const VERDICT_CONFIG = {
   'Strong Fit':  { color: '#22C55E', bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.25)',  icon: CheckCircle,   bar: '#22C55E' },
@@ -24,7 +53,7 @@ function ScoreBar({ label, value, color }) {
   );
 }
 
-function CandidateCard({ result, selected, onToggle }) {
+function CandidateCard({ result, selected, onToggle, interviewInfo }) {
   const [expanded, setExpanded] = useState(false);
   const vc = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG['No Match'];
   const Icon = vc.icon;
@@ -72,6 +101,7 @@ function CandidateCard({ result, selected, onToggle }) {
               fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20,
               background: vc.bg, border: `1px solid ${vc.border}`, color: vc.color,
             }}>{result.verdict}</span>
+            <InterviewStatusBadge info={interviewInfo} />
           </div>
           <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
             {result.predicted_role || '—'} · {result.total_experience_years || 0}y exp
@@ -143,6 +173,22 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain }) {
     (pipelineResult?.shortlist || []).map(r => r.candidate_id)
   );
   const [showBatchModal, setShowBatchModal] = useState(false);
+  // Map of email -> { status, mode, id } for the small interview badge on each
+  // candidate card. Fetched once on mount; failures are silent (badge just
+  // doesn't render).
+  const [interviewStatuses, setInterviewStatuses] = useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const token = localStorage.getItem('resumate_hm_token') || '';
+    fetch(`${API_BASE}/api/chat/interview-statuses`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled && data?.statuses) setInterviewStatuses(data.statuses); })
+      .catch(() => { /* silent — badge just hides */ });
+    return () => { cancelled = true; };
+  }, []);
 
   if (!pipelineResult) return null;
 
@@ -259,6 +305,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain }) {
                 result={r}
                 selected={selectedIds.includes(r.candidate_id)}
                 onToggle={toggleSelect}
+                interviewInfo={interviewStatuses[(r.email || '').toLowerCase()]}
               />
             ))
         }
