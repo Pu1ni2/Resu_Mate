@@ -161,7 +161,29 @@ export default function ConversationalInterviewRoom({
     userTurnCountRef.current = 0;
 
     try {
-      // 1) Mint OpenAI ephemeral client secret via our backend.
+      // 1) Mic FIRST. If the candidate denies, we bail before burning an OpenAI
+      //    realtime session that would otherwise count against the per-IP rate
+      //    limit and the per-account budget. The same call also serves as the
+      //    user-gesture that satisfies autoplay policies for the remote audio.
+      let micStream;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false,
+        });
+      } catch (err) {
+        // Surface a specific message — generic "could not connect" hides the
+        // real cause (almost always permission denied).
+        throw new Error(
+          err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+            ? 'Microphone permission denied'
+            : `Microphone unavailable: ${err?.message || 'unknown error'}`
+        );
+      }
+      micStreamRef.current = micStream;
+      startAudioMeter(micStream);
+
+      // 2) Mint OpenAI ephemeral client secret via our backend.
       const tokenResp = await fetch(`${API_BASE}/api/realtime/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
@@ -178,14 +200,6 @@ export default function ConversationalInterviewRoom({
       const clientSecret = sessionData.client_secret;
       const model = sessionData.model || 'gpt-realtime-2';
       setRemainingMinutes(sessionData.remaining_minutes ?? null);
-
-      // 2) Open the candidate's mic.
-      const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false,
-      });
-      micStreamRef.current = micStream;
-      startAudioMeter(micStream);
 
       // 3) Build the peer connection. The remote audio track plays Alex's voice.
       const pc = new RTCPeerConnection();
