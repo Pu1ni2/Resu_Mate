@@ -40,6 +40,9 @@ export default function ConversationalInterviewRoom({
   const [audioLevel, setAudioLevel] = useState(0);
   const [timer, setTimer] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState(null);
+  // "connected" | "checking" | "lost" — drives a small reconnect-style banner
+  // when the candidate's network blips so they don't keep talking to nothing.
+  const [connState, setConnState] = useState('connected');
 
   const pcRef = useRef(null);
   const dcRef = useRef(null);
@@ -230,6 +233,7 @@ export default function ConversationalInterviewRoom({
     setPhase('connecting');
     setError(null);
     setTurns([]);
+    setConnState('checking');
     userTurnCountRef.current = 0;
 
     try {
@@ -282,6 +286,17 @@ export default function ConversationalInterviewRoom({
           remoteAudioRef.current.srcObject = e.streams[0];
           remoteAudioRef.current.play().catch(() => {});
         }
+      };
+
+      // Surface connection drops to the UI. Without this a dead session looks
+      // identical to a quiet one — the candidate keeps talking and never sees
+      // Alex respond. Maps RTC's many states to three buckets the banner uses.
+      pc.oniceconnectionstatechange = () => {
+        const s = pc.iceConnectionState;
+        if (s === 'connected' || s === 'completed') setConnState('connected');
+        else if (s === 'checking' || s === 'new') setConnState('checking');
+        else if (s === 'disconnected') setConnState('lost');
+        else if (s === 'failed' || s === 'closed') setConnState('lost');
       };
 
       micStream.getTracks().forEach((track) => pc.addTrack(track, micStream));
@@ -463,6 +478,24 @@ export default function ConversationalInterviewRoom({
       {/* Live conversation */}
       {phase === 'live' && (
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr', gap: 24, maxWidth: 720, margin: '0 auto', width: '100%' }}>
+          {/* Connection-lost banner. We do not auto-reconnect â€” the OpenAI
+              realtime token is single-use and short-lived, so re-establishing
+              cleanly means ending and restarting the interview. The banner
+              just tells the candidate they should stop talking. */}
+          {connState !== 'connected' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: connState === 'lost' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
+              border: `1px solid ${connState === 'lost' ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)'}`,
+              color: connState === 'lost' ? '#FCA5A5' : '#FCD34D',
+              borderRadius: 10, padding: '10px 14px', fontSize: 13,
+            }}>
+              <AlertCircle size={16} />
+              {connState === 'lost'
+                ? 'Connection to the interviewer was lost. End the interview and start again from the dashboard.'
+                : 'Reconnecting to the interviewerâ€¦'}
+            </div>
+          )}
           {/* Big mic / speaking indicator */}
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
             <div style={{
