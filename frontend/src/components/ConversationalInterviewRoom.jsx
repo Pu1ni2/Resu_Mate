@@ -53,9 +53,19 @@ export default function ConversationalInterviewRoom({
   const phaseRef = useRef('setup');
   const interviewIdRef = useRef(interviewId);
   const finalizedRef = useRef(false); // guard against double-finalize on unload + manual end
+  const transcriptScrollRef = useRef(null);
   useEffect(() => { turnsRef.current = turns; }, [turns]);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { interviewIdRef.current = interviewId; }, [interviewId]);
+
+  // Keep the transcript pinned to the newest turn. Without this the candidate
+  // has to scroll every time a new line arrives.
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (!el) return;
+    // Defer one frame so the DOM has the new line laid out before we measure.
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [turns.length]);
 
   const authHeader = () => {
     const token =
@@ -123,8 +133,17 @@ export default function ConversationalInterviewRoom({
   // so the request survives unload — sendBeacon would too, but it can't carry
   // the Authorization header. Without this the transcript is lost when the
   // candidate closes the tab.
+  //
+  // We also trigger the browser's native "Leave site?" prompt during a live
+  // interview so an accidental Cmd/Ctrl+R doesn't silently destroy the session.
   useEffect(() => {
-    const onBeforeUnload = () => {
+    const onBeforeUnload = (event) => {
+      if (phaseRef.current === 'live' && !finalizedRef.current) {
+        // Show the confirmation dialog. Modern browsers ignore the message
+        // string but require both preventDefault and a returnValue assignment.
+        event.preventDefault();
+        event.returnValue = '';
+      }
       if (finalizedRef.current) return;
       if (phaseRef.current !== 'live') return;
       const ivId = interviewIdRef.current;
@@ -153,13 +172,25 @@ export default function ConversationalInterviewRoom({
     };
   }, []);
 
-  // ─── Append a turn (dedupe consecutive empty / duplicate text) ────────────
+  // ─── Append a turn (dedupe only very-recent identical echoes) ─────────────
+  // OpenAI sometimes emits the same transcription twice when an audio buffer
+  // is committed and then a follow-up "completed" event fires. We dedupe only
+  // when role+text+within-2s match the previous turn — legitimate short
+  // answers like "yes" / "no" said a minute apart still both land.
   const appendTurn = useCallback((role, text) => {
     if (!text || !text.trim()) return;
+    const cleaned = text.trim();
     setTurns((prev) => {
       const last = prev[prev.length - 1];
-      if (last && last.role === role && last.text === text) return prev;
-      return [...prev, { role, text, ts: Date.now() }];
+      if (
+        last
+        && last.role === role
+        && last.text === cleaned
+        && Date.now() - last.ts < 2000
+      ) {
+        return prev;
+      }
+      return [...prev, { role, text: cleaned, ts: Date.now() }];
     });
     if (role === 'candidate') {
       userTurnCountRef.current += 1;
@@ -452,7 +483,7 @@ export default function ConversationalInterviewRoom({
           </div>
 
           {/* Transcript scroll */}
-          <div style={{
+          <div ref={transcriptScrollRef} style={{
             flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 20,
             border: '1px solid rgba(255,255,255,0.08)', maxHeight: 360, overflowY: 'auto',
           }}>
