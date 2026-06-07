@@ -43,6 +43,10 @@ class BatchActionRequest(BaseModel):
     focus_areas: list = []
     email_type: str = "interview"          # interest | interview
     send_emails: bool = False              # must be explicitly True to send
+    # Interview format applied to every interview created in this batch:
+    # "avatar"          â€” existing LiveKit + Simli avatar flow (default).
+    # "conversational"  â€” audio-only OpenAI Realtime (no camera, no avatar).
+    mode: str = "avatar"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -154,6 +158,7 @@ async def batch_action(
                 "level": req.level,
                 "num_questions": req.num_questions,
                 "focus_areas": req.focus_areas,
+                "mode": (req.mode or "avatar").strip().lower(),
             })
             # Grant portal access
             await db_service.create_candidate_access(db, email, name, cid)
