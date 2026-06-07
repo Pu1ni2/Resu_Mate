@@ -811,6 +811,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           num_questions: params.num_questions || 8,
           email_type: params.email_type || 'interview',
           send_emails: params.send_emails || false,
+          mode: params.mode || 'avatar',
         };
         const res = await fetch(`${API_BASE}/api/pipeline/batch-action`, {
           method: 'POST', headers: hdrs,
@@ -1124,6 +1125,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           level: params.level || candidateMeta?.experience_level || 'Mid-Level',
           num_questions: params.num_questions || 8,
           focus_areas: params.focus_areas || [],
+          mode: params.mode || 'avatar',
         };
         const res = await fetch(`${API_BASE}/api/chat/create-interview`, {
           method: 'POST', headers: hdrs,

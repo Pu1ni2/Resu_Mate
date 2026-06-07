@@ -71,6 +71,11 @@ TRIGGER GUIDE:
 - calendly / booking link / scheduling link -> get_calendly
 - salary / market rate / company research / latest / current -> research_web
 
+INTERVIEW FORMAT:
+- The default mode is "avatar" (camera + lip-synced AI face).
+- If the user says "voice" / "voice interview" / "conversational" / "no camera" / "audio only" / "no video" -> set mode="conversational" on create_interview or batch_action.
+- If the user says "avatar" / "video interview" / "with camera" -> set mode="avatar" (also the default when unspecified).
+
 RESULT USAGE:
 - If cached evaluation exists, use it directly for drawbacks and strengths.
 - If cached GitHub exists, name specific projects from it.
@@ -94,13 +99,13 @@ RETURN ONLY VALID JSON:
 
 ACTION PARAMS:
 - run_ats: {"role": str, "jd_text": str|null, "required_skills": [], "min_experience_years": 0, "auto_shortlist_count": 5}
-- batch_action: {"candidate_ids": [int,...], "role": str, "level": "Mid-Level", "num_questions": 8, "email_type": "interview", "send_emails": false}
+- batch_action: {"candidate_ids": [int,...], "role": str, "level": "Mid-Level", "num_questions": 8, "email_type": "interview", "send_emails": false, "mode": "avatar"|"conversational"}
 - research_web: {"query": str}
 - analyze_github: {"candidate_id": int, "candidate_name": str}
 - scan_candidate: {"candidate_id": int, "candidate_name": str}
 - deep_evaluate: {"candidate_id": int, "candidate_name": str, "role": str}
 - resume_intelligence: {"candidate_id": int, "candidate_name": str}
-- create_interview: {"candidate_id": int, "candidate_name": str, "candidate_email": str, "role": str, "level": "Mid-Level", "num_questions": 8, "focus_areas": []}
+- create_interview: {"candidate_id": int, "candidate_name": str, "candidate_email": str, "role": str, "level": "Mid-Level", "num_questions": 8, "focus_areas": [], "mode": "avatar"|"conversational"}
 - get_interview_report: {"candidate_id": int, "candidate_name": str, "candidate_email": str}
 - credibility_analysis: {"candidate_id": int, "candidate_name": str, "candidate_email": str}
 - export_report: {"candidate_id": int, "candidate_name": str, "candidate_email": str}
@@ -493,6 +498,9 @@ def _normalize_action_payload(
         params.setdefault("num_questions", 8)
         params.setdefault("email_type", "interview")
         params.setdefault("send_emails", False)
+        # Coerce mode to one of the two allowed values; default to avatar.
+        _mode = str(params.get("mode") or "avatar").strip().lower()
+        params["mode"] = _mode if _mode in {"avatar", "conversational"} else "avatar"
 
     elif action == "research_web":
         params.setdefault("query", req.message.strip())
@@ -508,6 +516,8 @@ def _normalize_action_payload(
         params.setdefault("level", "Mid-Level")
         params.setdefault("num_questions", 8)
         params.setdefault("focus_areas", [])
+        _mode = str(params.get("mode") or "avatar").strip().lower()
+        params["mode"] = _mode if _mode in {"avatar", "conversational"} else "avatar"
 
     updated_context.setdefault("last_action", action)
     if req.context.role and not updated_context.get("role"):
