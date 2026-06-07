@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { X, Zap, Mail, Video, CheckCircle, Loader, AlertCircle, Send, Edit2 } from 'lucide-react';
+import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send, Edit2 } from 'lucide-react';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -8,6 +8,10 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
   const [numQuestions, setNumQuestions] = useState(8);
   const [emailType, setEmailType] = useState('interview');
   const [sendEmails, setSendEmails] = useState(false);
+  // Same format toggle as InterviewCreator: avatar (LiveKit + Simli) vs
+  // conversational (audio-only OpenAI Realtime). Applies to every interview
+  // created by this batch confirm.
+  const [interviewMode, setInterviewMode] = useState('avatar');
   const [candidateToggles, setCandidateToggles] = useState(() =>
     Object.fromEntries(selectedCandidates.map(c => [c.candidate_id, { interview: true, email: true }]))
   );
@@ -45,6 +49,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           num_questions: numQuestions,
           email_type: emailType,
           send_emails: sendEmails,
+          mode: interviewMode,
         }),
       });
       if (!res.ok) {
@@ -113,6 +118,47 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 20 }}>
           For each candidate, choose whether to create an interview and/or draft an email.
         </p>
+
+        {/* Interview format â€” avatar vs conversational. Mirrors the toggle in
+            InterviewCreator so the wizard / Jarvis / batch flows all expose the
+            same choice. */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={styles.label}>Interview format</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setInterviewMode('avatar')}
+              style={{
+                padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
+                borderRadius: 10,
+                background: interviewMode === 'avatar' ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${interviewMode === 'avatar' ? 'rgba(139,92,246,0.6)' : 'rgba(255,255,255,0.1)'}`,
+                color: '#F1F5F9', display: 'flex', flexDirection: 'column', gap: 3,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Video size={12} /> Avatar interview
+              </span>
+              <span style={{ fontSize: 11, color: '#94A3B8' }}>Camera + lip-synced AI face</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInterviewMode('conversational')}
+              style={{
+                padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
+                borderRadius: 10,
+                background: interviewMode === 'conversational' ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${interviewMode === 'conversational' ? 'rgba(34,197,94,0.6)' : 'rgba(255,255,255,0.1)'}`,
+                color: '#F1F5F9', display: 'flex', flexDirection: 'column', gap: 3,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Mic size={12} /> Voice conversation
+              </span>
+              <span style={{ fontSize: 11, color: '#94A3B8' }}>Audio-only, low-latency</span>
+            </button>
+          </div>
+        </div>
 
         {/* Interview config */}
         <div style={styles.configRow}>
