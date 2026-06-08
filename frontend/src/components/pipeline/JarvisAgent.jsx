@@ -279,6 +279,11 @@ function buildInterviewArtifact(config = {}, candidateEmail = '') {
     numQuestions: config.num_questions || config.numQuestions || 0,
     focusAreas: config.focus_areas || config.focusAreas || [],
     status: config.status || 'pending',
+    // Surface the interview format so Jarvis can answer "is this a voice or
+    // avatar interview?" without re-fetching, and so artifact-aware prompts
+    // can mention it ("voice interview pending for X").
+    mode: config.mode || 'avatar',
+    interviewId: config.interview_id || config.interviewId || null,
     config,
   };
 }

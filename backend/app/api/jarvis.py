@@ -405,7 +405,7 @@ def _build_artifacts_overview(artifacts: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "interviews": _compress_candidate_artifacts(
             artifacts.get("interviews") or {},
-            ["candidateEmail", "role", "level", "numQuestions", "focusAreas", "status"],
+            ["candidateEmail", "role", "level", "numQuestions", "focusAreas", "status", "mode"],
         ),
         "interview_reports": _compress_candidate_artifacts(
             artifacts.get("interviewReports") or {},

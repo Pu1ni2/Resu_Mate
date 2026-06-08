@@ -872,9 +872,13 @@ async def interview_status(email: str, user=Depends(get_current_user), db: Async
             "exists": True,
             "status": interview.status,
             "completed": interview.status == "completed",
+            "mode": interview.mode or "avatar",
+            "interview_id": interview.id,
             "config": {
                 "role": interview.role, "level": interview.level,
                 "num_questions": interview.num_questions,
+                "mode": interview.mode or "avatar",
+                "interview_id": interview.id,
             }
         }
     return {"exists": False}
