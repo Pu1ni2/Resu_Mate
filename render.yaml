@@ -26,6 +26,14 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Pin Python to 3.12 so pip resolves pre-built wheels for tokenizers,
+      # chromadb, langchain-* etc. Python 3.14 has no wheels for tokenizers
+      # yet, which forces a Rust source build that fails on Render's
+      # read-only Cargo cache. Both runtime.txt AND this env var are kept in
+      # sync — Render honours the env var even when the runtime file is
+      # ignored due to a sticky cached version on an existing service.
+      - key: PYTHON_VERSION
+        value: 3.12.8
       - key: DATABASE_URL
         fromDatabase:
           name: resumate-db
@@ -87,6 +95,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python interview_agent.py start
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
       - key: BACKEND_URL
         sync: false           # set to the resumate-backend external URL
       - key: AGENT_SHARED_SECRET
