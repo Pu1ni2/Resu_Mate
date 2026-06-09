@@ -23,7 +23,11 @@ services:
     name: resumate-backend
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    # Install deps, then run any pending alembic migrations. Idempotent — a
+    # deploy with no new migrations is a no-op. Without this, the fresh DB
+    # has only what Base.metadata.create_all builds, which skips the indexes
+    # and the interview.mode column added in migrations.
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       # Pin Python to 3.12 so pip resolves pre-built wheels for tokenizers,
