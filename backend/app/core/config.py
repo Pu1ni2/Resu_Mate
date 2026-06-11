@@ -67,7 +67,30 @@ class Settings(BaseSettings):
     
     @property
     def cors_origins_list(self) -> List[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        """Origins allowed by CORS.
+
+        The env-provided CORS_ORIGINS is MERGED with a set of always-allowed
+        origins (the Render frontend + local dev ports) rather than replacing
+        them. This way a malformed, empty, or stale CORS_ORIGINS value set in
+        the Render dashboard can't lock the production frontend out — the cause
+        of the "No Access-Control-Allow-Origin header" lockout. Blank entries
+        are dropped and duplicates de-duped while preserving order.
+        """
+        always_allowed = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3006",
+            "http://localhost:5173",
+            "https://resumate-ui.onrender.com",
+        ]
+        from_env = [o.strip() for o in (self.cors_origins or "").split(",")]
+        seen: set = set()
+        merged: List[str] = []
+        for origin in [*from_env, *always_allowed]:
+            if origin and origin not in seen:
+                seen.add(origin)
+                merged.append(origin)
+        return merged
     
     class Config:
         env_file = ".env"
