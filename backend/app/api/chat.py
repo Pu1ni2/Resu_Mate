@@ -769,7 +769,8 @@ async def save_transcript(
 # ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════
 
 @router.post("/create-interview")
-async def create_interview(req: CreateInterviewRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/hour")
+async def create_interview(request: Request, req: CreateInterviewRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     email = req.candidate_email.strip().lower()
     mgr = user.id
 
@@ -815,7 +816,8 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
     return {"message": f"Interview created for {email}", "interview_config": config}
 
 @router.post("/verify-email")
-async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def verify_email(request: Request, req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
     email = req.email.strip().lower()
     print(f"\n🔍 Verify email: '{email}'")
 

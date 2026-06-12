@@ -17,10 +17,12 @@ from pathlib import Path
 from typing import List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -28,6 +30,7 @@ from app.models.candidate import CandidateAccess, Interview
 from app.services.auth import get_current_user
 
 logger = logging.getLogger("resumate.realtime")
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/realtime", tags=["Realtime"])
 
@@ -119,7 +122,9 @@ def _build_instructions(interview: Interview, candidate_name: str, max_total_min
 
 
 @router.post("/session", response_model=RealtimeSessionResponse)
+@limiter.limit("20/hour")
 async def create_realtime_session(
+    request: Request,
     req: RealtimeSessionRequest,
     db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),  # hiring manager OR candidate — both have tokens

@@ -2,8 +2,10 @@
 import os
 import re
 import uuid
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag, MAX_FILE_SIZE
@@ -11,6 +13,7 @@ from app.core.database import get_db
 from app.services import db_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
+limiter = Limiter(key_func=get_remote_address)
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -35,7 +38,8 @@ def _safe_upload_path(original_filename: str, allowed_ext: set[str]) -> tuple[st
 
 
 @router.post("/upload")
-async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/hour")
+async def upload_resume(request: Request, file: UploadFile = File(...), user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Upload and analyze a resume"""
 
     allowed_extensions = {'.pdf', '.docx', '.doc', '.txt'}

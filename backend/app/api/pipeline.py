@@ -4,9 +4,11 @@ Orchestrates ATS scoring, candidate shortlisting, and batch interview/email acti
 """
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.services.auth import get_current_user
@@ -17,6 +19,7 @@ from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ── Request models ────────────────────────────────────────────────────────────
@@ -59,7 +62,8 @@ async def parse_jd(req: ParseJDRequest, user=Depends(get_current_user)):
 
 
 @router.post("/run")
-async def run_pipeline(req: PipelineRunRequest, user=Depends(get_current_user)):
+@limiter.limit("10/hour")
+async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(get_current_user)):
     """
     Main AutoHire pipeline.
     Scores all (or specified) candidates via the ATS engine and returns ranked results.
@@ -124,7 +128,9 @@ async def run_pipeline(req: PipelineRunRequest, user=Depends(get_current_user)):
 
 
 @router.post("/batch-action")
+@limiter.limit("20/hour")
 async def batch_action(
+    request: Request,
     req: BatchActionRequest,
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
