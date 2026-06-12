@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "axios": "^1.6.2",
@@ -21,7 +22,11 @@
     "standardized-audio-context": "^25.3.77"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^14.2.0",
     "@vitejs/plugin-react": "^4.2.0",
-    "vite": "^5.0.0"
+    "jsdom": "^24.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.6.0"
   }
 }
