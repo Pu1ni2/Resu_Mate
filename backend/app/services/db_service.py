@@ -1,9 +1,34 @@
 """Database CRUD operations for candidates, interviews, and access control."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.candidate import Candidate, Interview, CandidateAccess
+from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
+
+
+# ═══════ AUDIT LOG ═══════
+
+async def log_event(
+    session: AsyncSession,
+    action: str,
+    actor: str = "system",
+    manager_id: int = None,
+    target_email: str = None,
+    detail: str = None,
+) -> None:
+    """Append an audit record. Best-effort — never raise into the caller."""
+    try:
+        session.add(AuditLog(
+            action=action,
+            actor=actor,
+            manager_id=manager_id,
+            target_email=(target_email or None),
+            detail=detail[:500] if detail else None,
+        ))
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        print(f"[WARN] audit log_event failed: {e}")
 
 
 # ═══════ CANDIDATE ═══════

@@ -151,3 +151,21 @@ class CandidateAccess(Base):
     __table_args__ = (
         UniqueConstraint("email", "manager_id", name="uq_access_email_manager"),
     )
+
+
+class AuditLog(Base):
+    """Append-only record of sensitive actions on candidate PII.
+
+    Lightweight compliance trail: who did what to whose data and when. Written
+    on candidate create, delete (manager or candidate-initiated), report export,
+    and interview create. Never updated or deleted in normal operation.
+    """
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
+    actor = Column(String(40), nullable=False)          # "manager" | "candidate" | "system"
+    action = Column(String(60), nullable=False)         # e.g. "candidate.create", "candidate.delete"
+    target_email = Column(String(200), nullable=True, index=True)
+    detail = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)

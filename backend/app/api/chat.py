@@ -16,7 +16,7 @@ import io
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, decode_token
 from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
@@ -806,7 +806,12 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
         "status": "pending",
         "resume_intelligence": resume_intel,
     }
-    print(f"✅ Interview created for {email}")
+    await db_service.log_event(
+        db, action="interview.create", actor="manager",
+        manager_id=mgr, target_email=email,
+        detail=f"role={req.role or 'General'} mode={(req.mode or 'avatar')}",
+    )
+    print(f"[OK] Interview created for {email}")
     return {"message": f"Interview created for {email}", "interview_config": config}
 
 @router.post("/verify-email")
@@ -909,8 +914,68 @@ async def save_interview_result(req: SaveInterviewResult, db: AsyncSession = Dep
     """Save interview result (called by candidate after interview)"""
     email = req.candidate_email.strip().lower()
     await db_service.save_interview_result(db, email, req.report)
-    print(f"✅ Interview result saved for {email}")
+    print(f"[OK] Interview result saved for {email}")
     return {"status": "saved"}
+
+
+@router.post("/candidate/delete-my-data")
+@limiter.limit("3/hour")
+async def candidate_delete_my_data(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    authorization: Optional[str] = Header(default=None),
+):
+    """GDPR erasure — a candidate deletes ALL their own data.
+
+    Authenticated by the candidate's own session token (type=candidate, sub=email)
+    issued at OTP login. Removes interviews, portal access, the in-memory +
+    ChromaDB candidate record, and the stored resume file (object storage), then
+    writes an audit record.
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "Candidate session token required")
+    token = authorization.split(" ", 1)[1].strip()
+    payload = decode_token(token)  # raises 401 if invalid/expired
+    if payload.get("type") != "candidate":
+        raise HTTPException(403, "This endpoint is for candidate sessions only")
+    email = (payload.get("sub") or "").strip().lower()
+    if not email:
+        raise HTTPException(400, "Token has no email subject")
+
+    from sqlalchemy import delete as sql_delete, select as sql_select
+    from app.models.candidate import Interview, CandidateAccess, Candidate
+
+    # Find DB candidate rows for this email (to clean memory/Chroma/object store).
+    cand_rows = (await db.execute(
+        sql_select(Candidate).where(Candidate.email == email)
+    )).scalars().all()
+
+    # Remove from the in-memory store + ChromaDB + object storage, scoped to the
+    # row's owning manager so we hit the right drawer.
+    for row in cand_rows:
+        try:
+            resume_rag.delete_candidate(row.id, manager_id=row.manager_id)
+        except Exception as exc:
+            print(f"[WARN] in-memory delete failed for candidate {row.id}: {exc}")
+        # Object storage (no-op if S3 unconfigured).
+        try:
+            from app.services.storage_service import storage_service
+            if getattr(row, "file_object_key", None):
+                storage_service.delete(row.file_object_key)
+        except Exception as exc:
+            print(f"[WARN] object-store delete failed: {exc}")
+
+    # Delete DB rows: interviews, access grants, candidates (by email).
+    await db.execute(sql_delete(Interview).where(Interview.candidate_email == email))
+    await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email == email))
+    await db.execute(sql_delete(Candidate).where(Candidate.email == email))
+    await db.commit()
+
+    await db_service.log_event(
+        db, action="candidate.delete", actor="candidate", target_email=email,
+        detail=f"candidate-initiated erasure of {len(cand_rows)} record(s)",
+    )
+    return {"status": "deleted", "email": email, "records_removed": len(cand_rows)}
 
 @router.get("/get-interview-results/{email}")
 async def get_interview_results(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
