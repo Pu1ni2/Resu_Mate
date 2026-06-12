@@ -764,7 +764,38 @@ async def save_transcript(
         print(f"[save-transcript] report generation failed: {exc}")
 
     await db.commit()
+    await _notify_manager_interview_complete(db, interview)
     return {"saved": True, "turns": len(req.transcript), "report_generated": bool(interview.report)}
+
+
+async def _notify_manager_interview_complete(db, interview) -> None:
+    """Best-effort email to the owning manager that an interview finished.
+
+    Never raises into the caller — a notification failure must not fail the
+    transcript save. No-op if the interview has no manager or no email is found.
+    """
+    try:
+        if not interview or not interview.manager_id:
+            return
+        from app.models.auth import HiringManager
+        from sqlalchemy import select as _select
+        mgr = (await db.execute(
+            _select(HiringManager).where(HiringManager.id == interview.manager_id)
+        )).scalar_one_or_none()
+        if not mgr or not mgr.email:
+            return
+        from app.services.email_service import email_service
+        subject = f"Interview completed — {interview.candidate_email}"
+        body = (
+            f"<p>Hi {mgr.name or 'there'},</p>"
+            f"<p><strong>{interview.candidate_email}</strong> just completed their "
+            f"{interview.role or 'interview'}.</p>"
+            f"<p>Log in to ResuMate to review the report.</p>"
+        )
+        await email_service.send(mgr.email, subject, body)
+    except Exception as exc:
+        print(f"[WARN] manager completion notification failed: {exc}")
+
 
 # ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════
 

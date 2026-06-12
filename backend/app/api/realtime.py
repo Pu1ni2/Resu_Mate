@@ -330,6 +330,14 @@ async def finalize(
 
     interview.status = "completed"
     await db.commit()
+
+    # Notify the owning manager (best-effort, shared helper with /save-transcript).
+    try:
+        from app.api.chat import _notify_manager_interview_complete
+        await _notify_manager_interview_complete(db, interview)
+    except Exception as exc:
+        logger.warning("finalize: manager notification failed: %s", exc)
+
     return {
         "saved": True,
         "turns": len(req.transcript),

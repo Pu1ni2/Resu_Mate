@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import App from './App'
 import ProductLayer from './components/ProductLayer'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // CSS - order matters: tokens → pages → components → overrides → themes → fixes → product layer
 import './styles/design-system.css'
@@ -17,12 +18,14 @@ import './styles/product-layer.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AppProvider>
-        <ProductLayer>
-          <App />
-        </ProductLayer>
-      </AppProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppProvider>
+          <ProductLayer>
+            <App />
+          </ProductLayer>
+        </AppProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 )
