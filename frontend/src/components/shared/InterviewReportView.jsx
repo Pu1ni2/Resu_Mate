@@ -242,9 +242,27 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           {scores.length} questions answered Â· {mins}:{secs} duration
         </p>
         {candidateEmail && (
-          <button onClick={() => {
-            const url = `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`;
-            window.open(url, '_blank');
+          <button onClick={async () => {
+            // Export-report now requires auth, so we fetch with the bearer
+            // token and trigger a blob download instead of window.open (which
+            // can't carry an Authorization header).
+            try {
+              const resp = await fetch(
+                `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`,
+                { headers: { Authorization: `Bearer ${localStorage.getItem('resumate_hm_token') || ''}` } }
+              );
+              if (!resp.ok) { alert('Could not export report (you may not have access).'); return; }
+              const blob = await resp.blob();
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = `${candidateEmail}-report.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              URL.revokeObjectURL(link.href);
+            } catch {
+              alert('Could not export report. Please try again.');
+            }
           }} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
             <Download size={14} /> Export PDF Report
           </button>

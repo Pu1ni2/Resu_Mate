@@ -1238,16 +1238,34 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         setStatus('DONE');
         return;
       }
-      const url = `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`;
-      window.open(url, '_blank');
-      appendMsg({
-        role: 'action',
-        content: `Opened PDF report for ${params.candidate_name || 'Candidate'}`,
-        exportData: { url, candidateName: params.candidate_name || 'Candidate' },
-      });
-      updateContext({ lastAction: 'export_report' });
-      setStatus('DONE');
-      directSay(`I opened the PDF report for ${params.candidate_name || 'that candidate'}.`);
+      // Export-report requires auth; fetch with the bearer token and download
+      // the blob (window.open can't carry an Authorization header).
+      try {
+        const resp = await fetch(
+          `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`,
+          { headers: hdrs }
+        );
+        if (handle401(resp)) return;
+        if (!resp.ok) throw new Error(`Export ${resp.status}`);
+        const blob = await resp.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${candidateEmail}-report.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        appendMsg({
+          role: 'action',
+          content: `Exported PDF report for ${params.candidate_name || 'Candidate'}`,
+        });
+        updateContext({ lastAction: 'export_report' });
+        setStatus('DONE');
+        directSay(`I exported the PDF report for ${params.candidate_name || 'that candidate'}.`);
+      } catch (err) {
+        setStatus('ERROR');
+        directSay(`I couldn't export the report — ${err.message}.`);
+      }
 
     } else if (action === 'get_calendly') {
       setStatus('FETCHING CALENDLYâ€¦');
