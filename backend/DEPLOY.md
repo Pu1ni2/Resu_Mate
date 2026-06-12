@@ -76,6 +76,42 @@ free-tier Neon/Supabase Postgres and swap `DATABASE_URL`.
 | `REALTIME_VOICE` | default `marin` |
 | `TAVILY_API_KEY`, `GITHUB_TOKEN`, `LIVEKIT_*`, `SIMLI_*`, `SENDGRID_API_KEY` | feature-specific |
 
+### Object storage for original resume PDFs (optional)
+
+All optional. If `S3_BUCKET` is unset the app keeps its "parse then discard"
+behaviour and stores no original files — local dev and existing deploys are
+unaffected. Works with AWS S3, Cloudflare R2, and Backblaze B2.
+
+| Var | Notes |
+|-----|-------|
+| `S3_BUCKET` | bucket name; leave blank to disable original-file storage |
+| `S3_ENDPOINT` | blank for AWS; e.g. `https://<acct>.r2.cloudflarestorage.com` for R2 |
+| `S3_REGION` | default `us-east-1` |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | credentials for the bucket |
+
+When configured, the original upload is saved to
+`resumes/{manager_id}/{candidate_id}/{file}` and exposed via
+`GET /api/candidates/{id}/file` (manager-scoped). Candidate "delete my data"
+removes the object too.
+
+## Multi-tenant & compliance notes
+
+- **Data isolation**: candidates and interviews are scoped to the owning hiring
+  manager (`manager_id`). The in-memory store is partitioned per manager. Two
+  managers on one deployment cannot see each other's data — guarded by
+  `backend/tests/test_data_isolation.py`.
+- **GDPR**: candidates can erase their own data via
+  `POST /api/chat/candidate/delete-my-data` (authenticated with their candidate
+  session token). Sensitive actions are recorded in the `audit_log` table.
+- **Retention**: `python cleanup_stale.py --days 180 --apply` deletes
+  candidates/interviews untouched for N days. Dry-run by default. Run via cron
+  if you want automatic retention.
+
+## CI
+
+`.github/workflows/ci.yml` runs the backend pytest suite (Python 3.12) and the
+frontend build + vitest on every push/PR to `main`.
+
 ## Verify a deploy
 
 ```
