@@ -915,10 +915,27 @@ export default function Dashboard() {
               )}
 
               {candidates.length === 0 && !loading && (
-                <div className="empty-state">
+                <div className="empty-state" style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
                   <div className="empty-icon"><FileText size={40} /></div>
-                  <h3>No resumes yet</h3>
-                  <p>Upload resumes to start analyzing</p>
+                  <h3>Welcome to ResuMate 👋</h3>
+                  <p style={{ marginBottom: 20 }}>Three steps to your first AI-ranked shortlist:</p>
+                  <ol style={{
+                    textAlign: 'left', display: 'inline-block', margin: '0 auto 24px',
+                    color: 'var(--text2)', fontSize: 14, lineHeight: 1.9, paddingLeft: 20,
+                  }}>
+                    <li><strong>Upload resumes</strong> — drag-drop PDFs or DOCX above.</li>
+                    <li><strong>Run the pipeline</strong> — AI scores everyone against your role.</li>
+                    <li><strong>Interview the top picks</strong> — invite candidates with one click.</li>
+                  </ol>
+                  <div>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => fileRef.current?.click()}
+                      style={{ padding: '11px 24px', fontSize: 14, fontWeight: 600 }}
+                    >
+                      <Upload size={16} /> Upload your first resume
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
