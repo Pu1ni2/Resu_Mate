@@ -139,9 +139,15 @@ class SaveTranscriptRequest(BaseModel):
 
 # ═══════ HELPER ═══════
 
-def _get_candidate(candidate_id: int, candidate_data: dict = None) -> dict:
-    """Get candidate from RAG service or fallback to frontend data"""
-    candidate = resume_rag.candidates.get(candidate_id)
+def _get_candidate(candidate_id: int, candidate_data: dict = None, manager_id=None) -> dict:
+    """Get a candidate from the RAG store, scoped to the owning manager.
+
+    Falls back to frontend-supplied candidate_data only when nothing is stored
+    for this manager — this preserves the ad-hoc "analyze this pasted data"
+    path while ensuring a stored candidate from another tenant is never
+    returned.
+    """
+    candidate = resume_rag.get_candidate(candidate_id, manager_id=manager_id)
     if not candidate and candidate_data:
         candidate = candidate_data
     return candidate
@@ -174,7 +180,7 @@ async def send_message(request: Request, req: ChatRequest, user=Depends(get_curr
     """Multi-candidate RAG chat"""
     try:
         history = chat_histories.get(req.conversation_id, [])
-        response = await resume_rag.chat(req.message, req.candidate_ids, history, req.anonymize)
+        response = await resume_rag.chat(req.message, req.candidate_ids, history, req.anonymize, manager_id=user.id)
         _remember_chat(req.conversation_id, req.message, response.get("response", ""))
         return response
     except Exception as e:
@@ -225,7 +231,7 @@ async def text_to_speech(req: dict, user=Depends(get_current_user)):
 async def focus_chat(req: FocusChatRequest, user=Depends(get_current_user)):
     """Single-candidate deep chat — powered by Research Agent for auto web search"""
     try:
-        candidate = _get_candidate(req.candidate_id, req.candidate_data)
+        candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
             return {"response": "Candidate not found. Please re-upload the resume.", "suggestions": []}
 
@@ -353,7 +359,7 @@ async def web_search(request: Request, req: WebSearchRequest, user=Depends(get_c
 async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(get_current_user)):
     """Candidate evaluation powered by HR Agent"""
     try:
-        candidate = _get_candidate(req.candidate_id, req.candidate_data)
+        candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
             return {"error": "Candidate not found."}
 
@@ -374,7 +380,7 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
 async def draft_email(req: EmailDraftRequest, user=Depends(get_current_user)):
     """Email drafting powered by HR Agent"""
     try:
-        candidate = _get_candidate(req.candidate_id, req.candidate_data)
+        candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
             return {"subject": "", "body": "Candidate not found."}
 
@@ -390,7 +396,7 @@ async def draft_email(req: EmailDraftRequest, user=Depends(get_current_user)):
 async def github_analyze(request: Request, req: GitHubRequest, user=Depends(get_current_user)):
     """GitHub analysis — multi-strategy with name validation"""
     try:
-        candidate = _get_candidate(req.candidate_id, req.candidate_data)
+        candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         username = req.github_username
         candidate_name = (candidate.get('name', '') if candidate else '') or ''
 
@@ -460,7 +466,7 @@ async def github_analyze(request: Request, req: GitHubRequest, user=Depends(get_
 async def scan_resume(req: ScanRequest, user=Depends(get_current_user)):
     """Resume scanning powered by Data Agent"""
     try:
-        candidate = _get_candidate(req.candidate_id, req.candidate_data)
+        candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
             return {"error": "Candidate not found", "logs": [], "profiles": {}}
 
@@ -549,7 +555,7 @@ class CredibilityRequest(BaseModel):
 @router.post("/resume-intelligence")
 async def resume_intelligence(req: ResumeIntelRequest, user=Depends(get_current_user)):
     """Analyze resume for gaps, unverified skills, and verification targets."""
-    candidate = resume_rag.candidates.get(req.candidate_id)
+    candidate = resume_rag.get_candidate(req.candidate_id, manager_id=user.id)
     if not candidate:
         raise HTTPException(404, "Candidate not found")
     intel = await technical_agent.analyze_resume_gaps(candidate)
@@ -559,8 +565,8 @@ async def resume_intelligence(req: ResumeIntelRequest, user=Depends(get_current_
 async def smart_questions(req: GenerateQuestionsRequest, user=Depends(get_current_user)):
     """Generate interview questions informed by resume gap analysis."""
     candidate_data = None
-    # Try to find candidate by name in resume_rag
-    for cid, c in resume_rag.candidates.items():
+    # Try to find candidate by name within THIS manager's candidates only
+    for c in resume_rag.get_all_candidates(manager_id=user.id):
         if c.get("name", "").lower() == (req.candidate_name or "").lower():
             candidate_data = c
             break
@@ -572,11 +578,11 @@ async def smart_questions(req: GenerateQuestionsRequest, user=Depends(get_curren
 @router.post("/credibility-analysis")
 async def credibility_analysis(req: CredibilityRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Cross-reference resume claims against interview performance."""
-    candidate = resume_rag.candidates.get(req.candidate_id)
+    candidate = resume_rag.get_candidate(req.candidate_id, manager_id=user.id)
     if not candidate:
         raise HTTPException(404, "Candidate not found in memory")
 
-    interview = await db_service.get_interview_by_email(db, req.candidate_email)
+    interview = await db_service.get_interview_by_email(db, req.candidate_email, manager_id=user.id)
     if not interview or not interview.report:
         raise HTTPException(404, "No completed interview found for this candidate")
 
@@ -596,12 +602,13 @@ class AutomateRankingRequest(BaseModel):
 
 @router.post("/automate-ranking")
 async def automate_ranking(req: AutomateRankingRequest, user=Depends(get_current_user)):
-    """Rank all uploaded candidates for a role — full automated analysis."""
-    # Gather candidates
-    candidate_ids = req.candidate_ids or list(resume_rag.candidates.keys())
+    """Rank this manager's uploaded candidates for a role — full automated analysis."""
+    # Gather candidates from THIS manager's drawer only.
+    drawer = {c["id"]: c for c in resume_rag.get_all_candidates(manager_id=user.id)}
+    candidate_ids = req.candidate_ids or list(drawer.keys())
     candidates_data = []
     for cid in candidate_ids:
-        c = resume_rag.candidates.get(cid)
+        c = drawer.get(cid)
         if c and c.get("is_resume", True):
             candidates_data.append(c)
 
@@ -764,13 +771,15 @@ async def save_transcript(
 @router.post("/create-interview")
 async def create_interview(req: CreateInterviewRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     email = req.candidate_email.strip().lower()
+    mgr = user.id
 
-    # Grant portal access
-    await db_service.create_candidate_access(db, email, req.candidate_name or "", req.candidate_id)
+    # Grant portal access (owned by this manager)
+    await db_service.create_candidate_access(db, email, req.candidate_name or "", req.candidate_id, manager_id=mgr)
 
-    # Create interview record
+    # Create interview record (owned by this manager)
     interview = await db_service.create_interview(db, {
         "candidate_id": req.candidate_id,
+        "manager_id": mgr,
         "candidate_email": email,
         "role": req.role or "General",
         "level": req.level or "Mid-Level",
@@ -782,13 +791,13 @@ async def create_interview(req: CreateInterviewRequest, user=Depends(get_current
 
     # Generate resume intelligence for smart interview questions
     resume_intel = None
-    candidate = resume_rag.candidates.get(req.candidate_id)
+    candidate = resume_rag.get_candidate(req.candidate_id, manager_id=mgr)
     if candidate:
         try:
             resume_intel = await technical_agent.analyze_resume_gaps(candidate)
-            print(f"🧠 Resume intelligence generated: {len(resume_intel.get('verification_targets', []))} targets")
+            print(f"[OK] Resume intelligence generated: {len(resume_intel.get('verification_targets', []))} targets")
         except Exception as e:
-            print(f"⚠️ Resume intel failed: {e}")
+            print(f"[WARN] Resume intel failed: {e}")
 
     config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",
@@ -841,17 +850,22 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
             "interview_report": iv_report,
         }
 
-    # 2. Fallback: scan resume texts for the email
-    for cid, c in resume_rag.candidates.items():
+    # 2. Fallback: scan resume texts for the email (candidate-side lookup; the
+    #    candidate authenticates by their own email, so this is cross-tenant on
+    #    purpose). Grant access under the candidate's OWNING manager.
+    for c in resume_rag.iter_all_candidates():
         text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
         emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
         if email in text or email == emb_email.lower():
-            # Auto-grant access and persist to DB
-            await db_service.create_candidate_access(db, email, c.get('name', ''), cid)
+            cid = c.get('id')
+            owner = c.get('manager_id')
+            owner = owner if owner else None
+            # Auto-grant access and persist to DB under the owning manager.
+            await db_service.create_candidate_access(db, email, c.get('name', ''), cid, manager_id=owner)
             interview = await db_service.get_interview_by_email(db, email)
             has_iv = interview is not None
             completed = has_iv and interview.status == "completed"
-            print(f"  ✅ Found email in resume text. has_interview={has_iv}")
+            print(f"  [OK] Found email in resume text. has_interview={has_iv}")
             return {
                 "access": True, "name": c.get('name', ''), "candidate_id": cid,
                 "has_interview": has_iv and not completed,
@@ -860,13 +874,13 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
                 "interview_report": None,
             }
 
-    print(f"  ❌ Not found anywhere")
+    print(f"  [WARN] Not found anywhere")
     return {"access": False, "message": "No access found for this email. Please contact your hiring manager."}
 
 @router.get("/interview-status/{email}")
 async def interview_status(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     email = email.strip().lower()
-    interview = await db_service.get_interview_by_email(db, email)
+    interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
     if interview:
         return {
             "exists": True,
@@ -900,9 +914,9 @@ async def save_interview_result(req: SaveInterviewResult, db: AsyncSession = Dep
 
 @router.get("/get-interview-results/{email}")
 async def get_interview_results(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Get interview results for a candidate"""
+    """Get interview results for one of this manager's candidates."""
     email = email.strip().lower()
-    interview = await db_service.get_interview_by_email(db, email)
+    interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
     if interview and interview.report:
         report = interview.report
         try:
@@ -914,8 +928,8 @@ async def get_interview_results(email: str, user=Depends(get_current_user), db: 
 
 @router.get("/get-all-interview-results")
 async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Get all completed interview results (for hiring manager dashboard)"""
-    results = await db_service.get_all_completed_interviews(db)
+    """Get this manager's completed interview results (for their dashboard)."""
+    results = await db_service.get_all_completed_interviews(db, manager_id=user.id)
     return {"results": results, "count": len(results)}
 
 
@@ -923,9 +937,9 @@ async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSes
 async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Compact email -> {status, mode, id} map for the ATS results badges.
 
-    Lighter than get-all-interview-results (no report bodies, no transcripts).
-    Used by ATSResultsView to render Pending / In progress / Completed badges
-    per candidate without N round trips.
+    Scoped to this manager's interviews only. Lighter than
+    get-all-interview-results (no report bodies, no transcripts). Used by
+    ATSResultsView to render Pending / In progress / Completed badges.
     """
     from sqlalchemy import select
     from app.models.candidate import Interview
@@ -935,7 +949,9 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
             Interview.status,
             Interview.mode,
             Interview.id,
-        ).order_by(Interview.created_at.desc())
+        )
+        .where(Interview.manager_id == user.id)
+        .order_by(Interview.created_at.desc())
     )).all()
     # Latest interview per email wins (rows are ordered desc by created_at).
     out: dict = {}
@@ -948,17 +964,21 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
 # ═══════ PDF REPORT EXPORT ═══════
 
 @router.get("/export-report/{email}")
-async def export_report_pdf(email: str, db: AsyncSession = Depends(get_db)):
-    """Generate a branded PDF report for a candidate (resume + interview)."""
+async def export_report_pdf(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Generate a branded PDF report for one of THIS manager's candidates.
+
+    Auth + ownership required — previously this was public and any email could
+    be guessed to download a candidate's full report (resume + interview).
+    """
     from fpdf import FPDF
     import re as re_mod
 
     email = email.strip().lower()
-    interview = await db_service.get_interview_by_email(db, email)
+    interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
 
-    # Find candidate data
+    # Find candidate data within THIS manager's drawer only.
     candidate = None
-    for cid, c in resume_rag.candidates.items():
+    for c in resume_rag.get_all_candidates(manager_id=user.id):
         emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
         if email in (c.get('text', '') or '').lower() or email == emb_email.lower():
             candidate = c

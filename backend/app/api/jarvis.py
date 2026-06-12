@@ -591,6 +591,16 @@ async def jarvis_chat(
 
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
     candidates = [_candidate_to_dict(candidate) for candidate in req.candidates_summary]
+
+    # Tenant guard: the frontend supplies candidates_summary, so a tampered or
+    # stale client could pass ids belonging to another manager. Keep only the
+    # candidates that actually live in THIS manager's drawer; drop the rest so
+    # Jarvis can never act on another tenant's candidate.
+    from app.services.resume_rag import resume_rag as _rag
+    owned_ids = {c["id"] for c in _rag.get_all_candidates(manager_id=user.id)}
+    if owned_ids:
+        candidates = [c for c in candidates if c.get("id") in owned_ids]
+
     active_candidate = _resolve_active_candidate(req.message, req.context, candidates)
 
     # Deterministic kickoff guard: if role is still unknown and the user sends

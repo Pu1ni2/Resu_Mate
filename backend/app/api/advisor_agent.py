@@ -189,7 +189,7 @@ async def advisor_chat(request: Request, req: AdvisorChatRequest, db: AsyncSessi
     if not resume_text or resume_text == "No resume uploaded yet.":
         try:
             from app.api.chat import resume_rag
-            for cid, c in resume_rag.candidates.items():
+            for c in resume_rag.iter_all_candidates():
                 c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
                 if req.email.lower() in c_text:
                     resume_text = c.get('text', '') or c.get('raw_text', '')[:8000]
@@ -297,7 +297,7 @@ async def get_candidate_context(email: str, db: AsyncSession = Depends(get_db)):
     # Fallback: hiring manager uploads
     try:
         from app.api.chat import resume_rag
-        for cid, c in resume_rag.candidates.items():
+        for c in resume_rag.iter_all_candidates():
             c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
             if email.lower() in c_text:
                 return {"found": True, "name": c.get('name', ''), "role": c.get('predicted_role', ''), "skills": c.get('skills', [])}

@@ -64,8 +64,8 @@ async def run_pipeline(req: PipelineRunRequest, user=Depends(get_current_user)):
     Main AutoHire pipeline.
     Scores all (or specified) candidates via the ATS engine and returns ranked results.
     """
-    # 1. Resolve candidate pool
-    all_candidates = resume_rag.get_all_candidates()
+    # 1. Resolve candidate pool — only THIS manager's candidates.
+    all_candidates = resume_rag.get_all_candidates(manager_id=user.id)
     if req.candidate_ids:
         pool = [c for c in all_candidates if c.get("id") in req.candidate_ids]
     else:
@@ -138,9 +138,11 @@ async def batch_action(
     Returns list of per-candidate results including email drafts.
     """
     outcomes = []
+    mgr = user.id
 
     for cid in req.candidate_ids:
-        candidate = resume_rag.candidates.get(cid)
+        # Only act on THIS manager's candidates.
+        candidate = resume_rag.get_candidate(cid, manager_id=mgr)
         if not candidate:
             outcomes.append({"candidate_id": cid, "error": "Candidate not found"})
             continue
@@ -149,10 +151,11 @@ async def batch_action(
         name = candidate.get("name", "Candidate")
         result = {"candidate_id": cid, "name": name, "email": email}
 
-        # ── Create interview record ───────────────────────────────────────────
+        # ── Create interview record (owned by this manager) ───────────────────
         try:
             interview = await db_service.create_interview(db, {
                 "candidate_id": cid,
+                "manager_id": mgr,
                 "candidate_email": email,
                 "role": req.role,
                 "level": req.level,
@@ -160,8 +163,8 @@ async def batch_action(
                 "focus_areas": req.focus_areas,
                 "mode": (req.mode or "avatar").strip().lower(),
             })
-            # Grant portal access
-            await db_service.create_candidate_access(db, email, name, cid)
+            # Grant portal access (owned by this manager)
+            await db_service.create_candidate_access(db, email, name, cid, manager_id=mgr)
             result["interview_created"] = True
             result["interview_id"] = interview.id if interview else None
         except Exception as e:

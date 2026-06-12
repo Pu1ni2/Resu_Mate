@@ -42,12 +42,13 @@ async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_u
     file_path, safe_name = _safe_upload_path(file.filename or "", allowed_extensions)
 
     content = await file.read()
+    mgr = user.id
 
     size_error = resume_rag.check_file_size(len(content))
     if size_error:
         raise HTTPException(400, size_error)
 
-    dup_error = resume_rag.check_duplicate(content)
+    dup_error = resume_rag.check_duplicate(content, manager_id=mgr)
     if dup_error:
         raise HTTPException(400, dup_error)
 
@@ -55,20 +56,20 @@ async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_u
         f.write(content)
 
     try:
-        # Register file and get hash
-        file_hash = resume_rag.register_file(content)
+        # Register file and get hash (scoped to this manager)
+        file_hash = resume_rag.register_file(content, manager_id=mgr)
 
         # Process resume with hash. Pass the safe name so downstream display uses
         # something stable; the original filename is never trusted as a path.
-        result = await resume_rag.add_resume(file_path, safe_name, file_hash)
-        
+        result = await resume_rag.add_resume(file_path, safe_name, file_hash, manager_id=mgr)
+
         if "error" in result:
             # If error, unregister the hash
-            resume_rag.unregister_file(file_hash)
+            resume_rag.unregister_file(file_hash, manager_id=mgr)
             raise HTTPException(400, result["error"])
 
-        # Persist to PostgreSQL database
-        await db_service.create_candidate_db(db, {**result, "file_hash": file_hash})
+        # Persist to PostgreSQL database, owned by this manager
+        await db_service.create_candidate_db(db, {**result, "file_hash": file_hash}, manager_id=mgr)
 
         return result
         
@@ -85,37 +86,45 @@ async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_u
 
 @router.get("")
 async def get_candidates(user=Depends(get_current_user)):
-    """Get all candidates"""
-    candidates = resume_rag.get_all_candidates()
+    """Get this manager's candidates only."""
+    candidates = resume_rag.get_all_candidates(manager_id=user.id)
     return {"candidates": candidates}
 
 
 @router.get("/{candidate_id}")
 async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
-    """Get a specific candidate"""
-    candidate = resume_rag.get_candidate(candidate_id)
+    """Get a specific candidate — only if it belongs to this manager."""
+    candidate = resume_rag.get_candidate(candidate_id, manager_id=user.id)
     if not candidate:
+        # 404 (not 403) so we don't reveal that the id exists under another manager.
         raise HTTPException(404, "Candidate not found")
     return candidate
 
 
 @router.delete("/{candidate_id}")
 async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Delete a candidate from memory and DB"""
+    """Delete one of THIS manager's candidates from memory and DB."""
     from sqlalchemy import delete as sql_delete
     from app.models.candidate import Candidate
-    resume_rag.delete_candidate(candidate_id)
-    await db.execute(sql_delete(Candidate).where(Candidate.id == candidate_id))
+    # Only delete if the candidate is in this manager's drawer.
+    if not resume_rag.get_candidate(candidate_id, manager_id=user.id):
+        raise HTTPException(404, "Candidate not found")
+    resume_rag.delete_candidate(candidate_id, manager_id=user.id)
+    await db.execute(
+        sql_delete(Candidate).where(
+            Candidate.id == candidate_id, Candidate.manager_id == user.id
+        )
+    )
     await db.commit()
     return {"message": "Candidate deleted"}
 
 
 @router.delete("")
 async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Delete ALL candidates from memory and DB"""
+    """Delete ALL of THIS manager's candidates from memory and DB (never global)."""
     from sqlalchemy import delete as sql_delete
     from app.models.candidate import Candidate
-    resume_rag.clear_all()
-    await db.execute(sql_delete(Candidate))
+    resume_rag.clear_all(manager_id=user.id)
+    await db.execute(sql_delete(Candidate).where(Candidate.manager_id == user.id))
     await db.commit()
     return {"message": "All candidates and data deleted"}
