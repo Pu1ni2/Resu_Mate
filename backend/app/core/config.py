@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     realtime_model: str = "gpt-realtime-2"
     realtime_voice: str = "marin"
     realtime_max_total_minutes: int = 8
+
+    # Object storage for original resume files (S3-compatible: AWS S3,
+    # Cloudflare R2, Backblaze B2). All optional — if s3_bucket is unset the
+    # app keeps today's "parse then delete" behaviour and stores no originals.
+    s3_bucket: str = ""
+    s3_endpoint: str = ""        # e.g. https://<account>.r2.cloudflarestorage.com (blank = AWS default)
+    s3_region: str = "us-east-1"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
     
     @property
     def cors_origins_list(self) -> List[str]:

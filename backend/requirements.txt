@@ -56,3 +56,6 @@ fpdf2>=2.7.0
 livekit-agents>=1.0.0
 livekit-plugins-openai>=1.0.0
 livekit-plugins-simli>=0.3.0
+
+# Object storage (optional — original resume files)
+boto3>=1.34.0

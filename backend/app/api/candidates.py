@@ -73,10 +73,30 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
             raise HTTPException(400, result["error"])
 
         # Persist to PostgreSQL database, owned by this manager
-        await db_service.create_candidate_db(db, {**result, "file_hash": file_hash}, manager_id=mgr)
+        cand_row = await db_service.create_candidate_db(db, {**result, "file_hash": file_hash}, manager_id=mgr)
 
+        # If object storage is configured, keep the ORIGINAL file so the manager
+        # can re-download it later. No-op (and no error) when S3 is off.
+        try:
+            from app.services.storage_service import storage_service
+            if storage_service.enabled and cand_row is not None:
+                import mimetypes
+                ctype = mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
+                key = storage_service.key_for(mgr, cand_row.id, safe_name)
+                if storage_service.upload(key, content, content_type=ctype):
+                    cand_row.file_object_key = key
+                    await db.commit()
+                    result["file_object_key"] = key
+        except Exception as exc:
+            print(f"[WARN] resume object-store upload failed: {exc}")
+
+        await db_service.log_event(
+            db, action="candidate.create", actor="manager",
+            manager_id=mgr, target_email=result.get("email"),
+            detail=f"file={safe_name}",
+        )
         return result
-        
+
     finally:
         # Windows fix: file may still be locked by PDF reader
         import time
@@ -103,6 +123,45 @@ async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
         # 404 (not 403) so we don't reveal that the id exists under another manager.
         raise HTTPException(404, "Candidate not found")
     return candidate
+
+
+@router.get("/{candidate_id}/file")
+async def get_candidate_file(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Download the original resume file for one of THIS manager's candidates.
+
+    Returns a short-lived presigned URL when the storage backend supports it,
+    otherwise proxies the bytes. 404 if the candidate isn't this manager's or
+    no original was stored (object storage was off at upload time).
+    """
+    from sqlalchemy import select as sql_select
+    from app.models.candidate import Candidate
+    from app.services.storage_service import storage_service
+
+    row = (await db.execute(
+        sql_select(Candidate).where(
+            Candidate.id == candidate_id, Candidate.manager_id == user.id
+        )
+    )).scalar_one_or_none()
+    if not row:
+        raise HTTPException(404, "Candidate not found")
+    if not row.file_object_key:
+        raise HTTPException(404, "No original file stored for this candidate")
+
+    url = storage_service.presigned_url(row.file_object_key)
+    if url:
+        return {"url": url}
+
+    # Fallback: proxy the bytes directly.
+    data = storage_service.download(row.file_object_key)
+    if data is None:
+        raise HTTPException(404, "File could not be retrieved")
+    from fastapi.responses import StreamingResponse
+    import io
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{row.file_name or "resume"}"'},
+    )
 
 
 @router.delete("/{candidate_id}")

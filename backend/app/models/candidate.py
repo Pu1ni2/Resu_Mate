@@ -17,6 +17,10 @@ class Candidate(Base):
     email = Column(String(200), nullable=True, index=True)
     file_name = Column(String(500))
     file_hash = Column(String(64), nullable=True, index=True)
+    # S3-compatible object key for the original uploaded resume, when object
+    # storage is configured. NULL when storage is off (original was discarded
+    # after parsing).
+    file_object_key = Column(String(600), nullable=True)
     is_resume = Column(Boolean, default=True)
     raw_text = Column(Text)
     full_text = Column(Text)
