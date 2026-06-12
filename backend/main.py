@@ -61,9 +61,16 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Candidate).order_by(Candidate.id))
             rows = result.scalars().all()
+            max_id = 0
             for row in rows:
-                resume_rag.candidates[row.id] = {
+                # Place each candidate in its owning manager's drawer so the
+                # in-memory store is tenant-isolated from boot, not just after
+                # the first upload. manager_id may be NULL on legacy rows; the
+                # store coerces that to the sentinel drawer (0).
+                mkey = resume_rag._mkey(row.manager_id)
+                resume_rag.candidates.setdefault(mkey, {})[row.id] = {
                     "id": row.id,
+                    "manager_id": mkey,
                     "name": row.name or "",
                     "email": row.email or "",
                     "file_name": row.file_name or "",
@@ -84,10 +91,14 @@ async def lifespan(app: FastAPI):
                     "is_resume": row.is_resume,
                 }
                 if row.file_hash:
-                    resume_rag.uploaded_file_hashes.add(row.file_hash)
-            print(f"✅ Loaded {len(rows)} candidates from DB into memory")
+                    resume_rag.uploaded_file_hashes.setdefault(mkey, set()).add(row.file_hash)
+                max_id = max(max_id, row.id or 0)
+            # Resume the global id counter past the highest existing id so new
+            # uploads never collide with a warm-loaded candidate.
+            resume_rag.candidate_counter = max(resume_rag.candidate_counter, max_id)
+            print(f"[OK] Loaded {len(rows)} candidates from DB into memory")
     except Exception as e:
-        print(f"⚠️ Could not warm candidate cache: {e}")
+        print(f"[WARN] Could not warm candidate cache: {e}")
 
     print("✅ All agents registered")
     print(f"✅ ResuMate AI ready!\n")

@@ -8,10 +8,11 @@ from app.models.candidate import Candidate, Interview, CandidateAccess
 
 # ═══════ CANDIDATE ═══════
 
-async def create_candidate_db(session: AsyncSession, data: dict) -> Optional[Candidate]:
+async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int = None) -> Optional[Candidate]:
     """Persist a candidate to the database (alongside in-memory/ChromaDB storage)."""
     try:
         candidate = Candidate(
+            manager_id=manager_id if manager_id is not None else data.get("manager_id"),
             name=data.get("name", ""),
             email=data.get("email") or (data.get("embedded_links", {}) or {}).get("email"),
             file_name=data.get("file_name", ""),
@@ -38,7 +39,7 @@ async def create_candidate_db(session: AsyncSession, data: dict) -> Optional[Can
         return candidate
     except Exception as e:
         await session.rollback()
-        print(f"⚠️ DB create_candidate error: {e}")
+        print(f"[WARN] DB create_candidate error: {e}")
         return None
 
 
@@ -49,6 +50,7 @@ async def create_interview(session: AsyncSession, data: dict) -> Optional[Interv
     try:
         interview = Interview(
             candidate_id=data.get("candidate_id", 0),
+            manager_id=data.get("manager_id"),
             candidate_email=data["candidate_email"].strip().lower(),
             role=data.get("role", "General"),
             level=data.get("level", "Mid-Level"),
@@ -64,18 +66,22 @@ async def create_interview(session: AsyncSession, data: dict) -> Optional[Interv
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"⚠️ DB create_interview error: {e}")
+        print(f"[WARN] DB create_interview error: {e}")
         return None
 
 
-async def get_interview_by_email(session: AsyncSession, email: str) -> Optional[Interview]:
-    """Get the most recent interview for a candidate email."""
-    result = await session.execute(
-        select(Interview)
-        .where(Interview.candidate_email == email.strip().lower())
-        .order_by(Interview.created_at.desc())
-        .limit(1)
-    )
+async def get_interview_by_email(session: AsyncSession, email: str, manager_id: int = None) -> Optional[Interview]:
+    """Get the most recent interview for a candidate email.
+
+    When manager_id is provided (manager-facing calls), the result is scoped to
+    that manager so one tenant can't read another's interview. The candidate
+    portal calls this without manager_id (the candidate doesn't know it).
+    """
+    stmt = select(Interview).where(Interview.candidate_email == email.strip().lower())
+    if manager_id is not None:
+        stmt = stmt.where(Interview.manager_id == manager_id)
+    stmt = stmt.order_by(Interview.created_at.desc()).limit(1)
+    result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
 
@@ -102,7 +108,7 @@ async def update_interview_status(
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"⚠️ DB update_interview error: {e}")
+        print(f"[WARN] DB update_interview error: {e}")
         return None
 
 
@@ -139,15 +145,17 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"⚠️ DB save_interview_result error: {e}")
+        print(f"[WARN] DB save_interview_result error: {e}")
         return None
 
 
-async def get_all_completed_interviews(session: AsyncSession) -> list:
-    """Get all completed interviews for hiring manager dashboard."""
-    result = await session.execute(
-        select(Interview).where(Interview.status == "completed").order_by(Interview.completed_at.desc())
-    )
+async def get_all_completed_interviews(session: AsyncSession, manager_id: int = None) -> list:
+    """Get completed interviews for a hiring manager's dashboard, scoped to them."""
+    stmt = select(Interview).where(Interview.status == "completed")
+    if manager_id is not None:
+        stmt = stmt.where(Interview.manager_id == manager_id)
+    stmt = stmt.order_by(Interview.completed_at.desc())
+    result = await session.execute(stmt)
     interviews = result.scalars().all()
     out = []
     for iv in interviews:
@@ -171,11 +179,11 @@ async def get_all_completed_interviews(session: AsyncSession) -> list:
 
 # ═══════ ACCESS CONTROL ═══════
 
-async def create_candidate_access(session: AsyncSession, email: str, name: str, candidate_id: int = None) -> Optional[CandidateAccess]:
-    """Grant portal access to a candidate email."""
+async def create_candidate_access(session: AsyncSession, email: str, name: str, candidate_id: int = None, manager_id: int = None) -> Optional[CandidateAccess]:
+    """Grant portal access to a candidate email, owned by a manager."""
     email = email.strip().lower()
-    # Check if already exists
-    existing = await get_candidate_access(session, email)
+    # Check if this manager already granted access to this email.
+    existing = await get_candidate_access(session, email, manager_id=manager_id)
     if existing:
         return existing
     try:
@@ -183,6 +191,7 @@ async def create_candidate_access(session: AsyncSession, email: str, name: str, 
             email=email,
             name=name,
             candidate_id=candidate_id,
+            manager_id=manager_id,
         )
         session.add(access)
         await session.commit()
@@ -190,13 +199,19 @@ async def create_candidate_access(session: AsyncSession, email: str, name: str, 
         return access
     except Exception as e:
         await session.rollback()
-        print(f"⚠️ DB create_access error: {e}")
+        print(f"[WARN] DB create_access error: {e}")
         return None
 
 
-async def get_candidate_access(session: AsyncSession, email: str) -> Optional[CandidateAccess]:
-    """Check if a candidate email has portal access."""
-    result = await session.execute(
-        select(CandidateAccess).where(CandidateAccess.email == email.strip().lower())
-    )
+async def get_candidate_access(session: AsyncSession, email: str, manager_id: int = None) -> Optional[CandidateAccess]:
+    """Check if a candidate email has portal access.
+
+    Candidate portal calls this email-only (returns any manager's grant — the
+    candidate authenticates by email/OTP, not by manager). Manager-facing calls
+    pass manager_id to scope to their own grants.
+    """
+    stmt = select(CandidateAccess).where(CandidateAccess.email == email.strip().lower())
+    if manager_id is not None:
+        stmt = stmt.where(CandidateAccess.manager_id == manager_id)
+    result = await session.execute(stmt)
     return result.scalar_one_or_none()

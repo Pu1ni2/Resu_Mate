@@ -28,10 +28,17 @@ class ResumeRAGService:
         self.embeddings = None
         self.llm = None
         self.vectordb = None
-        self.candidates: Dict[int, Dict] = {}
+        # Multi-tenant store: each hiring manager gets their own "drawer" so one
+        # manager can never read another's candidates. Keyed manager_id ->
+        # {candidate_id -> candidate_data}. The candidate_id space is GLOBAL
+        # (candidate_counter never resets) so DB ids and ChromaDB metadata stay
+        # unique across managers even though the dict is partitioned.
+        self.candidates: Dict[int, Dict[int, Dict]] = {}
+        # Per-manager set of uploaded file hashes (duplicate detection is scoped
+        # to a manager — two managers may legitimately hold the same resume).
+        self.uploaded_file_hashes: Dict[int, Set[str]] = {}
         self.candidate_counter = 0
         self.recently_discussed: List[str] = []
-        self.uploaded_file_hashes: Set[str] = set()
         # Sync lock for sync paths (register_file, delete_candidate) and an
         # async lock for async paths (add_resume). Both guard the same shared
         # state — concurrent upload + delete used to leave the dict half-written.
@@ -130,33 +137,51 @@ class ResumeRAGService:
         self.vectordb = None
         print("[ERR] ChromaDB disabled — run: pip uninstall -y chromadb chromadb-rust-bindings langchain-chroma && pip install -r requirements.txt")
     
-    # ... rest of the file remains the same ...
-    
+    # ── Per-manager drawer accessors ─────────────────────────────────────────
+    # All candidate access goes through a manager_id so one tenant can never see
+    # another's data. manager_id may be None for legacy/unauthenticated paths;
+    # we coerce to a sentinel key so those rows are still isolated together
+    # rather than leaking into a real manager's drawer.
+    @staticmethod
+    def _mkey(manager_id) -> int:
+        # 0 is never a real hiring_managers.id (autoincrement starts at 1), so it
+        # is a safe sentinel drawer for None/unknown owners.
+        try:
+            return int(manager_id) if manager_id is not None else 0
+        except (TypeError, ValueError):
+            return 0
+
+    def _drawer(self, manager_id) -> Dict[int, Dict]:
+        return self.candidates.setdefault(self._mkey(manager_id), {})
+
+    def _hash_drawer(self, manager_id) -> Set[str]:
+        return self.uploaded_file_hashes.setdefault(self._mkey(manager_id), set())
+
     def _get_file_hash(self, content: bytes) -> str:
         """Generate hash of file content"""
         return hashlib.sha256(content).hexdigest()
-    
+
     def check_file_size(self, file_size: int) -> Optional[str]:
         if file_size > MAX_FILE_SIZE:
             return f"File size exceeds limit. Maximum: {MAX_FILE_SIZE // (1024*1024)}MB, Your file: {file_size / (1024*1024):.2f}MB"
         return None
-    
-    def check_duplicate(self, content: bytes) -> Optional[str]:
+
+    def check_duplicate(self, content: bytes, manager_id=None) -> Optional[str]:
         file_hash = self._get_file_hash(content)
-        if file_hash in self.uploaded_file_hashes:
+        if file_hash in self._hash_drawer(manager_id):
             return "This file has already been uploaded. Duplicate files are not allowed."
         return None
-    
-    def register_file(self, content: bytes):
+
+    def register_file(self, content: bytes, manager_id=None):
         file_hash = self._get_file_hash(content)
         with self._sync_lock:
-            self.uploaded_file_hashes.add(file_hash)
+            self._hash_drawer(manager_id).add(file_hash)
         return file_hash
 
-    def unregister_file(self, file_hash: str):
+    def unregister_file(self, file_hash: str, manager_id=None):
         """Remove file hash when candidate is deleted"""
         with self._sync_lock:
-            self.uploaded_file_hashes.discard(file_hash)
+            self._hash_drawer(manager_id).discard(file_hash)
 
     # Note: the real `delete_candidate` and `clear_all` are defined further
     # below in this class (they also clean ChromaDB). The earlier stubs that
@@ -273,8 +298,8 @@ class ResumeRAGService:
         name = ' '.join(word.capitalize() for word in name.split() if word)
         return name.strip() or "Unknown Candidate"
     
-    async def add_resume(self, file_path: str, file_name: str, file_hash: str = None) -> Dict:
-        """Add a resume and store its hash"""
+    async def add_resume(self, file_path: str, file_name: str, file_hash: str = None, manager_id=None) -> Dict:
+        """Add a resume and store its hash, scoped to the owning manager."""
         if not self.vectordb:
             return {"error": "Service not initialized. Check OpenAI API key."}
     
@@ -299,11 +324,13 @@ class ResumeRAGService:
         chunks = self.text_splitter.split_text(text)
         documents = []
     
+        mkey = self._mkey(manager_id)
         for i, chunk in enumerate(chunks):
             doc = Document(
                 page_content=chunk,
                 metadata={
                     "candidate_id": candidate_id,
+                    "manager_id": mkey,  # so vector search can filter by tenant
                     "candidate_name": name,
                     "file_name": file_name,
                     "chunk_index": i,
@@ -311,12 +338,13 @@ class ResumeRAGService:
                 }
             )
             documents.append(doc)
-    
+
         self.vectordb.add_documents(documents)
         summary_data = await self._analyze_resume(text, name, is_resume)
-    
+
         candidate_data = {
             "id": candidate_id,
+            "manager_id": mkey,
             "name": name,
             "file_name": file_name,
             "file_hash": file_hash,
@@ -326,9 +354,9 @@ class ResumeRAGService:
             "embedded_links": embedded_links,
             **summary_data
         }
-    
+
         async with self._async_lock:
-            self.candidates[candidate_id] = candidate_data
+            self._drawer(manager_id)[candidate_id] = candidate_data
         return candidate_data
     
     async def _analyze_resume(self, text: str, name: str, is_resume: bool) -> Dict:
@@ -430,62 +458,81 @@ BADGES (pick 2-3):
                 "key_strengths": []
             }
     
-    def get_all_candidates(self) -> List[Dict]:
-        return list(self.candidates.values())
-    
-    def get_candidate(self, candidate_id: int) -> Optional[Dict]:
-        return self.candidates.get(candidate_id)
-    
-    def delete_candidate(self, candidate_id: int):
-        """Delete a candidate and remove their file hash so re-upload works."""
+    def get_all_candidates(self, manager_id=None) -> List[Dict]:
+        """Return only the given manager's candidates."""
+        return list(self._drawer(manager_id).values())
+
+    def iter_all_candidates(self):
+        """Yield every candidate across ALL managers.
+
+        Cross-tenant on purpose — only for candidate-facing lookups that match
+        by the candidate's own email (e.g. the advisor agent), never for a
+        hiring manager's listing. Do NOT use this in any manager-scoped path.
+        """
+        for drawer in self.candidates.values():
+            for cand in drawer.values():
+                yield cand
+
+    def get_candidate(self, candidate_id: int, manager_id=None) -> Optional[Dict]:
+        """Return a candidate only if it belongs to this manager."""
+        return self._drawer(manager_id).get(candidate_id)
+
+    def delete_candidate(self, candidate_id: int, manager_id=None):
+        """Delete one of THIS manager's candidates and free its file hash."""
         with self._sync_lock:
-            if candidate_id not in self.candidates:
+            drawer = self._drawer(manager_id)
+            if candidate_id not in drawer:
                 return
 
-            candidate = self.candidates[candidate_id]
+            candidate = drawer[candidate_id]
 
             # Free up the file hash so the same resume can be re-uploaded.
             file_hash = candidate.get("file_hash")
             if file_hash:
-                self.uploaded_file_hashes.discard(file_hash)
+                self._hash_drawer(manager_id).discard(file_hash)
                 print(f"Removed file hash for candidate {candidate_id}")
 
-            # Remove from ChromaDB vector store.
+            # Remove from ChromaDB vector store (scoped by candidate + manager).
             if self.vectordb:
                 try:
-                    self.vectordb._collection.delete(where={"candidate_id": candidate_id})
+                    self.vectordb._collection.delete(
+                        where={"candidate_id": candidate_id}
+                    )
                 except Exception as exc:
                     print(f"ChromaDB delete failed for candidate {candidate_id}: {exc}")
 
-            del self.candidates[candidate_id]
+            del drawer[candidate_id]
             print(f"Deleted candidate {candidate_id}")
 
-        
-    
-    def clear_all(self):
-        """Clear ALL data"""
+    def clear_all(self, manager_id=None):
+        """Clear ONLY this manager's candidates + hashes.
+
+        Note: ChromaDB chunks for this manager are removed per-candidate (we
+        don't wipe the whole vector store anymore, since it now holds multiple
+        tenants' data). The directory is left intact.
+        """
         with self._sync_lock:
-            self.candidates = {}
-            self.candidate_counter = 0
+            drawer = self._drawer(manager_id)
+            if self.vectordb:
+                for cid in list(drawer.keys()):
+                    try:
+                        self.vectordb._collection.delete(where={"candidate_id": cid})
+                    except Exception as exc:
+                        print(f"ChromaDB delete failed for candidate {cid}: {exc}")
+            self.candidates[self._mkey(manager_id)] = {}
+            self.uploaded_file_hashes[self._mkey(manager_id)] = set()
             self.recently_discussed = []
-            self.uploaded_file_hashes = set()
-            if os.path.exists(self.chroma_dir):
-                try:
-                    shutil.rmtree(self.chroma_dir)
-                except Exception as e:
-                    print(f"Error clearing ChromaDB: {e}")
-            self._init_vectordb()
-            print("All data cleared")
+            print(f"Cleared all data for manager {self._mkey(manager_id)}")
         
           
-    def _create_name_mapping(self, candidate_ids: List[int]) -> Tuple[Dict[str, str], Dict[str, str]]:
+    def _create_name_mapping(self, candidate_ids: List[int], drawer: Dict[int, Dict]) -> Tuple[Dict[str, str], Dict[str, str]]:
         """Create mapping between real names and anonymous names"""
         real_to_anon = {}
         anon_to_real = {}
-        
+
         for idx, cid in enumerate(candidate_ids, 1):
-            if cid in self.candidates:
-                real_name = self.candidates[cid]['name']
+            if cid in drawer:
+                real_name = drawer[cid]['name']
                 anon_name = f"Candidate {idx}"
                 real_to_anon[real_name] = anon_name
                 anon_to_real[anon_name] = real_name
@@ -515,31 +562,35 @@ BADGES (pick 2-3):
         message: str,
         candidate_ids: List[int],
         conversation_history: List[Dict] = None,
-        anonymize: bool = False
+        anonymize: bool = False,
+        manager_id=None
     ) -> Dict:
-        
+
         if not self.vectordb or not self.llm:
             return {
                 "response": "**Error:** Service not initialized. Check OpenAI API key.",
                 "suggestions": []
             }
-        
-        # IMPORTANT: Only use selected candidates
-        selected_candidates = [self.candidates[cid] for cid in candidate_ids if cid in self.candidates]
+
+        # IMPORTANT: Only use this manager's candidates, and only the selected
+        # ones within that drawer. A candidate_id from another tenant simply
+        # won't be found in this drawer, so it's ignored.
+        drawer = self._drawer(manager_id)
+        selected_candidates = [drawer[cid] for cid in candidate_ids if cid in drawer]
         resume_candidates = [c for c in selected_candidates if c.get("is_resume", True)]
-        
+
         if not resume_candidates:
             return {
                 "response": "Please select at least one candidate. Go to **Upload** tab and click on candidates to select them.",
                 "suggestions": ["Upload some resumes first"]
             }
-        
+
         # Create name mappings
-        real_to_anon, anon_to_real = self._create_name_mapping(candidate_ids)
-        
-        # Get ALL real names (for filtering out unselected candidates)
+        real_to_anon, anon_to_real = self._create_name_mapping(candidate_ids, drawer)
+
+        # Get ALL real names within this manager's drawer (for filtering)
         all_real_names = set()
-        for c in self.candidates.values():
+        for c in drawer.values():
             all_real_names.add(c['name'])
             for part in c['name'].split():
                 if len(part) > 2:
@@ -557,9 +608,9 @@ BADGES (pick 2-3):
         context_parts = []
         
         for idx, cid in enumerate(candidate_ids, 1):
-            if cid not in self.candidates:
+            if cid not in drawer:
                 continue
-            c = self.candidates[cid]
+            c = drawer[cid]
             if not c.get("is_resume", True):
                 continue
                 
