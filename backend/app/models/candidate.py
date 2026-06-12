@@ -70,6 +70,10 @@ class Interview(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    # Owning hiring manager — scopes interview reads to one tenant. Nullable so
+    # legacy rows created before multi-tenancy don't break; scoped queries treat
+    # NULL as "owned by nobody" and therefore invisible (safe default).
+    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
     candidate_email = Column(String(200), nullable=False, index=True)
     role = Column(String(200))
     level = Column(String(50))
@@ -99,6 +103,7 @@ class Interview(Base):
         return {
             "id": self.id,
             "candidate_id": self.candidate_id,
+            "manager_id": self.manager_id,
             "candidate_email": self.candidate_email,
             "candidate_name": self.candidate.name if self.candidate else "",
             "role": self.role,
