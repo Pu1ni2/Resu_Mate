@@ -9,6 +9,7 @@ import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ATSResultsView from './components/pipeline/ATSResultsView';
+import { TermsPage, PrivacyPage } from './components/LegalPage';
 
 function PipelineResultsPage() {
   const location = useLocation();
@@ -44,6 +45,10 @@ export default function App() {
     <UnauthorizedHandler />
     <Routes>
       <Route path="/" element={<Landing />} />
+
+      {/* Legal — public */}
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Hiring manager auth pages — public */}
       <Route path="/hiring/login" element={<HiringLogin />} />

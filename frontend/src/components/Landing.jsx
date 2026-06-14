@@ -339,6 +339,8 @@ export default function Landing() {
             <a href="#agents">Agents</a>
             <a href="#features">Features</a>
             <a href="#how">How It Works</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
           </div>
           <p className="l-footer-copy">Built by Punith · Multi-Agent AI · GPT-4o + LangChain + ChromaDB</p>
         </div>
