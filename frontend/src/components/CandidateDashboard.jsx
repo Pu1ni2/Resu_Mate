@@ -8,7 +8,7 @@ import {
   LogOut, Camera, Clock, ChevronRight, X, CheckCircle,
   EyeOff, XCircle, Shield, Eye, GraduationCap,
   Code, Star, TrendingUp, Target,
-  Mic, Volume2
+  Mic, Volume2, Trash2
 } from 'lucide-react';
 import InterviewRoom from './InterviewRoom';
 import ConversationalInterviewRoom from './ConversationalInterviewRoom';
@@ -171,6 +171,30 @@ export default function CandidateDashboard() {
     navigate('/candidate/login');
   };
 
+  const handleDeleteMyData = async () => {
+    // GDPR erasure — wipes this candidate's resume, interviews, and stored
+    // files. Calls the backend endpoint authenticated by the candidate token.
+    const ok = window.confirm(
+      'Permanently delete all your data (resume, interviews, reports)? This cannot be undone.'
+    );
+    if (!ok) return;
+    try {
+      const token = localStorage.getItem('resumate_candidate_token') || '';
+      const resp = await fetch(`${API_BASE}/api/chat/candidate/delete-my-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) {
+        alert('Could not delete your data. Please try again or contact the hiring team.');
+        return;
+      }
+      alert('Your data has been deleted.');
+      handleLogout();
+    } catch {
+      alert('Could not reach the server. Please try again.');
+    }
+  };
+
   const handleInterviewComplete = (reportData) => {
     setShowInterviewRoom(false);
     setInterviewReport(reportData);
@@ -258,6 +282,14 @@ export default function CandidateDashboard() {
         </nav>
         <div className="cd-sidebar-footer">
           <button className="cd-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
+          <button
+            className="cd-logout"
+            onClick={handleDeleteMyData}
+            style={{ marginTop: 8, color: '#F87171' }}
+            title="Permanently delete all your data"
+          >
+            <Trash2 size={16} /> Delete my data
+          </button>
         </div>
       </aside>
 
