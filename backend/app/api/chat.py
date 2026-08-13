@@ -16,7 +16,7 @@ import io
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.auth import get_current_user, decode_token
+from app.services.auth import get_current_user, get_current_candidate, decode_token
 from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
@@ -849,71 +849,98 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
 @router.post("/verify-email")
 @limiter.limit("10/minute")
 async def verify_email(request: Request, req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
-    email = req.email.strip().lower()
-    print(f"\n🔍 Verify email: '{email}'")
+    """Pre-auth existence check ONLY — does this email have portal access?
 
-    # 1. Check database access table
+    SECURITY: this endpoint is unauthenticated by necessity (the candidate has no
+    token yet), so it must never return personal data. An email address is not a
+    secret; it is enumerable and frequently public. This route previously
+    returned the candidate's name, candidate_id, interview config, and the FULL
+    interview report + transcript to anyone who posted a known address.
+
+    It now returns a bare boolean. The candidate proves possession of the address
+    via the OTP flow (POST /api/auth/candidate/send-otp -> verify-otp), and every
+    piece of real data is served from token-authenticated routes:
+      - GET /api/chat/candidate/me         -> profile + pending interview config
+      - GET /api/chat/candidate/my-report  -> completed report + transcript
+    """
+    email = req.email.strip().lower()
+
     access = await db_service.get_candidate_access(db, email)
     if access:
-        interview = await db_service.get_interview_by_email(db, email)
-        has_iv = interview is not None
-        completed = has_iv and interview.status == "completed"
+        return {"access": True}
 
-        # Build interview config
-        iv_config = None
-        iv_report = None
-        if interview:
-            iv_config = {
-                "role": interview.role, "level": interview.level,
-                "num_questions": interview.num_questions, "focus_areas": interview.focus_areas or [],
-                "status": interview.status,
-                "mode": interview.mode or "avatar",
-                "interview_id": interview.id,
-            }
-            if completed and interview.report:
-                try:
-                    iv_report = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
-                except:
-                    iv_report = {"report": interview.report}
-                if interview.transcript:
-                    if isinstance(iv_report, dict):
-                        iv_report["transcript"] = interview.transcript
-
-        print(f"  ✅ Found in DB. has_interview={has_iv}, completed={completed}")
-        return {
-            "access": True, "name": access.name or "", "candidate_id": access.candidate_id,
-            "has_interview": has_iv and not completed,
-            "interview_config": iv_config if has_iv and not completed else None,
-            "interview_completed": completed,
-            "interview_report": iv_report,
-        }
-
-    # 2. Fallback: scan resume texts for the email (candidate-side lookup; the
-    #    candidate authenticates by their own email, so this is cross-tenant on
-    #    purpose). Grant access under the candidate's OWNING manager.
+    # Fallback: the candidate may have been uploaded by a manager but never
+    # explicitly granted portal access. Scan resume texts and auto-grant under the
+    # OWNING manager. This is deliberately cross-tenant — the candidate is the
+    # data subject. We grant ACCESS here but still return no data.
     for c in resume_rag.iter_all_candidates():
         text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
         emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
         if email in text or email == emb_email.lower():
-            cid = c.get('id')
-            owner = c.get('manager_id')
-            owner = owner if owner else None
-            # Auto-grant access and persist to DB under the owning manager.
-            await db_service.create_candidate_access(db, email, c.get('name', ''), cid, manager_id=owner)
-            interview = await db_service.get_interview_by_email(db, email)
-            has_iv = interview is not None
-            completed = has_iv and interview.status == "completed"
-            print(f"  [OK] Found email in resume text. has_interview={has_iv}")
-            return {
-                "access": True, "name": c.get('name', ''), "candidate_id": cid,
-                "has_interview": has_iv and not completed,
-                "interview_config": None,
-                "interview_completed": completed,
-                "interview_report": None,
-            }
+            owner = c.get('manager_id') or None
+            await db_service.create_candidate_access(db, email, c.get('name', ''), c.get('id'), manager_id=owner)
+            return {"access": True}
 
-    print(f"  [WARN] Not found anywhere")
     return {"access": False, "message": "No access found for this email. Please contact your hiring manager."}
+
+
+@router.get("/candidate/me")
+async def candidate_me(
+    candidate_email: str = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    """Authenticated replacement for the data /verify-email used to hand out.
+
+    Identity comes from the candidate's own session token, so a candidate can
+    only ever read their own profile and pending interview.
+    """
+    access = await db_service.get_candidate_access(db, candidate_email)
+    if not access:
+        raise HTTPException(404, "No access found for this email")
+
+    interview = await db_service.get_interview_by_email(db, candidate_email)
+    has_iv = interview is not None
+    completed = has_iv and interview.status == "completed"
+
+    iv_config = None
+    if interview and not completed:
+        iv_config = {
+            "role": interview.role, "level": interview.level,
+            "num_questions": interview.num_questions,
+            "focus_areas": interview.focus_areas or [],
+            "status": interview.status,
+            "mode": interview.mode or "avatar",
+            "interview_id": interview.id,
+        }
+
+    return {
+        "access": True,
+        "name": access.name or "",
+        "candidate_id": access.candidate_id,
+        "has_interview": has_iv and not completed,
+        "interview_config": iv_config,
+        "interview_completed": completed,
+    }
+
+
+@router.get("/candidate/my-report")
+async def candidate_my_report(
+    candidate_email: str = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    """A candidate's own completed interview report + transcript (token-scoped)."""
+    interview = await db_service.get_interview_by_email(db, candidate_email)
+    if not interview or interview.status != "completed" or not interview.report:
+        raise HTTPException(404, "No completed interview report found")
+
+    try:
+        report = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
+    except (ValueError, TypeError):
+        report = {"report": interview.report}
+    if interview.transcript and isinstance(report, dict):
+        report["transcript"] = interview.transcript
+
+    return {"interview_completed": True, "interview_report": report}
 
 @router.get("/interview-status/{email}")
 async def interview_status(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
