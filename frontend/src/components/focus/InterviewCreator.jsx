@@ -54,13 +54,15 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
 
   if (interviewCreated) {
     return (
-      <div style={{ padding: '20px', maxWidth: '540px' }}>
+      <div style={{ padding: '20px', maxWidth: '640px' }}>
         <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
           <Check size={40} style={{ color: '#22C55E', marginBottom: '14px' }} />
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>Interview Created!</h3>
           <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '4px' }}>Candidate can now login with:</p>
           <p style={{ fontSize: '16px', fontWeight: '600', color: 'var(--info)', marginBottom: '12px' }}>{interviewEmail}</p>
-          <p style={{ color: 'var(--text3)', fontSize: '13px' }}>{interviewRole || focusCandidate?.predicted_role || 'General'} Â· {interviewNumQuestions} questions</p>
+          <p style={{ color: 'var(--text3)', fontSize: '13px' }}>
+            {interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions · {interviewMode === 'conversational' ? 'Voice conversation' : 'Avatar interview'}
+          </p>
           {interviewFocusAreas && <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Focus: {interviewFocusAreas}</p>}
         </div>
       </div>
@@ -68,47 +70,56 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '540px' }}>
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
+    <div style={{ padding: '20px', maxWidth: '640px' }}>
+      <div className="glass-card">
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}>
           <Video size={18} /> Create AI Interview
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {/* Interview format toggle â€” avatar (existing) vs conversational (new MVP) */}
+          {/* Interview format toggle — avatar (existing) vs conversational (new MVP).
+              The cards use a solid --bg3 background rather than the translucent
+              --surface token: nested inside .glass-card, a semi-transparent fill
+              reads as see-through and the label becomes unreadable. */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Interview Format</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
               <button
                 type="button"
                 onClick={() => setInterviewMode('avatar')}
-                className="btn"
+                aria-pressed={interviewMode === 'avatar'}
                 style={{
-                  padding: '12px 14px', textAlign: 'left',
-                  background: interviewMode === 'avatar' ? 'rgba(139,92,246,0.18)' : 'var(--surface)',
-                  border: `1px solid ${interviewMode === 'avatar' ? 'rgba(139,92,246,0.6)' : 'var(--surface-border)'}`,
+                  padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                  width: '100%', minWidth: 0, borderRadius: '10px',
+                  fontFamily: 'inherit', color: 'var(--text)',
+                  background: interviewMode === 'avatar' ? 'rgba(139,92,246,0.22)' : 'var(--bg3)',
+                  border: `1px solid ${interviewMode === 'avatar' ? 'rgba(139,92,246,0.75)' : 'var(--surface-border)'}`,
                   display: 'flex', flexDirection: 'column', gap: '4px',
+                  transition: 'background 0.15s ease, border-color 0.15s ease',
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Video size={14} /> Avatar interview
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Camera + lip-synced AI face. Slower but richer.</span>
+                <span style={{ fontSize: '11px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>Camera + lip-synced AI face. Slower but richer.</span>
               </button>
               <button
                 type="button"
                 onClick={() => setInterviewMode('conversational')}
-                className="btn"
+                aria-pressed={interviewMode === 'conversational'}
                 style={{
-                  padding: '12px 14px', textAlign: 'left',
-                  background: interviewMode === 'conversational' ? 'rgba(34,197,94,0.18)' : 'var(--surface)',
-                  border: `1px solid ${interviewMode === 'conversational' ? 'rgba(34,197,94,0.6)' : 'var(--surface-border)'}`,
+                  padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                  width: '100%', minWidth: 0, borderRadius: '10px',
+                  fontFamily: 'inherit', color: 'var(--text)',
+                  background: interviewMode === 'conversational' ? 'rgba(34,197,94,0.22)' : 'var(--bg3)',
+                  border: `1px solid ${interviewMode === 'conversational' ? 'rgba(34,197,94,0.75)' : 'var(--surface-border)'}`,
                   display: 'flex', flexDirection: 'column', gap: '4px',
+                  transition: 'background 0.15s ease, border-color 0.15s ease',
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Mic size={14} /> Voice conversation
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Audio-only, low-latency. No camera, no avatar.</span>
+                <span style={{ fontSize: '11px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>Audio-only, low-latency. No camera, no avatar.</span>
               </button>
             </div>
           </div>
