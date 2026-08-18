@@ -170,12 +170,14 @@ export default function Landing() {
             <span>Multi-agent AI platform</span>
           </div>
 
-          {/* 600 weight at ~56px rather than 800 at ~64px, and one solid colour
-              on the emphasis line. Extra-bold display type and a three-stop
-              gradient fill are the two things that most made this read like a
-              template rather than a product. */}
+          {/* Size was never the problem -- weight and tracking were. The
+              original was 800 at 64px with -0.03em, which at that weight reads
+              as shouting. This is 600 at up to 80px with -0.035em and a 1.02
+              line-height, so the two lines lock into a block. Large type set
+              tightly reads as confidence; large type set loosely reads as a
+              template. */}
           <h1
-            className="animate-fadeInUp mb-6 text-[clamp(2.25rem,5.5vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-ink"
+            className="animate-fadeInUp mb-6 text-[clamp(2.75rem,7vw,5rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-ink text-balance"
             style={{ animationDelay: '100ms' }}
           >
             Hire smarter with
