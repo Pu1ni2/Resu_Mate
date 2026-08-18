@@ -238,7 +238,6 @@ code { font-size: 0.9em; padding: 2px 6px; background: var(--bg3); border-radius
 }
 .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
 .input::placeholder { color: var(--text3); }
-.input-lg { padding: var(--space-4) var(--space-5); font-size: var(--text-md); }
 
 /* ─── Cards ─── */
 .glass-card {
@@ -255,13 +254,7 @@ code { font-size: 0.9em; padding: 2px 6px; background: var(--bg3); border-radius
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 .glass-card:hover { border-color: var(--surface-hover); }
-.glass-card-interactive { cursor: pointer; }
-.glass-card-interactive:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
-.card-flat {
-  background: var(--bg2); border: 1px solid var(--surface-border);
-  border-radius: var(--radius-lg); transition: all var(--duration-normal);
-}
 
 /* ─── Badges ─── */
 .badge {
@@ -283,12 +276,6 @@ code { font-size: 0.9em; padding: 2px 6px; background: var(--bg3); border-radius
   width: 40px; height: 40px; border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center;
   font-weight: var(--weight-bold); font-size: var(--text-md);
-  color: var(--text-inverse); flex-shrink: 0;
-}
-.avatar-lg {
-  width: 56px; height: 56px; border-radius: var(--radius-lg);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: var(--weight-bold); font-size: var(--text-xl);
   color: var(--text-inverse); flex-shrink: 0;
 }
 
@@ -330,47 +317,10 @@ code { font-size: 0.9em; padding: 2px 6px; background: var(--bg3); border-radius
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
-.animate-fadeIn      { animation: fadeIn var(--duration-normal) var(--ease-out); }
 .animate-fadeInUp    { animation: fadeInUp var(--duration-slow) var(--ease-out); }
-.animate-fadeInScale { animation: fadeInScale var(--duration-slow) var(--ease-out); }
-.animate-slideInRight { animation: slideInRight var(--duration-slow) var(--ease-out); }
-
-/* Stagger children animation */
-.stagger-children > * { opacity: 0; animation: fadeInUp var(--duration-slow) var(--ease-out) forwards; }
-.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 80ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 160ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 240ms; }
-.stagger-children > *:nth-child(5) { animation-delay: 320ms; }
-.stagger-children > *:nth-child(6) { animation-delay: 400ms; }
-
-/* Skeleton loading */
-.skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-md); }
-.skeleton-text { height: 14px; margin-bottom: 8px; }
-.skeleton-title { height: 20px; width: 60%; margin-bottom: 12px; }
-.skeleton-avatar { width: 40px; height: 40px; border-radius: var(--radius-md); }
-.skeleton-card { height: 120px; }
 
 
-/* ═══════════════════════════════════════
-   TOAST NOTIFICATIONS
-   ═══════════════════════════════════════ */
-.toast-container { position: fixed; top: var(--space-4); right: var(--space-4); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--space-2); }
-.toast {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-elevated); border: 1px solid var(--surface-border);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
-  font-size: var(--text-sm); color: var(--text);
-  animation: slideInRight var(--duration-normal) var(--ease-out);
-  min-width: 280px; max-width: 420px;
-}
-.toast-success { border-color: rgba(34,197,94,0.3); }
-.toast-success svg { color: var(--success); }
-.toast-error { border-color: rgba(239,68,68,0.3); }
-.toast-error svg { color: var(--error); }
-.toast-warning { border-color: rgba(245,158,11,0.3); }
-.toast-warning svg { color: var(--warning); }
+
 
 
 /* ═══════════════════════════════════════
