@@ -14,10 +14,29 @@ import { cn } from './cn';
  * things that genuinely float over content — modals, popovers, the sticky
  * header — where the blur communicates depth rather than decorating.
  */
+/* The craft detail: a 1px top-edge highlight, brightest at the centre and
+ * falling off to the corners, as a real edge lit from above would. A flat
+ * white line across the whole top reads like a border; the gradient reads like
+ * light. Sits in a ::before via an arbitrary variant so it costs no extra DOM.
+ */
+const edgeHighlight =
+  "relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px " +
+  "before:bg-[linear-gradient(90deg,transparent,var(--color-highlight)_18%,var(--color-highlight-strong)_50%,var(--color-highlight)_82%,transparent)] " +
+  "before:rounded-t-[inherit]";
+
+const elevations = {
+  0: '',
+  1: 'shadow-e1',
+  2: 'shadow-e2',
+  3: 'shadow-e3',
+};
+
 export default function Card({
   as: Tag = 'div',
   padded = false,
   interactive = false,
+  elevation = 1,
+  highlight = true,
   className,
   children,
   ...rest
@@ -26,9 +45,12 @@ export default function Card({
     <Tag
       className={cn(
         'bg-surface border border-line rounded-[14px]',
+        elevations[elevation] ?? elevations[1],
+        highlight && edgeHighlight,
         padded && 'p-5',
         interactive &&
-          'cursor-pointer transition-colors duration-[120ms] ease-out hover:border-line-strong hover:bg-surface-hover',
+          'cursor-pointer transition-[background-color,border-color,box-shadow] duration-[160ms] ease-out ' +
+            'hover:border-line-strong hover:bg-surface-hover hover:shadow-e2',
         className,
       )}
       {...rest}

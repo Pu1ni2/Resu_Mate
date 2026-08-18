@@ -29,6 +29,30 @@ describe('Card', () => {
     expect(screen.getByText('Title')).toBeTruthy();
     expect(screen.getByText('Body')).toBeTruthy();
   });
+
+  it('carries the edge highlight and e1 elevation by default', () => {
+    render(<Card data-testid="c">x</Card>);
+    const cls = screen.getByTestId('c').className;
+    expect(cls).toContain('shadow-e1');
+    expect(cls).toContain('before:h-px');
+  });
+
+  it('can raise elevation and drop the highlight', () => {
+    render(<Card data-testid="c" elevation={3} highlight={false}>x</Card>);
+    const cls = screen.getByTestId('c').className;
+    expect(cls).toContain('shadow-e3');
+    expect(cls).not.toContain('before:h-px');
+  });
+
+  it('falls back to e1 for an out-of-range elevation', () => {
+    render(<Card data-testid="c" elevation={9}>x</Card>);
+    expect(screen.getByTestId('c').className).toContain('shadow-e1');
+  });
+
+  it('supports a flat card with no shadow', () => {
+    render(<Card data-testid="c" elevation={0}>x</Card>);
+    expect(screen.getByTestId('c').className).not.toContain('shadow-e');
+  });
 });
 
 describe('Input', () => {
