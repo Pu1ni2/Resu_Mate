@@ -3,22 +3,6 @@
    Aesthetic: Refined dark, premium tech
    ═══════════════════════════════════════ */
 
-/* ─── Page ─── */
-.l-page { position: relative; overflow-x: hidden; background: var(--bg); }
-
-/* ─── Grid Background ─── */
-.l-grid-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-.l-grid-pattern {
-  position: absolute; inset: 0;
-  background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-.l-grid-fade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, var(--bg) 85%); }
-.l-grid-glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(120px); opacity: 0.12; }
-.l-grid-glow-1 { top: -200px; right: -100px; background: var(--accent); animation: float 8s ease-in-out infinite; }
-.l-grid-glow-2 { bottom: 0; left: -200px; background: var(--info); animation: float 10s ease-in-out infinite reverse; }
-
 .l-hero-floats { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .l-float-badge {
   position: absolute; display: flex; align-items: center; gap: 6px;
