@@ -12,7 +12,6 @@ import './styles/landing.css'
 import './styles/global.css'
 import './styles/dashboard-polish.css'
 import './styles/candidate-theme.css'
-import './styles/interview-room.css'
 import './styles/overrides.css'
 import './styles/product-layer.css'
 
