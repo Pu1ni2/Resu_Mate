@@ -81,6 +81,55 @@
   --ease-out-quick: cubic-bezier(0.2, 0, 0, 1);
   --duration-quick: 120ms;
   --duration-normal: 160ms;
+
+  /* ─── Depth ──────────────────────────────────────────────
+     A flat surface with a hairline border reads clean but inert. What makes a
+     dark interface feel built rather than drawn is a light model: a top edge
+     that catches light, and a shadow that says how far the surface sits off
+     the page.
+
+     Shadows are tuned for dark: on a near-black canvas a soft grey shadow is
+     invisible, so these are near-opaque black at a tight radius. --shadow-e3
+     also carries a faint accent bleed, which is what makes a lifted panel look
+     lit rather than cut out.
+     ──────────────────────────────────────────────────────── */
+  --color-highlight: rgba(255, 255, 255, 0.09);
+  --color-highlight-strong: rgba(255, 255, 255, 0.16);
+
+  --shadow-e1: 0 1px 2px rgb(0 0 0 / 0.40);
+  --shadow-e2: 0 4px 12px -2px rgb(0 0 0 / 0.50), 0 2px 4px -2px rgb(0 0 0 / 0.40);
+  --shadow-e3: 0 24px 56px -16px rgb(0 0 0 / 0.72), 0 8px 20px -8px rgb(0 0 0 / 0.50);
+}
+
+/* ─── Grain ───────────────────────────────────────────────
+   An inline SVG feTurbulence, so there is no asset to fetch and nothing to
+   version. Two jobs: it breaks up the banding that large low-opacity radial
+   gradients produce on 8-bit displays, and it gives flat fills a very slight
+   tooth so they read as a material rather than a colour value.
+
+   It must be felt, not seen. If the texture is legible as noise, the opacity
+   is too high.
+   ───────────────────────────────────────────────────────── */
+.grain-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Grain is a dark-surface trick. On white it reads as dirt, so it comes off
+   almost entirely in light mode. */
+[data-theme='light'] .grain-overlay::after {
+  opacity: 0.012;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not motion, but the same intent: users who ask for a calmer interface
+     should not get a texture overlay either. */
+  .grain-overlay::after { display: none; }
 }
 
 /* ─── Light theme ───────────────────────────────────────────
@@ -123,4 +172,14 @@
   --color-caution-wash: rgba(180, 83, 9, 0.10);
 
   --color-data-track: rgba(9, 9, 11, 0.08);
+
+  /* On white there is no light to catch, so the top-edge highlight would just
+     dirty the border. It goes transparent, and depth comes from shadow alone —
+     which is also why these are softer and wider than the dark set. */
+  --color-highlight: transparent;
+  --color-highlight-strong: transparent;
+
+  --shadow-e1: 0 1px 2px rgb(9 9 11 / 0.06);
+  --shadow-e2: 0 4px 12px -2px rgb(9 9 11 / 0.08), 0 2px 4px -2px rgb(9 9 11 / 0.04);
+  --shadow-e3: 0 24px 56px -16px rgb(9 9 11 / 0.14), 0 8px 20px -8px rgb(9 9 11 / 0.08);
 }
