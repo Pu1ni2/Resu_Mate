@@ -970,11 +970,18 @@ class SaveInterviewResult(BaseModel):
     report: dict
 
 @router.post("/save-interview-result")
-async def save_interview_result(req: SaveInterviewResult, db: AsyncSession = Depends(get_db)):
-    """Save interview result (called by candidate after interview)"""
-    email = req.candidate_email.strip().lower()
-    await db_service.save_interview_result(db, email, req.report)
-    print(f"[OK] Interview result saved for {email}")
+async def save_interview_result(
+    req: SaveInterviewResult,
+    db: AsyncSession = Depends(get_db),
+    candidate_email: str = Depends(get_current_candidate),
+):
+    """Save an interview result, posted by the candidate's browser after the session.
+
+    Requires the candidate's session token and writes to THAT email — the body
+    field is ignored. Previously this was fully unauthenticated, so anyone could
+    overwrite any candidate's interview report by guessing their address.
+    """
+    await db_service.save_interview_result(db, candidate_email, req.report)
     return {"status": "saved"}
 
 

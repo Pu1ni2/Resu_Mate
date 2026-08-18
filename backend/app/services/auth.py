@@ -157,6 +157,27 @@ class Actor:
         return self.manager.id if self.manager else None
 
 
+def verify_agent_token(x_agent_token: Optional[str]) -> None:
+    """Authenticate the interview worker (a service, not a browser session).
+
+    The worker can't hold a JWT, so it sends X-Agent-Token == AGENT_SHARED_SECRET.
+    Fails CLOSED: if the secret isn't configured server-side we 503 rather than
+    letting the check silently pass. Without this, anyone could read interview
+    configs or overwrite transcripts by guessing a room name or email.
+    """
+    expected = (settings.agent_shared_secret or "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Agent shared secret not configured on server",
+        )
+    if not x_agent_token or x_agent_token.strip() != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Agent-Token",
+        )
+
+
 async def get_current_actor(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db),

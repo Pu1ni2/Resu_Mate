@@ -11,7 +11,7 @@ Then: app.include_router(advisor_router, prefix="/api")
 """
 import os
 import json
-from fastapi import APIRouter, UploadFile, File, Form, Depends, Request
+from fastapi import APIRouter, UploadFile, File, Form, Depends, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,8 +20,15 @@ from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.services import state_service
+from app.services.auth import get_current_candidate
 
 limiter = Limiter(key_func=get_remote_address)
+
+# Candidate resume uploads go through the same 5 MB ceiling as the manager-side
+# upload path. Previously this endpoint read an unbounded body from an
+# unauthenticated caller.
+MAX_RESUME_BYTES = 5 * 1024 * 1024
+ALLOWED_RESUME_EXT = (".pdf", ".docx", ".doc", ".txt")
 
 try:
     from openai import OpenAI
@@ -42,15 +49,30 @@ _session_cache = {}
 async def candidate_upload_resume(
     request: Request,
     file: UploadFile = File(...),
-    email: str = Form(""),
+    email: str = Form(""),  # accepted for backwards compat; IGNORED — see below
     db: AsyncSession = Depends(get_db),
+    candidate_email: str = Depends(get_current_candidate),
 ):
-    """Upload resume from candidate side — no auth required"""
+    """Upload a resume from the candidate side.
+
+    Requires a candidate session token. The email is taken from that token, not
+    the form field — previously any anonymous caller could POST an arbitrary
+    email and overwrite that candidate's stored resume (and burn a GPT-4o call
+    doing it).
+    """
     import hashlib
+    email = candidate_email
+
+    filename = file.filename or ""
+    if not filename.lower().endswith(ALLOWED_RESUME_EXT):
+        raise HTTPException(400, f"File type not allowed. Allowed: {', '.join(ALLOWED_RESUME_EXT)}")
+
     content = await file.read()
+    if len(content) > MAX_RESUME_BYTES:
+        raise HTTPException(400, f"File exceeds {MAX_RESUME_BYTES // (1024 * 1024)}MB limit")
     text = ""
 
-    if file.filename.endswith('.pdf'):
+    if filename.lower().endswith('.pdf'):
         try:
             import PyPDF2
             import io
@@ -58,7 +80,7 @@ async def candidate_upload_resume(
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception:
             text = content.decode('utf-8', errors='ignore')
-    elif file.filename.endswith('.docx'):
+    elif filename.lower().endswith(('.docx', '.doc')):
         try:
             import docx
             import io
@@ -69,11 +91,11 @@ async def candidate_upload_resume(
     else:
         text = content.decode('utf-8', errors='ignore')
 
-    cid = hashlib.md5(f"{email}-{file.filename}".encode()).hexdigest()[:12]
+    cid = hashlib.md5(f"{email}-{filename}".encode()).hexdigest()[:12]
     metadata = {
         "id": cid,
         "name": email.split("@")[0].title(),
-        "filename": file.filename,
+        "filename": filename,
         "email": email,
     }
 
@@ -164,7 +186,10 @@ Keep responses insightful and personalized."""
 
 
 class AdvisorChatRequest(BaseModel):
-    email: str
+    # email is accepted for backwards compat but IGNORED — the authenticated
+    # token decides whose resume is loaded. Trusting this field let any caller
+    # read any candidate's resume through the model's reply.
+    email: str = ""
     message: str
     mode: str = "general"  # resume_coach | interview_prep | career_advisor | general
     session_id: Optional[str] = None
@@ -172,18 +197,30 @@ class AdvisorChatRequest(BaseModel):
 
 @router.post("/chat")
 @limiter.limit("30/minute")
-async def advisor_chat(request: Request, req: AdvisorChatRequest, db: AsyncSession = Depends(get_db)):
-    """Chat with the Advisor Agent — routes to appropriate sub-agent (DB-backed sessions)"""
+async def advisor_chat(
+    request: Request,
+    req: AdvisorChatRequest,
+    db: AsyncSession = Depends(get_db),
+    candidate_email: str = Depends(get_current_candidate),
+):
+    """Chat with the Advisor Agent — routes to appropriate sub-agent (DB-backed sessions).
+
+    Requires a candidate session token. Identity comes from the token: this
+    endpoint loads the caller's resume into an LLM system prompt, so honouring a
+    body-supplied email meant an unauthenticated caller could exfiltrate any
+    candidate's resume via the model's reply — while spending our OpenAI budget.
+    """
+    email = candidate_email
 
     # Load session from cache or DB
-    cached = _session_cache.get(req.email)
+    cached = _session_cache.get(email)
     if not cached:
-        session = await state_service.get_or_create_advisor_session(db, req.email)
+        session = await state_service.get_or_create_advisor_session(db, email)
         cached = {"text": session.resume_text or "", **(session.resume_metadata or {})}
-        _session_cache[req.email] = cached
+        _session_cache[email] = cached
 
     resume_text = cached.get("text", "No resume uploaded yet.")
-    candidate_name = cached.get("name", req.email.split("@")[0].title())
+    candidate_name = cached.get("name", email.split("@")[0].title())
 
     # Fallback: try hiring manager resume store
     if not resume_text or resume_text == "No resume uploaded yet.":
@@ -191,7 +228,7 @@ async def advisor_chat(request: Request, req: AdvisorChatRequest, db: AsyncSessi
             from app.api.chat import resume_rag
             for c in resume_rag.iter_all_candidates():
                 c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
-                if req.email.lower() in c_text:
+                if email in c_text:
                     resume_text = c.get('text', '') or c.get('raw_text', '')[:8000]
                     candidate_name = c.get('name', candidate_name)
                     break
@@ -209,7 +246,7 @@ async def advisor_chat(request: Request, req: AdvisorChatRequest, db: AsyncSessi
     system_prompt += f"\n\nCandidate: {candidate_name}\nResume Context:\n{resume_text[:4000]}"
 
     # Load chat history for this mode from DB
-    session = await state_service.get_or_create_advisor_session(db, req.email)
+    session = await state_service.get_or_create_advisor_session(db, email)
     history = list(session.chat_history.get(req.mode, []) if session.chat_history else [])
     history.append({"role": "user", "content": req.message})
 
@@ -226,7 +263,7 @@ async def advisor_chat(request: Request, req: AdvisorChatRequest, db: AsyncSessi
         history.append({"role": "assistant", "content": reply})
 
         # Persist updated history to DB
-        await state_service.update_advisor_session(db, req.email, mode=req.mode, messages=history)
+        await state_service.update_advisor_session(db, email, mode=req.mode, messages=history)
 
         suggestions = get_suggestions(req.mode, len(history), reply)
         return {"reply": reply, "mode": req.mode, "suggestions": suggestions}
@@ -286,20 +323,29 @@ def get_suggestions(mode: str, history_len: int, last_reply: str = "") -> List[s
     return follow_ups.get(mode, ["Tell me more", "What else?", "Can you elaborate?"])
 
 
-@router.get("/context/{email}")
-async def get_candidate_context(email: str, db: AsyncSession = Depends(get_db)):
-    """Get candidate context for the advisor — DB-backed"""
+@router.get("/context")
+async def get_candidate_context(
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_candidate),
+):
+    """The authenticated candidate's own advisor context.
+
+    The email is no longer a path parameter: as GET /context/{email} this
+    returned any candidate's name, role, and skills to an unauthenticated caller,
+    including a cross-tenant scan of every manager's uploads.
+    """
     session = await state_service.get_or_create_advisor_session(db, email)
     if session.resume_text:
         meta = session.resume_metadata or {}
         return {"found": True, **{k: v for k, v in meta.items() if k != 'text'}}
 
-    # Fallback: hiring manager uploads
+    # Fallback: hiring manager uploads. Cross-tenant by design — the candidate is
+    # the data subject and is authenticated as themselves.
     try:
         from app.api.chat import resume_rag
         for c in resume_rag.iter_all_candidates():
             c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
-            if email.lower() in c_text:
+            if email in c_text:
                 return {"found": True, "name": c.get('name', ''), "role": c.get('predicted_role', ''), "skills": c.get('skills', [])}
     except Exception:
         pass
