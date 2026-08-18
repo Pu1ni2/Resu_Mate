@@ -22,11 +22,13 @@ const MAX_VIOLATIONS = 3;
 // the right one to send. Fall back to the hiring-manager token only for the
 // preview flow where a manager tests the interview themselves.
 function authHeader() {
+  // No 'demo-token' fallback: the backend never accepted it, so sending it just
+  // turned "logged out" into an opaque 401 instead of a clean re-login prompt.
   const token =
     localStorage.getItem('resumate_candidate_token') ||
     localStorage.getItem('resumate_hm_token') ||
-    'demo-token';
-  return `Bearer ${token}`;
+    '';
+  return token ? `Bearer ${token}` : '';
 }
 
 export default function InterviewRoom({ config, candidateName, candidateEmail, onComplete, onExit }) {

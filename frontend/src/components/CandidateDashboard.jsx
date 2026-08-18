@@ -25,6 +25,15 @@ const Logo = ({ size = 32 }) => (
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
+// Candidate-portal calls authenticate with the candidate session token minted at
+// OTP login. The server derives the candidate's identity from this token, so any
+// email in a request body is ignored — that is what stops one candidate reading
+// another's resume or report.
+function candidateAuthHeaders() {
+  const token = localStorage.getItem('resumate_candidate_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 function SafeMarkdown({ text }) {
   if (!text || typeof text !== 'string') return null;
   try {
@@ -115,8 +124,13 @@ export default function CandidateDashboard() {
     try {
       const form = new FormData();
       form.append('file', file);
+      // The server takes the email from the session token, not this field.
       form.append('email', candidateSession?.email || '');
-      const resp = await fetch(`${API_BASE}/api/advisor/upload-resume`, { method: 'POST', body: form });
+      const resp = await fetch(`${API_BASE}/api/advisor/upload-resume`, {
+        method: 'POST',
+        headers: candidateAuthHeaders(),
+        body: form,
+      });
       const data = await resp.json();
       if (data.success) {
         setResumeUploaded(true);
@@ -152,8 +166,9 @@ export default function CandidateDashboard() {
     setAdvisorTyping(true);
     try {
       const resp = await fetch(`${API_BASE}/api/advisor/chat`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: candidateSession?.email || '', message: m, mode })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...candidateAuthHeaders() },
+        body: JSON.stringify({ message: m, mode })
       });
       const data = await resp.json();
       setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: data.reply || 'No response.' }] }));
@@ -209,7 +224,8 @@ export default function CandidateDashboard() {
     }
     try {
       fetch(`${API_BASE}/api/chat/save-interview-result`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...candidateAuthHeaders() },
         body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: reportData })
       }).catch(() => {});
     } catch {}

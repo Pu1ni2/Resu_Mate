@@ -27,17 +27,45 @@ from livekit.plugins import openai as lk_openai, simli as lk_simli
 
 
 def get_interview_config(room_name):
-    try:
-        for url in [BACKEND_URL, "http://localhost:8006"]:
-            try:
-                resp = requests.get(f"{url}/api/livekit/interview-room-config/{room_name}", timeout=5)
-                if resp.ok:
-                    return resp.json()
-            except:
-                continue
-    except:
-        pass
-    return {"role": "Software Engineer", "level": "Mid-Level", "num_questions": 5, "focus_areas": [], "candidate_name": "Candidate"}
+    """Fetch the room's interview config from the backend.
+
+    Authenticates with X-Agent-Token (the same shared secret used for
+    /save-transcript) because this endpoint exposes the candidate's email, name,
+    and resume-derived verification targets.
+
+    Returns None when the config cannot be fetched. Callers MUST treat that as
+    fatal: the previous behaviour returned a generic "Software Engineer" default,
+    so a bad secret or a cold backend silently produced a wrong-role interview
+    that appeared to succeed.
+    """
+    if not AGENT_SHARED_SECRET:
+        logger.error(
+            "AGENT_SHARED_SECRET not set; the backend will reject the room-config "
+            "fetch with 401. Set AGENT_SHARED_SECRET on both backend and worker."
+        )
+        return None
+
+    headers = {"X-Agent-Token": AGENT_SHARED_SECRET}
+    last_error = None
+    for url in [BACKEND_URL, "http://localhost:8006"]:
+        try:
+            resp = requests.get(
+                f"{url}/api/livekit/interview-room-config/{room_name}",
+                headers=headers,
+                timeout=5,
+            )
+            if resp.ok:
+                return resp.json()
+            last_error = f"{url} returned {resp.status_code}: {resp.text[:200]}"
+            # 401/403 is a config error, not a transport error — retrying the
+            # next host with the same bad secret cannot help.
+            if resp.status_code in (401, 403, 503):
+                break
+        except Exception as exc:
+            last_error = f"{url}: {exc}"
+
+    logger.error(f"Could not fetch interview config for room {room_name}: {last_error}")
+    return None
 
 
 def build_system_prompt(config):
@@ -113,6 +141,16 @@ async def entrypoint(ctx: JobContext):
 
     logger.info(f"Interview agent joining room: {ctx.room.name}")
     config = get_interview_config(ctx.room.name)
+    if config is None:
+        # Fail loudly rather than interviewing the candidate for the wrong role.
+        # The candidate sees "waiting for interviewer" and can retry, which is a
+        # far better outcome than a plausible-looking but bogus interview whose
+        # scores then feed a hiring decision.
+        logger.error(
+            f"Aborting interview in room {ctx.room.name}: no config available. "
+            "Check AGENT_SHARED_SECRET matches the backend and that the room exists."
+        )
+        return
     logger.info(f"Config: {config.get('role')} | {config.get('num_questions')} Qs")
 
     # Transcript accumulator — list of {role, text, timestamp}
