@@ -1,0 +1,36 @@
+/* ═══════════════════════════════════════════════════════════
+   STYLE ENTRY POINT
+
+   Single CSS entry so cascade layers can be declared in one place. main.jsx
+   imports only this file.
+
+   Layer order below is the priority order: anything later wins. The legacy
+   stylesheets are pinned to the lowest layer so Tailwind utilities beat them
+   without needing !important, which is what makes an incremental port
+   possible — a component can be moved to utilities one at a time while the
+   old rules keep serving everything not yet moved.
+
+   Preflight is deliberately NOT imported yet. It resets margins, list styles
+   and heading sizes globally, which the legacy CSS currently assumes are
+   already set. It gets switched on in the final teardown commit, once the
+   legacy layer is empty.
+
+   Caveat worth knowing: for `!important` declarations the cascade inverts —
+   a lower layer wins. The legacy layer still has ~85 of them, so those few
+   rules will continue to beat utilities until they are deleted.
+   ═══════════════════════════════════════════════════════════ */
+
+@layer legacy, theme, base, components, utilities;
+
+/* ─── Legacy stylesheets — being deleted progressively ─── */
+@import './design-system.css' layer(legacy);
+@import './landing.css' layer(legacy);
+@import './global.css' layer(legacy);
+@import './dashboard-polish.css' layer(legacy);
+@import './candidate-theme.css' layer(legacy);
+@import './overrides.css' layer(legacy);
+@import './product-layer.css' layer(legacy);
+
+/* ─── Tailwind: theme + utilities only (no preflight) ─── */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
