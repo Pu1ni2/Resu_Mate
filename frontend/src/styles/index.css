@@ -34,3 +34,8 @@
 /* ─── Tailwind: theme + utilities only (no preflight) ─── */
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Project tokens. Unlayered on purpose: @theme is a Tailwind at-rule, not
+   ordinary CSS, and the :root/[data-theme] variables it emits need to sit
+   outside the legacy layer so the light-theme override still applies. */
+@import './theme.css';
