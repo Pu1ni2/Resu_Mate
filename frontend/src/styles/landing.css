@@ -64,11 +64,11 @@
 .l-agent-tab:hover { color: var(--text); background: var(--bg3); }
 .l-agent-tab.active {
   color: var(--text); background: var(--bg3);
-  border-color: var(--agent-color, var(--accent));
-  box-shadow: inset 3px 0 0 var(--agent-color, var(--accent));
+  border-color: var(--color-accent);
+  box-shadow: inset 3px 0 0 var(--color-accent);
 }
 .l-agent-tab-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; background: var(--bg4); color: var(--text2); }
-.l-agent-tab.active .l-agent-tab-icon { background: color-mix(in srgb, var(--agent-color) 15%, transparent); color: var(--agent-color); }
+.l-agent-tab.active .l-agent-tab-icon { background: var(--color-accent-wash); color: var(--color-accent); }
 
 .l-agent-detail {
   flex: 1; padding: var(--space-6);
@@ -80,14 +80,14 @@
 .l-agent-detail-icon {
   width: 48px; height: 48px; border-radius: var(--radius-lg);
   display: flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--agent-color) 15%, transparent);
-  color: var(--agent-color); flex-shrink: 0;
+  background: var(--color-accent-wash);
+  color: var(--color-accent); flex-shrink: 0;
 }
 .l-agent-detail h3 { font-size: var(--text-xl); margin-bottom: var(--space-1); }
 .l-agent-pipeline { display: flex; align-items: center; gap: 6px; }
 .l-pipeline-step {
   font-size: var(--text-xs); font-weight: var(--weight-semibold);
-  color: var(--agent-color, var(--accent)); background: color-mix(in srgb, var(--agent-color) 10%, transparent);
+  color: var(--color-accent); background: var(--color-accent-wash);
   padding: 2px 8px; border-radius: var(--radius-sm);
 }
 .l-pipeline-arrow { color: var(--text4); font-size: 10px; }
@@ -179,7 +179,7 @@
   .l-agents-showcase { flex-direction: column; }
   .l-agents-tabs { flex-direction: row; overflow-x: auto; min-width: 0; }
   .l-agent-tab { white-space: nowrap; }
-  .l-agent-tab.active { box-shadow: inset 0 -3px 0 var(--agent-color, var(--accent)); }
+  .l-agent-tab.active { box-shadow: inset 0 -3px 0 var(--color-accent); }
   .l-steps { grid-template-columns: 1fr; }
   .l-features-grid { grid-template-columns: repeat(2, 1fr); }
 }
