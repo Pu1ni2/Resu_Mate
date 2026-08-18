@@ -11,7 +11,9 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* ─── FONTS ─── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Loaded via <link rel="preconnect"> + <link rel="stylesheet"> in index.html.
+   Not @import-ed here: a CSS @import is discovered only after this stylesheet
+   parses, so it blocks render later than a <link> in <head> does. */
 
 /* ═══════════════════════════════════════
    DESIGN TOKENS
