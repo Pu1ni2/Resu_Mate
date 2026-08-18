@@ -5,6 +5,8 @@ import {
   Bot, Search, Github, Mail, Calendar, Cpu, Shield, Eye,
   ChevronRight, Zap, BarChart2, Globe, Play, Star
 } from 'lucide-react';
+import Button from './ui/Button';
+import { cn } from './ui/cn';
 
 // ─── Logo ───
 const Logo = ({ size = 32 }) => (
@@ -84,68 +86,138 @@ export default function Landing() {
       <GridBackground />
 
       {/* ═══ NAV ═══ */}
-      <nav className={`l-nav ${scrolled ? 'l-nav-scrolled' : ''}`}>
-        <div className="l-nav-inner">
-          <div className="l-nav-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <Logo size={28} />
-            <span>ResuMate<span className="l-nav-ai">AI</span></span>
+      <nav
+        className={cn(
+          'fixed inset-x-0 top-0 z-50 px-6 py-4',
+          'transition-[background-color,border-color] duration-200 ease-out',
+          scrolled
+            ? 'border-b border-line bg-canvas/80 backdrop-blur-xl'
+            : 'border-b border-transparent',
+        )}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <button
+            type="button"
+            className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.01em] text-ink"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <Logo size={26} />
+            <span>ResuMate<span className="ml-1 text-accent">AI</span></span>
+          </button>
+
+          <div className="hide-mobile flex gap-7">
+            {[['#agents', 'Agents'], ['#features', 'Features'], ['#how', 'How It Works']].map(
+              ([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="text-sm font-medium text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
+                >
+                  {label}
+                </a>
+              ),
+            )}
           </div>
-          <div className="l-nav-links hide-mobile">
-            <a href="#agents">Agents</a>
-            <a href="#features">Features</a>
-            <a href="#how">How It Works</a>
-          </div>
-          <div className="l-nav-actions">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/candidate/login')}>Candidate Login</button>
-            <button className="btn btn-primary btn-sm" onClick={() => navigate('/hiring')}>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={() => navigate('/candidate/login')}
+            >
+              Candidate Login
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => navigate('/hiring')}>
               Hiring Dashboard <ArrowRight size={14} />
-            </button>
+            </Button>
           </div>
         </div>
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section className="l-hero">
-        <div className="l-hero-content">
-          <div className="l-hero-badge animate-fadeInUp">
-            <span className="l-pulse-dot" />
-            <span>Multi-Agent AI Platform</span>
-            <Zap size={12} />
+      {/* Height rules moved off landing.css's 640px query: the hero sizes to its
+          content on small screens and only fills the viewport from sm up. */}
+      <section className="relative z-[1] flex items-center justify-center px-6 pt-28 pb-16 text-center sm:min-h-screen sm:pt-32 sm:pb-24">
+        <div className="relative z-[2] mx-auto max-w-[46rem]">
+          <div className="animate-fadeInUp mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-medium text-ink-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span>Multi-agent AI platform</span>
           </div>
 
-          <h1 className="l-hero-title animate-fadeInUp" style={{ animationDelay: '100ms' }}>
-            Hire Smarter with<br />
-            <span className="l-gradient-text">AI Agents</span>
+          {/* 600 weight at ~56px rather than 800 at ~64px, and one solid colour
+              on the emphasis line. Extra-bold display type and a three-stop
+              gradient fill are the two things that most made this read like a
+              template rather than a product. */}
+          <h1
+            className="animate-fadeInUp mb-6 text-[clamp(2.25rem,5.5vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-ink"
+            style={{ animationDelay: '100ms' }}
+          >
+            Hire smarter with
+            <br />
+            <span className="text-accent">AI agents</span>
           </h1>
 
-          <p className="l-hero-desc animate-fadeInUp" style={{ animationDelay: '200ms' }}>
-            5 specialized AI agents work together to analyze resumes, scrape profiles, evaluate candidates, coach careers, and conduct live avatar interviews — all in one platform.
+          <p
+            className="animate-fadeInUp mx-auto mb-10 max-w-[36rem] text-[17px] leading-relaxed text-ink-muted"
+            style={{ animationDelay: '200ms' }}
+          >
+            Five specialized agents analyze resumes, scrape profiles, evaluate candidates,
+            coach careers, and run live avatar interviews — in one platform.
           </p>
 
           {/* Role selector */}
-          <div className="l-hero-roles animate-fadeInUp" style={{ animationDelay: '300ms' }}>
-            <button className="l-role-btn l-role-hiring" onClick={() => navigate('/hiring')}>
-              <div className="l-role-icon"><Briefcase size={22} /></div>
-              <div className="l-role-info">
-                <strong>I'm Hiring</strong>
-                <span>Upload resumes, evaluate, interview</span>
-              </div>
-              <ChevronRight size={18} className="l-role-arrow" />
-            </button>
-            <button className="l-role-btn l-role-candidate" onClick={() => navigate('/candidate/login')}>
-              <div className="l-role-icon l-role-icon-blue"><UserCheck size={22} /></div>
-              <div className="l-role-info">
-                <strong>I'm a Candidate</strong>
-                <span>Take AI interview, view analysis</span>
-              </div>
-              <ChevronRight size={18} className="l-role-arrow" />
-            </button>
+          <div
+            className="animate-fadeInUp mb-10 flex flex-wrap justify-center gap-3"
+            style={{ animationDelay: '300ms' }}
+          >
+            {[
+              {
+                to: '/hiring',
+                icon: <Briefcase size={20} />,
+                title: "I'm hiring",
+                sub: 'Upload resumes, evaluate, interview',
+              },
+              {
+                to: '/candidate/login',
+                icon: <UserCheck size={20} />,
+                title: "I'm a candidate",
+                sub: 'Take an AI interview, view analysis',
+              },
+            ].map(role => (
+              <button
+                key={role.to}
+                type="button"
+                onClick={() => navigate(role.to)}
+                className="group flex min-w-[16rem] flex-1 items-center gap-3.5 rounded-[14px] border border-line bg-surface p-4 text-left transition-colors duration-[120ms] ease-out hover:border-accent-line hover:bg-surface-hover"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-surface-raised text-ink-muted transition-colors duration-[120ms] group-hover:bg-accent-wash group-hover:text-accent">
+                  {role.icon}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <strong className="text-[15px] font-semibold text-ink">{role.title}</strong>
+                  <span className="text-[13px] text-ink-subtle">{role.sub}</span>
+                </span>
+                <ChevronRight
+                  size={16}
+                  className="ml-auto shrink-0 text-ink-faint transition-transform duration-[120ms] group-hover:translate-x-0.5 group-hover:text-ink-muted"
+                />
+              </button>
+            ))}
           </div>
 
           {/* Tech badges */}
-          <div className="l-hero-tech animate-fadeInUp" style={{ animationDelay: '400ms' }}>
+          <div
+            className="animate-fadeInUp flex flex-wrap justify-center gap-2"
+            style={{ animationDelay: '400ms' }}
+          >
             {['GPT-4o', 'LangChain', 'ChromaDB', 'Playwright', 'Tavily', 'PostgreSQL'].map(t => (
-              <span key={t} className="l-tech-pill">{t}</span>
+              <span
+                key={t}
+                className="rounded-md border border-line px-2.5 py-1 font-mono text-[11px] text-ink-subtle"
+              >
+                {t}
+              </span>
             ))}
           </div>
         </div>
