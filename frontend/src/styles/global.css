@@ -81,12 +81,21 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .sidebar-stat { text-align: center; flex: 1; }
 .sidebar-stat-value { font-size: 24px; font-weight: 700; color: var(--accent); display: block; }
 .sidebar-stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; }
-.main { margin-left: var(--sidebar-width); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+/* min-width:0 is load-bearing. .main is a flex child, and flex children default
+   to min-width:auto, so a wide descendant (the candidate slider, a long table)
+   pushes the whole page wider than the viewport instead of scrolling inside its
+   own container. That horizontal overflow is what made the fixed .pl-toolbar
+   look clipped off the right edge. */
+.main { margin-left: var(--sidebar-width); flex: 1; min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
 .main-header { height: 72px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: var(--glass); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 50; }
 .header-left { display: flex; align-items: center; gap: 16px; }
 .header-right { display: flex; align-items: center; gap: 20px; }
 .main-title { font-size: 24px; font-weight: 700; }
-.main-body { flex: 1; padding: 40px; }
+/* Cap and centre the content column. Without a max-width every tab stretched to
+   the full width of the monitor, so on a wide screen the UI either sprawled or
+   (where a child had its own narrower cap) sat in a corner with a large empty
+   gutter beside it. One cap here governs every tab consistently. */
+.main-body { flex: 1; width: 100%; max-width: 1440px; margin-inline: auto; padding: 40px; }
 .upload-tab { max-width: 1400px; margin: 0 auto; }
 .upload-card { margin-bottom: 40px; }
 .upload-zone { border: 2px dashed var(--glass-border); border-radius: 20px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: var(--bg3); }
@@ -139,7 +148,10 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
    CLEAN ANALYTICS — Apple/Google inspired
    ═══════════════════════════════════════ */
 
-.analytics-tab { max-width: 960px; margin: 0 auto; padding: 8px 0; }
+/* 960px left the three stat tiles cramped while a wide gutter sat beside them.
+   .main-body now supplies the outer cap, so this only needs to keep the reading
+   measure sane for the chart rows. */
+.analytics-tab { max-width: 1200px; margin: 0 auto; padding: 8px 0; }
 
 /* Stat cards */
 .clean-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
