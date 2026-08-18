@@ -120,27 +120,6 @@ code, pre, .font-mono { font-family: var(--font-mono); }
   transition: all var(--duration-fast);
 }
 
-/* ─── Email composer polish ─── */
-.email-input {
-  font-size: var(--text-base);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-}
-.email-body {
-  font-size: var(--text-base);
-  line-height: var(--leading-relaxed);
-  font-family: var(--font-sans);
-  border-radius: var(--radius-md);
-}
-.email-send-btn {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  transition: all var(--duration-fast);
-}
 
 /* ─── Scanner terminal polish ─── */
 .scanner-terminal {
@@ -315,9 +294,6 @@ kbd {
   .agent-chips { justify-content: center; }
   .agent-actions { flex-wrap: wrap; }
 
-  /* Mobile email */
-  .email-send-actions { flex-direction: column; }
-  .email-send-btn { width: 100%; justify-content: center; }
 
   /* Mobile tools */
   .tools-container { animation: none; }

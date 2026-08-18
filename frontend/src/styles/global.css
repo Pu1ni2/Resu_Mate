@@ -720,38 +720,6 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 .agent-report .md a:hover{text-decoration:underline}
 .agent-error{display:flex;align-items:center;gap:14px;padding:20px;color:#F87171}
 
-/* ========================================
-   EMAIL COMPOSER
-   ======================================== */
-.email-composer{margin-top:16px;padding:0;border-radius:16px;overflow:hidden}
-.email-composer-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--glass-border)}
-.email-composer-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--text2)}
-.email-composer-actions{display:flex;gap:6px}
-.email-action-btn{width:34px;height:34px;border-radius:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
-.email-action-btn:hover{background:var(--bg3);color:var(--text);border-color:var(--glass-hover)}
-.email-type-select{padding:20px}
-.email-type-label{font-size:14px;font-weight:500;color:var(--text2);margin-bottom:12px}
-.email-type-chips{display:flex;flex-wrap:wrap;gap:8px}
-.email-drafting{display:flex;align-items:center;gap:10px;padding:24px 20px;color:var(--text2);font-size:14px}
-.email-fields{padding:4px 20px 0}
-.email-field{display:flex;align-items:center;gap:0;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
-.email-field label{font-size:13px;font-weight:600;color:var(--text3);min-width:60px}
-.email-input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit;padding:6px 8px;outline:none}
-.email-input::placeholder{color:var(--text3)}
-.email-ccbcc-toggle{background:none;border:none;color:var(--text3);font-size:12px;font-weight:500;cursor:pointer;padding:8px 0;text-align:left;font-family:inherit;transition:color .2s}
-.email-ccbcc-toggle:hover{color:#F59E0B}
-.email-divider{height:1px;background:var(--glass-border);margin:0 20px}
-.email-body{width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit;line-height:1.7;padding:16px 20px;resize:vertical;min-height:200px;outline:none;box-sizing:border-box}
-.email-body::placeholder{color:var(--text3)}
-.email-send-actions{display:flex;flex-wrap:wrap;gap:8px;padding:16px 20px;border-top:1px solid var(--glass-border)}
-.email-send-btn{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1px solid var(--glass-border);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
-.email-send-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--glass-hover)}
-.email-send-btn.gmail{background:rgba(234,67,53,0.1);border-color:rgba(234,67,53,0.25);color:#EA4335}
-.email-send-btn.gmail:hover{background:rgba(234,67,53,0.2)}
-.email-send-btn.outlook{background:rgba(0,120,212,0.1);border-color:rgba(0,120,212,0.25);color:#0078D4}
-.email-send-btn.outlook:hover{background:rgba(0,120,212,0.2)}
-.email-send-btn.default{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.25);color:#F59E0B}
-.email-send-btn.default:hover{background:rgba(245,158,11,0.2)}
 
 /* ========================================
    TOOL PANELS (GitHub, Calendly)
@@ -809,8 +777,6 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 @media(max-width:768px){
   .agent-option{flex-direction:column;text-align:center}
   .agent-option-icon{margin:0 auto}
-  .email-send-actions{flex-direction:column}
-  .email-send-btn{width:100%;justify-content:center}
   .gh-header,.cal-event{flex-direction:column}
   .gh-stats{justify-content:center}
 }
