@@ -28,30 +28,6 @@
 }
 .agent-actions .btn { font-size: 13px; padding: 10px 16px; }
 
-/* ─── Interview Creator Panel — clean card layout ─── */
-.interview-creator {
-  border-radius: var(--radius-xl) !important;
-  overflow: hidden;
-  margin-top: 0;
-}
-.interview-creator-body {
-  padding: 16px 20px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.interview-creator-body label {
-  font-size: 12px; font-weight: 600;
-  color: var(--text3); margin-bottom: 2px;
-}
-.interview-creator-body select {
-  padding: 10px 14px;
-  background: var(--bg3); color: var(--text);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans); font-size: 14px;
-}
-.interview-creator-body select option {
-  background: var(--bg2); color: var(--text);
-}
 
 
 /* ─── Agent Error ─── */

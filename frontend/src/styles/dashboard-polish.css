@@ -195,24 +195,6 @@ kbd {
   display: flex; align-items: center; gap: var(--space-2);
 }
 
-/* ─── Interview creator in agent ─── */
-.interview-creator {
-  scroll-margin-top: var(--space-5);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-}
-.interview-creator-body {
-  padding: var(--space-4) var(--space-5);
-  display: flex; flex-direction: column; gap: var(--space-3);
-}
-.interview-creator-body select {
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg3); color: var(--text);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans); font-size: var(--text-base);
-}
-.interview-creator-body select option { background: var(--bg2); color: var(--text); }
 
 
 /* ═══════════════════════════════════════

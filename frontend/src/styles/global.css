@@ -1037,9 +1037,4 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
   .cd-analysis-stats-grid{grid-template-columns:repeat(2,1fr)}
 }
 
-/* Interview Creator Panel */
-.interview-creator{margin-top:16px;padding:0;border-radius:16px;overflow:hidden;scroll-margin-top:20px}
-.interview-creator-body{padding:16px 20px;display:flex;flex-direction:column;gap:8px}
-.interview-creator-body select{padding:8px 12px;background:var(--bg3);color:var(--text);border:1px solid var(--glass-border);border-radius:8px;font-family:inherit;font-size:14px}
-.interview-creator-body select option{background:#1a1a2e;color:#e5e5e5}
 
