@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
@@ -9,7 +9,8 @@ import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
-import StyleLab from './components/landing/StyleLab';
+// Lazy: an unlisted comparison page must not cost the product bundle anything.
+const StyleLab = lazy(() => import('./components/landing/StyleLab'));
 
 function UnauthorizedHandler() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
 
       {/* Unlisted: side-by-side look comparison. Delete with StyleLab.jsx. */}
-      <Route path="/styles" element={<StyleLab />} />
+      <Route path="/styles" element={<Suspense fallback={null}><StyleLab /></Suspense>} />
 
       {/* Legal — public */}
       <Route path="/terms" element={<TermsPage />} />
