@@ -27,7 +27,7 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.candidate import CandidateAccess, Interview
-from app.services.auth import get_current_user
+from app.services.auth import Actor, get_current_actor
 
 logger = logging.getLogger("resumate.realtime")
 limiter = Limiter(key_func=get_remote_address)
@@ -121,13 +121,41 @@ def _build_instructions(interview: Interview, candidate_name: str, max_total_min
     return base + "\n\n```json\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n```\n"
 
 
+async def _authorized_interview(db: AsyncSession, actor: Actor, interview_id: int) -> Interview:
+    """Return the interview this actor may act on, or raise.
+
+    None of these three endpoints checked ownership. They looked the interview
+    up by id and wrote to it, so any authenticated caller could overwrite any
+    other tenant's transcript, or finalise their interview and trigger report
+    generation on it, just by passing a different integer.
+
+    A candidate is matched on their TOKEN email, never a body field. A manager is
+    matched on manager_id. Mismatches 404 rather than 403 so the response does
+    not confirm that an interview with that id exists elsewhere.
+    """
+    result = await db.execute(select(Interview).where(Interview.id == interview_id))
+    interview = result.scalar_one_or_none()
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+
+    if actor.is_candidate:
+        if (interview.candidate_email or "").strip().lower() != actor.email:
+            raise HTTPException(status_code=404, detail="Interview not found")
+    else:
+        # Legacy rows with a NULL manager_id are owned by nobody and therefore
+        # invisible — the same safe default used elsewhere in the app.
+        if interview.manager_id is None or interview.manager_id != actor.manager_id:
+            raise HTTPException(status_code=404, detail="Interview not found")
+
+    return interview
+
 @router.post("/session", response_model=RealtimeSessionResponse)
 @limiter.limit("20/hour")
 async def create_realtime_session(
     request: Request,
     req: RealtimeSessionRequest,
     db: AsyncSession = Depends(get_db),
-    _user=Depends(get_current_user),  # hiring manager OR candidate — both have tokens
+    actor: Actor = Depends(get_current_actor),
 ):
     """Mint a short-lived OpenAI Realtime client secret for one interview."""
     if not settings.openai_api_key:
@@ -146,17 +174,12 @@ async def create_realtime_session(
             detail=f"REALTIME_VOICE '{voice}' is not allowed. Choose one of: {sorted(ALLOWED_VOICES)}",
         )
 
-    # Find the interview row. Either id-match OR latest pending for this
-    # candidate email — the candidate-portal flow doesn't always know the id.
-    email = (req.candidate_email or "").strip().lower()
-    result = await db.execute(
-        select(Interview).where(Interview.id == req.interview_id)
-    )
-    interview = result.scalar_one_or_none()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
-    if (interview.candidate_email or "").lower() != email:
-        raise HTTPException(status_code=403, detail="Interview does not belong to this candidate")
+    # The comment here used to claim "hiring manager OR candidate", but the
+    # dependency was get_current_user, which rejects type=candidate tokens — so
+    # the candidate path this endpoint exists for could not authenticate at all.
+    # It now takes either, and the ownership check lives in one place.
+    interview = await _authorized_interview(db, actor, req.interview_id)
+    email = (interview.candidate_email or "").strip().lower()
 
     # Resolve the candidate's display name (falls back to access table or email local part).
     candidate_name = ""
@@ -262,13 +285,10 @@ class CheckpointRequest(BaseModel):
 async def checkpoint(
     req: CheckpointRequest,
     db: AsyncSession = Depends(get_db),
-    _user=Depends(get_current_user),
+    actor: Actor = Depends(get_current_actor),
 ):
     """Save a rolling transcript every N user turns. Idempotent — overwrites."""
-    result = await db.execute(select(Interview).where(Interview.id == req.interview_id))
-    interview = result.scalar_one_or_none()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
+    interview = await _authorized_interview(db, actor, req.interview_id)
     interview.transcript = req.transcript
     interview.status = "in_progress"
     await db.commit()
@@ -285,7 +305,7 @@ class FinalizeRequest(BaseModel):
 async def finalize(
     req: FinalizeRequest,
     db: AsyncSession = Depends(get_db),
-    _user=Depends(get_current_user),
+    actor: Actor = Depends(get_current_actor),
 ):
     """End the conversational interview, generate a report, mark completed.
 
@@ -297,10 +317,7 @@ async def finalize(
     """
     from app.tools.openai_tool import openai_tool
 
-    result = await db.execute(select(Interview).where(Interview.id == req.interview_id))
-    interview = result.scalar_one_or_none()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
+    interview = await _authorized_interview(db, actor, req.interview_id)
 
     interview.transcript = req.transcript
     interview.duration = req.duration

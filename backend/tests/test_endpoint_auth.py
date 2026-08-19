@@ -127,3 +127,59 @@ def test_manager_token_rejected_on_save_interview_result(client):
         "candidate_email": "victim@x.com", "report": {"score": 99},
     })
     assert r.status_code == 403, r.status_code
+
+
+# ── /realtime ownership ───────────────────────────────────────────────────────
+# checkpoint and finalize looked interviews up by id and wrote to them with no
+# ownership check, so any authenticated caller could overwrite another tenant's
+# transcript, or finalise their interview and trigger report generation on it,
+# by passing a different integer.
+
+def test_realtime_checkpoint_requires_auth(client):
+    r = client.post("/api/realtime/checkpoint", json={"interview_id": 1, "transcript": []})
+    assert r.status_code in (401, 403), r.status_code
+
+
+def test_realtime_finalize_requires_auth(client):
+    r = client.post("/api/realtime/finalize", json={"interview_id": 1, "transcript": []})
+    assert r.status_code in (401, 403), r.status_code
+
+
+def test_realtime_session_requires_auth(client):
+    r = client.post("/api/realtime/session", json={"interview_id": 1, "candidate_email": "x@x.com"})
+    assert r.status_code in (401, 403), r.status_code
+
+
+def test_manager_cannot_checkpoint_another_tenants_interview(client):
+    owner, _ = register(client, "owner-rt@co.com")
+    other, _ = register(client, "other-rt@co.com")
+
+    client.post("/api/chat/create-interview", headers=auth_headers(owner), json={
+        "candidate_id": 1, "candidate_email": "cand-rt@x.com", "candidate_name": "Cand",
+        "role": "Dev", "level": "Mid-Level", "num_questions": 5, "mode": "conversational",
+    })
+
+    # Sweep a range of ids: the other manager must not be able to write to any
+    # of them. 404 (not found for you) is the expected answer, never 200.
+    for iid in range(1, 6):
+        r = client.post(
+            "/api/realtime/checkpoint",
+            headers=auth_headers(other),
+            json={"interview_id": iid, "transcript": [{"role": "user", "text": "injected"}]},
+        )
+        assert r.status_code != 200, f"interview {iid} was writable by a non-owner"
+
+
+def test_candidate_cannot_checkpoint_someone_elses_interview(client):
+    tok, _ = register(client, "owner-rt2@co.com")
+    client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
+        "candidate_id": 1, "candidate_email": "victim-rt@x.com", "candidate_name": "Victim",
+        "role": "Dev", "level": "Mid-Level", "num_questions": 5, "mode": "conversational",
+    })
+    for iid in range(1, 6):
+        r = client.post(
+            "/api/realtime/checkpoint",
+            headers=_cand("attacker-rt@x.com"),
+            json={"interview_id": iid, "transcript": [{"role": "user", "text": "injected"}]},
+        )
+        assert r.status_code != 200, f"interview {iid} was writable by another candidate"
