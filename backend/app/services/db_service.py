@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
 
 
@@ -176,7 +177,12 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
 
 async def get_all_completed_interviews(session: AsyncSession, manager_id: int = None) -> list:
     """Get completed interviews for a hiring manager's dashboard, scoped to them."""
-    stmt = select(Interview).where(Interview.status == "completed")
+    # selectinload the candidate so the name is available without an N+1 --
+    # this list previously showed raw email addresses because the relationship
+    # was never loaded.
+    stmt = select(Interview).options(selectinload(Interview.candidate)).where(
+        Interview.status == "completed"
+    )
     if manager_id is not None:
         stmt = stmt.where(Interview.manager_id == manager_id)
     stmt = stmt.order_by(Interview.completed_at.desc())
@@ -193,7 +199,11 @@ async def get_all_completed_interviews(session: AsyncSession, manager_id: int = 
                 pass
         out.append({
             "email": iv.candidate_email,
-            "candidate_name": iv.candidate_email,  # Will be enriched if candidate relationship loaded
+            # candidate_id is needed by the manager-side report view to run
+            # credibility analysis; without it that section stays hidden.
+            "candidate_id": iv.candidate_id,
+            "candidate_name": (iv.candidate.name if iv.candidate and iv.candidate.name
+                               else iv.candidate_email),
             "timestamp": iv.completed_at.isoformat() if iv.completed_at else None,
             "report": report,
             "role": iv.role,

@@ -5,6 +5,7 @@ import { marked } from 'marked';
 import CandidateFocus from './CandidateFocus';
 import PipelineWizard from './pipeline/PipelineWizard';
 import ATSResultsView from './pipeline/ATSResultsView';
+import InterviewReportView from './shared/InterviewReportView';
 import JarvisAgent from './pipeline/JarvisAgent';
 import { 
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
@@ -31,6 +32,11 @@ const AIAvatar = () => (
 function InterviewAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  // The full report existed but a manager could not open one. InterviewReportView
+  // is a complete screen -- per-question scores, transcript, credibility, PDF
+  // export -- and was mounted only in the candidate portal. The manager's only
+  // route to it was asking the voice agent.
+  const [openReport, setOpenReport] = useState(null);
   const API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
   const fetchData = async () => {
@@ -92,6 +98,30 @@ function InterviewAnalytics() {
   const maxDist = Math.max(...dist, 1);
 
   const distColors = ['#EF4444', '#F97316', '#F59E0B', '#22C55E', '#10B981'];
+
+  // Opening a report replaces the analytics view rather than stacking a modal
+  // over it -- a full report inside a dialog is a scroll trap, and this one has
+  // a transcript in it.
+  if (openReport) {
+    const r = typeof openReport.report === 'object' ? openReport.report : {};
+    return (
+      <div className="clean-section" style={{ marginTop: '32px' }}>
+        <button
+          className="btn btn-secondary btn-sm"
+          style={{ marginBottom: 16 }}
+          onClick={() => setOpenReport(null)}
+        >
+          <ChevronLeft size={14} /> Back to analytics
+        </button>
+        <InterviewReportView
+          viewer="manager"
+          report={r}
+          candidateId={openReport.candidate_id}
+          candidateEmail={openReport.email}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -158,9 +188,17 @@ function InterviewAnalytics() {
               const avg = s.length > 0 ? (s.reduce((a, x) => a + (x?.score || 0), 0) / s.length).toFixed(1) : '—';
               const scoreColor = avg >= 7 ? 'var(--success)' : avg >= 4 ? 'var(--warning)' : 'var(--error)';
               return (
-                <div key={i} className="clean-list-row">
+                <div
+                  key={i}
+                  className="clean-list-row"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setOpenReport(d)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenReport(d); } }}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div>
-                    <div className="clean-list-primary">{d.email}</div>
+                    <div className="clean-list-primary">{d.candidate_name || d.email}</div>
                     <div className="clean-list-secondary">{d.role || 'General'} · {d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—'}</div>
                   </div>
                   <span className="clean-score" style={{ color: scoreColor }}>{avg}</span>
