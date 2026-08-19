@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowRight, Upload, MessageSquare, Users, Briefcase, Video, UserCheck,
-  Bot, Search, Github, Mail, Calendar, Cpu, Shield, Eye,
-  ChevronRight, Zap, BarChart2, Globe, Play, Star
+  ArrowRight, Upload, Video, UserCheck, Bot, Search, Mail, Cpu, Shield, BarChart2, Globe
 } from 'lucide-react';
 import Button from './ui/Button';
 import { cn } from './ui/cn';
@@ -117,112 +115,77 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* ═══ HERO ═══ */}
-      {/* No min-h-screen any more. It made sense when the hero was a headline
-          and two buttons and needed help filling the viewport; with the product
-          panel the content is taller than most screens, and forcing a minimum
-          only adds dead space on tall displays. The content sets the height. */}
-      <section className="relative z-[1] flex items-center justify-center px-6 pt-28 pb-20 text-center sm:pt-36 sm:pb-28">
-        {/* Two measures: the copy stays at a readable 46rem, the product panel
-            gets 62rem. One shared container would force a compromise that is
-            wrong for both. */}
-        <div className="relative z-[2] mx-auto w-full max-w-[64rem]">
-          <div className="mx-auto max-w-[46rem]">
-          <div className="animate-fadeInUp mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-medium text-ink-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            <span>Multi-agent AI platform</span>
+      {/* ═══ HERO ═══
+          Asymmetric on purpose. Everything was centred before, which is the
+          safest possible arrangement and reads as such -- a centred stack of
+          badge, headline, subhead, two buttons and a pill row is the exact
+          shape every template produces. Here the copy holds a left column
+          against a generous margin, the meta sits in a narrow rail beside it,
+          and the plate breaks the full measure below. */}
+      <section className="relative z-[1] px-6 pt-32 pb-16 sm:pt-40 sm:pb-24">
+        <div className="mx-auto w-full max-w-[72rem]">
+
+          <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="max-w-[40rem]">
+              {/* Small caps, letterspaced, monospace — a printed standfirst
+                  rather than a pill. Pills read as UI; this is a label. */}
+              <p className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-subtle">
+                Multi-agent hiring
+              </p>
+
+              {/* The serif is the whole point. 1.02 leading and -0.02em tracking
+                  keep a 96px face from sprawling; the italic on the second line
+                  is the one committed, slightly odd decision the page was
+                  missing. */}
+              <h1 className="font-display text-[clamp(3rem,7.5vw,6rem)] leading-[1.02] tracking-[-0.02em] text-ink">
+                Hire smarter with
+                <br />
+                <em className="italic text-accent">AI agents</em>
+              </h1>
+
+              <p className="mt-7 max-w-[34rem] text-[17px] leading-[1.65] text-ink-muted">
+                Five specialised agents read every resume, score it against the role
+                on fixed weights, and run the interview — so you spend your time on
+                the shortlist instead of the pile.
+              </p>
+
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                <Button variant="primary" size="lg" onClick={() => navigate('/hiring')}>
+                  Start hiring <ArrowRight size={16} />
+                </Button>
+                <Button variant="ghost" size="lg" onClick={() => navigate('/candidate/login')}>
+                  I&rsquo;m a candidate
+                </Button>
+              </div>
+            </div>
+
+            {/* Meta rail. Facts about the system, set as a definition list with
+                hairline rules — the structural device that replaces cards. */}
+            <dl className="lg:pt-3">
+              {[
+                ['Agents', 'Five, specialised'],
+                ['Scoring', 'Fixed weights, reproducible'],
+                ['Interview', 'Voice or avatar'],
+                ['Stack', 'GPT-4o · ChromaDB · LiveKit'],
+              ].map(([k, v]) => (
+                <div key={k} className="border-t border-line py-3 first:border-t-0 first:pt-0 lg:first:border-t lg:first:pt-3">
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">{k}</dt>
+                  <dd className="mt-1 text-[14px] leading-snug text-ink-muted">{v}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
 
-          {/* Size was never the problem -- weight and tracking were. The
-              original was 800 at 64px with -0.03em, which at that weight reads
-              as shouting. This is 600 at up to 80px with -0.035em and a 1.02
-              line-height, so the two lines lock into a block. Large type set
-              tightly reads as confidence; large type set loosely reads as a
-              template. */}
-          <h1
-            className="animate-fadeInUp mb-6 text-[clamp(2.75rem,7vw,5rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-ink text-balance"
-            style={{ animationDelay: '100ms' }}
-          >
-            Hire smarter with
-            <br />
-            <span className="text-accent">AI agents</span>
-          </h1>
-
-          <p
-            className="animate-fadeInUp mx-auto mb-10 max-w-[36rem] text-[17px] leading-relaxed text-ink-muted"
-            style={{ animationDelay: '200ms' }}
-          >
-            Five specialized agents analyze resumes, scrape profiles, evaluate candidates,
-            coach careers, and run live avatar interviews — in one platform.
-          </p>
-
-          {/* Role selector */}
-          <div
-            className="animate-fadeInUp mb-10 flex flex-wrap justify-center gap-3"
-            style={{ animationDelay: '300ms' }}
-          >
-            {[
-              {
-                to: '/hiring',
-                icon: <Briefcase size={20} />,
-                title: "I'm hiring",
-                sub: 'Upload resumes, evaluate, interview',
-              },
-              {
-                to: '/candidate/login',
-                icon: <UserCheck size={20} />,
-                title: "I'm a candidate",
-                sub: 'Take an AI interview, view analysis',
-              },
-            ].map(role => (
-              <button
-                key={role.to}
-                type="button"
-                onClick={() => navigate(role.to)}
-                className="group flex min-w-[16rem] flex-1 items-center gap-3.5 rounded-[14px] border border-line bg-surface p-4 text-left transition-colors duration-[120ms] ease-out hover:border-accent-line hover:bg-surface-hover"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-surface-raised text-ink-muted transition-colors duration-[120ms] group-hover:bg-accent-wash group-hover:text-accent">
-                  {role.icon}
-                </span>
-                <span className="flex min-w-0 flex-col">
-                  <strong className="text-[15px] font-semibold text-ink">{role.title}</strong>
-                  <span className="text-[13px] text-ink-subtle">{role.sub}</span>
-                </span>
-                <ChevronRight
-                  size={16}
-                  className="ml-auto shrink-0 text-ink-faint transition-transform duration-[120ms] group-hover:translate-x-0.5 group-hover:text-ink-muted"
-                />
-              </button>
-            ))}
-          </div>
-
-          {/* Tech badges */}
-          <div
-            className="animate-fadeInUp flex flex-wrap justify-center gap-2"
-            style={{ animationDelay: '400ms' }}
-          >
-            {['GPT-4o', 'LangChain', 'ChromaDB', 'Playwright', 'Tavily', 'PostgreSQL'].map(t => (
-              <span
-                key={t}
-                className="rounded-md border border-line px-2.5 py-1 font-mono text-[11px] text-ink-subtle"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-          </div>
-
-          {/* Show the product. Wider than the copy column above it so the panel
-              reads as a separate plane rather than another paragraph. */}
-          <div
-            className="animate-fadeInUp mx-auto mt-16 w-full max-w-[62rem] sm:mt-20"
-            style={{ animationDelay: '500ms' }}
-          >
-            <ProductMock />
-          </div>
+          {/* The plate: the dark product, inset on paper. */}
+          <figure className="mt-16 sm:mt-20">
+            <div className="plate overflow-hidden rounded-[4px] shadow-e3">
+              <ProductMock framed={false} />
+            </div>
+            <figcaption className="mt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+              Screening — twelve resumes against one role
+            </figcaption>
+          </figure>
         </div>
-
-        {/* Floating badges */}
       </section>
 
       {/* ═══ AGENTS SHOWCASE ═══ */}

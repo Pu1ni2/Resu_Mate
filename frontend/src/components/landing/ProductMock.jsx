@@ -60,14 +60,25 @@ const SAMPLE = [
 
 const ROWS = SAMPLE.map(fromAtsResult);
 
-export default function ProductMock({ className }) {
+/* `framed` draws the panel's own border, radius, shadow and bottom fade. Set
+ * false when a parent supplies the frame -- the hero mounts this inside a
+ * .plate figure, and two nested frames read as a mistake. The fade also only
+ * makes sense when the panel dissolves into the page; inside a plate it should
+ * be a complete object. */
+export default function ProductMock({ className, framed = true }) {
   return (
     <div
       className={cn('relative w-full', className)}
       /* Decorative: the prose above already says all of this. */
       aria-hidden="true"
     >
-      <div className="relative overflow-hidden rounded-[16px] border border-line bg-surface shadow-e3 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,var(--color-highlight)_18%,var(--color-highlight-strong)_50%,var(--color-highlight)_82%,transparent)]">
+      <div
+        className={cn(
+          'relative overflow-hidden bg-surface',
+          framed &&
+            'rounded-[16px] border border-line shadow-e3 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,var(--color-highlight)_18%,var(--color-highlight-strong)_50%,var(--color-highlight)_82%,transparent)]',
+        )}
+      >
         {/* Window chrome — a marketing device, not part of the real screen. */}
         <div className="flex items-center gap-3 border-b border-line bg-surface-raised/60 px-4 py-3">
           <div className="flex gap-1.5">
@@ -95,11 +106,14 @@ export default function ProductMock({ className }) {
         />
       </div>
 
-      {/* Fades the panel into the page instead of stopping at a hard edge. */}
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
-        style={{ background: 'linear-gradient(to bottom, transparent, var(--color-canvas))' }}
-      />
+      {/* Fades the panel into the page instead of stopping at a hard edge.
+          Only when it is the page's own object, not when framed by a parent. */}
+      {framed && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+          style={{ background: 'linear-gradient(to bottom, transparent, var(--color-canvas))' }}
+        />
+      )}
     </div>
   );
 }
