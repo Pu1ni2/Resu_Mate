@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import CandidateLogin from './components/CandidateLogin';
@@ -8,21 +8,7 @@ import CandidateFocus from './components/CandidateFocus';
 import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import ATSResultsView from './components/pipeline/ATSResultsView';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
-
-function PipelineResultsPage() {
-  const location = useLocation();
-  const result = location.state?.pipelineResult;
-  if (!result) return <Navigate to="/hiring" replace />;
-  return (
-    <ATSResultsView
-      pipelineResult={result}
-      onBack={() => window.history.back()}
-      onRunAgain={() => window.history.back()}
-    />
-  );
-}
 
 function UnauthorizedHandler() {
   const navigate = useNavigate();
@@ -56,7 +42,6 @@ export default function App() {
 
       {/* Hiring manager dashboard — protected */}
       <Route path="/hiring/focus" element={<ProtectedRoute><CandidateFocus /></ProtectedRoute>} />
-      <Route path="/hiring/pipeline" element={<ProtectedRoute><PipelineResultsPage /></ProtectedRoute>} />
       <Route path="/hiring/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
       {/* Candidate portal */}
