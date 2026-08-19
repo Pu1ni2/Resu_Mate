@@ -45,11 +45,7 @@ function SafeMarkdown({ text }) {
 
 export default function CandidateDashboard() {
   const navigate = useNavigate();
-  const {
-    candidates, selectedIds, uploadProgress, setCandidates,
-    loadCandidates, toggleSelection, selectAll,
-    candidateSession, setCandidateSession
-  } = useApp();
+  const { candidates, candidateSession, setCandidateSession } = useApp();
 
   const [advisorCandidates, setAdvisorCandidates] = useState([]);
   useEffect(() => { if (candidates?.length > 0) setAdvisorCandidates(candidates); }, [candidates]);
@@ -93,8 +89,6 @@ export default function CandidateDashboard() {
     general: [], resume_coach: [], interview_prep: [], career_advisor: []
   });
   const [advisorTyping, setAdvisorTyping] = useState(false);
-  const [resumeUploaded, setResumeUploaded] = useState(false);
-  const [resumeData, setResumeData] = useState(null);
   const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
 
   const advisorMessages = advisorChatMap[advisorMode] || [];
@@ -116,7 +110,6 @@ export default function CandidateDashboard() {
   useEffect(() => {
     if (isDemo && advisorCandidates.length === 0 && candidateSession?.profile) {
       setAdvisorCandidates([candidateSession.profile]);
-      setResumeUploaded(true);
     }
   }, [isDemo, candidateSession]);
 
@@ -133,8 +126,6 @@ export default function CandidateDashboard() {
       });
       const data = await resp.json();
       if (data.success) {
-        setResumeUploaded(true);
-        setResumeData(data.data);
         setAdvisorCandidates([data.data]);
       } else { alert('Upload failed'); }
     } catch (err) { alert(`Upload failed: ${err.message}`); }

@@ -230,7 +230,6 @@ export default function Dashboard() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [speakingMsgIndex, setSpeakingMsgIndex] = useState(null);
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(null);
-  const [lastInputWasVoice, setLastInputWasVoice] = useState(false);
   const [pendingAutoSpeak, setPendingAutoSpeak] = useState(false);
   
   const fileRef = useRef(null);
@@ -289,28 +288,12 @@ export default function Dashboard() {
     }
   };
 
-  const [sampleLoading, setSampleLoading] = useState(false);
   const [showPipeline, setShowPipeline] = useState(false);
   const [pipelineResult, setPipelineResult] = useState(null);
-  const handleLoadSample = async () => {
-    setSampleLoading(true);
-    try {
-      const resp = await fetch('/sample-resume.pdf');
-      if (!resp.ok) throw new Error('Sample not found');
-      const blob = await resp.blob();
-      const file = new File([blob], 'Sai-Punith-Kolla-Resume.pdf', { type: 'application/pdf' });
-      await uploadResume(file);
-    } catch (err) {
-      alert(`Could not load sample: ${err.message}`);
-    } finally {
-      setSampleLoading(false);
-    }
-  };
 
   const handleSend = (msg) => {
     const m = msg || input.trim();
     if (m) { 
-      setLastInputWasVoice(false);
       setPendingAutoSpeak(false);
       sendMessage(m); 
       setInput(''); 
@@ -319,7 +302,6 @@ export default function Dashboard() {
 
   const handleVoiceSend = (text) => {
     if (text && text.trim()) {
-      setLastInputWasVoice(true);
       setPendingAutoSpeak(true);
       sendMessage(text.trim());
     }
@@ -508,7 +490,6 @@ export default function Dashboard() {
   const handleClearChat = () => {
     stopSpeaking();
     clearChat();
-    setLastInputWasVoice(false);
     setPendingAutoSpeak(false);
   };
 

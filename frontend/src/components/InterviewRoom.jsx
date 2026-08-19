@@ -24,10 +24,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const [timer, setTimer] = useState(0);
 
   // LiveKit state
-  const [roomConnected, setRoomConnected] = useState(false);
   const [agentJoined, setAgentJoined] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [connecting, setConnecting] = useState(false);
   const [setupError, setSetupError] = useState(null);
 
   // Face tracking
@@ -40,7 +38,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   // Proctoring
   const [violations, setViolations] = useState(0);
   const [warnings, setWarnings] = useState([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Refs
   const candidateVideoRef = useRef(null);
@@ -96,14 +93,12 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     try {
       const el = containerRef.current || document.documentElement;
       await (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-      setIsFullscreen(true);
     } catch {}
   };
 
   useEffect(() => {
     const handler = () => {
       const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
-      setIsFullscreen(isFull);
       if (!isFull && phase === 'live') addViolation('Exited fullscreen mode');
     };
     document.addEventListener('fullscreenchange', handler);
@@ -170,7 +165,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   // â•â•â• START INTERVIEW â€” Create room + connect â•â•â•
   const startInterview = async () => {
     setPhase('connecting');
-    setConnecting(true);
 
     try {
       // 1. Get camera
@@ -230,13 +224,11 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
       room.on(RoomEvent.Disconnected, () => {
         console.log('ðŸ“´ Disconnected from room');
-        setRoomConnected(false);
       });
 
       // Connect
       await room.connect(roomData.livekit_url, roomData.token);
       console.log('âœ… Connected to LiveKit room');
-      setRoomConnected(true);
 
       // Publish local camera + mic
       await room.localParticipant.setCameraEnabled(true);
@@ -247,7 +239,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       await enterFullscreen();
       setPhase('live');
       setTimer(0);
-      setConnecting(false);
 
       // Update candidate video with local stream
       if (candidateVideoRef.current && localStreamRef.current) {
@@ -270,7 +261,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       }
       setSetupError({ message: msg, hint });
       setPhase('setup');
-      setConnecting(false);
     }
   };
 
