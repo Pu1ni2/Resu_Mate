@@ -328,7 +328,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const {
     candidates, selectedIds, selectedCandidates, uploadProgress, loading,
-    loadCandidates, uploadResume, deleteCandidate, toggleSelection, selectAll, clearSelection,
+    loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
     anonymize, setAnonymize, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
     getDisplayName, getAvatarGradient,
