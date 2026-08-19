@@ -66,15 +66,16 @@
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 
-  /* Editorial faces, used by the landing page only. The product keeps
-     --font-sans; changing that is a separate decision.
+  /* Landing-page faces. The product keeps --font-sans; that is a separate
+     decision.
 
-     --font-display is a high-contrast serif. A neutral geometric sans is the
-     single loudest signal that a page was generated rather than designed, and
-     DM Sans was doing that job here. --font-text is Switzer: warmer and less
-     institutional than Inter, and not a face every generator reaches for. */
-  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
-  --font-text: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+     One family, Satoshi, from 400 to 900 — display and body both. A single
+     face across the whole page is what most premium software marketing does:
+     weight and tracking carry the hierarchy, so it reads as one considered
+     system rather than a pairing someone assembled. It is also not DM Sans,
+     Inter or Geist, the three faces that make a page look generated. */
+  --font-display: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-text: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Tighter tracking as size goes up — the single biggest lever on whether
      large type reads considered or shouty. */
@@ -194,102 +195,87 @@
   --shadow-e3: 0 24px 56px -16px rgb(9 9 11 / 0.14), 0 8px 20px -8px rgb(9 9 11 / 0.08);
 }
 
-/* ─── Editorial scope: the landing page ───────────────────
-   Paper and ink. Applied as a class on the landing root, not as a theme, for
-   two reasons: the marketing page should not flip with the product's theme
-   toggle, and scoping it here means every existing bg-canvas / text-ink
-   utility resolves to paper values with no markup changes and no risk to the
-   product.
+/* ─── Landing page scope ──────────────────────────────────
+   Warm dark. Deliberately not the zinc-950 + amber-500 default the product
+   uses, which is the palette every generated site ships:
 
-   Placed last in this file deliberately. `.editorial`, `:root` and
-   [data-theme='light'] all carry specificity (0,1,0), so source order is what
-   decides — this block must come after both to win.
+     canvas  #141110  warm charcoal, brown-black not blue-black
+     ink     #F7F2EA  cream, not white and not zinc
+     accent  #E03C1F  vermillion — hot, saturated, one hue doing all the work
 
-   Surfaces run the opposite way to dark mode: cards sit BRIGHTER than the
-   page, because on paper a raised element catches more light, not less.
+   The warmth is the whole point. Blue-black plus a yellow accent is what a
+   framework hands you; charcoal plus cream plus one hot red is a decision, and
+   warm neutrals read expensive in a way cool greys do not.
+
+   Applied as a class, not a theme, so the marketing page does not flip when
+   someone toggles the product's theme. Scoping it here means every existing
+   bg-canvas / text-ink utility re-points with no markup change and no risk to
+   the product.
+
+   Placed after :root and [data-theme='light'], all three being specificity
+   (0,1,0) — source order is what decides.
    ───────────────────────────────────────────────────────── */
 .editorial {
-  --color-canvas: #fbfaf8;          /* warm off-white, not #fff */
-  --color-surface: #ffffff;         /* brighter than the page */
-  --color-surface-raised: #f5f2ec;  /* wells and insets go warmer instead */
-  --color-surface-hover: #f0ece4;
+  --color-canvas: #141110;
+  --color-surface: #1c1917;
+  --color-surface-raised: #262220;
+  --color-surface-hover: #302b28;
 
-  /* Hairline rules are the main structural device here — they replace the
-     background bands and glass panels the dark version leaned on. */
-  --color-line: #e4dfd5;
-  --color-line-strong: #cec7b8;
+  --color-line: rgba(247, 242, 234, 0.10);
+  --color-line-strong: rgba(247, 242, 234, 0.20);
 
-  --color-ink: #17150f;             /* warm near-black, never #000 */
-  --color-ink-muted: #5c574c;       /* warm grey, not zinc */
-  --color-ink-subtle: #8a8478;
-  --color-ink-faint: #a8a293;
-  --color-ink-inverse: #fbfaf8;
+  --color-ink: #f7f2ea;
+  --color-ink-muted: #b5aca1;
+  --color-ink-subtle: #8a8177;
+  --color-ink-faint: #635b53;
+  --color-ink-inverse: #141110;
 
-  /* Burnt sienna. Kept in the amber family so the existing logo mark still
-     belongs, but far enough off amber-500 that it reads as a choice rather
-     than a swatch. */
-  --color-accent: #9a3412;
-  --color-accent-hover: #7c2d12;
-  --color-accent-press: #601f0c;
-  --color-accent-wash: rgba(154, 52, 18, 0.07);
-  --color-accent-line: rgba(154, 52, 18, 0.22);
+  --color-accent: #e03c1f;
+  --color-accent-hover: #f04e30;
+  --color-accent-press: #b82d13;
+  --color-accent-wash: rgba(224, 60, 31, 0.12);
+  --color-accent-line: rgba(224, 60, 31, 0.35);
 
-  --color-positive: #3f6212;
-  --color-positive-wash: rgba(63, 98, 18, 0.08);
-  --color-critical: #9f1239;
-  --color-critical-wash: rgba(159, 18, 57, 0.08);
-  --color-caution: #854d0e;
-  --color-caution-wash: rgba(133, 77, 14, 0.08);
+  --color-positive: #7cc04a;
+  --color-positive-wash: rgba(124, 192, 74, 0.12);
+  --color-critical: #e03c1f;
+  --color-critical-wash: rgba(224, 60, 31, 0.12);
+  --color-caution: #e8a33d;
+  --color-caution-wash: rgba(232, 163, 61, 0.12);
 
-  --color-data-track: rgba(23, 21, 15, 0.08);
+  --color-data-track: rgba(247, 242, 234, 0.08);
 
-  /* No light to catch on paper, so the lit top edge goes away and depth comes
-     from shadow alone — soft and warm-tinted rather than black. */
-  --color-highlight: transparent;
-  --color-highlight-strong: transparent;
-  --shadow-e1: 0 1px 2px rgb(23 21 15 / 0.05);
-  --shadow-e2: 0 2px 8px -2px rgb(23 21 15 / 0.07);
-  --shadow-e3: 0 20px 48px -16px rgb(23 21 15 / 0.13), 0 4px 12px -6px rgb(23 21 15 / 0.06);
+  /* Warm-tinted rather than pure black, so shadows sit in the same light as
+     the surfaces instead of punching holes in them. */
+  --color-highlight: rgba(247, 242, 234, 0.09);
+  --color-highlight-strong: rgba(247, 242, 234, 0.16);
+  --shadow-e1: 0 1px 2px rgb(12 9 8 / 0.45);
+  --shadow-e2: 0 4px 14px -3px rgb(12 9 8 / 0.55);
+  --shadow-e3: 0 28px 60px -18px rgb(12 9 8 / 0.75), 0 8px 20px -8px rgb(12 9 8 / 0.5);
 
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-text);
 }
 
-/* Paper tooth. Much lighter and warmer than the dark version's grain: on a
-   near-black canvas noise fixes gradient banding, on paper it only needs to
-   stop the fill reading as a flat colour value. */
-.editorial.grain-overlay::after { opacity: 0.02; }
+/* Grain stays at the dark-surface setting: on a warm charcoal it is doing real
+   work, stopping large fills reading as a flat colour value. */
+.editorial.grain-overlay::after { opacity: 0.03; }
 
 /* ─── The plate ───────────────────────────────────────────
-   A dark product panel inset on paper, the way a printed plate sits on a page.
-   ProductMock renders on the same tokens as the product, so inside .editorial
-   it would turn white-on-white; this restores the dark set locally.
-
-   It is also the strongest device available here: the product is dark, the
-   page is paper, and the contrast does the work that a glow and a grid were
-   doing badly before.
+   The product panel, inset. The page is already dark, so this no longer needs
+   to invert the palette — it goes one step deeper than the page and keeps the
+   product's own amber accent, which is correct: what you see in the panel is
+   what the product actually looks like.
    ───────────────────────────────────────────────────────── */
 .plate {
-  --color-canvas: #14120f;
-  --color-surface: #1c1a15;
-  --color-surface-raised: #262219;
-  --color-surface-hover: #2e2a20;
-  --color-line: rgba(255, 255, 255, 0.09);
-  --color-line-strong: rgba(255, 255, 255, 0.16);
-  --color-ink: #f2ede4;
-  --color-ink-muted: #b8b0a2;
-  --color-ink-subtle: #8f887b;
-  --color-ink-faint: #6b6459;
-  --color-ink-inverse: #14120f;
-  --color-accent: #e0913f;
-  --color-accent-hover: #eba955;
-  --color-accent-wash: rgba(224, 145, 63, 0.12);
-  --color-accent-line: rgba(224, 145, 63, 0.32);
-  --color-positive: #86b64a;
-  --color-positive-wash: rgba(134, 182, 74, 0.12);
-  --color-data-track: rgba(255, 255, 255, 0.07);
-  --color-highlight: rgba(255, 255, 255, 0.10);
-  --color-highlight-strong: rgba(255, 255, 255, 0.18);
+  --color-canvas: #0f0d0c;
+  --color-surface: #171413;
+  --color-surface-raised: #201c1a;
+  --color-accent: #e8a33d;
+  --color-accent-hover: #f0b556;
+  --color-accent-wash: rgba(232, 163, 61, 0.12);
+  --color-accent-line: rgba(232, 163, 61, 0.30);
   color: var(--color-ink);
 }
+

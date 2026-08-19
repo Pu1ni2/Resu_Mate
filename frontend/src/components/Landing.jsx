@@ -132,21 +132,23 @@ export default function Landing() {
             <div className="max-w-[40rem]">
               {/* Small caps, letterspaced, monospace — a printed standfirst
                   rather than a pill. Pills read as UI; this is a label. */}
-              <p className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-subtle">
+              <p className="mb-7 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">
                 Multi-agent hiring
               </p>
 
-              {/* The serif is the whole point. 1.02 leading and -0.02em tracking
-                  keep a 96px face from sprawling; the italic on the second line
-                  is the one committed, slightly odd decision the page was
-                  missing. */}
-              <h1 className="font-display text-[clamp(3rem,7.5vw,6rem)] leading-[1.02] tracking-[-0.02em] text-ink">
-                Hire smarter with
+              {/* Weight 900 at up to 96px with -0.045em tracking and 0.93
+                  leading. At that weight the letters have to be pulled in hard
+                  or they sprawl; pulled in, they lock into a single mass, which
+                  is what makes big type read as confidence rather than volume.
+                  One line takes the accent — vermillion is the only colour on
+                  the page, so it decides where the eye lands. */}
+              <h1 className="font-display text-[clamp(2.75rem,7.5vw,6rem)] font-black leading-[0.93] tracking-[-0.045em] text-ink">
+                Hire smarter
                 <br />
-                <em className="italic text-accent">AI agents</em>
+                with <span className="text-accent">AI agents</span>
               </h1>
 
-              <p className="mt-7 max-w-[34rem] text-[17px] leading-[1.65] text-ink-muted">
+              <p className="mt-8 max-w-[33rem] text-[18px] leading-[1.6] text-ink-muted">
                 Five specialised agents read every resume, score it against the role
                 on fixed weights, and run the interview — so you spend your time on
                 the shortlist instead of the pile.
@@ -184,7 +186,7 @@ export default function Landing() {
             <div className="plate overflow-hidden rounded-[4px] shadow-e3">
               <ProductMock framed={false} />
             </div>
-            <figcaption className="mt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+            <figcaption className="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-faint">
               Screening — twelve resumes against one role
             </figcaption>
           </figure>

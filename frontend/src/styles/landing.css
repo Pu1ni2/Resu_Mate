@@ -22,13 +22,13 @@
   color: var(--color-ink-subtle); text-transform: uppercase; letter-spacing: 0.18em;
   margin-bottom: var(--space-4);
 }
-/* The display serif carries the section headings too, so the page has one
-   voice at every level instead of a serif hero above sans-serif everything. */
+/* Same family and the same tight-and-heavy treatment as the hero, a step down
+   in size. One face, weight carrying the hierarchy. */
 .l-section-header h2 {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 3.6vw, 2.75rem); font-weight: 400;
-  line-height: 1.1; letter-spacing: -0.02em;
-  margin-bottom: var(--space-3);
+  font-size: clamp(1.875rem, 3.4vw, 2.625rem); font-weight: 900;
+  line-height: 1.02; letter-spacing: -0.035em;
+  margin-bottom: var(--space-4);
 }
 .l-section-header p { font-size: 17px; line-height: 1.65; color: var(--color-ink-muted); max-width: 34rem; }
 

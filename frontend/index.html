@@ -10,19 +10,16 @@
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
 
-    <!-- Instrument Serif: display face for the landing page. A high-contrast
-         serif, deliberately not a neutral geometric sans - DM Sans, Inter and
-         Geist are the three faces that make a page read as generated, and DM
-         Sans was doing exactly that here. Only 400 needed; it is used large. -->
     <!-- DM Sans stays: the product still resolves --font-sans to it. Dropping it
-         here while the token still names it would silently fall the whole app
-         back to system sans - the same trap the unloaded 'Inter' reference set
-         earlier. The product font is a separate decision from the landing page. -->
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+         while the token still names it would silently fall the whole app back to
+         system sans. The product font is a separate decision. -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <!-- Switzer: body and UI. Warmer and less institutional than Inter, and it
-         is not the face every generator reaches for. Fontshare, free. -->
-    <link href="https://api.fontshare.com/v2/css?f%5B%5D=switzer@400,500,600,700&display=swap" rel="stylesheet">
+    <!-- Satoshi: one family, 400 to 900, for the whole landing page. A single
+         face across display and body is what most premium software marketing
+         does - it reads as a considered system rather than a pairing. Weight
+         does the work that a second family would otherwise do. Fontshare. -->
+    <link href="https://api.fontshare.com/v2/css?f%5B%5D=satoshi@400,500,700,900&display=swap" rel="stylesheet">
     <title>ResuMate AI | Multi-Agent Hiring Platform</title>
 </head>
 <body>
