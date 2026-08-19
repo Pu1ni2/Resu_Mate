@@ -10,7 +10,7 @@ import {
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, VolumeX, Loader, Square, Video, Clock, Zap, Crown, Target, ArrowRight, X
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap, X
 } from 'lucide-react';
 
 const Logo = ({ size = 32 }) => (
@@ -27,157 +27,6 @@ const AIAvatar = () => (
     <Bot size={18} />
   </div>
 );
-
-function AutomatePanel({ candidates, onClose, navigate }) {
-  const [role, setRole] = useState('');
-  const [ranking, setRanking] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
-
-  const runRanking = async () => {
-    setLoading(true);
-    try {
-      const resp = await fetch(`${API}/api/chat/automate-ranking`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
-        body: JSON.stringify({ role: role.trim(), candidate_ids: candidates.map(c => c.id) }),
-      });
-      if (!resp.ok) throw new Error('Ranking failed');
-      const data = await resp.json();
-      setRanking(data.ranking);
-    } catch (e) { alert('Ranking failed: ' + e.message); }
-    finally { setLoading(false); }
-  };
-
-  const verdictColor = (v) => {
-    if (v?.includes('Strong')) return '#22C55E';
-    if (v?.includes('Good')) return '#3B82F6';
-    if (v?.includes('Potential')) return '#F59E0B';
-    return '#94A3B8';
-  };
-
-  const priorityColor = (p) => {
-    if (p === 'High') return '#22C55E';
-    if (p === 'Medium') return '#F59E0B';
-    return '#94A3B8';
-  };
-
-  if (!ranking) {
-    return (
-      <div className="glass-card" style={{ padding: '32px', marginBottom: '20px', position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}><X size={18} /></button>
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <Zap size={32} style={{ color: '#F59E0B', marginBottom: '8px' }} />
-          <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '4px' }}>Automate Candidate Ranking</h3>
-          <p style={{ color: 'var(--text3)', fontSize: '13px' }}>AI will analyze {candidates.length} candidates, compare them, and tell you who to interview first</p>
-        </div>
-        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-          <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)', display: 'block', marginBottom: '4px' }}>Target Role (optional — AI will auto-detect if blank)</label>
-          <input type="text" className="input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Senior ML Engineer, Full Stack Developer..." style={{ padding: '11px 14px', marginBottom: '14px', width: '100%' }} />
-          <button className="btn btn-primary" onClick={runRanking} disabled={loading} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', justifyContent: 'center' }}>
-            {loading ? <><Loader size={16} className="spin" /> <span>Analyzing {candidates.length} candidates...</span></> : <><Zap size={16} /> <span>Rank Candidates</span></>}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const r = ranking;
-  const best = r.best_candidate || {};
-
-  return (
-    <div style={{ marginBottom: '20px' }}>
-      {/* Header */}
-      <div className="glass-card" style={{ padding: '24px', marginBottom: '12px', position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}><X size={18} /></button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-          <Zap size={24} style={{ color: '#F59E0B' }} />
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0 }}>Automated Ranking Complete</h3>
-            <p style={{ fontSize: '12px', color: 'var(--text3)', margin: 0 }}>Role: {r.target_role} · {r.rankings?.length || 0} candidates analyzed</p>
-          </div>
-        </div>
-        {r.comparison_summary && <p style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: '1.6', margin: 0 }}>{r.comparison_summary}</p>}
-      </div>
-
-      {/* Best Candidate Highlight */}
-      {best.name && (
-        <div className="glass-card" style={{ padding: '20px', marginBottom: '12px', borderColor: 'rgba(34,197,94,0.3)', background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02))' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <Crown size={20} style={{ color: '#22C55E' }} />
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#22C55E' }}>Best Candidate</span>
-          </div>
-          <h4 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '4px' }}>{best.name}</h4>
-          <p style={{ fontSize: '13px', color: 'var(--text2)', margin: 0 }}>{best.reason}</p>
-        </div>
-      )}
-
-      {/* Rankings */}
-      {(r.rankings || []).map((c, i) => (
-        <div key={i} className="glass-card" style={{ padding: '18px', marginBottom: '10px', borderLeft: `3px solid ${verdictColor(c.verdict)}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: verdictColor(c.verdict), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: '800' }}>
-                #{c.rank}
-              </div>
-              <div>
-                <h4 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{c.name}</h4>
-                <span style={{ fontSize: '11px', color: verdictColor(c.verdict), fontWeight: '600' }}>{c.verdict}</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', fontFamily: 'monospace', color: c.score >= 75 ? '#22C55E' : c.score >= 50 ? '#F59E0B' : '#EF4444' }}>{c.score}</div>
-              <div style={{ fontSize: '10px', color: 'var(--text3)' }}>/ 100</div>
-            </div>
-          </div>
-
-          {c.standout && <p style={{ fontSize: '12px', color: 'var(--text)', fontStyle: 'italic', padding: '8px 10px', borderRadius: '8px', background: 'var(--bg3, rgba(255,255,255,0.04))', marginBottom: '10px' }}>{c.standout}</p>}
-
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: '10px', fontWeight: '700', color: '#22C55E', display: 'block', marginBottom: '3px' }}>STRENGTHS</span>
-              {(c.strengths || []).map((s, j) => <p key={j} style={{ fontSize: '11px', color: 'var(--text2)', margin: '2px 0', paddingLeft: '8px', borderLeft: '2px solid #22C55E30' }}>{s}</p>)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: '10px', fontWeight: '700', color: '#F59E0B', display: 'block', marginBottom: '3px' }}>GAPS</span>
-              {(c.gaps || []).map((g, j) => <p key={j} style={{ fontSize: '11px', color: 'var(--text2)', margin: '2px 0', paddingLeft: '8px', borderLeft: '2px solid #F59E0B30' }}>{g}</p>)}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid var(--surface-border, rgba(255,255,255,0.06))' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Target size={12} style={{ color: priorityColor(c.interview_priority) }} />
-              <span style={{ fontSize: '11px', fontWeight: '600', color: priorityColor(c.interview_priority) }}>Interview Priority: {c.interview_priority}</span>
-            </div>
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {(c.suggested_focus_areas || []).slice(0, 3).map((f, j) => (
-                <span key={j} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: 'var(--bg3, rgba(255,255,255,0.06))', color: 'var(--text3)' }}>{f}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {/* Interview Order */}
-      {(r.interview_order || []).length > 0 && (
-        <div className="glass-card" style={{ padding: '16px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <ArrowRight size={14} style={{ color: '#3B82F6' }} /> Suggested Interview Order
-          </h4>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {r.interview_order.map((name, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg3, rgba(255,255,255,0.04))', fontSize: '12px', fontWeight: '600' }}>
-                <span style={{ color: '#3B82F6', fontWeight: '800' }}>{i + 1}.</span> {name}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <button onClick={() => { setRanking(null); setRole(''); }} style={{ marginTop: '10px', background: 'none', border: 'none', color: 'var(--text3)', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>Re-rank with different role</button>
-    </div>
-  );
-}
 
 function InterviewAnalytics() {
   const [data, setData] = useState(null);
@@ -404,7 +253,6 @@ export default function Dashboard() {
   };
 
   const [sampleLoading, setSampleLoading] = useState(false);
-  const [showAutomate, setShowAutomate] = useState(false);
   const [showPipeline, setShowPipeline] = useState(false);
   const [pipelineResult, setPipelineResult] = useState(null);
   const handleLoadSample = async () => {
@@ -840,10 +688,6 @@ export default function Dashboard() {
 
                     </div>
                   </div>
-
-                  {showAutomate && (
-                    <AutomatePanel candidates={candidates.filter(c => c.is_resume !== false)} onClose={() => setShowAutomate(false)} navigate={navigate} />
-                  )}
 
                   {showPipeline && (
                     <JarvisAgent
