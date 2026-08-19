@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState } from 'react';
 import { marked } from 'marked';
 import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';

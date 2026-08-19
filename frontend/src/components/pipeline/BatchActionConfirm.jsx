@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send, Edit2 } from 'lucide-react';
+import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';

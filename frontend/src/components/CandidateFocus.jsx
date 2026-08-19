@@ -265,7 +265,7 @@ export default function CandidateFocus() {
         `Tell me about their GitHub projects`,
       ]);
 
-    } catch (e) {
+    } catch (_) {
       setScanLogs(prev => [...prev, { step: 'error', msg: 'Scanner failed to connect', status: 'error' }]);
     } finally {
       setScanRunning(false);

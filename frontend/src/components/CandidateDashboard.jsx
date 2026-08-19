@@ -5,8 +5,8 @@ import { marked } from 'marked';
 import {
   Upload, BarChart2, MessageSquare, Video, Send, Bot,
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
-  LogOut, Camera, Clock, ChevronRight, X, CheckCircle,
-  EyeOff, XCircle, Shield, Eye, GraduationCap,
+  LogOut, Camera, ChevronRight, CheckCircle,
+  EyeOff, Shield, Eye, GraduationCap,
   Code, Star, TrendingUp, Target,
   Mic, Volume2, Trash2
 } from 'lucide-react';
@@ -38,7 +38,7 @@ function SafeMarkdown({ text }) {
   if (!text || typeof text !== 'string') return null;
   try {
     return <div className="md" style={{ lineHeight: '1.7', color: 'var(--text2)' }} dangerouslySetInnerHTML={{ __html: marked.parse(text) }} />;
-  } catch (e) {
+  } catch (_) {
     return <pre style={{ whiteSpace: 'pre-wrap', fontSize: '13px', color: 'var(--text2)' }}>{text}</pre>;
   }
 }

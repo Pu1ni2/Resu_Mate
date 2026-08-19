@@ -11,7 +11,7 @@ import {
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap, X
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap
 } from 'lucide-react';
 import { authFetch } from '../services/authFetch';
 

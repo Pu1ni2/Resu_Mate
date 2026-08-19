@@ -8,9 +8,9 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Bot, Mic, MicOff, X, Camera, AlertTriangle, Eye, EyeOff,
-  Clock, Loader, Volume2, Shield, Monitor, Brain, Briefcase,
-  CheckCircle, Phone, PhoneOff
+  Bot, Mic, MicOff, AlertTriangle, Eye, EyeOff,
+  Clock, Loader, Shield, Briefcase,
+  Phone, PhoneOff
 } from 'lucide-react';
 import { interviewAuthHeaders } from '../services/authFetch';
 

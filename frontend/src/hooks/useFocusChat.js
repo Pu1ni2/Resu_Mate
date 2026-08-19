@@ -51,7 +51,7 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
       const data = await response.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'Sorry, I could not generate a response.' }]);
       if (data.suggestions?.length) setSuggestions(data.suggestions);
-    } catch (err) {
+    } catch (_) {
       setMessages(prev => [...prev, { role: 'assistant', content: '**Error:** Could not reach the server. Please check your backend is running.' }]);
     } finally {
       setIsTyping(false);

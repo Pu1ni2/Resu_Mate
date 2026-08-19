@@ -249,7 +249,7 @@ export const AppProvider = ({ children }) => {
       const res = await chatAPI.getIntro(selectedCandidates.length, anonymize);
       setMessages([{ role: 'assistant', content: res.data.response }]);
       setSuggestions(res.data.suggestions || []);
-    } catch (err) {
+    } catch (_) {
       setMessages([{
         role: 'assistant',
         content: '**Welcome to ResuMate AI!** 👋\n\nUpload resumes and select candidates to get started.'

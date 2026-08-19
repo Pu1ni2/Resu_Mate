@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Upload, Video, UserCheck, Bot, Search, Mail, Cpu, Shield, BarChart2, Globe
