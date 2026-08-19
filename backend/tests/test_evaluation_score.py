@@ -13,8 +13,9 @@ Asserting on the prompt template is unusual but right here: the defect was a
 line of prompt text, there is no way to catch its return without calling an LLM,
 and a future edit could reintroduce it in one keystroke.
 """
-import asyncio
 import inspect
+
+import pytest
 
 from app.agents.hr_agent import hr_agent
 from app.services.ats_service import ats_service
@@ -49,8 +50,15 @@ def test_evaluate_accepts_the_screening_score():
     assert "ats_score" in sig.parameters
 
 
-def test_ats_service_remains_the_only_scorer():
-    """The deterministic scorer still produces a number, and it is reproducible."""
+@pytest.mark.asyncio
+async def test_ats_service_remains_the_only_scorer():
+    """The deterministic scorer still produces a number, and it is reproducible.
+
+    Uses the suite's asyncio marker rather than asyncio.run(): run() closes the
+    loop it creates, and conftest's client fixture builds its engine on the
+    ambient loop, so a bare asyncio.run() here left every later test that needs
+    a database with "no current event loop".
+    """
     candidate = {
         "id": 1, "name": "Test", "skills": ["Python", "AWS"],
         "total_experience_years": 5, "predicted_role": "Backend Engineer",
@@ -62,8 +70,8 @@ def test_ats_service_remains_the_only_scorer():
         "min_experience_years": 3, "education_requirement": "",
         "seniority_level": "", "role_keywords": ["backend", "engineer"],
     }
-    a = asyncio.run(ats_service.score_candidate(candidate, reqs, role="Backend Engineer"))
-    b = asyncio.run(ats_service.score_candidate(candidate, reqs, role="Backend Engineer"))
+    a = await ats_service.score_candidate(candidate, reqs, role="Backend Engineer")
+    b = await ats_service.score_candidate(candidate, reqs, role="Backend Engineer")
     assert isinstance(a["ats_score"], int)
     # Same input, same number — the property that makes it explainable, and the
     # reason it owns the score rather than the model.
