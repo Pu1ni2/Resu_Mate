@@ -13,6 +13,7 @@ import {
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
   Mic, MicOff, Volume2, Loader, Square, Video, Zap, X
 } from 'lucide-react';
+import { authFetch } from '../services/authFetch';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -42,9 +43,7 @@ function InterviewAnalytics() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${API}/api/chat/get-all-interview-results`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
-      });
+      const resp = await authFetch(`${API}/api/chat/get-all-interview-results`);
       const json = await resp.json();
       setData(json.results || []);
     } catch { setData([]); }
@@ -378,9 +377,8 @@ export default function Dashboard() {
     formData.append('audio', audioBlob, 'recording.webm');
 
     const STT_API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
-    const response = await fetch(`${STT_API}/api/chat/speech-to-text`, {
+    const response = await authFetch(`${STT_API}/api/chat/speech-to-text`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
       body: formData
     });
 
@@ -462,12 +460,9 @@ export default function Dashboard() {
       }
       
       const TTS_API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
-      const response = await fetch(`${TTS_API}/api/chat/text-to-speech`, {
+      const response = await authFetch(`${TTS_API}/api/chat/text-to-speech`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: cleanText, voice: 'nova' }),
         signal: abortControllerRef.current.signal
       });

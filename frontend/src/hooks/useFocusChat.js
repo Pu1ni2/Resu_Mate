@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { authFetch } from '../services/authFetch';
 
 export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, scanContact, anonymize, getCandidatePayload, speakText }) {
   const [chatInput, setChatInput] = useState('');
@@ -34,9 +35,9 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${apiBase}/api/chat/focus`, {
+      const response = await authFetch(`${apiBase}/api/chat/focus`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           candidate_id: focusCandidate.id,

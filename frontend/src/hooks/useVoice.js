@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { authFetch } from '../services/authFetch';
 
 const MIN_RECORDING_MS = 800;   // discard recordings shorter than this
 const MIN_BLOB_BYTES   = 1500;  // discard silent/empty blobs
@@ -159,12 +160,9 @@ export default function useVoice({
         .replace(/•/g, ',').replace(/\n+/g, '. ').trim();
       if (clean.length > 4000) clean = clean.substring(0, 4000) + '...';
 
-      const response = await fetch(`${apiBase}/api/chat/text-to-speech`, {
+      const response = await authFetch(`${apiBase}/api/chat/text-to-speech`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: clean, voice: 'nova' }),
         signal: abortControllerRef.current.signal,
       });
@@ -222,9 +220,8 @@ export default function useVoice({
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
-      const response = await fetch(`${apiBase}/api/chat/speech-to-text`, {
+      const response = await authFetch(`${apiBase}/api/chat/speech-to-text`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
         body: formData,
       });
       if (response.status === 401) throw new Error('SESSION_EXPIRED');
