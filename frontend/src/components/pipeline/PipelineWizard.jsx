@@ -180,7 +180,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
           {!inline && <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={styles.iconCircle}><Zap size={28} style={{ color: '#8B5CF6' }} /></div>
-            <h2 style={styles.title}>AutoHire Pipeline</h2>
+            <h2 style={styles.title}>Screen candidates</h2>
             <p style={styles.subtitle}>
               I'll screen all <strong>{candidateCount}</strong> resume{candidateCount !== 1 ? 's' : ''} and find your best candidates automatically.
             </p>
@@ -208,7 +208,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
           {!inline && <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>}
           <div style={{ marginBottom: 20 }}>
             <div style={styles.iconCircle}><Zap size={22} style={{ color: '#8B5CF6' }} /></div>
-            <h2 style={styles.title}>AutoHire Pipeline</h2>
+            <h2 style={styles.title}>Screen candidates</h2>
           </div>
 
           <div style={styles.formGroup}>
@@ -234,7 +234,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
           </div>
 
           <button onClick={handleFormRun} disabled={formRunning || !formData.role.trim()} style={{ ...styles.primaryBtn, marginTop: 8, opacity: formData.role.trim() ? 1 : 0.5 }}>
-            {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Run AutoHire on {candidateCount} resumes</>}
+            {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Screen {candidateCount} resumes</>}
           </button>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
             <button onClick={handleRun} disabled={isRunning} style={{ ...styles.primaryBtn, width: '100%', marginTop: 16 }}>
               {isRunning
                 ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</>
-                : <><Zap size={16} /> Run AutoHire Pipeline</>}
+                : <><Zap size={16} /> Start screening</>}
             </button>
             <button onClick={() => setStep(0)} style={{ ...styles.ghostBtn, marginTop: 8 }}>Start over</button>
           </div>

@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/LiveKit-WebRTC-FF6B35?logo=webrtc&logoColor=white" />
   <img src="https://img.shields.io/badge/Simli-Avatar-8B5CF6" />
   <img src="https://img.shields.io/badge/ChromaDB-Vector--Store-green" />
-  <img src="https://img.shields.io/badge/Jarvis-Auto--Hire-F59E0B?logo=openai&logoColor=white" />
+  <img src="https://img.shields.io/badge/Jarvis-AI--Copilot-F59E0B?logo=openai&logoColor=white" />
 </p>
 
 # ResuMate AI
@@ -100,7 +100,7 @@ AI career advisor with resume coaching, interview prep — then step into a live
 
 ## Features
 
-### Jarvis — Auto-Hire AI Agent
+### Jarvis — AI Hiring Copilot
 
 **Jarvis** is a conversational AI hiring chief-of-staff that turns the hiring manager dashboard into one continuous voice/text workflow. It sits on top of the existing ATS, evaluation, enrichment, interview, reporting, and export features and orchestrates them through natural conversation.
 
@@ -127,7 +127,7 @@ Every result appears as an interactive card in the chat — expand any card for 
 
 ### Hiring Manager Portal
 - **Resume Upload & RAG** — PDF/DOCX parsing, ChromaDB vector storage, contextual AI chat
-- **Automated Candidate Ranking** — AI compares all candidates and recommends who to interview first
+- **Screening** — scores every candidate against a role on fixed, inspectable weights and ranks them into a shortlist
 - **Resume Intelligence** — Gap analysis, skill verification targets, red flag detection
 - **Scanner Agent** — Extracts embedded links, scrapes GitHub profiles, searches LinkedIn via Tavily
 - **AI Chat** — Multi-candidate comparison, voice input/output, anonymization mode
@@ -185,7 +185,7 @@ Every result appears as an interactive card in the chat — expand any card for 
 
 | Agent | Role | Tools |
 |-------|------|-------|
-| **Jarvis** | Conversational auto-hire agent — runs the full pipeline through voice/text | GPT-4o, all agents below, TTS/STT |
+| **Jarvis** | Conversational copilot — drives screening, evaluation and interviews by voice or text | GPT-4o, all agents below, TTS/STT |
 | **Data Agent** | Resume parsing, profile scraping, data enrichment | PyPDF2, Playwright, GitHub API, Tavily |
 | **HR Agent** | Candidate evaluation, email drafting, hiring recommendations | GPT-4o, salary research |
 | **Technical Agent** | Interview orchestration, credibility analysis, smart questions | LiveKit, Simli, OpenAI Realtime |

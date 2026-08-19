@@ -4,7 +4,7 @@ import { cn } from '../ui/cn';
 import RankedCandidates, { RankedSummary } from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 
-/* ProductMock — the AutoHire results panel, rendered in real HTML.
+/* ProductMock — the Shortlist panel, rendered in real HTML.
  *
  * Built rather than screenshotted, for four reasons: it stays crisp at any DPI,
  * it reflows on small screens instead of overflowing, it follows the theme
@@ -78,7 +78,7 @@ export default function ProductMock({ className }) {
           <div className="flex min-w-0 items-center gap-2 text-[13px] text-ink-muted">
             <Sparkles size={13} className="shrink-0 text-accent" />
             <span className="truncate">
-              AutoHire <span className="text-ink-faint">·</span> Python Developer
+              Screening <span className="text-ink-faint">·</span> Python Developer
             </span>
           </div>
           <ChevronDown size={14} className="ml-auto shrink-0 text-ink-faint" />

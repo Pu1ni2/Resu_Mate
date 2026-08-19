@@ -1,5 +1,5 @@
 """
-AutoHire Pipeline API
+Screening pipeline API
 Orchestrates ATS scoring, candidate shortlisting, and batch interview/email actions.
 """
 import json
@@ -66,7 +66,7 @@ async def parse_jd(req: ParseJDRequest, user=Depends(get_current_user)):
 @limiter.limit("10/hour")
 async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(get_current_user)):
     """
-    Main AutoHire pipeline.
+    Main screening pipeline.
     Scores all (or specified) candidates via the ATS engine and returns ranked results.
     """
     # 1. Resolve candidate pool — only THIS manager's candidates.

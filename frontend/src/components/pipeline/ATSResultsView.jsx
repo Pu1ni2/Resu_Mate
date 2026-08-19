@@ -239,7 +239,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>
               <Zap size={18} style={{ color: '#8B5CF6', marginRight: 8, verticalAlign: 'middle' }} />
-              AutoHire Results — <span style={{ color: '#8B5CF6' }}>{role}</span>
+              Shortlist — <span style={{ color: '#8B5CF6' }}>{role}</span>
             </h1>
             <p style={{ color: '#64748B', fontSize: 13, margin: '4px 0 0' }}>
               {total_screened} resumes screened

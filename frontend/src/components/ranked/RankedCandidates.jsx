@@ -6,13 +6,13 @@ import { toneForVerdict } from './adapters';
 
 /* RankedCandidates — the one ranked-results list.
  *
- * Replaces three separate implementations: the AutoHire results screen, the
+ * Replaces three separate implementations: the shortlist screen, the
  * dashboard Rank panel, and the Jarvis action card. They rendered the same
  * concept in three styling systems with two accent hues, and even disagreed on
  * the four verdict colours.
  *
  * Two variants cover all three:
- *   full     expandable rows, optional selection  (AutoHire, Rank panel)
+ *   full     expandable rows, optional selection  (Screening, results)
  *   compact  one dense line per candidate         (Jarvis card)
  *
  * Rows arrive pre-normalised through ./adapters, so this file never sees the
