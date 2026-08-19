@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Button from './ui/Button';
 import { cn } from './ui/cn';
+import ProductMock from './landing/ProductMock';
 
 // ─── Logo ───
 const Logo = ({ size = 32 }) => (
@@ -161,10 +162,16 @@ export default function Landing() {
       </nav>
 
       {/* ═══ HERO ═══ */}
-      {/* Height rules moved off landing.css's 640px query: the hero sizes to its
-          content on small screens and only fills the viewport from sm up. */}
-      <section className="relative z-[1] flex items-center justify-center px-6 pt-28 pb-16 text-center sm:min-h-screen sm:pt-32 sm:pb-24">
-        <div className="relative z-[2] mx-auto max-w-[46rem]">
+      {/* No min-h-screen any more. It made sense when the hero was a headline
+          and two buttons and needed help filling the viewport; with the product
+          panel the content is taller than most screens, and forcing a minimum
+          only adds dead space on tall displays. The content sets the height. */}
+      <section className="relative z-[1] flex items-center justify-center px-6 pt-28 pb-20 text-center sm:pt-36 sm:pb-28">
+        {/* Two measures: the copy stays at a readable 46rem, the product panel
+            gets 62rem. One shared container would force a compromise that is
+            wrong for both. */}
+        <div className="relative z-[2] mx-auto w-full max-w-[64rem]">
+          <div className="mx-auto max-w-[46rem]">
           <div className="animate-fadeInUp mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-medium text-ink-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             <span>Multi-agent AI platform</span>
@@ -246,6 +253,16 @@ export default function Landing() {
                 {t}
               </span>
             ))}
+          </div>
+          </div>
+
+          {/* Show the product. Wider than the copy column above it so the panel
+              reads as a separate plane rather than another paragraph. */}
+          <div
+            className="animate-fadeInUp mx-auto mt-16 w-full max-w-[62rem] sm:mt-20"
+            style={{ animationDelay: '500ms' }}
+          >
+            <ProductMock />
           </div>
         </div>
 
