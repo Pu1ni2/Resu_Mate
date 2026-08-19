@@ -6,8 +6,13 @@ venv/
 .env
 *.db
 chroma_db/
-agent_memory.json
+# Local interview data — these are runtime artefacts of an older, pre-Postgres
+# implementation, superseded by the interviews table. No code reads them, and
+# they accumulate candidate emails, names and full interview transcripts, so
+# they must never be committed.
 interviews_data.json
+interview_results.json
+agent_memory.json
 uploads/*.pdf
 
 # Node
