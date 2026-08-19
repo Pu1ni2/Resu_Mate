@@ -214,7 +214,26 @@ function TranscriptSection({ transcript }) {
   );
 }
 
-export default function InterviewReportView({ report, candidateId, candidateEmail }) {
+/* `viewer` decides which controls render.
+ *
+ * Two of the actions in here -- credibility analysis and PDF export -- call
+ * endpoints guarded by get_current_user, i.e. hiring-manager only. This
+ * component, however, was mounted solely in the candidate portal, where that
+ * token does not exist and never will. Both buttons therefore failed 401 for
+ * the only people who could see them.
+ *
+ * Sending "the right token" would not fix it: a candidate has no manager token
+ * by design. Credibility analysis in particular compares someone's resume
+ * claims against their interview answers to detect exaggeration -- that is a
+ * manager's tool, and showing it to the candidate being assessed was a product
+ * mistake as much as an auth one.
+ *
+ * So they render for viewer="manager" only. Candidate-side PDF export is a
+ * reasonable feature, but it needs a candidate-scoped endpoint that does not
+ * exist yet; a button that always fails is worse than no button.
+ */
+export default function InterviewReportView({ report, candidateId, candidateEmail, viewer = 'candidate' }) {
+  const isManager = viewer === 'manager';
   if (!report) return <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
   const r = report;
@@ -241,7 +260,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
         <p style={{ color: '#64748B', fontSize: '14px' }}>
           {scores.length} questions answered Â· {mins}:{secs} duration
         </p>
-        {candidateEmail && (
+        {isManager && candidateEmail && (
           <button onClick={async () => {
             // Export-report now requires auth, so we fetch with the bearer
             // token and trigger a blob download instead of window.open (which
@@ -321,7 +340,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       <TranscriptSection transcript={r.transcript} />
 
       {/* Credibility Analysis */}
-      <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} />
+      {isManager && <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} />}
 
       {/* Proctoring */}
       {(violations > 0 || (r.lookAwayCount || 0) > 10) && (
