@@ -154,22 +154,36 @@ def _get_candidate(candidate_id: int, candidate_data: dict = None, manager_id=No
 
 # ═══════ CHAT ENDPOINTS ═══════
 #
-# chat_histories is a bounded LRU. Without a cap the dict grew with every new
-# conversation_id and was never evicted, which leaked memory under load and
-# survived only until restart anyway. For real cross-restart persistence the
-# advisor_sessions DB pattern is the right answer; for the dashboard's
-# free-form chat the value of persistence isn't worth the DB hit.
+# chat_histories is a bounded LRU keyed by (manager_id, conversation_id).
+#
+# The manager_id is not optional. Keyed by conversation_id alone — which is what
+# this was — every manager who did not set an explicit id shared the single
+# "default" bucket, and that history is replayed verbatim into the next
+# manager's prompt. One tenant's questions, and the model's answers about their
+# candidates, leaked into another tenant's context. The cap was already here;
+# the tenant key is the fix.
+#
+# For cross-restart persistence the advisor_sessions DB pattern is the right
+# answer. For the dashboard's free-form chat the value of persistence still is
+# not worth the DB hit, so this stays in memory — with the caveat that it is
+# per-process and therefore inconsistent across workers.
 from collections import OrderedDict
 _CHAT_MAX_CONVERSATIONS = 256
 _CHAT_MAX_MESSAGES_PER_CONVO = 20
-chat_histories: "OrderedDict[str, list]" = OrderedDict()
+chat_histories: "OrderedDict[tuple, list]" = OrderedDict()
 
 
-def _remember_chat(conversation_id: str, user_msg: str, assistant_msg: str) -> None:
-    convo = chat_histories.pop(conversation_id, [])
+def _chat_key(manager_id, conversation_id: str) -> tuple:
+    """Tenant-scoped history key. manager_id first so it can never be omitted."""
+    return (manager_id, conversation_id or "default")
+
+
+def _remember_chat(manager_id, conversation_id: str, user_msg: str, assistant_msg: str) -> None:
+    key = _chat_key(manager_id, conversation_id)
+    convo = chat_histories.pop(key, [])
     convo.append({"role": "user", "content": user_msg})
     convo.append({"role": "assistant", "content": assistant_msg})
-    chat_histories[conversation_id] = convo[-_CHAT_MAX_MESSAGES_PER_CONVO:]
+    chat_histories[key] = convo[-_CHAT_MAX_MESSAGES_PER_CONVO:]
     while len(chat_histories) > _CHAT_MAX_CONVERSATIONS:
         chat_histories.popitem(last=False)  # drop the oldest conversation
 
@@ -179,9 +193,9 @@ def _remember_chat(conversation_id: str, user_msg: str, assistant_msg: str) -> N
 async def send_message(request: Request, req: ChatRequest, user=Depends(get_current_user)):
     """Multi-candidate RAG chat"""
     try:
-        history = chat_histories.get(req.conversation_id, [])
+        history = chat_histories.get(_chat_key(user.id, req.conversation_id), [])
         response = await resume_rag.chat(req.message, req.candidate_ids, history, req.anonymize, manager_id=user.id)
-        _remember_chat(req.conversation_id, req.message, response.get("response", ""))
+        _remember_chat(user.id, req.conversation_id, req.message, response.get("response", ""))
         return response
     except Exception as e:
         return {"response": f"Error: {str(e)}", "suggestions": []}
@@ -193,8 +207,13 @@ async def get_intro(count: int = 0, anonymize: bool = False, user=Depends(get_cu
 
 @router.post("/clear")
 async def clear_chat(user=Depends(get_current_user)):
-    resume_rag.recently_discussed = []
-    chat_histories.clear()
+    """Clear THIS manager's chat history.
+
+    Previously called chat_histories.clear(), which wiped every tenant's
+    history — any authenticated user could erase everyone's conversations.
+    """
+    for key in [k for k in chat_histories if k[0] == user.id]:
+        chat_histories.pop(key, None)
     return {"status": "cleared"}
 
 # ═══════ VOICE ENDPOINTS ═══════

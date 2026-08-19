@@ -38,7 +38,6 @@ class ResumeRAGService:
         # to a manager — two managers may legitimately hold the same resume).
         self.uploaded_file_hashes: Dict[int, Set[str]] = {}
         self.candidate_counter = 0
-        self.recently_discussed: List[str] = []
         # Sync lock for sync paths (register_file, delete_candidate) and an
         # async lock for async paths (add_resume). Both guard the same shared
         # state — concurrent upload + delete used to leave the dict half-written.
@@ -521,7 +520,6 @@ BADGES (pick 2-3):
                         print(f"ChromaDB delete failed for candidate {cid}: {exc}")
             self.candidates[self._mkey(manager_id)] = {}
             self.uploaded_file_hashes[self._mkey(manager_id)] = set()
-            self.recently_discussed = []
             print(f"Cleared all data for manager {self._mkey(manager_id)}")
         
           
@@ -710,13 +708,6 @@ Respond helpfully using **bold** for names and key points."""
                     if name.lower() in response_text.lower():
                         pattern = re.compile(re.escape(name), re.IGNORECASE)
                         response_text = pattern.sub("[Candidate]", response_text)
-            
-            # Update recently discussed
-            if anonymize:
-                mentioned = [f"Candidate {candidate_ids.index(c['id']) + 1}" for c in resume_candidates]
-            else:
-                mentioned = [c['name'] for c in resume_candidates]
-            self.recently_discussed = mentioned[-10:]
             
         except Exception as e:
             response_text = f"**Error:** {str(e)}"
