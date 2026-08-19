@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { getToken, handleUnauthorized } from './session';
+
 const API_BASE_URL = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
   : '';
@@ -12,7 +14,7 @@ const api = axios.create({
 
 // Attach the hiring manager JWT on every request
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('resumate_hm_token');
+  const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -20,24 +22,10 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   response => response,
   error => {
-    // On 401, clear auth and dispatch an event for App.jsx to handle via React
-    // Router. We deliberately avoid window.location.href because the hard reload
-    // kills in-progress Jarvis conversations, voice sessions, and uploads.
+    // Expiry handling lives in services/session.js so the raw fetch() call
+    // sites behave identically — they used to do nothing at all on a 401.
     if (error.response?.status === 401) {
-      const path = window.location.pathname;
-      const isAuthPage = path === '/hiring/login' || path === '/hiring/register';
-      const isAuthEndpoint = error.config?.url?.includes('/auth/');
-      if (!isAuthPage && !isAuthEndpoint) {
-        localStorage.removeItem('resumate_hm_token');
-        localStorage.removeItem('resumate_hm_refresh');
-        localStorage.removeItem('resumate_hm_user');
-        try {
-          window.dispatchEvent(new CustomEvent('resumate:unauthorized'));
-        } catch (_) {
-          // Fallback for old browsers that lack CustomEvent — last-resort hard nav.
-          window.location.href = '/hiring/login';
-        }
-      }
+      handleUnauthorized(error.config?.url);
     }
     return Promise.reject(error);
   }
