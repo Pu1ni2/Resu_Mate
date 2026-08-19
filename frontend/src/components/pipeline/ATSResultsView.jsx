@@ -167,7 +167,15 @@ function pillStyle(color) {
   };
 }
 
-export default function ATSResultsView({ pipelineResult, onBack, onRunAgain }) {
+/* `embedded` drops the full-page shell so this can render inside the Screening
+ * tab. It was written as a standalone takeover because the only thing that
+ * could open it was the voice agent's full-screen overlay; now that Screening
+ * is a section with its own nav entry, it has to sit in the workspace and
+ * inherit the page background rather than paint its own.
+ *
+ * The palette here is still the hardcoded slate/violet set that exists nowhere
+ * else in the app -- that gets replaced when this moves onto RankedCandidates. */
+export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, embedded = false }) {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedIds, setSelectedIds] = useState(() =>
     (pipelineResult?.shortlist || []).map(r => r.candidate_id)
@@ -218,8 +226,10 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain }) {
   const selectedCandidates = results.filter(r => selectedIds.includes(r.candidate_id));
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0B1120', color: '#F1F5F9', padding: '24px 20px' }}>
-      <div style={{ maxWidth: 860, margin: '0 auto' }}>
+    <div style={embedded
+      ? { color: '#F1F5F9' }
+      : { minHeight: '100vh', background: '#0B1120', color: '#F1F5F9', padding: '24px 20px' }}>
+      <div style={{ maxWidth: embedded ? '100%' : 860, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { marked } from 'marked';
 import CandidateFocus from './CandidateFocus';
 import PipelineWizard from './pipeline/PipelineWizard';
+import ATSResultsView from './pipeline/ATSResultsView';
 import JarvisAgent from './pipeline/JarvisAgent';
 import { 
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
@@ -649,6 +650,10 @@ export default function Dashboard() {
             </div>
             {[
               { id: 'upload', icon: <Upload size={18} />, label: 'Upload' },
+              // Screening was previously reachable only by opening the voice
+              // agent, which rendered the results inside a full-screen overlay.
+              // It is the core of the product and now has its own section.
+              { id: 'screening', icon: <Zap size={18} />, label: 'Screening' },
               { id: 'analytics', icon: <BarChart2 size={18} />, label: 'Analytics' },
               { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
               { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus' }
@@ -724,7 +729,10 @@ export default function Dashboard() {
         <header className="main-header">
           <div className="header-left">
             <h1 className="main-title">
-              {tab === 'upload' ? 'Upload Resumes' : tab === 'analytics' ? 'Analytics' : tab === 'chat' ? 'AI Chat' : 'Candidate Focus'}
+              {tab === 'upload' ? 'Upload Resumes'
+                : tab === 'screening' ? 'Screening'
+                : tab === 'analytics' ? 'Analytics'
+                : tab === 'chat' ? 'AI Chat' : 'Candidate Focus'}
             </h1>
             {candidates.length > 0 && <span className="badge badge-orange">{candidates.length}</span>}
             {selectedIds.length > 0 && <span className="badge badge-green">{selectedIds.length} selected</span>}
@@ -937,6 +945,42 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* SCREENING TAB
+              Configure a run, then show the shortlist. Both were previously
+              trapped inside the voice agent's full-screen overlay: PipelineWizard
+              was imported but never rendered, and ATSResultsView could only be
+              opened by Jarvis. */}
+          {tab === 'screening' && (
+            <div className="analytics-tab">
+              {!pipelineResult ? (
+                candidates.filter(c => c.is_resume !== false).length === 0 ? (
+                  <div className="clean-empty">
+                    <Zap size={32} style={{ color: 'var(--color-ink-faint)', marginBottom: 12 }} />
+                    <h3>Nothing to screen yet</h3>
+                    <p>Upload at least one resume and come back — screening ranks every candidate against a role.</p>
+                    <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => setTab('upload')}>
+                      Upload resumes
+                    </button>
+                  </div>
+                ) : (
+                  <PipelineWizard
+                    inline
+                    candidateCount={candidates.filter(c => c.is_resume !== false).length}
+                    onClose={() => setTab('upload')}
+                    onComplete={data => setPipelineResult(data)}
+                  />
+                )
+              ) : (
+                <ATSResultsView
+                  embedded
+                  pipelineResult={pipelineResult}
+                  onBack={() => setPipelineResult(null)}
+                  onRunAgain={() => setPipelineResult(null)}
+                />
               )}
             </div>
           )}

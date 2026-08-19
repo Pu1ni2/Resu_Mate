@@ -12,7 +12,11 @@ const STEPS = [
   { key: 'confirm',      question: null,                                                       placeholder: null },
 ];
 
-export default function PipelineWizard({ candidateCount = 0, onClose, onComplete }) {
+/* `inline` renders the wizard inside the workspace instead of as a fixed
+ * overlay. It was written as a modal, but Screening is now a top-level section
+ * with its own nav entry -- a modal over a tab you just navigated to is a
+ * dialog about nothing, and there is no sensible target for its close button. */
+export default function PipelineWizard({ candidateCount = 0, onClose, onComplete, inline = false }) {
   const [mode, setMode] = useState(null); // 'voice' | 'form'
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState({ role: '', jdText: '', requiredSkills: [], minExperience: 0 });
@@ -167,11 +171,13 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
 
   // â”€â”€ Render: Mode selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  const shellStyle = inline ? styles.inlineShell : styles.overlay;
+
   if (!mode) {
     return (
-      <div style={styles.overlay}>
+      <div style={shellStyle}>
         <div style={styles.card}>
-          <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>
+          {!inline && <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={styles.iconCircle}><Zap size={28} style={{ color: '#8B5CF6' }} /></div>
             <h2 style={styles.title}>AutoHire Pipeline</h2>
@@ -197,9 +203,9 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
 
   if (mode === 'form') {
     return (
-      <div style={styles.overlay}>
+      <div style={shellStyle}>
         <div style={{ ...styles.card, maxWidth: 560 }}>
-          <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>
+          {!inline && <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>}
           <div style={{ marginBottom: 20 }}>
             <div style={styles.iconCircle}><Zap size={22} style={{ color: '#8B5CF6' }} /></div>
             <h2 style={styles.title}>AutoHire Pipeline</h2>
@@ -240,9 +246,9 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
   const progressPct = ((step) / (STEPS.length - 1)) * 100;
 
   return (
-    <div style={styles.overlay}>
+    <div style={shellStyle}>
       <div style={{ ...styles.card, maxWidth: 520 }}>
-        <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>
+        {!inline && <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>}
 
         {/* Progress bar */}
         <div style={styles.progressTrack}>
@@ -345,6 +351,7 @@ function SummaryRow({ label, value }) {
 }
 
 const styles = {
+  inlineShell: { display: 'flex', justifyContent: 'center', padding: '4px 0 24px' },
   overlay: {
     position: 'fixed', inset: 0, zIndex: 1000,
     background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
