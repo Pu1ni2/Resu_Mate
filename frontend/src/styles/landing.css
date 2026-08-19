@@ -41,24 +41,45 @@
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: transparent; border: 1px solid transparent;
-  border-radius: var(--radius-md); cursor: pointer;
+  border-radius: var(--radius-control); cursor: pointer;
   font-family: var(--font-sans); font-size: var(--text-sm); font-weight: var(--weight-medium);
-  color: var(--text3); transition: all var(--duration-fast); text-align: left;
+  color: var(--color-ink-subtle);
+  transition: color 120ms ease-out, background-color 120ms ease-out, border-color 120ms ease-out;
+  text-align: left;
 }
-.l-agent-tab:hover { color: var(--text); background: var(--bg3); }
+.l-agent-tab:hover { color: var(--color-ink); background: var(--color-surface-raised); }
+/* Active state carries the accent on the left rule only. Filling the whole tab
+   with accent would make five tabs compete with the one CTA on the page. */
 .l-agent-tab.active {
-  color: var(--text); background: var(--bg3);
-  border-color: var(--color-accent);
+  color: var(--color-ink);
+  background: var(--color-surface-raised);
+  border-color: var(--color-line);
   box-shadow: inset 3px 0 0 var(--color-accent);
 }
-.l-agent-tab-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; background: var(--bg4); color: var(--text2); }
+.l-agent-tab-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-surface); color: var(--color-ink-muted);
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
 .l-agent-tab.active .l-agent-tab-icon { background: var(--color-accent-wash); color: var(--color-accent); }
 
+/* The detail panel is the raised plane in this section, so it gets the same
+   light model as the hero's product panel: e2 elevation and a lit top edge. */
 .l-agent-detail {
+  position: relative;
   flex: 1; padding: var(--space-6);
-  background: var(--surface); border: 1px solid var(--surface-border);
-  border-radius: var(--radius-xl);
+  background: var(--color-surface); border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-e2);
   animation: fadeInScale var(--duration-normal) var(--ease-out);
+}
+.l-agent-detail::before {
+  content: ''; position: absolute; inset-inline: 0; top: 0; height: 1px;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: linear-gradient(90deg, transparent, var(--color-highlight) 18%,
+    var(--color-highlight-strong) 50%, var(--color-highlight) 82%, transparent);
+  pointer-events: none;
 }
 .l-agent-detail-header { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
 .l-agent-detail-icon {
@@ -75,13 +96,15 @@
   padding: 2px 8px; border-radius: var(--radius-sm);
 }
 .l-pipeline-arrow { color: var(--text4); font-size: 10px; }
-.l-agent-detail-desc { color: var(--text2); font-size: var(--text-base); line-height: var(--leading-relaxed); margin-bottom: var(--space-4); }
+.l-agent-detail-desc { color: var(--color-ink-muted); font-size: var(--text-base); line-height: var(--leading-relaxed); margin-bottom: var(--space-4); }
 .l-agent-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
-.l-agent-tools-label { font-size: var(--text-xs); color: var(--text3); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
+.l-agent-tools-label { font-size: var(--text-xs); color: var(--color-ink-subtle); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
+/* Squared off, matching the hero's tech pills — a stadium-shaped mono chip
+   reads as a tag, a rounded-rect one reads as a token. */
 .l-tool-chip {
-  font-size: var(--text-xs); padding: 4px 10px;
-  background: var(--bg3); border: 1px solid var(--surface-border);
-  border-radius: var(--radius-full); color: var(--text2);
+  font-size: 11px; padding: 4px 10px;
+  background: var(--color-surface-raised); border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm); color: var(--color-ink-muted);
   font-family: var(--font-mono);
 }
 
