@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Clock, Mic, Video } from 'lucide-react';
 import { cn } from '../ui/cn';
 import ScoreRing from './ScoreRing';
 import { toneForVerdict } from './adapters';
@@ -25,6 +25,26 @@ const verdictTone = {
   caution: 'border-caution/30 bg-caution-wash text-caution',
   neutral: 'border-line bg-surface-raised text-ink-muted',
 };
+
+/* Optional interview-state pill. Distinct from the verdict pill: the verdict is
+ * a judgement about the resume, this is a fact about a process. Shown as an
+ * outline rather than a filled tone so the two do not compete. */
+const STATUS_LABEL = { pending: 'Invited', in_progress: 'In progress', completed: 'Done' };
+
+function StatusPill({ status }) {
+  const label = STATUS_LABEL[status?.status];
+  if (!label) return null;
+  const isVoice = status.mode === 'conversational';
+  const Icon = status.status === 'in_progress' ? Clock : isVoice ? Mic : Video;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] text-ink-subtle"
+      title={`${isVoice ? 'Voice' : 'Avatar'} interview — ${label}`}
+    >
+      <Icon size={10} /> {label}
+    </span>
+  );
+}
 
 function VerdictPill({ verdict, className }) {
   if (!verdict) return null;
@@ -95,6 +115,7 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-[14px] font-semibold text-ink">{row.name}</span>
             <VerdictPill verdict={row.verdict} />
+            <StatusPill status={row.status} />
           </div>
           {row.meta && <div className="mt-0.5 truncate text-[12px] text-ink-subtle">{row.meta}</div>}
           {row.matchValue > 0 && (
