@@ -3,6 +3,7 @@ Screening pipeline API
 Orchestrates ATS scoring, candidate shortlisting, and batch interview/email actions.
 """
 import json
+import time
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -93,7 +94,12 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
             "role_keywords": req.role.lower().split(),
         }
 
-    # 3. Run ATS scoring on all candidates concurrently
+    # 3. Run ATS scoring on all candidates concurrently.
+    #    Timed with perf_counter so the UI can state how long a run took. Only
+    #    the scoring is measured, not JD parsing above -- the claim shown is
+    #    "ranked in Xs", and folding an optional LLM call into that number would
+    #    make it mean something different depending on whether a JD was pasted.
+    _t0 = time.perf_counter()
     results = await ats_service.run_ats_pipeline(
         pool,
         jd_requirements,
@@ -101,6 +107,8 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
         min_experience_years=req.min_experience_years,
         required_skills=req.required_skills,
     )
+
+    elapsed_ms = int((time.perf_counter() - _t0) * 1000)
 
     # 4. Bucket stats
     stats = {"strong_fit": 0, "good_fit": 0, "consider": 0, "no_match": 0}
@@ -121,6 +129,7 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
     return {
         "role": req.role,
         "total_screened": len(results),
+        "elapsed_ms": elapsed_ms,
         "jd_requirements": jd_requirements,
         "results": results,
         "shortlist": shortlist,
