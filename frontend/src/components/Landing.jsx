@@ -70,19 +70,22 @@ export default function Landing() {
         className={cn(
           'fixed inset-x-0 top-0 z-50 px-6 py-4',
           'transition-[background-color,border-color] duration-200 ease-out',
+          // Paper, not frosted glass. A translucent blurred bar is a dark-UI
+          // device; on paper it just muddies the type behind it. The rule
+          // appears on scroll and that is the whole transition.
           scrolled
-            ? 'border-b border-line bg-canvas/80 backdrop-blur-xl'
+            ? 'border-b border-line bg-canvas'
             : 'border-b border-transparent',
         )}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <button
             type="button"
-            className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.01em] text-ink"
+            className="flex items-center gap-2 font-display text-[20px] tracking-[-0.01em] text-ink"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <Logo size={26} />
-            <span>ResuMate<span className="ml-1 text-accent">AI</span></span>
+            <span>ResuMate<span className="ml-1 italic text-accent">AI</span></span>
           </button>
 
           <div className="hide-mobile flex gap-7">
@@ -91,7 +94,7 @@ export default function Landing() {
                 <a
                   key={href}
                   href={href}
-                  className="text-sm font-medium text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
+                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
                 >
                   {label}
                 </a>

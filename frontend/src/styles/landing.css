@@ -1,20 +1,36 @@
 /* ═══════════════════════════════════════
    LANDING PAGE STYLES
-   Aesthetic: Refined dark, premium tech
+   Editorial — paper, ink, hairline rules
    ═══════════════════════════════════════ */
 
-/* ─── Sections ─── */
-.l-section { position: relative; z-index: 1; padding: 112px var(--space-6); }
-.l-section-alt { background: var(--color-surface); }
-.l-section-inner { max-width: 1100px; margin: 0 auto; }
-.l-section-header { text-align: center; margin-bottom: var(--space-10); }
+/* ─── Sections ───
+   Separated by a hairline rule rather than alternating background bands. A
+   band says "new panel"; a rule says "new chapter", which is the right
+   metaphor for a page that reads top to bottom. It also means every section
+   sits on the same paper, so the page has one surface instead of stripes. */
+.l-section { position: relative; z-index: 1; padding: 104px var(--space-6); border-top: 1px solid var(--color-line); }
+.l-section-alt { background: transparent; }
+.l-section-inner { max-width: 72rem; margin: 0 auto; }
+
+/* Headers align left with the hero rather than centring. Centred section
+   headers over left-aligned content is the inconsistency that made the old
+   layout feel arbitrary. */
+.l-section-header { text-align: left; margin-bottom: var(--space-10); max-width: 44rem; }
 .l-section-tag {
-  display: inline-block; font-size: var(--text-xs); font-weight: var(--weight-semibold);
-  color: var(--color-accent); text-transform: uppercase; letter-spacing: 0.08em;
+  display: block; font-family: var(--font-mono);
+  font-size: 11px; font-weight: 400;
+  color: var(--color-ink-subtle); text-transform: uppercase; letter-spacing: 0.18em;
+  margin-bottom: var(--space-4);
+}
+/* The display serif carries the section headings too, so the page has one
+   voice at every level instead of a serif hero above sans-serif everything. */
+.l-section-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.6vw, 2.75rem); font-weight: 400;
+  line-height: 1.1; letter-spacing: -0.02em;
   margin-bottom: var(--space-3);
 }
-.l-section-header h2 { font-size: clamp(1.75rem, 3.2vw, 2.375rem); font-weight: var(--weight-semibold); margin-bottom: var(--space-3); letter-spacing: -0.025em; }
-.l-section-header p { font-size: var(--text-md); color: var(--color-ink-muted); max-width: 500px; margin: 0 auto; }
+.l-section-header p { font-size: 17px; line-height: 1.65; color: var(--color-ink-muted); max-width: 34rem; }
 
 /* ─── Agent Showcase ─── */
 .l-agents-showcase { display: flex; gap: var(--space-6); align-items: flex-start; }
