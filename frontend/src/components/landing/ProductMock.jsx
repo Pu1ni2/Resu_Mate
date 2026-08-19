@@ -1,6 +1,8 @@
 import React from 'react';
-import { Check, ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { cn } from '../ui/cn';
+import RankedCandidates, { RankedSummary } from '../ranked/RankedCandidates';
+import { fromAtsResult } from '../ranked/adapters';
 
 /* ProductMock — the AutoHire results panel, rendered in real HTML.
  *
@@ -8,67 +10,65 @@ import { cn } from '../ui/cn';
  * it reflows on small screens instead of overflowing, it follows the theme
  * tokens into light mode, and it cannot go stale the way a PNG of a UI does.
  *
- * It is an honest depiction, not a fantasy. The score bands and verdict labels
- * are the ones ats_service.py actually assigns (>=75 Strong Fit, >=55 Good Fit,
- * >=35 Consider), and the layout mirrors what ATSResultsView.jsx renders: a
- * conic-gradient score ring, name, verdict pill, meta line, sub-score bars.
- * Candidate names are illustrative.
+ * Crucially it renders through the same RankedCandidates component the product
+ * uses, from payloads in the same shape the API returns. That is what stops the
+ * marketing panel and the real screen drifting apart -- restyle the product and
+ * this follows automatically. Only the window chrome and the sample rows are
+ * specific to the landing page.
+ *
+ * Candidate names are illustrative; the scores, verdicts and bands are the ones
+ * ats_service.py actually produces.
  */
 
-const ROWS = [
+/* Shaped exactly like a /api/pipeline/run result so it goes through the real
+ * adapter — no parallel mock format to keep in sync. */
+const SAMPLE = [
   {
-    score: 92,
+    candidate_id: 1,
     name: 'Maya Rodriguez',
-    meta: 'Senior · 6y · Berlin',
+    ats_score: 92,
     verdict: 'Strong Fit',
-    skills: 94,
-    matched: ['Python', 'FastAPI', 'AWS'],
-    lead: true,
+    predicted_role: 'Senior',
+    total_experience_years: 6,
+    location: 'Berlin',
+    skills_match: 94,
+    matched_skills: ['Python', 'FastAPI', 'AWS'],
   },
   {
-    score: 87,
+    candidate_id: 2,
     name: 'Devan Patel',
-    meta: 'Mid-Level · 4y · Austin',
+    ats_score: 87,
     verdict: 'Strong Fit',
-    skills: 88,
-    matched: ['Python', 'Django', 'Postgres'],
+    predicted_role: 'Mid-Level',
+    total_experience_years: 4,
+    location: 'Austin',
+    skills_match: 88,
+    matched_skills: ['Python', 'Django', 'Postgres'],
   },
   {
-    score: 64,
+    candidate_id: 3,
     name: 'Sam Okafor',
-    meta: 'Mid-Level · 3y · Remote',
+    ats_score: 64,
     verdict: 'Good Fit',
-    skills: 61,
-    matched: ['Python', 'Flask'],
+    predicted_role: 'Mid-Level',
+    total_experience_years: 3,
+    location: 'Remote',
+    skills_match: 61,
+    matched_skills: ['Python', 'Flask'],
   },
 ];
 
-/* Same construction as the live view: a conic sweep for the filled arc with a
- * punched-out centre, so the number sits in a ring rather than on a pie. */
-function ScoreRing({ score }) {
-  return (
-    <div
-      className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-      style={{
-        background: `conic-gradient(var(--color-accent) ${score * 3.6}deg, var(--color-data-track) 0deg)`,
-      }}
-    >
-      <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-surface font-mono text-[13px] font-semibold text-ink">
-        {score}
-      </div>
-    </div>
-  );
-}
+const ROWS = SAMPLE.map(fromAtsResult);
 
 export default function ProductMock({ className }) {
   return (
     <div
       className={cn('relative w-full', className)}
-      /* Decorative: the page already says all of this in prose above. */
+      /* Decorative: the prose above already says all of this. */
       aria-hidden="true"
     >
       <div className="relative overflow-hidden rounded-[16px] border border-line bg-surface shadow-e3 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[linear-gradient(90deg,transparent,var(--color-highlight)_18%,var(--color-highlight-strong)_50%,var(--color-highlight)_82%,transparent)]">
-        {/* Window chrome */}
+        {/* Window chrome — a marketing device, not part of the real screen. */}
         <div className="flex items-center gap-3 border-b border-line bg-surface-raised/60 px-4 py-3">
           <div className="flex gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-ink-faint/50" />
@@ -84,79 +84,15 @@ export default function ProductMock({ className }) {
           <ChevronDown size={14} className="ml-auto shrink-0 text-ink-faint" />
         </div>
 
-        {/* Summary strip */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2.5 text-[12px] text-ink-subtle sm:px-5">
-          <span>
-            <span className="font-mono text-ink-muted">12</span> resumes screened
-          </span>
-          <span>
-            <span className="font-mono text-ink-muted">4</span> strong fits
-          </span>
-          <span className="ml-auto hidden items-center gap-1.5 text-positive sm:flex">
-            <Check size={12} /> Ranked in 8s
-          </span>
-        </div>
+        <RankedSummary screened={12} strongFits={4} elapsedMs={8200} />
 
-        {/* Ranked rows */}
-        <div className="divide-y divide-line">
-          {ROWS.map(row => (
-            <div
-              key={row.name}
-              className={cn(
-                'flex items-center gap-3.5 px-4 py-3.5 sm:gap-4 sm:px-5',
-                // The top result carries a faint accent wash and a left rule --
-                // the same "this is the one" treatment the real list uses,
-                // shown here in its resting state rather than on hover.
-                row.lead && 'relative bg-accent-wash/40 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent',
-              )}
-            >
-              <ScoreRing score={row.score} />
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[14px] font-semibold text-ink">{row.name}</span>
-                  <span
-                    className={cn(
-                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                      row.verdict === 'Strong Fit'
-                        ? 'border-positive/30 bg-positive-wash text-positive'
-                        : 'border-line bg-surface-raised text-ink-muted',
-                    )}
-                  >
-                    {row.verdict}
-                  </span>
-                </div>
-                <div className="mt-0.5 truncate text-[12px] text-ink-subtle">{row.meta}</div>
-
-                {/* Skill-match bar. Scaled to the value, with the track always
-                    visible, so the length means something -- unlike the current
-                    analytics bars, which render full-width regardless. */}
-                <div className="mt-2 flex items-center gap-2.5">
-                  <div className="h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-data-track">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: `${row.skills}%` }}
-                    />
-                  </div>
-                  <span className="shrink-0 font-mono text-[11px] text-ink-subtle">
-                    {row.skills}% skills
-                  </span>
-                </div>
-              </div>
-
-              <div className="hidden shrink-0 gap-1.5 lg:flex">
-                {row.matched.map(s => (
-                  <span
-                    key={s}
-                    className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted"
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Same component the product renders. No selection or expand here --
+            there is nothing to act on in a picture. */}
+        <RankedCandidates
+          rows={ROWS}
+          expandable={false}
+          className="rounded-none border-0 bg-transparent shadow-none"
+        />
       </div>
 
       {/* Fades the panel into the page instead of stopping at a hard edge. */}
