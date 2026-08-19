@@ -195,89 +195,90 @@
   --shadow-e3: 0 24px 56px -16px rgb(9 9 11 / 0.14), 0 8px 20px -8px rgb(9 9 11 / 0.08);
 }
 
-/* ─── Landing page scope ──────────────────────────────────
-   Warm dark. Deliberately not the zinc-950 + amber-500 default the product
-   uses, which is the palette every generated site ships:
+/* ─── Landing page scope: navy and gold ───────────────────
+   Deep navy with a golden yellow. Blue and yellow is a hard pairing to make
+   look cheap — it is high-contrast and complementary, so the accent does not
+   need saturation tricks to be seen.
 
-     canvas  #141110  warm charcoal, brown-black not blue-black
-     ink     #F7F2EA  cream, not white and not zinc
-     accent  #E03C1F  vermillion — hot, saturated, one hue doing all the work
+     canvas  #0A1633  deep navy, not a bright cobalt
+     ink     #F7F5EF  warm cream, not white
+     accent  #FFC93C  golden yellow
 
-   The warmth is the whole point. Blue-black plus a yellow accent is what a
-   framework hands you; charcoal plus cream plus one hot red is a decision, and
-   warm neutrals read expensive in a way cool greys do not.
+   Deep navy rather than electric blue on purpose: bright saturated blue reads
+   consumer-fintech, while a deep navy with gold reads considered. The yellow is
+   warm rather than acid for the same reason, and it is strong enough to carry a
+   full-bleed band, which is what this page is built around.
 
-   Applied as a class, not a theme, so the marketing page does not flip when
-   someone toggles the product's theme. Scoping it here means every existing
-   bg-canvas / text-ink utility re-points with no markup change and no risk to
-   the product.
+   Navy is also dark enough that cream type sits at a comfortable contrast
+   without going pure white, and gold is bright enough that navy text on a gold
+   fill passes comfortably — so the accent works as a surface, not just a tint.
 
-   Placed after :root and [data-theme='light'], all three being specificity
-   (0,1,0) — source order is what decides.
+   Applied as a class, not a theme, so the marketing page never flips with the
+   product's theme toggle. Must stay after :root and [data-theme='light'] —
+   all three are specificity (0,1,0), so source order decides.
    ───────────────────────────────────────────────────────── */
 .editorial {
-  --color-canvas: #141110;
-  --color-surface: #1c1917;
-  --color-surface-raised: #262220;
-  --color-surface-hover: #302b28;
+  --color-canvas: #0a1633;
+  --color-surface: #112247;
+  --color-surface-raised: #18305c;
+  --color-surface-hover: #1e3a6e;
 
-  --color-line: rgba(247, 242, 234, 0.10);
-  --color-line-strong: rgba(247, 242, 234, 0.20);
+  --color-line: rgba(247, 245, 239, 0.13);
+  --color-line-strong: rgba(247, 245, 239, 0.26);
 
-  --color-ink: #f7f2ea;
-  --color-ink-muted: #b5aca1;
-  --color-ink-subtle: #8a8177;
-  --color-ink-faint: #635b53;
-  --color-ink-inverse: #141110;
+  --color-ink: #f7f5ef;
+  --color-ink-muted: #a8b4ce;
+  --color-ink-subtle: #7385a6;
+  --color-ink-faint: #56678a;
+  /* Navy on gold — the accent is a surface here, so this has to be readable. */
+  --color-ink-inverse: #0a1633;
 
-  --color-accent: #e03c1f;
-  --color-accent-hover: #f04e30;
-  --color-accent-press: #b82d13;
-  --color-accent-wash: rgba(224, 60, 31, 0.12);
-  --color-accent-line: rgba(224, 60, 31, 0.35);
+  --color-accent: #ffc93c;
+  --color-accent-hover: #ffd666;
+  --color-accent-press: #e5b02a;
+  --color-accent-wash: rgba(255, 201, 60, 0.12);
+  --color-accent-line: rgba(255, 201, 60, 0.38);
 
-  --color-positive: #7cc04a;
-  --color-positive-wash: rgba(124, 192, 74, 0.12);
-  --color-critical: #e03c1f;
-  --color-critical-wash: rgba(224, 60, 31, 0.12);
-  --color-caution: #e8a33d;
-  --color-caution-wash: rgba(232, 163, 61, 0.12);
+  --color-positive: #6ee7a8;
+  --color-positive-wash: rgba(110, 231, 168, 0.12);
+  --color-critical: #ff8080;
+  --color-critical-wash: rgba(255, 128, 128, 0.12);
+  --color-caution: #ffc93c;
+  --color-caution-wash: rgba(255, 201, 60, 0.12);
 
-  --color-data-track: rgba(247, 242, 234, 0.08);
+  --color-data-track: rgba(247, 245, 239, 0.10);
 
-  /* Warm-tinted rather than pure black, so shadows sit in the same light as
-     the surfaces instead of punching holes in them. */
-  --color-highlight: rgba(247, 242, 234, 0.09);
-  --color-highlight-strong: rgba(247, 242, 234, 0.16);
-  --shadow-e1: 0 1px 2px rgb(12 9 8 / 0.45);
-  --shadow-e2: 0 4px 14px -3px rgb(12 9 8 / 0.55);
-  --shadow-e3: 0 28px 60px -18px rgb(12 9 8 / 0.75), 0 8px 20px -8px rgb(12 9 8 / 0.5);
+  --color-highlight: rgba(247, 245, 239, 0.10);
+  --color-highlight-strong: rgba(247, 245, 239, 0.18);
+  --shadow-e1: 0 1px 2px rgb(3 8 24 / 0.5);
+  --shadow-e2: 0 4px 14px -3px rgb(3 8 24 / 0.6);
+  --shadow-e3: 0 28px 60px -18px rgb(3 8 24 / 0.8), 0 8px 20px -8px rgb(3 8 24 / 0.55);
 
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-text);
 }
 
-/* Grain stays at the dark-surface setting: on a warm charcoal it is doing real
-   work, stopping large fills reading as a flat colour value. */
 .editorial.grain-overlay::after { opacity: 0.03; }
 
 /* ─── The plate ───────────────────────────────────────────
-   The product panel, inset. The page is already dark, so this no longer needs
-   to invert the palette — it goes one step deeper than the page and keeps the
-   product's own amber accent, which is correct: what you see in the panel is
-   what the product actually looks like.
+   The product panel. It straddles the gold band, so it has to read as a
+   distinct object against BOTH navy and gold — hence a step darker than the
+   page rather than lighter. It keeps the product's own amber accent, which is
+   honest: what is in the panel is what the product actually looks like.
    ───────────────────────────────────────────────────────── */
 .plate {
-  --color-canvas: #0f0d0c;
-  --color-surface: #171413;
-  --color-surface-raised: #201c1a;
+  --color-canvas: #050d20;
+  --color-surface: #0b1730;
+  --color-surface-raised: #12203d;
+  --color-line: rgba(247, 245, 239, 0.12);
   --color-accent: #e8a33d;
   --color-accent-hover: #f0b556;
-  --color-accent-wash: rgba(232, 163, 61, 0.12);
-  --color-accent-line: rgba(232, 163, 61, 0.30);
+  --color-accent-wash: rgba(232, 163, 61, 0.14);
+  --color-accent-line: rgba(232, 163, 61, 0.32);
   color: var(--color-ink);
 }
+
 
 
 /* ═══════════════════════════════════════════════════════════

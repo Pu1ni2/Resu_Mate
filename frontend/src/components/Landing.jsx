@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import Button from './ui/Button';
 import { cn } from './ui/cn';
-import ProductMock from './landing/ProductMock';
+import HeroBand from './landing/HeroBand';
 
 // ─── Logo ───
 const Logo = ({ size = 32 }) => (
@@ -118,80 +118,7 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* ═══ HERO ═══
-          Asymmetric on purpose. Everything was centred before, which is the
-          safest possible arrangement and reads as such -- a centred stack of
-          badge, headline, subhead, two buttons and a pill row is the exact
-          shape every template produces. Here the copy holds a left column
-          against a generous margin, the meta sits in a narrow rail beside it,
-          and the plate breaks the full measure below. */}
-      <section className="relative z-[1] px-6 pt-32 pb-16 sm:pt-40 sm:pb-24">
-        <div className="mx-auto w-full max-w-[72rem]">
-
-          <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
-            <div className="max-w-[40rem]">
-              {/* Small caps, letterspaced, monospace — a printed standfirst
-                  rather than a pill. Pills read as UI; this is a label. */}
-              <p className="mb-7 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-                Multi-agent hiring
-              </p>
-
-              {/* Weight 900 at up to 96px with -0.045em tracking and 0.93
-                  leading. At that weight the letters have to be pulled in hard
-                  or they sprawl; pulled in, they lock into a single mass, which
-                  is what makes big type read as confidence rather than volume.
-                  One line takes the accent — vermillion is the only colour on
-                  the page, so it decides where the eye lands. */}
-              <h1 className="font-display text-[clamp(2.75rem,7.5vw,6rem)] font-black leading-[0.93] tracking-[-0.045em] text-ink">
-                Hire smarter
-                <br />
-                with <span className="text-accent">AI agents</span>
-              </h1>
-
-              <p className="mt-8 max-w-[33rem] text-[18px] leading-[1.6] text-ink-muted">
-                Five specialised agents read every resume, score it against the role
-                on fixed weights, and run the interview — so you spend your time on
-                the shortlist instead of the pile.
-              </p>
-
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <Button variant="primary" size="lg" onClick={() => navigate('/hiring')}>
-                  Start hiring <ArrowRight size={16} />
-                </Button>
-                <Button variant="ghost" size="lg" onClick={() => navigate('/candidate/login')}>
-                  I&rsquo;m a candidate
-                </Button>
-              </div>
-            </div>
-
-            {/* Meta rail. Facts about the system, set as a definition list with
-                hairline rules — the structural device that replaces cards. */}
-            <dl className="lg:pt-3">
-              {[
-                ['Agents', 'Five, specialised'],
-                ['Scoring', 'Fixed weights, reproducible'],
-                ['Interview', 'Voice or avatar'],
-                ['Stack', 'GPT-4o · ChromaDB · LiveKit'],
-              ].map(([k, v]) => (
-                <div key={k} className="border-t border-line py-3 first:border-t-0 first:pt-0 lg:first:border-t lg:first:pt-3">
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">{k}</dt>
-                  <dd className="mt-1 text-[14px] leading-snug text-ink-muted">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-
-          {/* The plate: the dark product, inset on paper. */}
-          <figure className="mt-16 sm:mt-20">
-            <div className="plate overflow-hidden rounded-[4px] shadow-e3">
-              <ProductMock framed={false} />
-            </div>
-            <figcaption className="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-faint">
-              Screening — twelve resumes against one role
-            </figcaption>
-          </figure>
-        </div>
-      </section>
+      <HeroBand navigate={navigate} />
 
       {/* ═══ AGENTS SHOWCASE ═══ */}
       <section className="l-section" id="agents">
