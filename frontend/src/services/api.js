@@ -60,8 +60,14 @@ export const candidatesAPI = {
 
 export const chatAPI = {
   send: (data) => api.post('/chat/send', data),
-  getIntro: (count, anonymize = false) => api.get(`/chat/intro?candidate_count=${count}&anonymize=${anonymize}`),
-  clear: (anonymize = false) => api.delete(`/chat/clear?anonymize=${anonymize}`)
+  // The query param is `count`, not `candidate_count`. It was the latter, which
+  // FastAPI silently ignored, so the intro message was always generated as if
+  // zero candidates were selected.
+  getIntro: (count, anonymize = false) => api.get(`/chat/intro?count=${count}&anonymize=${anonymize}`),
+  // POST, not DELETE. The backend registers POST /chat/clear, so this returned
+  // 405 on every call — invisible, because the caller ignores the rejection and
+  // clears local state anyway, leaving the server's history intact.
+  clear: () => api.post('/chat/clear')
 };
 
 export default api;

@@ -84,3 +84,31 @@ def test_per_conversation_message_cap_still_applies():
     assert len(convo) == chat_api._CHAT_MAX_MESSAGES_PER_CONVO
     # Newest kept, oldest dropped.
     assert convo[-1]["content"] == "a29"
+
+
+# ── Method / parameter contract ───────────────────────────────────────────────
+# The frontend called DELETE /chat/clear (backend registers POST) and passed
+# ?candidate_count= to /chat/intro (the parameter is `count`). Both failed
+# silently: the 405 was swallowed by a .catch() that cleared local state anyway,
+# and FastAPI ignored the unknown query param so the intro always rendered as if
+# nothing was selected. Pinning both here because neither surfaced as an error.
+
+def test_clear_is_post_not_delete(client):
+    tok, _ = register(client, "contract@co.com")
+    assert client.post("/api/chat/clear", headers=auth_headers(tok)).status_code == 200
+    # If someone adds a DELETE handler later this is fine to update — the point
+    # is that the frontend and backend agree on one verb.
+    assert client.delete("/api/chat/clear", headers=auth_headers(tok)).status_code == 405
+
+
+def test_intro_reads_the_count_parameter(client):
+    tok, _ = register(client, "contract2@co.com")
+    r = client.get("/api/chat/intro?count=3", headers=auth_headers(tok))
+    assert r.status_code == 200, r.text
+    # The old name must not be what the endpoint depends on.
+    r2 = client.get("/api/chat/intro?candidate_count=3", headers=auth_headers(tok))
+    assert r2.status_code == 200
+    assert r.json() != r2.json() or "3" in str(r.json()), (
+        "count= should affect the intro; if these are identical the parameter "
+        "is being ignored again"
+    )
