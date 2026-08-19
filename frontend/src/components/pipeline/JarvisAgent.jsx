@@ -2,6 +2,8 @@
 import { X, Send, Mic, MicOff, Loader, RotateCcw, Maximize2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
+import RankedCandidates from '../ranked/RankedCandidates';
+import { fromAtsResult } from '../ranked/adapters';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 const SESSION_KEY = 'jarvis_session_v3';
@@ -155,14 +157,6 @@ function buildCandidateList(candidates) {
   return candidates
     .map(c => `${c.name} (${c.predicted_role || 'Unknown'}, ${c.total_experience_years || 0}y)`)
     .join('; ');
-}
-
-function verdictColor(v = '') {
-  const s = v.toLowerCase();
-  if (s.includes('strong'))   return '#4ADE80';
-  if (s.includes('good'))     return '#38BDF8';
-  if (s.includes('consider')) return '#FCD34D';
-  return '#F87171';
 }
 
 function createDefaultJarvisContext() {
@@ -2115,28 +2109,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         }}>
                           {(d.role || '').toUpperCase()} Â· {d.total_screened || 0} SCREENED
                         </div>
-                        {rows.map((r, i) => (
-                          <div key={r.candidate_id || i} style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '6px 0',
-                            borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                          }}>
-                            <div style={{
-                              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                              background: verdictColor(r.verdict),
-                              boxShadow: `0 0 6px ${verdictColor(r.verdict)}`,
-                            }} />
-                            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#E4E4E7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {r.name}
-                            </span>
-                            <span style={{ fontSize: 14, fontWeight: 800, color: verdictColor(r.verdict), width: 32, textAlign: 'right' }}>
-                              {r.ats_score}
-                            </span>
-                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: verdictColor(r.verdict), width: 72, textAlign: 'right', opacity: 0.85 }}>
-                              {r.verdict}
-                            </span>
-                          </div>
-                        ))}
+                        {/* Same component the shortlist screen renders, compact
+                            variant. This card used to hand-roll its own rows and
+                            its own verdict colours, which disagreed with the
+                            shortlist's for the same four verdicts. */}
+                        <RankedCandidates
+                          variant="compact"
+                          rows={rows.map(fromAtsResult)}
+                        />
                         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                           {shortlisted.length > 0 && (
                             <button
