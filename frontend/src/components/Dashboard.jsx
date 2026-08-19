@@ -940,17 +940,33 @@ export default function Dashboard() {
                       {analytics.topSkills.length === 0 ? (
                         <p style={{ color: 'var(--text3)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>No skills data</p>
                       ) : (
-                        <div className="clean-bar-chart">
-                          {analytics.topSkills.map((s, i) => (
-                            <div key={i} className="clean-bar-row">
-                              <span className="clean-bar-label">{s.name}</span>
-                              <div className="clean-bar-track">
-                                <div className="clean-bar-fill" style={{ width: `${s.percentage}%` }} />
+                        // When every skill has the same count -- which is
+                        // always true for a single candidate -- bars are all the
+                        // same length and encode nothing. A ranked chip list is
+                        // the honest form for that data.
+                        analytics.topSkillsAllEqual || analytics.total < 2 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {analytics.topSkills.map(s => (
+                              <span key={s.name} className="skill">{s.name}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="clean-bar-chart">
+                            {analytics.topSkills.map(s => (
+                              <div key={s.name} className="clean-bar-row">
+                                <span className="clean-bar-label">{s.name}</span>
+                                <div className="clean-bar-track">
+                                  {/* Scaled to the most common skill, not to the
+                                      candidate count. */}
+                                  <div className="clean-bar-fill" style={{ width: `${s.barPct}%` }} />
+                                </div>
+                                <span className="clean-bar-count" title={`${s.share}% of selected candidates`}>
+                                  {s.count}
+                                </span>
                               </div>
-                              <span className="clean-bar-count">{s.count}</span>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )
                       )}
                     </div>
                   </div>

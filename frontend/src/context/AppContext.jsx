@@ -104,7 +104,7 @@ export const AppProvider = ({ children }) => {
   const analytics = useMemo(() => {
     const selected = selectedCandidates.filter(c => c.is_resume !== false);
     if (selected.length === 0) {
-      return { total: 0, avgExperience: 0, totalSkills: 0, topSkills: [], roleDistribution: [], levelDistribution: [] };
+      return { total: 0, avgExperience: 0, totalSkills: 0, topSkills: [], topSkillsAllEqual: false, roleDistribution: [], levelDistribution: [] };
     }
 
     const total = selected.length;
@@ -117,10 +117,28 @@ export const AppProvider = ({ children }) => {
         if (name) skillMap.set(name, (skillMap.get(name) || 0) + 1);
       });
     });
-    const topSkills = Array.from(skillMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, count]) => ({ name, count, percentage: Math.round(count / total * 100) }));
+    // Two different numbers, previously conflated into one:
+    //
+    //   share   what fraction of the selected candidates have this skill. The
+    //           real statistic, but useless as a bar length — with one
+    //           candidate selected every skill they have is 1/1, so every bar
+    //           rendered at 100% and the chart said nothing.
+    //   barPct  the count relative to the most common skill. This is what a
+    //           bar length should encode: magnitude within the series.
+    //
+    // allEqual is surfaced so the view can decide the chart is the wrong form.
+    // Bars of identical length are not a chart, and that is exactly what
+    // happens for a single candidate or any evenly-distributed pool.
+    const skillCounts = Array.from(skillMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const maxSkillCount = skillCounts.length ? skillCounts[0][1] : 0;
+    const topSkills = skillCounts.map(([name, count]) => ({
+      name,
+      count,
+      share: Math.round((count / total) * 100),
+      barPct: maxSkillCount ? Math.round((count / maxSkillCount) * 100) : 0,
+    }));
+    const topSkillsAllEqual =
+      skillCounts.length > 1 && skillCounts.every(([, c]) => c === maxSkillCount);
 
     const roleMap = new Map();
     selected.forEach(c => {
