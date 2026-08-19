@@ -30,7 +30,7 @@ class HRAgent(BaseAgent):
 
     async def evaluate(self, candidate: Dict, role: str = None, level: str = None,
                        experience: str = None, job_description: str = None,
-                       anonymize: bool = False) -> Dict:
+                       anonymize: bool = False, ats_score: int = None) -> Dict:
         """Full candidate evaluation with market research"""
         context = {
             "candidate": candidate,
@@ -39,6 +39,7 @@ class HRAgent(BaseAgent):
             "experience": experience or "",
             "job_description": job_description,
             "anonymize": anonymize,
+            "ats_score": ats_score,
         }
 
         result = await self.run("Evaluate this candidate for the specified role", context)
@@ -141,14 +142,21 @@ MARKET DATA: {market_data[:300] if market_data else 'N/A'}
 
 Generate this EXACT format:
 ## 🎯 Evaluation Report: {display_name}
-### 📊 Overall Fit Score: [X/100]
+### 💡 Recommendation: [Interview / Hold / Pass]
 ### ✅ Strengths & Matches (4-6 points with specifics)
 ### 🔄 Growth Areas (2-4 points, framed kindly)
-### 💡 Recommendation (Strong Fit / Good Fit / Better for Related Role / Different Level)
 ### 🌐 Online Presence (GitHub/LinkedIn findings)
 ### 📌 Suggested Interview Questions (3-4 specific questions)
 
-RULES: Be professional, constructive, encouraging. Never harsh. Use specific data."""
+RULES:
+- Be professional, constructive, encouraging. Never harsh. Use specific data.
+- Do NOT produce a numeric score of any kind. Screening owns the number; it is
+  computed from fixed weights and is reproducible, and a second score from you
+  would contradict it with no way to say which is right. Your job is the
+  judgement and the reasoning behind it.
+- Recommendation must be exactly one of Interview, Hold or Pass. Those are
+  decisions. Do not use "Strong Fit" or "Good Fit" — those are the screening
+  verdicts and reusing them reads as a rival score.{score_line}"""
 
         return await openai_tool.structured_call(prompt, f"You are a senior HR manager evaluating {display_name}. Be fair and kind.")
 
