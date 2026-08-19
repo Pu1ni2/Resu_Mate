@@ -4,6 +4,7 @@ import BatchActionConfirm from './BatchActionConfirm';
 import RankedCandidates, { RankedSummary } from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { cn } from '../ui/cn';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -51,10 +52,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
 
   useEffect(() => {
     let cancelled = false;
-    const token = localStorage.getItem('resumate_hm_token') || '';
-    fetch(`${API_BASE}/api/chat/interview-statuses`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`${API_BASE}/api/chat/interview-statuses`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (!cancelled && data?.statuses) setInterviewStatuses(data.statuses); })
       .catch(() => { /* silent — badge just hides */ });

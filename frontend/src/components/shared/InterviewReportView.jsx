@@ -267,9 +267,8 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             // token and trigger a blob download instead of window.open (which
             // can't carry an Authorization header).
             try {
-              const resp = await fetch(
-                `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`,
-                { headers: { Authorization: `Bearer ${localStorage.getItem('resumate_hm_token') || ''}` } }
+              const resp = await authFetch(
+                `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`
               );
               if (!resp.ok) { alert('Could not export report (you may not have access).'); return; }
               const blob = await resp.blob();

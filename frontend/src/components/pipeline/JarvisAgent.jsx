@@ -4,6 +4,7 @@ import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 const SESSION_KEY = 'jarvis_session_v3';
@@ -610,10 +611,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       .map(m => ({ role: m.role, content: m.content }));
 
     try {
-      const token = localStorage.getItem('resumate_hm_token') || '';
-      const res = await fetch(`${API_BASE}/api/jarvis/chat`, {
+      const res = await authFetch(`${API_BASE}/api/jarvis/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           conversation_history: history,
@@ -743,8 +743,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   // handleSendMessage â€” that was causing the infinite "want me to send?" loop.
   // They produce a direct Jarvis reply and speak it themselves.
   const executeAction = useCallback(async (action, params) => {
-    const token = localStorage.getItem('resumate_hm_token') || '';
-    const hdrs  = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    const hdrs  = { 'Content-Type': 'application/json' };
     const ctx   = contextRef.current;
 
     // Helper: speak a direct Jarvis line without going through the API
@@ -758,7 +757,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       if (res.status === 401) {
         setStatus('SESSION EXPIRED');
         setHint('Session expired â€” please log in again.');
-        directSay('Your session has expired. Please log out and log back in to continue.');
+        directSay('Your session expired. Taking you back to the login screen.');
         return true;
       }
       return false;
@@ -768,7 +767,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       // ATS DOES recurse so Jarvis can summarize results conversationally
       setStatus('RUNNING ATSâ€¦');
       try {
-        const res = await fetch(`${API_BASE}/api/pipeline/run`, {
+        const res = await authFetch(`${API_BASE}/api/pipeline/run`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({
             role: params.role || ctx.role || 'Engineer',
@@ -812,7 +811,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           send_emails: params.send_emails || false,
           mode: params.mode || 'avatar',
         };
-        const res = await fetch(`${API_BASE}/api/pipeline/batch-action`, {
+        const res = await authFetch(`${API_BASE}/api/pipeline/batch-action`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify(batchBody),
         });
@@ -896,7 +895,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       setStatus('SEARCHINGâ€¦');
       try {
         const candidateName = params.candidate_name || ctx.activeCandidateName || null;
-        const res = await fetch(`${API_BASE}/api/chat/web-search`, {
+        const res = await authFetch(`${API_BASE}/api/chat/web-search`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({
             query: params.query || '',
@@ -937,7 +936,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         focusCandidate(params.candidate_id, params.candidate_name);
         const candidateMeta = getCandidateMeta(params.candidate_id);
         const githubUrl = candidateMeta?.github_url || '';
-        const res = await fetch(`${API_BASE}/api/chat/github-analyze`, {
+        const res = await authFetch(`${API_BASE}/api/chat/github-analyze`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id, github_url: githubUrl || undefined }),
         });
@@ -988,7 +987,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       setStatus('EVALUATINGâ€¦');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
-        const res = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
+        const res = await authFetch(`${API_BASE}/api/chat/hiring-agent`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({
             candidate_id: params.candidate_id,
@@ -1023,7 +1022,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       setStatus('SCANNING PROFILEâ€¦');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
-        const res = await fetch(`${API_BASE}/api/chat/scan-resume`, {
+        const res = await authFetch(`${API_BASE}/api/chat/scan-resume`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id }),
         });
@@ -1079,7 +1078,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       setStatus('ANALYZING RESUMEâ€¦');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
-        const res = await fetch(`${API_BASE}/api/chat/resume-intelligence`, {
+        const res = await authFetch(`${API_BASE}/api/chat/resume-intelligence`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id }),
         });
@@ -1126,7 +1125,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           focus_areas: params.focus_areas || [],
           mode: params.mode || 'avatar',
         };
-        const res = await fetch(`${API_BASE}/api/chat/create-interview`, {
+        const res = await authFetch(`${API_BASE}/api/chat/create-interview`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify(body),
         });
@@ -1160,9 +1159,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           setStatus('DONE');
           return;
         }
-        const res = await fetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
+        const res = await authFetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${token}` },
         });
         if (handle401(res)) return;
         if (!res.ok) throw new Error(`Interview report ${res.status}`);
@@ -1200,7 +1198,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           setStatus('DONE');
           return;
         }
-        const res = await fetch(`${API_BASE}/api/chat/credibility-analysis`, {
+        const res = await authFetch(`${API_BASE}/api/chat/credibility-analysis`, {
           method: 'POST', headers: hdrs,
           body: JSON.stringify({ candidate_id: params.candidate_id, candidate_email: candidateEmail }),
         });
@@ -1235,9 +1233,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       // Export-report requires auth; fetch with the bearer token and download
       // the blob (window.open can't carry an Authorization header).
       try {
-        const resp = await fetch(
-          `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`,
-          { headers: hdrs }
+        const resp = await authFetch(
+          `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`
         );
         if (handle401(resp)) return;
         if (!resp.ok) throw new Error(`Export ${resp.status}`);
@@ -1264,7 +1261,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     } else if (action === 'get_calendly') {
       setStatus('FETCHING CALENDLYâ€¦');
       try {
-        const res = await fetch(`${API_BASE}/api/chat/calendly-link`, {
+        const res = await authFetch(`${API_BASE}/api/chat/calendly-link`, {
           method: 'GET', headers: hdrs,
         });
         if (handle401(res)) return;
