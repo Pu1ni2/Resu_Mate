@@ -807,14 +807,22 @@ export default function Dashboard() {
                   <div className="candidates-header">
                     <h2>Candidates ({candidates.length})</h2>
                     <div className="candidates-actions">
+                      {/* One screening action. There used to be two buttons here,
+                          side by side, both with a Zap icon: "AutoHire" opened the
+                          voice agent, "Rank" ran a different and weaker ranking
+                          endpoint. Nothing in either label told you which was which. */}
                       {candidates.filter(c => c.is_resume !== false).length >= 1 && (
-                        <button onClick={() => setShowPipeline(true)} className="btn btn-sm" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Zap size={14} /> AutoHire
+                        <button onClick={() => setTab('screening')} className="btn btn-primary btn-sm">
+                          <Zap size={14} /> Screen candidates
                         </button>
                       )}
-                      {candidates.filter(c => c.is_resume !== false).length >= 2 && (
-                        <button onClick={() => setShowAutomate(true)} className="btn btn-sm" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Zap size={14} /> Rank
+                      {/* Jarvis keeps an entry point until it is docked as a
+                          persistent copilot; it is the only route to several
+                          capabilities, so it cannot be stranded in the meantime.
+                          Named for what it opens rather than for what it does. */}
+                      {candidates.filter(c => c.is_resume !== false).length >= 1 && (
+                        <button onClick={() => setShowPipeline(true)} className="btn btn-secondary btn-sm">
+                          <Sparkles size={14} /> Ask Jarvis
                         </button>
                       )}
                       <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
