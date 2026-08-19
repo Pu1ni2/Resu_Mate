@@ -49,6 +49,9 @@ export default function ProductLayer({ children }) {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
   }, []);
 
+  // Public marketing and legal pages get no product chrome.
+  const isPublicPage = ['/', '/terms', '/privacy'].includes(location.pathname);
+
   // ═══ ONBOARDING ═══
   useEffect(() => {
     if (!hasSeenOnboarding && location.pathname.startsWith('/hiring')) {
@@ -175,7 +178,14 @@ export default function ProductLayer({ children }) {
         ))}
       </div>
 
-      {/* ═══ FLOATING TOOLBAR (bottom-right) ═══ */}
+      {/* ═══ FLOATING TOOLBAR (bottom-right) ═══
+          Product chrome, so it is hidden on the public pages. On the landing
+          page the theme toggle does nothing (the landing scope sets its own
+          tokens unconditionally), the notification bell can never fill because
+          nothing calls addNotification, and a keyboard-shortcuts modal on a
+          marketing page is noise. Three controls that either misled or did
+          nothing. */}
+      {!isPublicPage && (
       <div className="pl-toolbar">
         {/* Theme toggle */}
         <button className="pl-toolbar-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (T)`} aria-label="Toggle theme">
@@ -193,6 +203,7 @@ export default function ProductLayer({ children }) {
           <Keyboard size={18} />
         </button>
       </div>
+      )}
 
       {/* ═══ NOTIFICATION PANEL ═══ */}
       {showNotifPanel && (

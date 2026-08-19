@@ -9,7 +9,6 @@
    metaphor for a page that reads top to bottom. It also means every section
    sits on the same paper, so the page has one surface instead of stripes. */
 .l-section { position: relative; z-index: 1; padding: 104px var(--space-6); border-top: 1px solid var(--color-line); }
-.l-section-alt { background: transparent; }
 .l-section-inner { max-width: 72rem; margin: 0 auto; }
 
 /* Headers align left with the hero rather than centring. Centred section
@@ -19,15 +18,15 @@
 .l-section-tag {
   display: block; font-family: var(--font-mono);
   font-size: 11px; font-weight: 400;
-  color: var(--color-ink-subtle); text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--color-accent); text-transform: uppercase; letter-spacing: 0.18em;
   margin-bottom: var(--space-4);
 }
 /* Same family and the same tight-and-heavy treatment as the hero, a step down
    in size. One face, weight carrying the hierarchy. */
 .l-section-header h2 {
   font-family: var(--font-display);
-  font-size: clamp(1.875rem, 3.4vw, 2.625rem); font-weight: 900;
-  line-height: 1.02; letter-spacing: -0.035em;
+  font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 700;
+  line-height: 1.08; letter-spacing: -0.03em;
   margin-bottom: var(--space-4);
 }
 .l-section-header p { font-size: 17px; line-height: 1.65; color: var(--color-ink-muted); max-width: 34rem; }
@@ -106,112 +105,13 @@
   font-family: var(--font-mono);
 }
 
-/* ─── Steps ─── */
-.l-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
-.l-step-card {
-  padding: var(--space-8) var(--space-6);
-  background: var(--color-surface); border: 1px solid var(--color-line);
-  border-radius: var(--radius-panel); text-align: left;
-  box-shadow: var(--shadow-e1); position: relative;
-  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
-}
-/* Raises rather than jumps. A 4px translate on a grid of cards makes the whole
-   row twitch as the cursor crosses it. */
-.l-step-card:hover { border-color: var(--color-line-strong); box-shadow: var(--shadow-e2); }
-.l-step-card::before {
-  content: ''; position: absolute; inset-inline: 0; top: 0; height: 1px;
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-  background: linear-gradient(90deg, transparent, var(--color-highlight) 18%,
-    var(--color-highlight-strong) 50%, var(--color-highlight) 82%, transparent);
-  pointer-events: none;
-}
-/* The step number is an ordinal, not a headline. It was 36px extra-bold and
-   outweighed the step title it labels. */
-.l-step-num {
-  position: absolute; top: var(--space-5); right: var(--space-5);
-  font-size: var(--text-sm); font-weight: var(--weight-medium);
-  color: var(--color-ink-faint); line-height: 1; font-family: var(--font-mono);
-}
-.l-step-icon {
-  width: 40px; height: 40px; border-radius: var(--radius-control);
-  background: var(--color-accent-wash); color: var(--color-accent);
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 0 var(--space-4);
-}
-.l-step-card h3 { font-size: var(--text-lg); margin-bottom: var(--space-2); letter-spacing: -0.01em; }
-.l-step-card p { font-size: var(--text-sm); color: var(--color-ink-muted); line-height: var(--leading-relaxed); }
-
-/* ─── Features Grid ─── */
-.l-features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
-.l-feature-card {
-  position: relative; padding: var(--space-6);
-  background: var(--color-surface); border: 1px solid var(--color-line);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-e1);
-  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
-  animation: fadeInUp var(--duration-slow) var(--ease-out) backwards;
-}
-.l-feature-card:hover { border-color: var(--color-line-strong); box-shadow: var(--shadow-e2); }
-.l-feature-card::before {
-  content: ''; position: absolute; inset-inline: 0; top: 0; height: 1px;
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-  background: linear-gradient(90deg, transparent, var(--color-highlight) 18%,
-    var(--color-highlight-strong) 50%, var(--color-highlight) 82%, transparent);
-  pointer-events: none;
-}
-.l-feature-icon {
-  width: 40px; height: 40px; border-radius: var(--radius-control);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: var(--space-4);
-}
-.l-feature-card h4 { font-size: var(--text-md); margin-bottom: var(--space-2); letter-spacing: -0.01em; }
-.l-feature-card p { font-size: var(--text-sm); color: var(--color-ink-muted); line-height: var(--leading-relaxed); }
-
-/* ─── CTA ─── */
-.l-cta {
-  position: relative; z-index: 1;
-  padding: 112px var(--space-6);
-  text-align: center;
-}
-.l-cta-inner { max-width: 600px; margin: 0 auto; position: relative; }
-.l-cta-glow {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 400px; height: 400px; border-radius: 50%;
-  background: radial-gradient(circle, var(--color-accent-wash), transparent 70%);
-  opacity: 0.3; filter: blur(60px); pointer-events: none;
-}
-.l-cta h2 { font-size: clamp(1.75rem, 3.2vw, 2.375rem); font-weight: var(--weight-semibold); margin-bottom: var(--space-3); letter-spacing: -0.025em; }
-.l-cta p { font-size: var(--text-md); color: var(--color-ink-muted); margin-bottom: var(--space-8); }
-.l-cta-buttons { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; }
-
-/* ─── Footer ─── */
-.l-footer {
-  position: relative; z-index: 1;
-  padding: var(--space-8) var(--space-6);
-  border-top: 1px solid var(--color-line);
-}
-.l-footer-inner {
-  max-width: 1100px; margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4);
-}
-.l-footer-logo { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--weight-bold); font-size: var(--text-base); }
-.l-footer-links { display: flex; gap: var(--space-5); }
-.l-footer-links a { font-size: var(--text-sm); color: var(--color-ink-muted); }
-.l-footer-links a:hover { color: var(--text); text-decoration: none; }
-.l-footer-copy { font-size: var(--text-xs); color: var(--color-ink-faint); }
-
 /* ─── Responsive ─── */
 @media (max-width: 900px) {
   .l-agents-showcase { flex-direction: column; }
   .l-agents-tabs { flex-direction: row; overflow-x: auto; min-width: 0; }
   .l-agent-tab { white-space: nowrap; }
   .l-agent-tab.active { box-shadow: inset 0 -3px 0 var(--color-accent); }
-  .l-steps { grid-template-columns: repeat(2, 1fr); }
-  .l-features-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
-  .l-steps, .l-features-grid { grid-template-columns: 1fr; }
   .l-section { padding: 72px var(--space-5); }
-  .l-footer-inner { flex-direction: column; text-align: center; }
-  .l-footer-links { justify-content: center; }
 }

@@ -12,13 +12,13 @@ const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
     <defs>
       <linearGradient id="logo-g" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#F59E0B" />
-        <stop offset="100%" stopColor="#D97706" />
+        <stop offset="0%" stopColor="#FFD666" />
+        <stop offset="100%" stopColor="#FFC93C" />
       </linearGradient>
     </defs>
     <rect width="32" height="32" rx="8" fill="url(#logo-g)" />
-    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#000" strokeWidth="1.5" fill="none" />
-    <circle cx="16" cy="16" r="3" fill="#000" />
+    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#0A1633" strokeWidth="1.6" fill="none" />
+    <circle cx="16" cy="16" r="3" fill="#0A1633" />
   </svg>
 );
 
@@ -81,11 +81,11 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <button
             type="button"
-            className="flex items-center gap-2 font-display text-[20px] tracking-[-0.01em] text-ink"
+            className="flex items-center gap-2 font-display text-[19px] font-bold tracking-[-0.02em] text-ink"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <Logo size={26} />
-            <span>ResuMate<span className="ml-1 italic text-accent">AI</span></span>
+            <span>ResuMate<span className="ml-1 text-accent">AI</span></span>
           </button>
 
           <div className="hide-mobile flex gap-7">
@@ -234,76 +234,125 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ═══ HOW IT WORKS ═══ */}
-      <section className="l-section l-section-alt" id="how">
+      {/* ═══ HOW IT WORKS ═══
+          Numbered rows on rules, not a grid of cards. Three steps are a
+          sequence, and a row of equal cards says "three unrelated things"
+          while a numbered list says "in this order". The gold numerals are
+          the band's colour used at small scale. */}
+      <section className="l-section" id="how">
         <div className="l-section-inner">
           <div className="l-section-header">
             <span className="l-section-tag">Process</span>
-            <h2>How It Works</h2>
-            <p>Three steps from resume upload to hiring decision.</p>
+            <h2>Upload, screen, interview</h2>
+            <p>Three steps from a folder of resumes to a ranked shortlist you can act on.</p>
           </div>
-          <div className="l-steps">
-            {steps.map((step, i) => (
-              <div key={i} className="l-step-card">
-                <div className="l-step-num">{step.num}</div>
-                <div className="l-step-icon">{step.icon}</div>
-                <h3>{step.title}</h3>
-                <p>{step.desc}</p>
-              </div>
+
+          <ol className="mt-12 border-t border-line">
+            {steps.map(step => (
+              <li
+                key={step.num}
+                className="grid gap-x-8 gap-y-3 border-b border-line py-8 sm:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1.1fr)]"
+              >
+                <span className="font-mono text-[13px] text-accent">{step.num}</span>
+                <h3 className="font-display text-[19px] font-bold tracking-[-0.02em] text-ink">
+                  {step.title}
+                </h3>
+                <p className="text-[15px] leading-[1.65] text-ink-muted">{step.desc}</p>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      {/* ═══ FEATURES ═══ */}
+      {/* ═══ FEATURES ═══
+          A two-column ruled list rather than six cards. Six equal boxes give
+          every capability the same weight and read as filler; rules let the
+          eye move down a list. */}
       <section className="l-section" id="features">
         <div className="l-section-inner">
           <div className="l-section-header">
             <span className="l-section-tag">Capabilities</span>
-            <h2>Everything You Need</h2>
-            <p>A complete AI hiring toolkit built with cutting-edge technology.</p>
+            <h2>What the agents actually do</h2>
+            <p>Deterministic scoring at the core, language models around the edges.</p>
           </div>
-          <div className="l-features-grid">
-            {features.map((f, i) => (
-              <div key={i} className="l-feature-card" style={{ animationDelay: `${i * 80}ms` }}>
-                <div className="l-feature-icon bg-accent-wash text-accent">{f.icon}</div>
-                <h4>{f.title}</h4>
-                <p>{f.desc}</p>
+
+          <div className="mt-12 grid gap-x-14 sm:grid-cols-2">
+            {features.map(f => (
+              <div key={f.title} className="flex gap-4 border-t border-line py-6">
+                <span className="mt-0.5 shrink-0 text-accent">{f.icon}</span>
+                <div className="min-w-0">
+                  <h4 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{f.title}</h4>
+                  <p className="mt-1.5 text-[14px] leading-[1.6] text-ink-muted">{f.desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ FINAL CTA ═══ */}
-      <section className="l-cta">
-        <div className="l-cta-inner">
-          <div className="l-cta-glow" aria-hidden="true" />
-          <h2>Ready to hire smarter?</h2>
-          <p>Upload your first resume and let AI agents do the heavy lifting.</p>
-          <div className="l-cta-buttons">
-            <button className="btn btn-primary btn-lg" onClick={() => navigate('/hiring')}>
-              Open Dashboard <ArrowRight size={18} />
-            </button>
-            <button className="btn btn-secondary btn-lg" onClick={() => navigate('/candidate/login')}>
-              Candidate Portal
-            </button>
+      {/* ═══ FINAL CTA ═══
+          Full-bleed gold, navy type. The hero's band at full scale, which
+          bookends the page and gives the accent a second job as a surface.
+          Replaces a radial glow behind centred text — the same device removed
+          from the hero earlier. */}
+      <section className="relative z-[1] bg-accent px-6 py-24 sm:px-10 sm:py-28">
+        <div className="mx-auto max-w-[72rem]">
+          <div className="grid gap-x-16 gap-y-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div>
+              <h2 className="font-display text-[clamp(2rem,4.5vw,3.25rem)] font-black leading-[0.98] tracking-[-0.035em] text-ink-inverse">
+                Upload a folder.
+                <br />
+                Get a shortlist.
+              </h2>
+              <p className="mt-5 max-w-[30rem] text-[17px] leading-[1.6] text-ink-inverse/75">
+                Screening runs on fixed weights, so the ranking is the same every time
+                and you can explain any placement in it.
+              </p>
+            </div>
+
+            {/* Inverted buttons: navy on gold, so the CTA is the highest-contrast
+                thing on the page. */}
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => navigate('/hiring')}
+                className="inline-flex items-center gap-2 rounded-[10px] bg-ink-inverse px-6 py-3.5 text-[14px] font-bold text-accent transition-opacity duration-[120ms] hover:opacity-90"
+              >
+                Open dashboard <ArrowRight size={16} />
+              </button>
+              <button
+                onClick={() => navigate('/candidate/login')}
+                className="inline-flex items-center rounded-[10px] border-2 border-ink-inverse/25 px-6 py-3.5 text-[14px] font-bold text-ink-inverse transition-colors duration-[120ms] hover:border-ink-inverse/50"
+              >
+                Candidate portal
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="l-footer">
-        <div className="l-footer-inner">
-          <div className="l-footer-logo"><Logo size={22} /> ResuMate AI</div>
-          <div className="l-footer-links">
-            <a href="#agents">Agents</a>
-            <a href="#features">Features</a>
-            <a href="#how">How It Works</a>
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
+      <footer className="relative z-[1] px-6 py-12 sm:px-10">
+        <div className="mx-auto flex max-w-[72rem] flex-wrap items-center gap-x-8 gap-y-5">
+          <div className="flex items-center gap-2 font-display text-[15px] font-bold text-ink">
+            <Logo size={20} /> ResuMate<span className="text-accent">AI</span>
           </div>
-          <p className="l-footer-copy">Built by Punith · Multi-Agent AI · GPT-4o + LangChain + ChromaDB</p>
+
+          <nav className="flex flex-wrap gap-x-6 gap-y-2">
+            {[['#agents', 'Agents'], ['#features', 'Capabilities'], ['#how', 'Process'],
+              ['/privacy', 'Privacy'], ['/terms', 'Terms']].map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+
+          <p className="ml-auto font-mono text-[11px] tracking-[0.06em] text-ink-faint">
+            Built by Punith
+          </p>
         </div>
       </footer>
     </div>
