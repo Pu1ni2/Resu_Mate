@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { candidatesAPI, chatAPI } from '../services/api';
 import { saveSession, clearSession, readStoredUser } from '../services/session';
+import { computeAnalytics } from './analytics';
 
 const AppContext = createContext(null);
 
@@ -94,65 +95,10 @@ export const AppProvider = ({ children }) => {
     [candidates, selectedIds]
   );
 
-  const analytics = useMemo(() => {
-    const selected = selectedCandidates.filter(c => c.is_resume !== false);
-    if (selected.length === 0) {
-      return { total: 0, avgExperience: 0, totalSkills: 0, topSkills: [], topSkillsAllEqual: false, roleDistribution: [], levelDistribution: [] };
-    }
-
-    const total = selected.length;
-    const avgExperience = (selected.reduce((s, c) => s + (c.total_experience_years || 0), 0) / total).toFixed(1);
-
-    const skillMap = new Map();
-    selected.forEach(c => {
-      (c.skills || []).forEach(skill => {
-        const name = typeof skill === 'string' ? skill : skill?.name;
-        if (name) skillMap.set(name, (skillMap.get(name) || 0) + 1);
-      });
-    });
-    // Two different numbers, previously conflated into one:
-    //
-    //   share   what fraction of the selected candidates have this skill. The
-    //           real statistic, but useless as a bar length — with one
-    //           candidate selected every skill they have is 1/1, so every bar
-    //           rendered at 100% and the chart said nothing.
-    //   barPct  the count relative to the most common skill. This is what a
-    //           bar length should encode: magnitude within the series.
-    //
-    // allEqual is surfaced so the view can decide the chart is the wrong form.
-    // Bars of identical length are not a chart, and that is exactly what
-    // happens for a single candidate or any evenly-distributed pool.
-    const skillCounts = Array.from(skillMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const maxSkillCount = skillCounts.length ? skillCounts[0][1] : 0;
-    const topSkills = skillCounts.map(([name, count]) => ({
-      name,
-      count,
-      share: Math.round((count / total) * 100),
-      barPct: maxSkillCount ? Math.round((count / maxSkillCount) * 100) : 0,
-    }));
-    const topSkillsAllEqual =
-      skillCounts.length > 1 && skillCounts.every(([, c]) => c === maxSkillCount);
-
-    const roleMap = new Map();
-    selected.forEach(c => {
-      const role = c.predicted_role || 'Unknown';
-      roleMap.set(role, (roleMap.get(role) || 0) + 1);
-    });
-    const roleDistribution = Array.from(roleMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-
-    const levelMap = new Map();
-    selected.forEach(c => {
-      const level = c.experience_level || 'Entry';
-      levelMap.set(level, (levelMap.get(level) || 0) + 1);
-    });
-    const levelDistribution = Array.from(levelMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-
-    return { total, avgExperience, totalSkills: skillMap.size, topSkills, roleDistribution, levelDistribution };
-  }, [selectedCandidates]);
+  const analytics = useMemo(
+    () => computeAnalytics(selectedCandidates),
+    [selectedCandidates]
+  );
 
   const loadCandidates = useCallback(async () => {
     setLoading(true);
