@@ -193,3 +193,103 @@
   --shadow-e2: 0 4px 12px -2px rgb(9 9 11 / 0.08), 0 2px 4px -2px rgb(9 9 11 / 0.04);
   --shadow-e3: 0 24px 56px -16px rgb(9 9 11 / 0.14), 0 8px 20px -8px rgb(9 9 11 / 0.08);
 }
+
+/* ─── Editorial scope: the landing page ───────────────────
+   Paper and ink. Applied as a class on the landing root, not as a theme, for
+   two reasons: the marketing page should not flip with the product's theme
+   toggle, and scoping it here means every existing bg-canvas / text-ink
+   utility resolves to paper values with no markup changes and no risk to the
+   product.
+
+   Placed last in this file deliberately. `.editorial`, `:root` and
+   [data-theme='light'] all carry specificity (0,1,0), so source order is what
+   decides — this block must come after both to win.
+
+   Surfaces run the opposite way to dark mode: cards sit BRIGHTER than the
+   page, because on paper a raised element catches more light, not less.
+   ───────────────────────────────────────────────────────── */
+.editorial {
+  --color-canvas: #fbfaf8;          /* warm off-white, not #fff */
+  --color-surface: #ffffff;         /* brighter than the page */
+  --color-surface-raised: #f5f2ec;  /* wells and insets go warmer instead */
+  --color-surface-hover: #f0ece4;
+
+  /* Hairline rules are the main structural device here — they replace the
+     background bands and glass panels the dark version leaned on. */
+  --color-line: #e4dfd5;
+  --color-line-strong: #cec7b8;
+
+  --color-ink: #17150f;             /* warm near-black, never #000 */
+  --color-ink-muted: #5c574c;       /* warm grey, not zinc */
+  --color-ink-subtle: #8a8478;
+  --color-ink-faint: #a8a293;
+  --color-ink-inverse: #fbfaf8;
+
+  /* Burnt sienna. Kept in the amber family so the existing logo mark still
+     belongs, but far enough off amber-500 that it reads as a choice rather
+     than a swatch. */
+  --color-accent: #9a3412;
+  --color-accent-hover: #7c2d12;
+  --color-accent-press: #601f0c;
+  --color-accent-wash: rgba(154, 52, 18, 0.07);
+  --color-accent-line: rgba(154, 52, 18, 0.22);
+
+  --color-positive: #3f6212;
+  --color-positive-wash: rgba(63, 98, 18, 0.08);
+  --color-critical: #9f1239;
+  --color-critical-wash: rgba(159, 18, 57, 0.08);
+  --color-caution: #854d0e;
+  --color-caution-wash: rgba(133, 77, 14, 0.08);
+
+  --color-data-track: rgba(23, 21, 15, 0.08);
+
+  /* No light to catch on paper, so the lit top edge goes away and depth comes
+     from shadow alone — soft and warm-tinted rather than black. */
+  --color-highlight: transparent;
+  --color-highlight-strong: transparent;
+  --shadow-e1: 0 1px 2px rgb(23 21 15 / 0.05);
+  --shadow-e2: 0 2px 8px -2px rgb(23 21 15 / 0.07);
+  --shadow-e3: 0 20px 48px -16px rgb(23 21 15 / 0.13), 0 4px 12px -6px rgb(23 21 15 / 0.06);
+
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-text);
+}
+
+/* Paper tooth. Much lighter and warmer than the dark version's grain: on a
+   near-black canvas noise fixes gradient banding, on paper it only needs to
+   stop the fill reading as a flat colour value. */
+.editorial.grain-overlay::after { opacity: 0.02; }
+
+/* ─── The plate ───────────────────────────────────────────
+   A dark product panel inset on paper, the way a printed plate sits on a page.
+   ProductMock renders on the same tokens as the product, so inside .editorial
+   it would turn white-on-white; this restores the dark set locally.
+
+   It is also the strongest device available here: the product is dark, the
+   page is paper, and the contrast does the work that a glow and a grid were
+   doing badly before.
+   ───────────────────────────────────────────────────────── */
+.plate {
+  --color-canvas: #14120f;
+  --color-surface: #1c1a15;
+  --color-surface-raised: #262219;
+  --color-surface-hover: #2e2a20;
+  --color-line: rgba(255, 255, 255, 0.09);
+  --color-line-strong: rgba(255, 255, 255, 0.16);
+  --color-ink: #f2ede4;
+  --color-ink-muted: #b8b0a2;
+  --color-ink-subtle: #8f887b;
+  --color-ink-faint: #6b6459;
+  --color-ink-inverse: #14120f;
+  --color-accent: #e0913f;
+  --color-accent-hover: #eba955;
+  --color-accent-wash: rgba(224, 145, 63, 0.12);
+  --color-accent-line: rgba(224, 145, 63, 0.32);
+  --color-positive: #86b64a;
+  --color-positive-wash: rgba(134, 182, 74, 0.12);
+  --color-data-track: rgba(255, 255, 255, 0.07);
+  --color-highlight: rgba(255, 255, 255, 0.10);
+  --color-highlight-strong: rgba(255, 255, 255, 0.18);
+  color: var(--color-ink);
+}
