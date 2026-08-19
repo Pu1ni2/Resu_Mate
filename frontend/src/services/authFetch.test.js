@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { authHeaders, authFetch, candidateAuthHeaders } from './authFetch';
+import { authHeaders, authFetch, candidateAuthHeaders, interviewAuthHeaders } from './authFetch';
 import { getToken, clearSession, handleUnauthorized, TOKEN_KEY } from './session';
 
 /* The shipped defect: 21 fetch call sites read the token as
@@ -151,6 +151,35 @@ describe('clearSession', () => {
     localStorage.setItem('resumate_hm_user', 'x');
     clearSession();
     expect(localStorage.getItem('resumate_hm_user')).toBeNull();
+  });
+});
+
+describe('interviewAuthHeaders', () => {
+  it('prefers the candidate token when both are in the browser', () => {
+    // A manager who previewed an interview earlier leaves their token behind.
+    // The candidate's own credential must win, or the manager's is sent on the
+    // candidate's session.
+    localStorage.setItem(TOKEN_KEY, 'manager-jwt');
+    localStorage.setItem('resumate_candidate_token', 'candidate-jwt');
+    expect(interviewAuthHeaders().Authorization).toBe('Bearer candidate-jwt');
+  });
+
+  it('falls back to the manager token for the preview flow', () => {
+    // A manager testing their own interview has no candidate token.
+    localStorage.setItem(TOKEN_KEY, 'manager-jwt');
+    expect(interviewAuthHeaders().Authorization).toBe('Bearer manager-jwt');
+  });
+
+  it('sends no header when neither token exists', () => {
+    // Was `Bearer demo-token` in the conversational room and `Bearer ` (an
+    // empty header) in the other — two different wrong answers to one question.
+    expect('Authorization' in interviewAuthHeaders()).toBe(false);
+  });
+
+  it('keeps the Content-Type the transcript posts need', () => {
+    localStorage.setItem('resumate_candidate_token', 'c');
+    expect(interviewAuthHeaders({ 'Content-Type': 'application/json' })['Content-Type'])
+      .toBe('application/json');
   });
 });
 

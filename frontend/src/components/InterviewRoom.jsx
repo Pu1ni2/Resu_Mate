@@ -12,24 +12,12 @@ import {
   Clock, Loader, Volume2, Shield, Monitor, Brain, Briefcase,
   CheckCircle, Phone, PhoneOff
 } from 'lucide-react';
+import { interviewAuthHeaders } from '../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
 const MAX_VIOLATIONS = 3;
-
-// The interview room is part of the candidate portal, so the candidate token is
-// the right one to send. Fall back to the hiring-manager token only for the
-// preview flow where a manager tests the interview themselves.
-function authHeader() {
-  // No 'demo-token' fallback: the backend never accepted it, so sending it just
-  // turned "logged out" into an opaque 401 instead of a clean re-login prompt.
-  const token =
-    localStorage.getItem('resumate_candidate_token') ||
-    localStorage.getItem('resumate_hm_token') ||
-    '';
-  return token ? `Bearer ${token}` : '';
-}
 
 export default function InterviewRoom({ config, candidateName, candidateEmail, onComplete, onExit }) {
   const [phase, setPhase] = useState('setup'); // setup | connecting | live | ended
@@ -192,7 +180,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       // 2. Create LiveKit room via our backend
       const roomResp = await fetch(`${API_BASE}/api/livekit/create-room`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': authHeader() },
+        headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           candidate_email: candidateEmail,
           candidate_name: candidateName,
@@ -314,7 +302,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     // Try to fetch transcript/scores from backend (agent may have saved them)
     try {
       const resp = await fetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
-        headers: { 'Authorization': authHeader() }
+        headers: interviewAuthHeaders()
       });
       const data = await resp.json();
       if (data.results?.length > 0) {

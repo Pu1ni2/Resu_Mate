@@ -15,6 +15,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, PhoneOff, Loader, AlertCircle } from 'lucide-react';
+import { interviewAuthHeaders } from '../services/authFetch';
 
 const API_BASE = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -70,14 +71,6 @@ export default function ConversationalInterviewRoom({
     requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
   }, [turns.length]);
 
-  const authHeader = () => {
-    const token =
-      localStorage.getItem('resumate_candidate_token') ||
-      localStorage.getItem('resumate_hm_token') ||
-      'demo-token';
-    return `Bearer ${token}`;
-  };
-
   const fmtTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────
@@ -100,7 +93,7 @@ export default function ConversationalInterviewRoom({
     try {
       await fetch(`${API_BASE}/api/realtime/checkpoint`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+        headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ interview_id: interviewId, transcript: turnsRef.current }),
       });
     } catch (e) {
@@ -116,7 +109,7 @@ export default function ConversationalInterviewRoom({
     try {
       const resp = await fetch(`${API_BASE}/api/realtime/finalize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+        headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           interview_id: interviewId,
           transcript: turnsRef.current,
@@ -155,7 +148,7 @@ export default function ConversationalInterviewRoom({
       try {
         fetch(`${API_BASE}/api/realtime/finalize`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+          headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             interview_id: ivId,
             transcript: turnsRef.current,
@@ -262,7 +255,7 @@ export default function ConversationalInterviewRoom({
       // 2) Mint OpenAI ephemeral client secret via our backend.
       const tokenResp = await fetch(`${API_BASE}/api/realtime/session`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+        headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           interview_id: interviewId,
           candidate_email: candidateEmail,

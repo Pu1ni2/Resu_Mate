@@ -20,10 +20,21 @@ const USER_KEY = 'resumate_hm_user';
 // Cached candidate list. Cleared with the session: it is the previous
 // manager's data, and AppContext seeds state from it on mount.
 const CANDIDATE_CACHE_KEY = 'resumate_candidates';
+// The candidate portal's own token. A different principal entirely: it must
+// never be cleared by a manager's expiry, nor sent on a manager's request.
+export const CANDIDATE_TOKEN_KEY = 'resumate_candidate_token';
 
 export function getToken() {
   try {
     return localStorage.getItem(TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getCandidateToken() {
+  try {
+    return localStorage.getItem(CANDIDATE_TOKEN_KEY) || null;
   } catch {
     return null;
   }
