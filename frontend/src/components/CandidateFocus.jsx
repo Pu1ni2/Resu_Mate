@@ -19,6 +19,7 @@ import SchedulePanel from './focus/SchedulePanel';
 import EmailComposer from './focus/EmailComposer';
 import InterviewCreator from './focus/InterviewCreator';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
+import { authFetch } from '../services/authFetch';
 
 const API_BASE = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -214,9 +215,9 @@ export default function CandidateFocus() {
     setScanDone(false);
 
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/scan-resume`, {
+      const resp = await authFetch(`${API_BASE}/api/chat/scan-resume`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidate_id: candidateId,
           anonymize,
@@ -326,9 +327,9 @@ export default function CandidateFocus() {
     setSearchLoading(true);
     setSearchHistory(prev => [q, ...prev.filter(h => h !== q)].slice(0, 10));
     try {
-      const response = await fetch(`${API_BASE}/api/chat/web-search`, {
+      const response = await authFetch(`${API_BASE}/api/chat/web-search`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, candidate_id: focusCandidate?.id, candidate_name: anonymize ? null : focusCandidate?.name }),
       });
       const data = await response.json();
@@ -354,9 +355,9 @@ export default function CandidateFocus() {
   const fetchGitHub = async (username) => {
     setGhLoading(true); setGhError(''); setGhProfile(null); setGhNeedsInput(false);
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/github-analyze`, {
+      const resp = await authFetch(`${API_BASE}/api/chat/github-analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), github_username: username || null, anonymize }),
       });
       const data = await resp.json();
@@ -370,7 +371,7 @@ export default function CandidateFocus() {
   const fetchCalendly = async () => {
     setCalLoading(true); setCalError(''); setCalData(null);
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/calendly-link`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` } });
+      const resp = await authFetch(`${API_BASE}/api/chat/calendly-link`);
       const data = await resp.json();
       if (data.error) setCalError(data.error);
       else setCalData(data);
@@ -386,9 +387,9 @@ export default function CandidateFocus() {
     if (!selectedLevel) { showToast('Please select seniority level'); return; }
     setAgentLoading(true); setAgentStep('loading'); setAgentResult(null);
     try {
-      const response = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
+      const response = await authFetch(`${API_BASE}/api/chat/hiring-agent`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), role, experience_required: selectedExperience, level: selectedLevel, job_description: jdText || null, anonymize }),
       });
       const data = await response.json();
@@ -401,9 +402,9 @@ export default function CandidateFocus() {
     if (!jdText.trim()) { showToast('Please paste a job description'); return; }
     setAgentLoading(true); setAgentStep('loading');
     try {
-      const response = await fetch(`${API_BASE}/api/chat/hiring-agent`, {
+      const response = await authFetch(`${API_BASE}/api/chat/hiring-agent`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), job_description: jdText, role: null, experience_required: null, level: null, anonymize }),
       });
       const data = await response.json();

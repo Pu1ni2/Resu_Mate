@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { Mail, Loader, Check, Clipboard } from 'lucide-react';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -25,9 +26,9 @@ export default function EmailComposer({ focusCandidate, agentResult, anonymize, 
     setEmailCc(''); setEmailBcc('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/chat/draft-email`, {
+      const response = await authFetch(`${API_BASE}/api/chat/draft-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
           candidate_data: getCandidatePayload(),

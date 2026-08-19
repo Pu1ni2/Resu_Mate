@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Video, Loader, Check, Mic } from 'lucide-react';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -25,9 +26,9 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
     if (!focusCandidate || !interviewEmail.trim()) { showToast('Please enter candidate email'); return; }
     setInterviewCreating(true);
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/create-interview`, {
+      const resp = await authFetch(`${API_BASE}/api/chat/create-interview`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidate_id: focusCandidate.id,
           candidate_email: interviewEmail.trim(),
