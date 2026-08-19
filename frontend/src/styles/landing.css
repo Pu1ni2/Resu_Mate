@@ -3,24 +3,6 @@
    Aesthetic: Refined dark, premium tech
    ═══════════════════════════════════════ */
 
-.l-hero-floats { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-.l-float-badge {
-  position: absolute; display: flex; align-items: center; gap: 6px;
-  padding: 8px 14px; background: var(--color-surface); border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg); font-size: 11px; color: var(--color-ink-muted);
-  box-shadow: var(--shadow-e2); animation: floatBadge 4s ease-in-out infinite;
-  white-space: nowrap;
-}
-.l-float-badge svg { color: var(--color-accent); }
-.l-fb-1 { top: 25%; left: 5%; }
-.l-fb-2 { top: 45%; right: 3%; }
-.l-fb-3 { bottom: 30%; left: 8%; }
-.l-fb-4 { bottom: 15%; right: 6%; }
-@keyframes floatBadge {
-  0%, 100% { transform: translateY(0); opacity: 0.45; }
-  50% { transform: translateY(-8px); opacity: 0.7; }
-}
-
 /* ─── Sections ─── */
 .l-section { position: relative; z-index: 1; padding: 112px var(--space-6); }
 .l-section-alt { background: var(--color-surface); }

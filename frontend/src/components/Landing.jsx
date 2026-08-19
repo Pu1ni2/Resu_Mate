@@ -24,49 +24,6 @@ const Logo = ({ size = 32 }) => (
   </svg>
 );
 
-/* ─── Page backdrop ───
- * Replaces the previous treatment: a flat 60px grid, a linear fade, and two
- * 600px blurred glows drifting on 8s and 10s float loops -- one amber, one
- * blue. The second hue was the last of the rainbow on this page, and two
- * independently animating blobs read as a screensaver rather than a surface.
- *
- * Now: one grid, radially masked so it dissolves outward instead of ending at
- * a hard horizontal line, and a single static accent wash sitting behind the
- * headline. Static on purpose -- ambient motion behind text is a cost paid on
- * every frame for something nobody looks at.
- */
-const Backdrop = () => (
-  <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-    <div
-      className="absolute inset-0"
-      style={{
-        backgroundImage:
-          'linear-gradient(var(--color-line) 1px, transparent 1px), linear-gradient(90deg, var(--color-line) 1px, transparent 1px)',
-        backgroundSize: '72px 72px',
-        // Radial mask so the grid fades in every direction. Prefixed copy for
-        // WebKit, which still needs -webkit-mask-image.
-        WebkitMaskImage: 'radial-gradient(ellipse 78% 58% at 50% 0%, #000 35%, transparent 100%)',
-        maskImage: 'radial-gradient(ellipse 78% 58% at 50% 0%, #000 35%, transparent 100%)',
-      }}
-    />
-    <div
-      className="absolute inset-x-0 top-0 h-[72vh]"
-      style={{
-        background:
-          'radial-gradient(ellipse 52% 58% at 50% -8%, color-mix(in oklab, var(--color-accent) 15%, transparent), transparent 68%)',
-      }}
-    />
-  </div>
-);
-
-// ─── Floating agent badges in hero ───
-const FloatingBadge = ({ icon, label, className, delay }) => (
-  <div className={`l-float-badge ${className}`} style={{ animationDelay: `${delay}s` }}>
-    {icon}
-    <span>{label}</span>
-  </div>
-);
-
 export default function Landing() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
@@ -108,8 +65,7 @@ export default function Landing() {
   ];
 
   return (
-    <div className="grain-overlay relative min-h-screen overflow-x-hidden bg-canvas">
-      <Backdrop />
+    <div className="editorial grain-overlay relative min-h-screen overflow-x-hidden font-text">
 
       {/* ═══ NAV ═══ */}
       <nav
@@ -267,12 +223,6 @@ export default function Landing() {
         </div>
 
         {/* Floating badges */}
-        <div className="l-hero-floats hide-mobile" aria-hidden="true">
-          <FloatingBadge icon={<Search size={14} />} label="Scanning GitHub..." className="l-fb-1" delay={0} />
-          <FloatingBadge icon={<Bot size={14} />} label="Evaluating candidate..." className="l-fb-2" delay={1.2} />
-          <FloatingBadge icon={<Video size={14} />} label="Interview ready" className="l-fb-3" delay={2.4} />
-          <FloatingBadge icon={<Mail size={14} />} label="Email drafted" className="l-fb-4" delay={3.6} />
-        </div>
       </section>
 
       {/* ═══ AGENTS SHOWCASE ═══ */}
