@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, X, Zap, FileText, ChevronRight, Loader, Volume2, Edit2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -104,12 +105,9 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
   const handleRun = async () => {
     setIsRunning(true);
     try {
-      const res = await fetch(`${API_BASE}/api/pipeline/run`, {
+      const res = await authFetch(`${API_BASE}/api/pipeline/run`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           role: config.role,
           jd_text: config.jdText || null,
@@ -143,12 +141,9 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
     if (!formData.role.trim()) { alert('Please enter the role.'); return; }
     setFormRunning(true);
     try {
-      const res = await fetch(`${API_BASE}/api/pipeline/run`, {
+      const res = await authFetch(`${API_BASE}/api/pipeline/run`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           role: formData.role.trim(),
           jd_text: formData.jdText.trim() || null,

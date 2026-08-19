@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { marked } from 'marked';
 import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -50,9 +51,9 @@ function CredibilitySection({ candidateId, candidateEmail }) {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/credibility-analysis`, {
+      const resp = await authFetch(`${API_BASE}/api/chat/credibility-analysis`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: candidateId, candidate_email: candidateEmail }),
       });
       if (!resp.ok) throw new Error('Analysis unavailable');

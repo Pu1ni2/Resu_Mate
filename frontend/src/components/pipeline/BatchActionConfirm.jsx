@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send, Edit2 } from 'lucide-react';
+import { authFetch } from '../../services/authFetch';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -36,12 +37,9 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         .filter(c => candidateToggles[c.candidate_id]?.interview)
         .map(c => c.candidate_id);
 
-      const res = await fetch(`${API_BASE}/api/pipeline/batch-action`, {
+      const res = await authFetch(`${API_BASE}/api/pipeline/batch-action`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('resumate_hm_token') || 'demo-token'}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidate_ids: interviewIds,
           role,
