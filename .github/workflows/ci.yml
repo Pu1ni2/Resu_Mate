@@ -37,6 +37,12 @@ jobs:
           node-version: "20"
       - name: Install dependencies
         run: npm ci
+      # Lint before build. no-undef is the rule that matters here: a real
+      # ReferenceError shipped because a context function was called without
+      # being destructured, and a bundler cannot catch that — the reference is
+      # only resolved when the handler runs.
+      - name: Lint
+        run: npm run lint
       - name: Build
         run: npm run build
       - name: Test

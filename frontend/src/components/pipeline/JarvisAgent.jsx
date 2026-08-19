@@ -46,7 +46,7 @@ function renderMarkdown(text) {
     // h2 / h3
     if (/^#{2,3}\s/.test(line)) {
       const level = line.match(/^(#{2,3})/)[1].length;
-      const txt = line.replace(/^#{2,3}\s*/, '').replace(/[ðŸŽ¯ðŸ“Šâœ…âš ï¸âŒðŸ’¡ðŸ”]/gu, '').trim();
+      const txt = line.replace(/^#{2,3}\s*/, '').replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '').trim();
       elements.push(
         <div key={i} style={{ fontSize: level === 2 ? 15 : 13, fontWeight: 800, color: level === 2 ? '#E4E4E7' : '#A1A1AA', marginTop: 16, marginBottom: 4, letterSpacing: '-0.01em' }}>
           {txt}
@@ -115,7 +115,7 @@ function stripMarkdown(text) {
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/[ðŸŽ¯ðŸ“Šâœ…âš ï¸âŒðŸ’¡ðŸ”ðŸ”„ðŸŒðŸ“Œ]/gu, '')
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '')
     .replace(/^[\-\*]\s/gm, 'â€¢ ')
     .trim();
 }
@@ -127,7 +127,7 @@ function extractSection(text, keywords) {
   const content = [];
   for (const line of lines) {
     if (/^#{1,4}\s/.test(line)) {
-      const lower = line.toLowerCase().replace(/[ðŸŽ¯ðŸ“Šâœ…âš ï¸âŒðŸ’¡ðŸ”ðŸ”„ðŸŒðŸ“Œ]/gu, '');
+      const lower = line.toLowerCase().replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '');
       const matches = keywords.some(kw => lower.includes(kw));
       if (matches) { inSection = true; continue; }
       if (inSection) break; // hit next section â€” stop
