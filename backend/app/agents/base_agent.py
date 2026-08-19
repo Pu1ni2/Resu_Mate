@@ -14,6 +14,7 @@ import traceback
 import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -145,6 +146,35 @@ class AgentMemoryStore:
 memory_store = AgentMemoryStore()
 
 
+
+# ═══════ PER-RUN STATE ═══════
+#
+# The agents are module-level singletons (data_agent, hr_agent, ...), and run()
+# used to reset self.logs / self.steps / self.metrics on the instance. Two
+# concurrent requests to the same agent therefore interleaved: request B calling
+# run() wiped request A's in-flight logs, their metrics counters incremented
+# against each other, and AgentResult handed back references to the shared
+# lists — so a caller could serialise whatever the other request left behind.
+# run() awaits in four places, so under any real load this was not a race that
+# might happen, it was the normal case.
+#
+# A ContextVar fixes it without touching subclasses. Each run() installs a fresh
+# state, and asyncio copies the context per task, so concurrent runs cannot see
+# each other. Subclass code keeps writing self.log(...) and
+# self.metrics.llm_calls += 1 unchanged — the attributes are now properties over
+# this state.
+
+@dataclass
+class _RunState:
+    logs: List[AgentLog] = field(default_factory=list)
+    steps: List[AgentStep] = field(default_factory=list)
+    metrics: AgentMetrics = field(default_factory=AgentMetrics)
+    status: AgentStatus = AgentStatus.IDLE
+
+
+_run_state: ContextVar = ContextVar("agent_run_state", default=None)
+
+
 # ═══════ BASE AGENT ═══════
 
 class BaseAgent:
@@ -152,10 +182,8 @@ class BaseAgent:
         self.name = name
         self.persona = persona
         self.tools = tools or {}
-        self.logs: List[AgentLog] = []
-        self.steps: List[AgentStep] = []
-        self.status = AgentStatus.IDLE
-        self.metrics = AgentMetrics()
+        # logs / steps / status / metrics are per-run and live in a ContextVar,
+        # not on the instance — see _RunState above.
 
         self.max_retries = 2
         self.max_step_retries = 3
@@ -168,6 +196,49 @@ class BaseAgent:
         else:
             self.llm = None
 
+    # ── Per-run state, proxied so subclasses need no changes ──
+    @property
+    def _state(self) -> "_RunState":
+        st = _run_state.get()
+        if st is None:
+            # Attribute access outside a run() (a direct helper call, a test).
+            # Hand back a throwaway rather than raising.
+            st = _RunState()
+            _run_state.set(st)
+        return st
+
+    @property
+    def logs(self) -> List[AgentLog]:
+        return self._state.logs
+
+    @logs.setter
+    def logs(self, value):
+        self._state.logs = value
+
+    @property
+    def steps(self) -> List[AgentStep]:
+        return self._state.steps
+
+    @steps.setter
+    def steps(self, value):
+        self._state.steps = value
+
+    @property
+    def metrics(self) -> AgentMetrics:
+        return self._state.metrics
+
+    @metrics.setter
+    def metrics(self, value):
+        self._state.metrics = value
+
+    @property
+    def status(self) -> AgentStatus:
+        return self._state.status
+
+    @status.setter
+    def status(self, value):
+        self._state.status = value
+
     def log(self, step: str, msg: str, status: str = "", duration: float = 0):
         entry = AgentLog(step=step, msg=msg, status=status, duration=duration)
         self.logs.append(entry)
@@ -177,9 +248,8 @@ class BaseAgent:
 
     async def run(self, task: str, context: Dict = None, retry_count: int = 0) -> AgentResult:
         start = time.time()
-        self.logs = []
-        self.steps = []
-        self.metrics = AgentMetrics()
+        # A fresh state for this run, isolated from any concurrent one.
+        _run_state.set(_RunState())
         self.status = AgentStatus.PLANNING
         context = context or {}
 
@@ -229,7 +299,9 @@ class BaseAgent:
 
             memory_store.add(self.name, {"task": task[:200], "success": True, "duration": round(self.metrics.total_duration, 2)})
 
-            return AgentResult(output=output, logs=self.logs, steps=self.steps, metrics=self.metrics, success=True, agent_name=self.name, task=task[:200])
+            # Copies, so a caller holding the result cannot be mutated by
+            # anything that runs afterwards.
+            return AgentResult(output=output, logs=list(self.logs), steps=list(self.steps), metrics=self.metrics, success=True, agent_name=self.name, task=task[:200])
 
         except Exception as e:
             self.status = AgentStatus.ERROR
@@ -238,7 +310,7 @@ class BaseAgent:
             self.log("error", f"Failed: {err[:150]}", "error")
             traceback.print_exc()
             memory_store.add(self.name, {"task": task[:200], "success": False, "error": err[:200]})
-            return AgentResult(output=None, logs=self.logs, steps=self.steps, metrics=self.metrics, success=False, error=err, agent_name=self.name, task=task[:200])
+            return AgentResult(output=None, logs=list(self.logs), steps=list(self.steps), metrics=self.metrics, success=False, error=err, agent_name=self.name, task=task[:200])
 
     async def _execute_with_retry(self, step: AgentStep, idx: int, context: Dict) -> Any:
         """Execute step with retry + exponential backoff"""
