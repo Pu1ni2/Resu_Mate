@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { candidatesAPI, chatAPI } from '../services/api';
+import { saveSession, clearSession, readStoredUser } from '../services/session';
 
 const AppContext = createContext(null);
 
@@ -47,25 +48,17 @@ export const AppProvider = ({ children }) => {
   });
 
   // Hiring manager auth
-  const [hiringManager, setHiringManager] = useState(() => {
-    try {
-      const stored = localStorage.getItem('resumate_hm_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  });
+  const [hiringManager, setHiringManager] = useState(readStoredUser);
 
   const loginHiringManager = useCallback((token, refreshToken, user) => {
-    localStorage.setItem('resumate_hm_token', token);
-    localStorage.setItem('resumate_hm_refresh', refreshToken);
-    localStorage.setItem('resumate_hm_user', JSON.stringify(user));
+    saveSession(token, refreshToken, user);
     setHiringManager(user);
   }, []);
 
   const logoutHiringManager = useCallback(() => {
-    localStorage.removeItem('resumate_hm_token');
-    localStorage.removeItem('resumate_hm_refresh');
-    localStorage.removeItem('resumate_hm_user');
-    localStorage.removeItem('resumate_candidates');
+    // Same teardown a 401 performs, so signing out and being signed out cannot
+    // drift apart.
+    clearSession();
     setHiringManager(null);
     setCandidates([]);
     setSelectedIds([]);

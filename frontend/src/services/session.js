@@ -40,6 +40,26 @@ export function getCandidateToken() {
   }
 }
 
+export function saveSession(token, refreshToken, user) {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(REFRESH_KEY, refreshToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // Storage unavailable. The token stays in memory for this page, and the
+    // next reload lands on login — better than failing the sign-in outright.
+  }
+}
+
+export function readStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function clearSession() {
   for (const key of [TOKEN_KEY, REFRESH_KEY, USER_KEY, CANDIDATE_CACHE_KEY]) {
     try {
