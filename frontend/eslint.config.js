@@ -41,7 +41,16 @@ export default [
         // Unused function args are common and harmless in event handlers;
         // an unused local is usually a leftover.
         args: 'none',
-        varsIgnorePattern: '^_',
+        // `React` is imported in every component and genuinely unused under the
+        // automatic JSX runtime Vite enables. Removing ~30 imports is a separate
+        // sweep; flagging them here buries the leftovers that do matter.
+        varsIgnorePattern: '^(_|React$)',
+        // `catch (_)` is the idiom this codebase uses for a deliberately
+        // ignored error. varsIgnorePattern does not cover catch bindings —
+        // caughtErrors defaults to 'all', so ten of these were reported as
+        // leftovers when they are the convention.
+        caughtErrors: 'all',
+        caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true,
       }],
       'no-const-assign': 'error',
