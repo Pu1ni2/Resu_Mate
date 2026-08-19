@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service
@@ -207,9 +208,8 @@ async def batch_action(
         result["email_sent"] = False
         if req.send_emails and email:
             try:
-                login_url = "http://localhost:5173/candidate/login"
                 sent = await email_service.send_interview_invitation(
-                    email, name, req.role, login_url
+                    email, name, req.role, settings.candidate_login_url
                 )
                 result["email_sent"] = sent
             except Exception as e:

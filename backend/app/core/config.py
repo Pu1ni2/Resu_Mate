@@ -43,6 +43,18 @@ class Settings(BaseSettings):
         "https://resumate-ui.onrender.com"
     )
 
+    # Public base URL of the frontend, used to build links inside outbound
+    # emails. This MUST be reachable by the recipient — an interview invitation
+    # is read on the candidate's machine, so a localhost URL is a dead link for
+    # everyone except the developer who wrote it. Defaults to the deployed
+    # frontend rather than a dev port so a missing env var degrades to "works
+    # in production" instead of "works only on my laptop".
+    frontend_url: str = "https://resumate-ui.onrender.com"
+
+    @property
+    def candidate_login_url(self) -> str:
+        return f"{self.frontend_url.rstrip('/')}/candidate/login"
+
     # JWT Auth
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
