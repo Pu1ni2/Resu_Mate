@@ -279,3 +279,136 @@
   color: var(--color-ink);
 }
 
+
+/* ═══════════════════════════════════════════════════════════
+   STYLE LAB SCOPES  —  /styles, unlisted, for comparison only
+
+   Four candidate directions as token scopes, so the same markup renders in
+   each. Delete this block and StyleLab.jsx once a direction is chosen; nothing
+   in the product imports them.
+
+   All four use Satoshi + JetBrains Mono, already loaded. The differentiator is
+   palette and structure, not a fifth webfont — which is also the honest test:
+   if a direction only works because of an exotic typeface, it is fragile.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── 1. Cobalt block — the brand colour IS the page ─── */
+.lab-cobalt {
+  --color-canvas: #1b2ecc;
+  --color-surface: #2237d6;
+  --color-surface-raised: #2b41e0;
+  --color-surface-hover: #3349e8;
+  --color-line: rgba(255, 253, 247, 0.18);
+  --color-line-strong: rgba(255, 253, 247, 0.32);
+  --color-ink: #fffdf7;
+  --color-ink-muted: #ccd3f7;
+  --color-ink-subtle: #a6b1ee;
+  --color-ink-faint: #8593e3;
+  --color-ink-inverse: #101a7a;
+  --color-accent: #d6ff3f;          /* acid lime on cobalt */
+  --color-accent-hover: #e2ff6b;
+  --color-accent-press: #c2eb2c;
+  --color-accent-wash: rgba(214, 255, 63, 0.16);
+  --color-accent-line: rgba(214, 255, 63, 0.45);
+  --color-positive: #d6ff3f;
+  --color-positive-wash: rgba(214, 255, 63, 0.14);
+  --color-caution: #ffd84d;
+  --color-caution-wash: rgba(255, 216, 77, 0.14);
+  --color-data-track: rgba(255, 253, 247, 0.16);
+  --color-highlight: rgba(255, 253, 247, 0.14);
+  --color-highlight-strong: rgba(255, 253, 247, 0.24);
+  --shadow-e1: 0 1px 2px rgb(8 16 90 / 0.35);
+  --shadow-e2: 0 4px 14px -3px rgb(8 16 90 / 0.45);
+  --shadow-e3: 0 28px 60px -18px rgb(8 16 90 / 0.6);
+}
+
+/* ─── 2. Neo-brutalist — outlines and hard shadows ─── */
+.lab-brutal {
+  --color-canvas: #fdfbf3;
+  --color-surface: #ffffff;
+  --color-surface-raised: #fff3d6;
+  --color-surface-hover: #ffe9b8;
+  --color-line: #0b0b0b;            /* borders are ink, not a hairline */
+  --color-line-strong: #0b0b0b;
+  --color-ink: #0b0b0b;
+  --color-ink-muted: #3d3a35;
+  --color-ink-subtle: #5c574f;
+  --color-ink-faint: #857e73;
+  --color-ink-inverse: #fdfbf3;
+  --color-accent: #ff4d2e;
+  --color-accent-hover: #e63d1f;
+  --color-accent-press: #cc3417;
+  --color-accent-wash: #ffd84d;     /* the wash is a flat pop, not an alpha */
+  --color-accent-line: #0b0b0b;
+  --color-positive: #1c8a3c;
+  --color-positive-wash: #c7f5d4;
+  --color-caution: #b26a00;
+  --color-caution-wash: #ffd84d;
+  --color-data-track: #e8e3d5;
+  --color-highlight: transparent;
+  --color-highlight-strong: transparent;
+  /* Hard offset, zero blur — the signature of the whole look. */
+  --shadow-e1: 2px 2px 0 #0b0b0b;
+  --shadow-e2: 4px 4px 0 #0b0b0b;
+  --shadow-e3: 6px 6px 0 #0b0b0b;
+}
+
+/* ─── 3. Signal — terminal for builders ─── */
+.lab-signal {
+  --color-canvas: #08090a;
+  --color-surface: #0e1011;
+  --color-surface-raised: #16191b;
+  --color-surface-hover: #1e2225;
+  --color-line: #1f2124;            /* hard rule, not a translucent hairline */
+  --color-line-strong: #33373b;
+  --color-ink: #e8e8e3;
+  --color-ink-muted: #9aa0a0;
+  --color-ink-subtle: #6b7272;
+  --color-ink-faint: #4a5050;
+  --color-ink-inverse: #08090a;
+  --color-accent: #00e57a;
+  --color-accent-hover: #33eb95;
+  --color-accent-press: #00c266;
+  --color-accent-wash: rgba(0, 229, 122, 0.10);
+  --color-accent-line: rgba(0, 229, 122, 0.35);
+  --color-positive: #00e57a;
+  --color-positive-wash: rgba(0, 229, 122, 0.10);
+  --color-caution: #ffc53d;
+  --color-caution-wash: rgba(255, 197, 61, 0.10);
+  --color-data-track: #1f2124;
+  --color-highlight: rgba(232, 232, 227, 0.06);
+  --color-highlight-strong: rgba(232, 232, 227, 0.12);
+  --shadow-e1: 0 1px 2px rgb(0 0 0 / 0.6);
+  --shadow-e2: 0 4px 14px -3px rgb(0 0 0 / 0.7);
+  --shadow-e3: 0 28px 60px -18px rgb(0 0 0 / 0.85);
+}
+
+/* ─── 4. Vermillion — the current landing direction ─── */
+.lab-vermillion {
+  --color-canvas: #141110;
+  --color-surface: #1c1917;
+  --color-surface-raised: #262220;
+  --color-surface-hover: #302b28;
+  --color-line: rgba(247, 242, 234, 0.10);
+  --color-line-strong: rgba(247, 242, 234, 0.20);
+  --color-ink: #f7f2ea;
+  --color-ink-muted: #b5aca1;
+  --color-ink-subtle: #8a8177;
+  --color-ink-faint: #635b53;
+  --color-ink-inverse: #141110;
+  --color-accent: #e03c1f;
+  --color-accent-hover: #f04e30;
+  --color-accent-press: #b82d13;
+  --color-accent-wash: rgba(224, 60, 31, 0.12);
+  --color-accent-line: rgba(224, 60, 31, 0.35);
+  --color-positive: #7cc04a;
+  --color-positive-wash: rgba(124, 192, 74, 0.12);
+  --color-caution: #e8a33d;
+  --color-caution-wash: rgba(232, 163, 61, 0.12);
+  --color-data-track: rgba(247, 242, 234, 0.08);
+  --color-highlight: rgba(247, 242, 234, 0.09);
+  --color-highlight-strong: rgba(247, 242, 234, 0.16);
+  --shadow-e1: 0 1px 2px rgb(12 9 8 / 0.45);
+  --shadow-e2: 0 4px 14px -3px rgb(12 9 8 / 0.55);
+  --shadow-e3: 0 28px 60px -18px rgb(12 9 8 / 0.75);
+}

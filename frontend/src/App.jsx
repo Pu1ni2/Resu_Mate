@@ -9,6 +9,7 @@ import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
+import StyleLab from './components/landing/StyleLab';
 
 function UnauthorizedHandler() {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ export default function App() {
     <UnauthorizedHandler />
     <Routes>
       <Route path="/" element={<Landing />} />
+
+      {/* Unlisted: side-by-side look comparison. Delete with StyleLab.jsx. */}
+      <Route path="/styles" element={<StyleLab />} />
 
       {/* Legal — public */}
       <Route path="/terms" element={<TermsPage />} />
