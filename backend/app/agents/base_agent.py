@@ -100,7 +100,10 @@ class AgentMemoryStore:
 
     def _load(self) -> Dict:
         try:
-            with open(self.FILE, 'r') as f:
+            # Explicit encoding: without it Python uses the platform default,
+            # which is cp1252 on Windows. Safe only while json.dump keeps
+            # ensure_ascii=True below.
+            with open(self.FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
             return {}
@@ -110,7 +113,7 @@ class AgentMemoryStore:
 
     def _save(self):
         try:
-            with open(self.FILE, 'w') as f:
+            with open(self.FILE, 'w', encoding='utf-8') as f:
                 json.dump(self._store, f, indent=2, default=str)
         except Exception as exc:
             print(f"[memory_store] could not save {self.FILE}: {exc}")
