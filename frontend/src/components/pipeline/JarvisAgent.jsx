@@ -444,6 +444,19 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const chainDepthRef  = useRef(0);      // guard against actionâ†’resultâ†’action loops
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Escape closes the innermost thing that is open. Jarvis covers the whole
+  // viewport at zIndex 2000, so without this the only way out was finding the
+  // 34px X in the corner with a mouse.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (expandedCard) { setExpandedCard(null); return; }
+      onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expandedCard, onClose]);
   useEffect(() => { contextRef.current = context; }, [context]);
   useEffect(() => { processingRef.current = isProcessing; }, [isProcessing]);
 
@@ -1481,6 +1494,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         return (
           <div
             onClick={() => setExpandedCard(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Expanded result"
             style={{
               position: 'fixed', inset: 0, zIndex: 3500,
               background: 'rgba(0,0,0,0.85)',
@@ -1888,13 +1904,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       })()}
 
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
-        background: '#080810',
-        display: 'flex', flexDirection: 'column',
-        fontFamily: "'DM Sans', -apple-system, sans-serif",
-        overflow: 'hidden',
-      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Jarvis, the hiring copilot"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 2000,
+          background: '#080810',
+          display: 'flex', flexDirection: 'column',
+          fontFamily: "'DM Sans', -apple-system, sans-serif",
+          overflow: 'hidden',
+        }}
+      >
 
         {/* Background */}
         <div style={{
@@ -1947,6 +1968,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           <button
             onClick={onClose}
             title="Close Jarvis"
+            aria-label="Close Jarvis"
             style={{
               width: 34, height: 34, borderRadius: 10,
               background: 'rgba(255,255,255,0.04)',
@@ -1971,6 +1993,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           {/* Orb */}
           <div
             onClick={handleOrbClick}
+            role="button"
+            tabIndex={0}
+            aria-label={voice.speakingMsgIndex !== null ? 'Interrupt Jarvis and reply' : voice.isRecording ? 'Pause listening' : 'Resume listening'}
+            onKeyDown={e => {
+              // A div with an onClick is invisible to the keyboard. This is the
+              // control that starts and stops listening — the main one.
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOrbClick(); }
+            }}
             title={voice.speakingMsgIndex !== null ? 'Interrupt and reply' : voice.isRecording ? 'Pause listening' : 'Resume listening'}
             style={{ position: 'relative', width: 120, height: 120, cursor: 'pointer', marginBottom: 18 }}
           >
@@ -2009,12 +2039,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             JARVIS
           </div>
 
-          <div style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: '0.12em',
-            color: ['thinking', 'listening'].includes(orbMode) ? '#D97706' : '#3F3F46',
-            animation: ['thinking', 'listening'].includes(orbMode) ? 'jStatusFade 1.4s ease-in-out infinite' : 'none',
-            minHeight: 14,
-          }}>
+          {/* LISTENING / THINKING / DONE. Conveyed by colour and a pulse
+              animation otherwise, neither of which a screen reader can read. */}
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              fontSize: 10, fontWeight: 600, letterSpacing: '0.12em',
+              color: ['thinking', 'listening'].includes(orbMode) ? '#D97706' : '#3F3F46',
+              animation: ['thinking', 'listening'].includes(orbMode) ? 'jStatusFade 1.4s ease-in-out infinite' : 'none',
+              minHeight: 14,
+            }}
+          >
             {status}
           </div>
 
@@ -2025,12 +2061,17 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         </div>
 
         {/* â”€â”€ ZONE 2: Messages â”€â”€ */}
-        <div style={{
-          flex: 1, overflowY: 'auto', position: 'relative', zIndex: 1,
-          padding: '12px 0 4px',
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255,255,255,0.05) transparent',
-        }}>
+        <div
+          role="log"
+          aria-live="polite"
+          aria-label="Conversation with Jarvis"
+          style={{
+            flex: 1, overflowY: 'auto', position: 'relative', zIndex: 1,
+            padding: '12px 0 4px',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(255,255,255,0.05) transparent',
+          }}
+        >
           <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
 
             {messages.map(msg => {
@@ -2500,6 +2541,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           }}>
             <input
               type="text"
+              aria-label="Message Jarvis"
               value={textInput}
               onChange={e => setTextInput(e.target.value)}
               onKeyDown={handleKeyDown}
