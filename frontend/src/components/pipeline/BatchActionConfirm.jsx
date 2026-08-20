@@ -63,7 +63,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
     }
   };
 
-  // â”€â”€ Results view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Results view ────────────────────────────────────────────────────────────
 
   if (results) {
     return (
@@ -84,10 +84,10 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <div key={o.candidate_id} style={styles.outcomeRow}>
                 <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{o.name}</span>
                 <span style={{ fontSize: 12, color: o.interview_created ? 'var(--color-positive)' : 'var(--color-critical)' }}>
-                  {o.interview_created ? 'âœ“ Interview' : 'âœ— Interview'}
+                  {o.interview_created ? '✓ Interview' : '✗ Interview'}
                 </span>
                 <span style={{ fontSize: 12, color: o.email_drafted ? 'var(--color-positive)' : 'var(--color-ink-subtle)', marginLeft: 10 }}>
-                  {o.email_drafted ? 'âœ“ Email drafted' : 'âœ— Email'}
+                  {o.email_drafted ? '✓ Email drafted' : '✗ Email'}
                 </span>
               </div>
             ))}
@@ -103,7 +103,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
     );
   }
 
-  // â”€â”€ Confirm view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Confirm view ────────────────────────────────────────────────────────────
 
   return (
     <div style={styles.overlay}>
@@ -118,7 +118,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           For each candidate, choose whether to create an interview and/or draft an email.
         </p>
 
-        {/* Interview format â€” avatar vs conversational. Mirrors the toggle in
+        {/* Interview format — avatar vs conversational. Mirrors the toggle in
             InterviewCreator so the wizard / Jarvis / batch flows all expose the
             same choice. */}
         <div style={{ marginBottom: 14 }}>
@@ -200,8 +200,8 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{c.name}</p>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--color-ink-subtle)' }}>
-                    ATS {c.ats_score} Â· {c.verdict}
-                    {c.email ? ` Â· ${c.email}` : ' Â· no email'}
+                    ATS {c.ats_score} · {c.verdict}
+                    {c.email ? ` · ${c.email}` : ' · no email'}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -235,7 +235,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         <button onClick={handleConfirm} disabled={running || activeIds.length === 0} style={{ ...styles.primaryBtn, opacity: activeIds.length > 0 ? 1 : 0.5 }}>
           {running
             ? <><Loader size={14} className="spin" /> Processing {selectedCandidates.length} candidates...</>
-            : <><Zap size={14} /> Confirm â€” {selectedCandidates.length} candidate{selectedCandidates.length !== 1 ? 's' : ''}</>}
+            : <><Zap size={14} /> Confirm — {selectedCandidates.length} candidate{selectedCandidates.length !== 1 ? 's' : ''}</>}
         </button>
       </div>
     </div>
