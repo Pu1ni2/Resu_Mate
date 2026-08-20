@@ -1,7 +1,8 @@
 import React from 'react';
 import { Calendar, Loader, AlertCircle, ExternalLink } from 'lucide-react';
+import { toast } from '../../services/notify';
 
-export default function SchedulePanel({ calData, calLoading, calError, showToast, anonymize, candidateName }) {
+export default function SchedulePanel({ calData, calLoading, calError, anonymize, candidateName }) {
   const displayName = anonymize ? 'Candidate' : candidateName?.split(' ')[0];
 
   return (
@@ -20,7 +21,7 @@ export default function SchedulePanel({ calData, calLoading, calError, showToast
                 <div key={i} className="cal-event glass-card" onClick={() => window.open(ev.scheduling_url, '_blank')}>
                   <div className="cal-event-info"><h4>{ev.name}</h4><p>{ev.duration} minutes{ev.description ? ` — ${ev.description}` : ''}</p></div>
                   <div className="cal-event-actions">
-                    <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(ev.scheduling_url); showToast('Link copied!'); }}>Copy Link</button>
+                    <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(ev.scheduling_url); toast('Link copied!', 'success'); }}>Copy Link</button>
                     <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); window.open(ev.scheduling_url, '_blank'); }}>Open <ExternalLink size={12} /></button>
                   </div>
                 </div>

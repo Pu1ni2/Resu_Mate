@@ -2,7 +2,7 @@
 import { Mic, MicOff, X, Zap, ChevronRight, Loader, Edit2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 import { authFetch } from '../../services/authFetch';
-import { toast } from '../../services/notify';
+import { toast, notify } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -122,6 +122,14 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
         throw new Error(err.detail || 'Pipeline failed');
       }
       const data = await res.json();
+      // A screening run is the longest operation in the product and people
+      // switch away while it works. This is what the notification bell is for.
+      notify(
+        'Screening complete',
+        `${data.total_screened} candidates screened for ${config.role} — `
+        + `${data.stats.strong_fit} strong, ${data.stats.good_fit} good`,
+        'success',
+      );
       if (mode === 'voice') {
         const summary = `Done! I screened ${data.total_screened} candidates for ${config.role}. Found ${data.stats.strong_fit} strong fits and ${data.stats.good_fit} good fits. Ready to show you the results.`;
         await voice.speakText(summary, 'wizard-done');

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
-  User, ArrowLeft, AlertCircle, Briefcase, Award, MapPin,
+  User, ArrowLeft, Briefcase, Award, MapPin,
   UserCheck, Mail, Github, Calendar, Video, MessageSquare, Globe, Target
 } from 'lucide-react';
 
@@ -20,6 +20,7 @@ import EmailComposer from './focus/EmailComposer';
 import InterviewCreator from './focus/InterviewCreator';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
 import { authFetch } from '../services/authFetch';
+import { toast } from '../services/notify';
 
 const API_BASE = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -79,8 +80,6 @@ export default function CandidateFocus() {
   const [phase, setPhase] = useState('select');
   const [focusCandidate, setFocusCandidate] = useState(null);
   const [activeTool, setActiveTool] = useState('chat');
-  const [showWarning, setShowWarning] = useState(false);
-  const [warningMsg, setWarningMsg] = useState('');
 
   // ─── Scanner state ───
   const [scanLogs, setScanLogs] = useState([]);
@@ -121,12 +120,6 @@ export default function CandidateFocus() {
   const [calError, setCalError] = useState('');
 
   const { saveToCache, restoreFromCache } = useCandidateCache();
-
-  const showToast = useCallback((msg) => {
-    setWarningMsg(msg);
-    setShowWarning(true);
-    setTimeout(() => setShowWarning(false), 3000);
-  }, []);
 
   const getCandidatePayload = useCallback(() => {
     if (!focusCandidate) return {};
@@ -382,9 +375,9 @@ export default function CandidateFocus() {
   // ─── Hiring Agent ───
   const runHiringAgent = async () => {
     const role = selectedRole === 'other' ? customRole : selectedRole;
-    if (!role) { showToast('Please select or enter a role'); return; }
-    if (!selectedExperience) { showToast('Please select experience level'); return; }
-    if (!selectedLevel) { showToast('Please select seniority level'); return; }
+    if (!role) { toast('Please select or enter a role', 'error'); return; }
+    if (!selectedExperience) { toast('Please select experience level', 'error'); return; }
+    if (!selectedLevel) { toast('Please select seniority level', 'error'); return; }
     setAgentLoading(true); setAgentStep('loading'); setAgentResult(null);
     try {
       const response = await authFetch(`${API_BASE}/api/chat/hiring-agent`, {
@@ -399,7 +392,7 @@ export default function CandidateFocus() {
   };
 
   const runJDAnalysis = async () => {
-    if (!jdText.trim()) { showToast('Please paste a job description'); return; }
+    if (!jdText.trim()) { toast('Please paste a job description', 'error'); return; }
     setAgentLoading(true); setAgentStep('loading');
     try {
       const response = await authFetch(`${API_BASE}/api/chat/hiring-agent`, {
@@ -419,7 +412,6 @@ export default function CandidateFocus() {
   if (phase === 'select') {
     return (
       <div className="focus-page">
-        {showWarning && <div className="focus-toast"><AlertCircle size={16} /><span>{warningMsg}</span></div>}
 
         <div className="focus-page-header">
           <button className="focus-back-btn" onClick={() => navigate('/hiring')}>
@@ -566,7 +558,6 @@ export default function CandidateFocus() {
 
   return (
     <div className="focus-container">
-      {showWarning && <div className="focus-toast"><AlertCircle size={16} /><span>{warningMsg}</span></div>}
 
       {/* Header */}
       <div className="focus-header">
@@ -667,7 +658,7 @@ export default function CandidateFocus() {
           {activeTool === 'calendly' && (
             <SchedulePanel
               calData={calData} calLoading={calLoading} calError={calError}
-              showToast={showToast} anonymize={anonymize} candidateName={focusCandidate.name}
+              anonymize={anonymize} candidateName={focusCandidate.name}
             />
           )}
 
@@ -679,14 +670,14 @@ export default function CandidateFocus() {
           )}
 
           {activeTool === 'resume-intel' && (
-            <ResumeIntelPanel focusCandidate={focusCandidate} showToast={showToast} />
+            <ResumeIntelPanel focusCandidate={focusCandidate} />
           )}
 
           {activeTool === 'interview' && (
             <InterviewCreator
               focusCandidate={focusCandidate} selectedRole={selectedRole}
               selectedLevel={selectedLevel} selectedExperience={selectedExperience}
-              scanContact={scanContact} showToast={showToast}
+              scanContact={scanContact}
             />
           )}
         </main>

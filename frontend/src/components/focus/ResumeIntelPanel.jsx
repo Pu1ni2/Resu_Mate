@@ -1,10 +1,11 @@
 ﻿import React, { useState } from 'react';
 import { Target, AlertTriangle, CheckCircle, Shield, Loader, ChevronRight } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
+import { toast } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
-export default function ResumeIntelPanel({ focusCandidate, showToast }) {
+export default function ResumeIntelPanel({ focusCandidate }) {
   const [intel, setIntel] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +22,7 @@ export default function ResumeIntelPanel({ focusCandidate, showToast }) {
       const data = await resp.json();
       setIntel(data.intelligence);
     } catch (e) {
-      showToast?.('Resume intelligence failed: ' + e.message);
+      toast('Resume intelligence failed: ' + e.message, 'error');
     } finally {
       setLoading(false);
     }

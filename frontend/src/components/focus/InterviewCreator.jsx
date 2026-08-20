@@ -1,10 +1,11 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Video, Loader, Check, Mic } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
+import { toast, notify } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
-export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact, showToast }) {
+export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact }) {
   const [interviewEmail, setInterviewEmail] = useState('');
   const [interviewRole, setInterviewRole] = useState('');
   const [interviewNumQuestions, setInterviewNumQuestions] = useState('8');
@@ -23,7 +24,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   }, [scanContact]);
 
   const createInterview = async () => {
-    if (!focusCandidate || !interviewEmail.trim()) { showToast('Please enter candidate email'); return; }
+    if (!focusCandidate || !interviewEmail.trim()) { toast('Please enter candidate email', 'error'); return; }
     setInterviewCreating(true);
     try {
       const resp = await authFetch(`${API_BASE}/api/chat/create-interview`, {
@@ -44,10 +45,17 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
       const data = await resp.json();
       if (data.message) {
         setInterviewCreated(true);
-        showToast('Interview created! Candidate can now login.');
+        toast('Interview created! Candidate can now login.', 'success');
+        // The candidate takes the interview on their own time, so the result
+        // arrives long after this screen is closed.
+        notify(
+          'Interview created',
+          `${focusCandidate.name || interviewEmail.trim()} can now log in and start`,
+          'success',
+        );
       }
     } catch {
-      showToast('Failed to create interview');
+      toast('Failed to create interview', 'error');
     } finally {
       setInterviewCreating(false);
     }
