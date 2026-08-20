@@ -12,6 +12,13 @@ const AUTO_LISTEN_DELAY_MS = 900;
 const AUTO_RETRY_DELAY_MS = 650;
 const HANDS_FREE_DEFAULT = true;
 
+/* The orb is the only fixed-width element in the panel — everything else is a
+ * maxWidth that already flexes. At a flat 120px, with 72px of padding above and
+ * below it, the greeting and the first reply were pushed off a short viewport
+ * before the conversation had started. clamp() scales it without needing media
+ * queries against inline styles, which cannot be overridden from a stylesheet. */
+const ORB_SIZE = 'clamp(84px, 24vw, 120px)';
+
 // â”€â”€ Transcription quality filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Common single words that come from speaker echo / background noise
 const ECHO_WORDS = new Set([
@@ -1988,7 +1995,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         <div style={{
           position: 'relative', zIndex: 1, flexShrink: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          paddingTop: 44, paddingBottom: 28,
+          paddingTop: 'clamp(18px, 5vh, 44px)', paddingBottom: 'clamp(12px, 3vh, 28px)',
         }}>
           {/* Orb */}
           <div
@@ -2002,7 +2009,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOrbClick(); }
             }}
             title={voice.speakingMsgIndex !== null ? 'Interrupt and reply' : voice.isRecording ? 'Pause listening' : 'Resume listening'}
-            style={{ position: 'relative', width: 120, height: 120, cursor: 'pointer', marginBottom: 18 }}
+            style={{ position: 'relative', width: ORB_SIZE, height: ORB_SIZE, cursor: 'pointer', marginBottom: 18 }}
           >
             {orbMode === 'listening' && [0, 1, 2].map(i => (
               <div key={i} style={{
@@ -2012,7 +2019,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               }} />
             ))}
             <div style={{
-              width: 120, height: 120, borderRadius: '50%',
+              width: ORB_SIZE, height: ORB_SIZE, borderRadius: '50%',
               background: orbBg,
               animation: orbAnim,
               position: 'relative',
