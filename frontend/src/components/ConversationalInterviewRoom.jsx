@@ -1,12 +1,12 @@
 /**
- * ConversationalInterviewRoom â€” audio-only OpenAI Realtime interview.
+ * ConversationalInterviewRoom — audio-only OpenAI Realtime interview.
  *
  * No LiveKit. No camera. No avatar. The candidate's browser opens a direct
  * WebRTC peer connection to OpenAI's realtime endpoint using the ephemeral
  * client secret minted by /api/realtime/session. Audio is bidirectional;
  * transcripts arrive over the data channel and are checkpointed to the
  * backend every few user turns. On disconnect or "End interview" we finalize
- * â€” the backend runs an LLM pass over the transcript and stores a markdown
+ * — the backend runs an LLM pass over the transcript and stores a markdown
  * report on the interview row.
  *
  * Adapted in spirit from innovate-Us/innovateus-feedback
@@ -157,7 +157,7 @@ export default function ConversationalInterviewRoom({
           keepalive: true,
         });
       } catch (_) {
-        // Best-effort â€” nothing else to do, the tab is closing.
+        // Best-effort — nothing else to do, the tab is closing.
       }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
@@ -320,7 +320,7 @@ export default function ConversationalInterviewRoom({
             if (text.trim()) appendTurn('interviewer', text.trim());
           }
         } catch (_) {
-          // Non-JSON or unknown event â€” ignore.
+          // Non-JSON or unknown event — ignore.
         }
       };
 
@@ -358,7 +358,7 @@ export default function ConversationalInterviewRoom({
       if (/permission|denied|microphone/i.test(msg)) {
         hint = 'Allow microphone access in your browser settings and reload.';
       } else if (/session mint/i.test(msg)) {
-        hint = 'The interview session could not be created on the server. Your link may be expired â€” contact your hiring manager.';
+        hint = 'The interview session could not be created on the server. Your link may be expired — contact your hiring manager.';
       } else if (/sdp|webrtc|realtime/i.test(msg)) {
         hint = "Couldn't reach OpenAI Realtime. Check your connection and try again.";
       }
@@ -421,7 +421,7 @@ export default function ConversationalInterviewRoom({
           <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Ready when you are</h2>
           <p style={{ color: '#A1A1AA', fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
             You'll have a short voice conversation with Alex, an AI interviewer.
-            Speak naturally â€” you can interrupt and ask Alex to repeat anything.
+            Speak naturally — you can interrupt and ask Alex to repeat anything.
             Make sure you're in a quiet space.
           </p>
           {error && (
@@ -471,7 +471,7 @@ export default function ConversationalInterviewRoom({
       {/* Live conversation */}
       {phase === 'live' && (
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr', gap: 24, maxWidth: 720, margin: '0 auto', width: '100%' }}>
-          {/* Connection-lost banner. We do not auto-reconnect â€” the OpenAI
+          {/* Connection-lost banner. We do not auto-reconnect — the OpenAI
               realtime token is single-use and short-lived, so re-establishing
               cleanly means ending and restarting the interview. The banner
               just tells the candidate they should stop talking. */}
@@ -486,7 +486,7 @@ export default function ConversationalInterviewRoom({
               <AlertCircle size={16} />
               {connState === 'lost'
                 ? 'Connection to the interviewer was lost. End the interview and start again from the dashboard.'
-                : 'Reconnecting to the interviewerâ€¦'}
+                : 'Reconnecting to the interviewer…'}
             </div>
           )}
           {/* Big mic / speaking indicator */}

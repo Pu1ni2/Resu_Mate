@@ -22,7 +22,7 @@ function CredibilityBadge({ score }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', border: `1px solid ${color}30`, background: `${color}10`, fontSize: '12px', fontWeight: '700', color }}>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-      {label} â€” {score}/100
+      {label} — {score}/100
     </div>
   );
 }
@@ -147,8 +147,8 @@ function CredibilitySection({ candidateId, candidateEmail }) {
           <span style={{ fontSize: '12px', fontWeight: '700' }}>Level Assessment</span>
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text2, #94A3B8)' }}>
-          Resume claims: <strong>{la.resume_claims || 'â€”'}</strong> â†’ Interview suggests: <strong style={{ color: la.match ? '#22C55E' : '#F59E0B' }}>{la.interview_suggests || 'â€”'}</strong>
-          {la.explanation && <span> â€” {la.explanation}</span>}
+          Resume claims: <strong>{la.resume_claims || '—'}</strong> → Interview suggests: <strong style={{ color: la.match ? '#22C55E' : '#F59E0B' }}>{la.interview_suggests || '—'}</strong>
+          {la.explanation && <span> — {la.explanation}</span>}
         </div>
       </div>
 
@@ -165,7 +165,7 @@ function CredibilitySection({ candidateId, candidateEmail }) {
       {/* Recommendation */}
       <div style={{ marginTop: '14px', padding: '10px 14px', borderRadius: '8px', background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '12px', fontWeight: '600' }}>Hiring Recommendation</span>
-        <span style={{ fontSize: '13px', fontWeight: '700', color: '#8B5CF6' }}>{c.hiring_recommendation || 'â€”'}</span>
+        <span style={{ fontSize: '13px', fontWeight: '700', color: '#8B5CF6' }}>{c.hiring_recommendation || '—'}</span>
       </div>
     </div>
   );
@@ -239,7 +239,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
   if (!report) return <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
   const r = report;
-  const avgScore = r.avgScore || (r.scores?.length > 0 ? (r.scores.reduce((a, s) => a + (s?.score || 0), 0) / r.scores.length).toFixed(1) : 'â€”');
+  const avgScore = r.avgScore || (r.scores?.length > 0 ? (r.scores.reduce((a, s) => a + (s?.score || 0), 0) / r.scores.length).toFixed(1) : '—');
   const eyeContact = r.eyeContact || 0;
   const violations = r.violations || 0;
   const timerVal = r.timer || 0;
@@ -260,7 +260,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           {r.terminated ? 'Interview Terminated' : 'Interview Completed'}
         </h2>
         <p style={{ color: '#64748B', fontSize: '14px' }}>
-          {scores.length} questions answered Â· {mins}:{secs} duration
+          {scores.length} questions answered · {mins}:{secs} duration
         </p>
         {isManager && candidateEmail && (
           <button onClick={async () => {

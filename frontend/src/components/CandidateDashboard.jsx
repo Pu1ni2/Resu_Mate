@@ -229,7 +229,7 @@ export default function CandidateDashboard() {
   }
 
   if (showInterviewRoom) {
-    // Route by interview.mode â€” "conversational" launches the audio-only
+    // Route by interview.mode — "conversational" launches the audio-only
     // OpenAI Realtime room, anything else (default "avatar") uses the existing
     // LiveKit + Simli flow.
     const mode = (candidateSession.interview_config?.mode || 'avatar').toLowerCase();
@@ -356,7 +356,7 @@ export default function CandidateDashboard() {
                       <div className="cd-resume-file-icon"><FileText size={24} /></div>
                       <div className="cd-resume-card-info">
                         <h3>{c.name || 'Your Resume'}</h3>
-                        <p>{[c.predicted_role, c.experience_level, c.total_experience_years ? `${c.total_experience_years}y exp` : null].filter(Boolean).join(' Â· ')}</p>
+                        <p>{[c.predicted_role, c.experience_level, c.total_experience_years ? `${c.total_experience_years}y exp` : null].filter(Boolean).join(' · ')}</p>
                       </div>
                       <div className="cd-resume-check"><Check size={18} /></div>
                     </div>
@@ -426,7 +426,7 @@ export default function CandidateDashboard() {
                       {(c.name || 'C')[0].toUpperCase()}
                     </div>
                     <h2>{c.name || 'Candidate'}</h2>
-                    <p className="cd-analysis-subtitle">{c.predicted_role || 'Role'} Â· {c.experience_level || 'Level'} Â· {c.total_experience_years || 0}y experience</p>
+                    <p className="cd-analysis-subtitle">{c.predicted_role || 'Role'} · {c.experience_level || 'Level'} · {c.total_experience_years || 0}y experience</p>
                     {c.location && <p className="cd-analysis-location"><MapPin size={13} /> {c.location}</p>}
                   </div>
 
@@ -444,7 +444,7 @@ export default function CandidateDashboard() {
                     </div>
                     <div className="cd-card cd-mini-stat">
                       <Award size={18} className="cd-mini-stat-icon" />
-                      <div className="cd-mini-stat-value">{c.experience_level || 'â€”'}</div>
+                      <div className="cd-mini-stat-value">{c.experience_level || '—'}</div>
                       <div className="cd-mini-stat-label">Level</div>
                     </div>
                     <div className="cd-card cd-mini-stat">
@@ -499,7 +499,7 @@ export default function CandidateDashboard() {
                             <div className="cd-exp-dot" />
                             <div>
                               <h4>{w.title || w.role || 'Position'}</h4>
-                              <p className="cd-exp-company">{w.company || ''} {w.duration ? `Â· ${w.duration}` : ''}</p>
+                              <p className="cd-exp-company">{w.company || ''} {w.duration ? `· ${w.duration}` : ''}</p>
                               {w.description && <p className="cd-exp-desc">{w.description}</p>}
                             </div>
                           </div>
@@ -518,7 +518,7 @@ export default function CandidateDashboard() {
                             <div className="cd-exp-dot cd-exp-dot-blue" />
                             <div>
                               <h4>{e.degree || e.field || 'Degree'}</h4>
-                              <p className="cd-exp-company">{e.institution || e.school || ''} {e.year ? `Â· ${e.year}` : ''}</p>
+                              <p className="cd-exp-company">{e.institution || e.school || ''} {e.year ? `· ${e.year}` : ''}</p>
                             </div>
                           </div>
                         ))}
@@ -614,7 +614,7 @@ export default function CandidateDashboard() {
           {tab === 'interview' && (
             <div className="cd-tab-content cd-interview-tab">
 
-              {/* Completed â€” Report */}
+              {/* Completed — Report */}
               {interviewCompleted && interviewReport && (
                 <div className="cd-interview-done">
                   <div className="cd-card cd-interview-done-header">
@@ -623,7 +623,7 @@ export default function CandidateDashboard() {
                       <div className="cd-interview-done-info">
                         <h3>Interview Completed</h3>
                         <p>
-                          Score: {interviewReport.avgScore || 'â€”'}/10 Â· Eye Contact: {interviewReport.eyeContact || 0}% Â· Violations: {interviewReport.violations || 0} Â· {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
+                          Score: {interviewReport.avgScore || '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
                         </p>
                       </div>
                       <button className="cd-report-toggle" onClick={() => setShowFullReport(prev => !prev)}>
@@ -641,7 +641,7 @@ export default function CandidateDashboard() {
                 </div>
               )}
 
-              {/* Pending â€” Enter room (demo can retake after completion) */}
+              {/* Pending — Enter room (demo can retake after completion) */}
               {hasInterview && (!interviewCompleted || isDemo) && (
                 <div className="cd-interview-pending">
                   <div className="cd-card cd-interview-ready-card">
@@ -670,7 +670,7 @@ export default function CandidateDashboard() {
                             </span>
                           </h3>
                           <p className="cd-interview-meta">
-                            {candidateSession.interview_config?.role || 'General'} Â· {candidateSession.interview_config?.num_questions || 8} questions Â· {candidateSession.interview_config?.level || 'Mid-Level'}
+                            {candidateSession.interview_config?.role || 'General'} · {candidateSession.interview_config?.num_questions || 8} questions · {candidateSession.interview_config?.level || 'Mid-Level'}
                           </p>
                           <div className="cd-interview-rules">
                             {isVoice ? (

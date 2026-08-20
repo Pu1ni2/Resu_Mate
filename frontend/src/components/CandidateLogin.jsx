@@ -35,17 +35,17 @@ const DEMO_SESSION = {
       {
         title: 'Generative AI Product Development Fellow',
         company: 'Burnes Center for Social Change, Northeastern University',
-        duration: 'Jan 2026 â€“ Present',
+        duration: 'Jan 2026 – Present',
       },
       {
         title: 'Python Developer L2 / IICS Developer',
         company: 'Wipro Technologies, Bengaluru, India',
-        duration: 'Apr 2022 â€“ Oct 2024',
+        duration: 'Apr 2022 – Oct 2024',
       },
     ],
     education: [
-      { degree: 'MS in Artificial Intelligence', institution: 'Northeastern University, Boston, MA', year: '2025â€“2027' },
-      { degree: 'B.Tech in ECE', institution: 'VIT, India', year: '2018â€“2022' },
+      { degree: 'MS in Artificial Intelligence', institution: 'Northeastern University, Boston, MA', year: '2025–2027' },
+      { degree: 'B.Tech in ECE', institution: 'VIT, India', year: '2018–2022' },
     ],
   },
 };
@@ -76,7 +76,7 @@ export default function CandidateLogin() {
     if (!email.trim()) return;
     const trimmed = email.trim().toLowerCase();
 
-    // Demo account bypass â€” DEV ONLY. In production a real OTP is required.
+    // Demo account bypass — DEV ONLY. In production a real OTP is required.
     if (import.meta.env.DEV && trimmed === DEMO_EMAIL) {
       localStorage.removeItem('resumate_interview_report');
       localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
