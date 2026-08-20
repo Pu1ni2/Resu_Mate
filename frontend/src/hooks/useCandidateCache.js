@@ -12,9 +12,7 @@ export default function useCandidateCache() {
     return cache.current[candidateId] || null;
   }, []);
 
-  const hasCache = useCallback((candidateId) => {
-    return !!cache.current[candidateId];
-  }, []);
-
-  return { saveToCache, restoreFromCache, hasCache };
+  // restoreFromCache returning null already answers "is it cached?", which is
+  // why nothing ever called the hasCache that used to sit here.
+  return { saveToCache, restoreFromCache };
 }

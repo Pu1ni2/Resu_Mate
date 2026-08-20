@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { marked } from 'marked';
-import CandidateFocus from './CandidateFocus';
 import PipelineWizard from './pipeline/PipelineWizard';
 import ATSResultsView from './pipeline/ATSResultsView';
 import InterviewReportView from './shared/InterviewReportView';
@@ -1132,9 +1131,6 @@ export default function Dashboard() {
           )}
 
           {/* CANDIDATE FOCUS TAB */}
-          {tab === 'focus' && (
-            <CandidateFocus />
-          )}
         </div>
       </main>
     </div>

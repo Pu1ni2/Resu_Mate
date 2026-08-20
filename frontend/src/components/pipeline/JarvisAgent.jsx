@@ -1478,7 +1478,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const iv = expandedCard.interviewData;
         const rp = expandedCard.reportData;
         const cr = expandedCard.credibilityData;
-        const ex = expandedCard.exportData;
         return (
           <div
             onClick={() => setExpandedCard(null)}
@@ -1884,21 +1883,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 );
               })()}
 
-              {/* Export expanded */}
-              {ex && (
-                <>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(59,130,246,0.55)', marginBottom: 6 }}>PDF REPORT</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 18 }}>{ex.candidateName}</div>
-                  <a
-                    href={ex.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '12px 24px', borderRadius: 100, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)', color: '#93C5FD', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
-                  >
-                    Open PDF report
-                  </a>
-                </>
-              )}
             </div>
           </div>
         );
@@ -2429,29 +2413,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         {insights.slice(0, 2).map((insight, i) => (
                           <div key={i} style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.5, marginBottom: 4 }}>{insight}</div>
                         ))}
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (msg.exportData) {
-                  const ex = msg.exportData;
-                  return (
-                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
-                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(59,130,246,0.22)', borderRadius: 12, padding: '12px 16px' }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(59,130,246,0.6)', marginBottom: 8 }}>PDF REPORT READY</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 10 }}>{ex.candidateName}</div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <a
-                            href={ex.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', padding: '7px 16px', borderRadius: 100, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)', color: '#93C5FD', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}
-                          >
-                            Open PDF
-                          </a>
-                          {expandBtn(msg)}
-                        </div>
                       </div>
                     </div>
                   );
