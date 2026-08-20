@@ -834,9 +834,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <PipelineWizard
-                    inline
                     candidateCount={candidates.filter(c => c.is_resume !== false).length}
-                    onClose={() => setTab('upload')}
                     onComplete={data => setPipelineResult(data)}
                   />
                 )

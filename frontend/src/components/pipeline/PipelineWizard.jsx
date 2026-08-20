@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Zap, Loader } from 'lucide-react';
+import { Zap, Loader } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
 
@@ -26,11 +26,13 @@ const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https:
  * Jarvis still runs this same pipeline by voice. It passes a fresh TTS key per
  * utterance, which is why it never had the first problem.
  */
-/* `inline` renders the wizard inside the workspace instead of as a fixed
- * overlay. It was written as a modal, but Screening is now a top-level section
- * with its own nav entry -- a modal over a tab you just navigated to is a
- * dialog about nothing, and there is no sensible target for its close button. */
-export default function PipelineWizard({ candidateCount = 0, onClose, onComplete, inline = false }) {
+/* Renders inside the workspace, not as an overlay. It was written as a modal
+ * with an `inline` escape hatch, but Screening is a top-level section with its
+ * own nav entry, so every call site passed inline -- which also meant the close
+ * button was gated behind `!inline` and could never appear, and onClose could
+ * never fire. A modal over a tab you just navigated to is a dialog about
+ * nothing; the nav is how you leave. */
+export default function PipelineWizard({ candidateCount = 0, onComplete }) {
   const [formData, setFormData] = useState({ role: '', jdText: '', skills: '', minExp: '' });
   const [formRunning, setFormRunning] = useState(false);
 
@@ -76,12 +78,9 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
     }
   };
 
-  const shellStyle = inline ? styles.inlineShell : styles.overlay;
-
   return (
-    <div style={shellStyle}>
-      <div style={{ ...styles.card, maxWidth: 560 }}>
-        {!inline && <button onClick={onClose} style={styles.closeBtn}><X size={18} /></button>}
+    <div style={styles.shell}>
+      <div style={styles.card}>
         <div style={{ marginBottom: 20 }}>
           <div style={styles.iconCircle}><Zap size={22} style={{ color: '#8B5CF6' }} /></div>
           <h2 style={styles.title}>Screen candidates</h2>
@@ -118,22 +117,12 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
 }
 
 const styles = {
-  inlineShell: { display: 'flex', justifyContent: 'center', padding: '4px 0 24px' },
-  overlay: {
-    position: 'fixed', inset: 0, zIndex: 1000,
-    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-  },
+  shell: { display: 'flex', justifyContent: 'center', padding: '4px 0 24px' },
   card: {
     background: 'linear-gradient(135deg, #0F172A, #1E293B)',
     border: '1px solid rgba(139,92,246,0.25)',
-    borderRadius: 20, padding: 32, width: '100%', maxWidth: 480,
+    borderRadius: 20, padding: 32, width: '100%', maxWidth: 560,
     position: 'relative', boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-  },
-  closeBtn: {
-    position: 'absolute', top: 16, right: 16,
-    background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: 8,
-    padding: '6px 8px', cursor: 'pointer', color: '#94A3B8',
   },
   iconCircle: {
     width: 56, height: 56, borderRadius: '50%',
