@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, FileText, KeyRound } from 'lucide-react';

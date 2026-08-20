@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Send, Mic, MicOff, Loader, RotateCcw, Maximize2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';

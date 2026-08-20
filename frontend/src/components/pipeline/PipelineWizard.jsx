@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, X, Zap, ChevronRight, Loader, Edit2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 import { authFetch } from '../../services/authFetch';

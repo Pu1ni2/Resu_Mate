@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Mail, Loader, Check, Clipboard } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
 

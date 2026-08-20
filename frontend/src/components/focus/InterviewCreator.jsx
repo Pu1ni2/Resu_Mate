@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Video, Loader, Check, Mic } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';

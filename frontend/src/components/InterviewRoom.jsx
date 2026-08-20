@@ -1,4 +1,4 @@
-﻿/**
+/**
  * InterviewRoom v4 — LiveKit + Simli Avatar Interview
  *
  * The AI interviewer (Simli avatar) joins as a real participant in a LiveKit room.
