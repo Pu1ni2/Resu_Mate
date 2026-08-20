@@ -2,6 +2,7 @@
 import { Mic, MicOff, X, Zap, ChevronRight, Loader, Edit2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
 import { authFetch } from '../../services/authFetch';
+import { toast } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -127,7 +128,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
       }
       onComplete(data);
     } catch (err) {
-      alert('Pipeline error: ' + err.message);
+      toast('Pipeline error: ' + err.message, 'error');
       setIsRunning(false);
     }
   };
@@ -138,7 +139,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
   const [formRunning, setFormRunning] = useState(false);
 
   const handleFormRun = async () => {
-    if (!formData.role.trim()) { alert('Please enter the role.'); return; }
+    if (!formData.role.trim()) { toast('Please enter the role.', 'error'); return; }
     setFormRunning(true);
     try {
       const res = await authFetch(`${API_BASE}/api/pipeline/run`, {
@@ -159,7 +160,7 @@ export default function PipelineWizard({ candidateCount = 0, onClose, onComplete
       const data = await res.json();
       onComplete(data);
     } catch (err) {
-      alert('Pipeline error: ' + err.message);
+      toast('Pipeline error: ' + err.message, 'error');
       setFormRunning(false);
     }
   };

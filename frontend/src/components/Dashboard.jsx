@@ -14,6 +14,7 @@ import {
   Mic, MicOff, Volume2, Loader, Square, Video, Zap
 } from 'lucide-react';
 import { authFetch } from '../services/authFetch';
+import { toast } from '../services/notify';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -283,7 +284,7 @@ export default function Dashboard() {
       try {
         await uploadResume(file);
       } catch (err) {
-        alert(`Failed: ${err.response?.data?.detail || err.message}`);
+        toast(`Failed: ${err.response?.data?.detail || err.message}`, 'error');
       }
     }
   };
@@ -341,7 +342,7 @@ export default function Dashboard() {
       setIsRecording(true);
     } catch (err) {
       console.error('Microphone access denied:', err);
-      alert('Please allow microphone access to use voice input.');
+      toast('Please allow microphone access to use voice input.', 'error');
     }
   };
 
@@ -385,11 +386,11 @@ export default function Dashboard() {
     if (data.text && data.text.trim()) {
       handleVoiceSend(data.text);
     } else {
-      alert('No speech detected. Please try again.');
+      toast('No speech detected. Please try again.', 'info');
     }
   } catch (err) {
     console.error('Transcription error:', err);
-    alert('Voice transcription failed: ' + err.message);
+    toast('Voice transcription failed: ' + err.message, 'error');
   } finally {
     setIsTranscribing(false);
   }

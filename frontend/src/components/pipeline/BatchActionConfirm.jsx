@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
+import { toast } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -57,7 +58,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
       const data = await res.json();
       setResults(data);
     } catch (err) {
-      alert('Error: ' + err.message);
+      toast('Error: ' + err.message, 'error');
       setRunning(false);
     }
   };

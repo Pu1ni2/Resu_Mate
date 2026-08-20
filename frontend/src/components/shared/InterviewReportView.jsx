@@ -2,6 +2,7 @@
 import { marked } from 'marked';
 import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { authFetch } from '../../services/authFetch';
+import { toast } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
@@ -270,7 +271,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
               const resp = await authFetch(
                 `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`
               );
-              if (!resp.ok) { alert('Could not export report (you may not have access).'); return; }
+              if (!resp.ok) { toast('Could not export report (you may not have access).', 'error'); return; }
               const blob = await resp.blob();
               const link = document.createElement('a');
               link.href = URL.createObjectURL(blob);
@@ -280,7 +281,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
               link.remove();
               URL.revokeObjectURL(link.href);
             } catch {
-              alert('Could not export report. Please try again.');
+              toast('Could not export report. Please try again.', 'error');
             }
           }} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
             <Download size={14} /> Export PDF Report

@@ -13,6 +13,7 @@ import {
 import InterviewRoom from './InterviewRoom';
 import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
+import { toast } from '../services/notify';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -127,8 +128,8 @@ export default function CandidateDashboard() {
       const data = await resp.json();
       if (data.success) {
         setAdvisorCandidates([data.data]);
-      } else { alert('Upload failed'); }
-    } catch (err) { alert(`Upload failed: ${err.message}`); }
+      } else { toast('Upload failed', 'error'); }
+    } catch (err) { toast(`Upload failed: ${err.message}`, 'error'); }
   };
 
   const handleUpload = async (files) => {
@@ -140,11 +141,11 @@ export default function CandidateDashboard() {
   const handleLoadSample = async () => {
     try {
       const resp = await fetch('/sample-resume.pdf');
-      if (!resp.ok) { alert('Sample resume not found. Please add it to the public folder.'); return; }
+      if (!resp.ok) { toast('Sample resume not found.', 'error'); return; }
       const blob = await resp.blob();
       const file = new File([blob], 'sample-resume.pdf', { type: 'application/pdf' });
       await uploadFile(file);
-    } catch (err) { alert(`Could not load sample: ${err.message}`); }
+    } catch (err) { toast(`Could not load sample: ${err.message}`, 'error'); }
   };
 
   const handleAdvisorSend = async (msg) => {
@@ -191,13 +192,13 @@ export default function CandidateDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) {
-        alert('Could not delete your data. Please try again or contact the hiring team.');
+        toast('Could not delete your data. Please try again or contact the hiring team.', 'error');
         return;
       }
-      alert('Your data has been deleted.');
+      toast('Your data has been deleted.', 'success');
       handleLogout();
     } catch {
-      alert('Could not reach the server. Please try again.');
+      toast('Could not reach the server. Please try again.', 'error');
     }
   };
 
