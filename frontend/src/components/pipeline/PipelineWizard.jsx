@@ -82,7 +82,7 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
     <div style={styles.shell}>
       <div style={styles.card}>
         <div style={{ marginBottom: 20 }}>
-          <div style={styles.iconCircle}><Zap size={22} style={{ color: '#8B5CF6' }} /></div>
+          <div style={styles.iconCircle}><Zap size={22} style={{ color: 'var(--color-accent)' }} /></div>
           <h2 style={styles.title}>Screen candidates</h2>
         </div>
 
@@ -92,18 +92,18 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
             value={formData.role} onChange={e => setFormData(f => ({ ...f, role: e.target.value }))} />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Job Description <span style={{ color: '#64748B' }}>(optional — paste for better ATS scoring)</span></label>
+          <label style={styles.label}>Job Description <span style={{ color: 'var(--color-ink-subtle)' }}>(optional — paste for better ATS scoring)</span></label>
           <textarea style={{ ...styles.input, height: 120, resize: 'vertical' }}
             placeholder="Paste your JD here..."
             value={formData.jdText} onChange={e => setFormData(f => ({ ...f, jdText: e.target.value }))} />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Must-have skills <span style={{ color: '#64748B' }}>(comma-separated, optional)</span></label>
+          <label style={styles.label}>Must-have skills <span style={{ color: 'var(--color-ink-subtle)' }}>(comma-separated, optional)</span></label>
           <input style={styles.input} placeholder="e.g. Python, React, AWS"
             value={formData.skills} onChange={e => setFormData(f => ({ ...f, skills: e.target.value }))} />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Minimum experience (years) <span style={{ color: '#64748B' }}>(0 to skip)</span></label>
+          <label style={styles.label}>Minimum experience (years) <span style={{ color: 'var(--color-ink-subtle)' }}>(0 to skip)</span></label>
           <input style={{ ...styles.input, width: 120 }} type="number" min="0" placeholder="0"
             value={formData.minExp} onChange={e => setFormData(f => ({ ...f, minExp: e.target.value }))} />
         </div>
@@ -119,30 +119,30 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
 const styles = {
   shell: { display: 'flex', justifyContent: 'center', padding: '4px 0 24px' },
   card: {
-    background: 'linear-gradient(135deg, #0F172A, #1E293B)',
-    border: '1px solid rgba(139,92,246,0.25)',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-line)',
     borderRadius: 20, padding: 32, width: '100%', maxWidth: 560,
-    position: 'relative', boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+    position: 'relative', boxShadow: 'var(--shadow-e3)',
   },
   iconCircle: {
     width: 56, height: 56, borderRadius: '50%',
-    background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
+    background: 'var(--color-accent-wash)', border: '1px solid var(--color-accent-line)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
   },
-  title: { fontSize: 22, fontWeight: 800, textAlign: 'center', marginBottom: 8, color: '#F1F5F9' },
+  title: { fontSize: 22, fontWeight: 800, textAlign: 'center', marginBottom: 8, color: 'var(--color-ink)' },
   primaryBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     width: '100%', padding: '13px 20px',
-    background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
-    color: '#fff', border: 'none', borderRadius: 12,
+    background: 'var(--color-accent)',
+    color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 12,
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
   },
   input: {
-    flex: 1, background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-    padding: '11px 14px', color: '#F1F5F9', fontSize: 14, outline: 'none',
+    flex: 1, background: 'var(--color-surface-raised)',
+    border: '1px solid var(--color-line)', borderRadius: 10,
+    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 14, outline: 'none',
     fontFamily: 'inherit',
   },
   formGroup: { marginBottom: 16 },
-  label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 },
+  label: { display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-ink-muted)', marginBottom: 6 },
 };
