@@ -1,10 +1,11 @@
 """The mojibake repair must fix corrupt text and leave correct text alone.
 
-The second half is the part that needs proving. A blind
-`s.encode('cp1252').decode('utf-8')` looks like it works -- and it destroyed two
-already-correct em dashes in app/api/pipeline.py when I tried it, because a real
-em dash is encodable as cp1252 (byte 0x97) and the subsequent decode produced
-U+FFFD instead of raising.
+The second half is the part that needs proving. A real em dash is encodable as
+cp1252 (byte 0x97), so encoding correct text back to bytes succeeds -- only the
+following utf-8 decode rejects it, and not always. An early version of this,
+matching a fixed-width run, turned pipeline.py's two corrupt em dashes into
+U+FFFD instead of repairing them, and the same mistake on a file's correct text
+would silently destroy it.
 
 Lives in the backend suite because that is where pytest already runs; the script
 it tests is repo-level tooling, not backend code.
@@ -68,13 +69,31 @@ def test_repairs_a_four_byte_sequence():
     assert repair(broken) == '\U0001f680'
 
 
+def test_repairs_sequences_built_on_cp1252_undefined_bytes():
+    """The bytes cp1252 leaves undefined: 0x81, 0x8D, 0x8F, 0x90, 0x9D.
+
+    Python's cp1252 codec refuses them in both directions, but .NET's maps them
+    to the same-numbered control character -- and .NET is what did the damage, so
+    the files really do contain U+0090. Missing these made every sequence built
+    on one of those bytes invisible to an earlier version of this script: 90
+    occurrences in InterviewRoom.jsx alone, because the box-drawing double
+    horizontal U+2550 is E2 95 90.
+    """
+    # U+2550 ═ -> E2 95 90 -> 'a-circumflex', bullet, U+0090
+    assert repair('â•') == '═'
+    # U+25CF ● -> E2 97 8F -> 'a-circumflex', em dash, U+008F
+    assert repair('â—') == '●'
+    # A full banner of them, adjacent.
+    assert repair('â•' * 3) == '═' * 3
+
+
 # ── Correct text is left exactly as it was ────────────────────────────────────
 # This is the guard that matters. Each of these is encodable as cp1252, so a
 # naive round-trip reaches for them.
 
 @pytest.mark.parametrize('good', [
     'plain ascii only',
-    'an em dash — in a sentence',        # the pipeline.py case
+    'an em dash — in a sentence',
     'an en dash – here',
     'quotes ‘single’ and “double”',
     'ellipsis…',

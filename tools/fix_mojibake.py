@@ -17,18 +17,17 @@ A blind round-trip over a file is not safe:
   - Files mix corrupt and correct copies of the same glyph. PipelineWizard.jsx
     has a corrupt em dash on line 30 and a clean one on line 129; JarvisAgent.jsx
     has 1590 corrupt sequences alongside clean em dashes added by later edits.
-  - A real em dash IS encodable as cp1252 (byte 0x97), so `encode('cp1252')`
-    succeeds on correct text too. Only the subsequent utf-8 decode rejects it,
-    and not always -- with the wrong surrounding characters it can decode to
-    U+FFFD instead of raising. That is how a first attempt at this script turned
-    two correct em dashes in pipeline.py into replacement characters.
+  - A real em dash IS encodable as cp1252 (byte 0x97), so encoding back succeeds
+    on correct text too. Only the subsequent utf-8 decode rejects it, and not
+    always -- with the wrong surrounding characters it can decode to U+FFFD
+    instead of raising. A first attempt at this, matching a fixed-width run,
+    turned pipeline.py's two corrupt em dashes into replacement characters
+    instead of repairing them.
 
 So a run is repaired only when all of these hold:
 
-  1. It starts with a mis-decoded UTF-8 lead: U+00C2, U+00C3 or U+00E2. Those are
-     what the lead bytes C2, C3 and E2 become when read as cp1252, and every
-     mojibake sequence begins with one.
-  2. Every character in the run is in the cp1252 high table (CP1252_HIGH below).
+  1. It starts with the cp1252 reading of a UTF-8 lead byte (see LEADS).
+  2. Every character in the run is in the cp1252 high table (CP1252_HIGH).
      A character outside it cannot have come from this corruption.
   3. The round-trip changes the text and introduces no U+FFFD.
 
@@ -44,15 +43,37 @@ import argparse
 import os
 import sys
 
-# Every character cp1252 can produce from a single high byte. 0x80-0x9F map to
-# assorted punctuation; 0xA0-0xFF map to Latin-1. Anything outside this set could
-# not have come from a cp1252 mis-read, which is guard 2.
-CP1252_HIGH = {
-    '€', '‚', 'ƒ', '„', '…', '†', '‡',
-    'ˆ', '‰', 'Š', '‹', 'Œ', 'Ž', '‘',
-    '’', '“', '”', '•', '–', '—', '˜',
-    '™', 'š', '›', 'œ', 'ž', 'Ÿ',
-} | {chr(c) for c in range(0xA0, 0x100)}
+# Every character a cp1252 mis-read can produce from a single high byte, mapped
+# back to the byte it came from. Built from the codec rather than hand-listed,
+# because hand-listing it missed a case: see the five bytes below.
+CP1252_ENCODE = {}
+for _b in range(0x80, 0x100):
+    try:
+        CP1252_ENCODE[bytes([_b]).decode('cp1252')] = _b
+    except UnicodeDecodeError:
+        pass
+
+# 0x81, 0x8D, 0x8F, 0x90 and 0x9D are undefined in cp1252 and Python's codec
+# refuses them in both directions. The corruption was not done by Python though
+# -- it was .NET, whose CP1252 quietly maps those five bytes to the
+# same-numbered control characters. So the files really do contain U+0090, and
+# without these entries every sequence built on one of those bytes is
+# undetectable and unrepairable. That is 90 occurrences of U+0090 in
+# InterviewRoom.jsx alone, which is where I found this: the box-drawing double
+# horizontal U+2550 is E2 95 90, so every '=' banner ends in one.
+for _b in (0x81, 0x8D, 0x8F, 0x90, 0x9D):
+    CP1252_ENCODE[chr(_b)] = _b
+
+# Guard 2: a character outside this set cannot have come from the corruption.
+CP1252_HIGH = set(CP1252_ENCODE)
+
+
+def _to_cp1252_bytes(s: str) -> bytes:
+    """Encode a candidate run back to the bytes it was mis-read from.
+
+    Not str.encode('cp1252') -- that raises on the five undefined slots above.
+    """
+    return bytes(CP1252_ENCODE[c] for c in s)
 
 # A mojibake run always opens with the cp1252 reading of a UTF-8 lead byte:
 # C2-DF start a 2-byte sequence, E0-EF a 3-byte one, F0-F4 a 4-byte one. cp1252
@@ -102,8 +123,8 @@ def repair(text: str) -> str:
         for stop in range(end, i + 1, -1):
             candidate = text[i:stop]
             try:
-                decoded = candidate.encode('cp1252').decode('utf-8')
-            except (UnicodeEncodeError, UnicodeDecodeError):
+                decoded = _to_cp1252_bytes(candidate).decode('utf-8')
+            except (KeyError, UnicodeDecodeError):
                 continue
             # Guard 3. A decode that "succeeds" into U+FFFD has not recovered
             # anything -- it has destroyed a character that may well have been
@@ -134,8 +155,8 @@ def count_suspect(text: str) -> int:
             for stop in range(end, i + 1, -1):
                 cand = text[i:stop]
                 try:
-                    dec = cand.encode('cp1252').decode('utf-8')
-                except (UnicodeEncodeError, UnicodeDecodeError):
+                    dec = _to_cp1252_bytes(cand).decode('utf-8')
+                except (KeyError, UnicodeDecodeError):
                     continue
                 if '�' in dec or dec == cand:
                     continue
