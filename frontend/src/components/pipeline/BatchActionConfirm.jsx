@@ -70,12 +70,12 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
       <div style={styles.overlay}>
         <div style={styles.modal}>
           <h3 style={styles.title}>
-            <CheckCircle size={20} style={{ color: '#22C55E' }} /> Actions Complete
+            <CheckCircle size={20} style={{ color: 'var(--color-positive)' }} /> Actions Complete
           </h3>
           <div style={styles.statsRow}>
-            <StatBox value={results.interviews_created} label="Interviews Created" color="#22C55E" />
-            <StatBox value={results.emails_sent} label="Emails Sent" color="#3B82F6" />
-            <StatBox value={results.total} label="Total Processed" color="#8B5CF6" />
+            <StatBox value={results.interviews_created} label="Interviews Created" color="var(--color-positive)" />
+            <StatBox value={results.emails_sent} label="Emails Sent" color="var(--color-positive)" />
+            <StatBox value={results.total} label="Total Processed" color="var(--color-ink-muted)" />
           </div>
 
           {/* Per-candidate outcome */}
@@ -83,18 +83,18 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
             {results.outcomes.map(o => (
               <div key={o.candidate_id} style={styles.outcomeRow}>
                 <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{o.name}</span>
-                <span style={{ fontSize: 12, color: o.interview_created ? '#22C55E' : '#EF4444' }}>
+                <span style={{ fontSize: 12, color: o.interview_created ? 'var(--color-positive)' : 'var(--color-critical)' }}>
                   {o.interview_created ? 'âœ“ Interview' : 'âœ— Interview'}
                 </span>
-                <span style={{ fontSize: 12, color: o.email_drafted ? '#3B82F6' : '#64748B', marginLeft: 10 }}>
+                <span style={{ fontSize: 12, color: o.email_drafted ? 'var(--color-positive)' : 'var(--color-ink-subtle)', marginLeft: 10 }}>
                   {o.email_drafted ? 'âœ“ Email drafted' : 'âœ— Email'}
                 </span>
               </div>
             ))}
           </div>
 
-          <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16 }}>
-            Candidates can now log in at <strong style={{ color: '#8B5CF6' }}>/candidate/login</strong> using their email and OTP.
+          <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
+            Candidates can now log in at <strong style={{ color: 'var(--color-accent)' }}>/candidate/login</strong> using their email and OTP.
           </p>
 
           <button onClick={onDone} style={styles.primaryBtn}>Done</button>
@@ -111,10 +111,10 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         <button onClick={onClose} style={styles.closeBtn}><X size={16} /></button>
 
         <h3 style={styles.title}>
-          <Zap size={18} style={{ color: '#8B5CF6' }} />
+          <Zap size={18} style={{ color: 'var(--color-accent)' }} />
           Confirm Batch Actions
         </h3>
-        <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 20 }}>
           For each candidate, choose whether to create an interview and/or draft an email.
         </p>
 
@@ -130,15 +130,15 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               style={{
                 padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
                 borderRadius: 10,
-                background: interviewMode === 'avatar' ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${interviewMode === 'avatar' ? 'rgba(139,92,246,0.6)' : 'rgba(255,255,255,0.1)'}`,
-                color: '#F1F5F9', display: 'flex', flexDirection: 'column', gap: 3,
+                background: interviewMode === 'avatar' ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
+                border: `1px solid ${interviewMode === 'avatar' ? 'var(--color-accent)' : 'var(--color-line)'}`,
+                color: 'var(--color-ink)', display: 'flex', flexDirection: 'column', gap: 3,
               }}
             >
               <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Video size={12} /> Avatar interview
               </span>
-              <span style={{ fontSize: 11, color: '#94A3B8' }}>Camera + lip-synced AI face</span>
+              <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>Camera + lip-synced AI face</span>
             </button>
             <button
               type="button"
@@ -146,15 +146,15 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               style={{
                 padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
                 borderRadius: 10,
-                background: interviewMode === 'conversational' ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${interviewMode === 'conversational' ? 'rgba(34,197,94,0.6)' : 'rgba(255,255,255,0.1)'}`,
-                color: '#F1F5F9', display: 'flex', flexDirection: 'column', gap: 3,
+                background: interviewMode === 'conversational' ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
+                border: `1px solid ${interviewMode === 'conversational' ? 'var(--color-accent)' : 'var(--color-line)'}`,
+                color: 'var(--color-ink)', display: 'flex', flexDirection: 'column', gap: 3,
               }}
             >
               <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Mic size={12} /> Voice conversation
               </span>
-              <span style={{ fontSize: 11, color: '#94A3B8' }}>Audio-only, low-latency</span>
+              <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>Audio-only, low-latency</span>
             </button>
           </div>
         </div>
@@ -183,9 +183,9 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         </div>
 
         {/* Send emails toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, padding: '10px 14px', background: sendEmails ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${sendEmails ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, padding: '10px 14px', background: sendEmails ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)', border: `1px solid ${sendEmails ? 'var(--color-accent-line)' : 'var(--color-line)'}`, borderRadius: 10 }}>
           <input type="checkbox" id="sendEmails" checked={sendEmails} onChange={e => setSendEmails(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-          <label htmlFor="sendEmails" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', color: sendEmails ? '#93C5FD' : '#94A3B8' }}>
+          <label htmlFor="sendEmails" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', color: sendEmails ? 'var(--color-accent)' : 'var(--color-ink-muted)' }}>
             <Send size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />
             Actually send emails (requires SendGrid configured)
           </label>
@@ -199,7 +199,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <div key={c.candidate_id} style={styles.candidateRow}>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{c.name}</p>
-                  <p style={{ margin: 0, fontSize: 11, color: '#64748B' }}>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--color-ink-subtle)' }}>
                     ATS {c.ats_score} Â· {c.verdict}
                     {c.email ? ` Â· ${c.email}` : ' Â· no email'}
                   </p>
@@ -209,14 +209,14 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
                     icon={<Video size={12} />}
                     label="Interview"
                     active={tog.interview}
-                    color="#8B5CF6"
+                    color="var(--color-accent)"
                     onClick={() => toggle(c.candidate_id, 'interview')}
                   />
                   <ToggleChip
                     icon={<Mail size={12} />}
                     label="Email"
                     active={tog.email}
-                    color="#3B82F6"
+                    color="var(--color-accent)"
                     onClick={() => toggle(c.candidate_id, 'email')}
                   />
                 </div>
@@ -226,7 +226,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         </div>
 
         {!sendEmails && (
-          <div style={{ display: 'flex', gap: 8, padding: '8px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, fontSize: 12, color: '#FCD34D', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, padding: '8px 12px', background: 'var(--color-caution-wash)', border: '1px solid var(--color-caution)', borderRadius: 8, fontSize: 12, color: 'var(--color-caution)', marginBottom: 16 }}>
             <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             Emails will be drafted but not sent. You can copy them after.
           </div>
@@ -247,9 +247,9 @@ function ToggleChip({ icon, label, active, color, onClick }) {
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
       borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-      background: active ? `${color}18` : 'rgba(255,255,255,0.04)',
-      border: `1px solid ${active ? color + '40' : 'rgba(255,255,255,0.08)'}`,
-      color: active ? color : '#64748B', transition: 'all 0.15s',
+      background: active ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
+      border: `1px solid ${active ? color : 'var(--color-line)'}`,
+      color: active ? color : 'var(--color-ink-subtle)', transition: 'all 0.15s',
     }}>
       {icon} {label}
     </button>
@@ -260,7 +260,7 @@ function StatBox({ value, label, color }) {
   return (
     <div style={{ textAlign: 'center', flex: 1 }}>
       <div style={{ fontSize: 30, fontWeight: 800, color }}>{value}</div>
-      <div style={{ fontSize: 11, color: '#64748B' }}>{label}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-ink-subtle)' }}>{label}</div>
     </div>
   );
 }
@@ -268,60 +268,61 @@ function StatBox({ value, label, color }) {
 const styles = {
   overlay: {
     position: 'fixed', inset: 0, zIndex: 1100,
+    // A scrim over the page, not a themed surface, so it stays a literal.
     background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
   },
   modal: {
-    background: 'linear-gradient(135deg,#0F172A,#1E293B)',
-    border: '1px solid rgba(139,92,246,0.25)', borderRadius: 20,
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-line)', borderRadius: 20,
     padding: 28, width: '100%', maxWidth: 540,
-    position: 'relative', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+    position: 'relative', boxShadow: 'var(--shadow-e3)',
     maxHeight: '90vh', overflowY: 'auto',
   },
   closeBtn: {
     position: 'absolute', top: 14, right: 14,
-    background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: 8,
-    padding: '5px 7px', cursor: 'pointer', color: '#94A3B8',
+    background: 'var(--color-surface-raised)', border: 'none', borderRadius: 8,
+    padding: '5px 7px', cursor: 'pointer', color: 'var(--color-ink-muted)',
   },
   title: {
     fontSize: 18, fontWeight: 800, marginBottom: 8,
-    display: 'flex', alignItems: 'center', gap: 8, color: '#F1F5F9',
+    display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-ink)',
   },
   primaryBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     width: '100%', padding: '13px 20px',
-    background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)',
-    color: '#fff', border: 'none', borderRadius: 12,
+    background: 'var(--color-accent)',
+    color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 12,
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
   },
   configRow: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
   configField: { flex: 1, minWidth: 120 },
-  label: { display: 'block', fontSize: 12, color: '#94A3B8', marginBottom: 4 },
+  label: { display: 'block', fontSize: 12, color: 'var(--color-ink-muted)', marginBottom: 4 },
   select: {
-    width: '100%', background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-    padding: '8px 10px', color: '#F1F5F9', fontSize: 13, outline: 'none',
+    width: '100%', background: 'var(--color-surface-raised)',
+    border: '1px solid var(--color-line)', borderRadius: 8,
+    padding: '8px 10px', color: 'var(--color-ink)', fontSize: 13, outline: 'none',
   },
   candidateList: {
     maxHeight: 260, overflowY: 'auto',
-    background: 'rgba(255,255,255,0.02)', borderRadius: 10,
-    border: '1px solid rgba(255,255,255,0.06)', marginBottom: 16,
+    background: 'var(--color-surface-raised)', borderRadius: 10,
+    border: '1px solid var(--color-line)', marginBottom: 16,
   },
   candidateRow: {
     display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    borderBottom: '1px solid var(--color-line)',
   },
   statsRow: {
     display: 'flex', gap: 12, padding: '16px 0', marginBottom: 16,
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: '1px solid var(--color-line)',
   },
   outcomeList: {
     marginBottom: 16, maxHeight: 200, overflowY: 'auto',
-    background: 'rgba(255,255,255,0.02)', borderRadius: 10,
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--color-surface-raised)', borderRadius: 10,
+    border: '1px solid var(--color-line)',
   },
   outcomeRow: {
     display: 'flex', alignItems: 'center', padding: '8px 14px',
-    borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13,
+    borderBottom: '1px solid var(--color-line)', fontSize: 13,
   },
 };
