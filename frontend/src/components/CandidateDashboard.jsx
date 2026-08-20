@@ -265,7 +265,7 @@ export default function CandidateDashboard() {
 
   return (
     <div className="cd-layout">
-      {/* â•â•â• SIDEBAR â•â•â• */}
+      {/* ═══ SIDEBAR ═══ */}
       <aside className="cd-sidebar">
         <div className="cd-sidebar-header">
           <div className="cd-sidebar-logo"><Logo size={24} /> ResuMate</div>
@@ -301,7 +301,7 @@ export default function CandidateDashboard() {
         </div>
       </aside>
 
-      {/* â•â•â• MAIN â•â•â• */}
+      {/* ═══ MAIN ═══ */}
       <main className="cd-main">
         <header className="cd-header">
           <span className="cd-welcome">Welcome, {candidateSession.name || 'Candidate'}</span>
@@ -314,7 +314,7 @@ export default function CandidateDashboard() {
 
         <div className="cd-body">
 
-          {/* â•â•â• UPLOAD TAB â•â•â• */}
+          {/* ═══ UPLOAD TAB ═══ */}
           {tab === 'upload' && (
             <div className="cd-tab-content">
               {!c ? (
@@ -413,7 +413,7 @@ export default function CandidateDashboard() {
             </div>
           )}
 
-          {/* â•â•â• ANALYSIS TAB â•â•â• */}
+          {/* ═══ ANALYSIS TAB ═══ */}
           {tab === 'analysis' && (
             <div className="cd-tab-content">
               {!c ? (
@@ -530,7 +530,7 @@ export default function CandidateDashboard() {
             </div>
           )}
 
-          {/* â•â•â• AI ADVISOR CHAT â•â•â• */}
+          {/* ═══ AI ADVISOR CHAT ═══ */}
           {tab === 'chat' && (
             <div className="cd-chat-section">
               {/* Mode tabs */}
@@ -610,7 +610,7 @@ export default function CandidateDashboard() {
             </div>
           )}
 
-          {/* â•â•â• INTERVIEW TAB â•â•â• */}
+          {/* ═══ INTERVIEW TAB ═══ */}
           {tab === 'interview' && (
             <div className="cd-tab-content cd-interview-tab">
 

@@ -1,5 +1,5 @@
 ﻿/**
- * InterviewRoom v4 â€” LiveKit + Simli Avatar Interview
+ * InterviewRoom v4 — LiveKit + Simli Avatar Interview
  *
  * The AI interviewer (Simli avatar) joins as a real participant in a LiveKit room.
  * Candidate's camera shows on the left, avatar video on the right.
@@ -52,7 +52,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
   const formatTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // â•â•â• LOAD FACE-API â•â•â•
+  // ═══ LOAD FACE-API ═══
   useEffect(() => {
     if (window.faceapi) { setFaceApiReady(true); return; }
     const script = document.createElement('script');
@@ -68,7 +68,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     document.head.appendChild(script);
   }, []);
 
-  // â•â•â• VIOLATION HANDLER â•â•â•
+  // ═══ VIOLATION HANDLER ═══
   const addViolation = useCallback((msg) => {
     violationCountRef.current += 1;
     const count = violationCountRef.current;
@@ -78,7 +78,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     if (count >= MAX_VIOLATIONS) endInterview(true);
   }, []);
 
-  // â•â•â• TAB DETECTION â•â•â•
+  // ═══ TAB DETECTION ═══
   useEffect(() => {
     if (phase !== 'live') return;
     const onHidden = () => { if (document.hidden) addViolation('Tab switch detected'); };
@@ -88,7 +88,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     return () => { document.removeEventListener('visibilitychange', onHidden); window.removeEventListener('blur', onBlur); };
   }, [phase, addViolation]);
 
-  // â•â•â• FULLSCREEN â•â•â•
+  // ═══ FULLSCREEN ═══
   const enterFullscreen = async () => {
     try {
       const el = containerRef.current || document.documentElement;
@@ -106,19 +106,19 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     return () => { document.removeEventListener('fullscreenchange', handler); document.removeEventListener('webkitfullscreenchange', handler); };
   }, [phase, addViolation]);
 
-  // â•â•â• TIMER â•â•â•
+  // ═══ TIMER ═══
   useEffect(() => {
     if (phase === 'live') timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  // â•â•â• CANDIDATE VIDEO CALLBACK â•â•â•
+  // ═══ CANDIDATE VIDEO CALLBACK ═══
   const candidateVideoCallback = useCallback((node) => {
     candidateVideoRef.current = node;
     if (node && localStreamRef.current) { node.srcObject = localStreamRef.current; node.play().catch(() => {}); }
   }, []);
 
-  // â•â•â• FACE DETECTION â•â•â•
+  // ═══ FACE DETECTION ═══
   useEffect(() => {
     if (phase !== 'live' || !faceApiReady || !window.faceapi) return;
     const detect = async () => {
@@ -162,7 +162,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     return () => { if (faceDetectionRef.current) clearInterval(faceDetectionRef.current); };
   }, [phase, faceApiReady]);
 
-  // â•â•â• START INTERVIEW â€” Create room + connect â•â•â•
+  // ═══ START INTERVIEW — Create room + connect ═══
   const startInterview = async () => {
     setPhase('connecting');
 
@@ -187,8 +187,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         throw new Error('Failed to create LiveKit room. Check backend LiveKit credentials.');
       }
 
-      console.log('ðŸ  Room created:', roomData.room_name);
-      console.log('ðŸ”— LiveKit URL:', roomData.livekit_url);
+      console.log('🏠 Room created:', roomData.room_name);
+      console.log('🔗 LiveKit URL:', roomData.livekit_url);
 
       // 3. Connect to LiveKit room
       const { Room, RoomEvent, Track } = await import('livekit-client');
@@ -197,43 +197,43 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
       // Listen for agent joining (Simli avatar track)
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-        console.log('ðŸ“¹ Track subscribed:', track.kind, 'from', participant.identity);
+        console.log('📹 Track subscribed:', track.kind, 'from', participant.identity);
         if (track.kind === Track.Kind.Video && participant.identity !== candidateName) {
           // This is the avatar's video track
           if (avatarVideoRef.current) {
             track.attach(avatarVideoRef.current);
             setAgentJoined(true);
-            console.log('ðŸŽ­ Avatar video attached!');
+            console.log('🎭 Avatar video attached!');
           }
         }
         if (track.kind === Track.Kind.Audio && participant.identity !== candidateName) {
-          // Avatar's audio â€” create an audio element
+          // Avatar's audio — create an audio element
           const audioEl = document.createElement('audio');
           audioEl.autoplay = true;
           track.attach(audioEl);
-          console.log('ðŸ”Š Avatar audio attached!');
+          console.log('🔊 Avatar audio attached!');
         }
       });
 
       room.on(RoomEvent.ParticipantConnected, (participant) => {
-        console.log('ðŸ‘¤ Participant joined:', participant.identity);
+        console.log('👤 Participant joined:', participant.identity);
         if (participant.identity.includes('agent') || participant.identity.includes('simli')) {
           setAgentJoined(true);
         }
       });
 
       room.on(RoomEvent.Disconnected, () => {
-        console.log('ðŸ“´ Disconnected from room');
+        console.log('📴 Disconnected from room');
       });
 
       // Connect
       await room.connect(roomData.livekit_url, roomData.token);
-      console.log('âœ… Connected to LiveKit room');
+      console.log('✅ Connected to LiveKit room');
 
       // Publish local camera + mic
       await room.localParticipant.setCameraEnabled(true);
       await room.localParticipant.setMicrophoneEnabled(true);
-      console.log('ðŸ“· Camera + mic published');
+      console.log('📷 Camera + mic published');
 
       // Enter fullscreen + go live
       await enterFullscreen();
@@ -248,12 +248,12 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
     } catch (e) {
       console.error('Failed to start interview:', e);
-      // Inline error UI â€” no alert() so the user can copy/paste the message
+      // Inline error UI — no alert() so the user can copy/paste the message
       // and the page stays interactive.
       const msg = e?.message || 'Could not connect to the interview server.';
       let hint = 'Try again in a moment, or contact your hiring manager if the issue persists.';
       if (/livekit/i.test(msg)) {
-        hint = 'LiveKit room could not be created. The server is missing LiveKit credentials â€” contact your hiring manager.';
+        hint = 'LiveKit room could not be created. The server is missing LiveKit credentials — contact your hiring manager.';
       } else if (/mic|microphone|permission/i.test(msg)) {
         hint = 'Please allow microphone access in your browser settings and reload.';
       } else if (/network|fetch/i.test(msg)) {
@@ -264,7 +264,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     }
   };
 
-  // â•â•â• END INTERVIEW â•â•â•
+  // ═══ END INTERVIEW ═══
   const endInterview = async (terminated = false) => {
     // Stop everything
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
@@ -312,7 +312,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     else if (onExit) onExit();
   };
 
-  // â•â•â• TOGGLE MIC â•â•â•
+  // ═══ TOGGLE MIC ═══
   const toggleMic = () => {
     if (roomRef.current) {
       const newMuted = !muted;
@@ -329,11 +329,11 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
-  // â•â•â• RENDER â•â•â•
+  // ═══ RENDER ═══
   return (
     <div ref={containerRef} style={{ background: '#0A0A0F', color: '#F4F4F5', position: 'fixed', inset: 0, zIndex: 9999, fontFamily: "'DM Sans', sans-serif" }}>
 
-      {/* â•â•â• SETUP â•â•â• */}
+      {/* ═══ SETUP ═══ */}
       {phase === 'setup' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', background: 'linear-gradient(135deg, #0A0A0F, #111128)' }}>
           <div style={{ maxWidth: '560px', width: '100%', padding: '48px', background: 'rgba(14,14,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', textAlign: 'center' }}>
@@ -349,7 +349,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
             </div>
 
             <div style={{ textAlign: 'left', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '24px' }}>
-              <p style={{ fontSize: '13px', color: '#F59E0B', fontWeight: '600', marginBottom: '10px' }}>Strict Proctoring â€” {MAX_VIOLATIONS} violations = auto-termination</p>
+              <p style={{ fontSize: '13px', color: '#F59E0B', fontWeight: '600', marginBottom: '10px' }}>Strict Proctoring — {MAX_VIOLATIONS} violations = auto-termination</p>
               {['Camera + mic required', 'AI avatar interviews you live', 'Face & eye tracking active', 'Tab switching = violation', 'Fullscreen enforced'].map(rule => (
                 <span key={rule} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#71717A', padding: '4px 0' }}><Shield size={12} /> {rule}</span>
               ))}
@@ -386,7 +386,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         </div>
       )}
 
-      {/* â•â•â• CONNECTING â•â•â• */}
+      {/* ═══ CONNECTING ═══ */}
       {phase === 'connecting' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
           <Loader size={48} className="spin" style={{ color: '#3B82F6', marginBottom: '20px' }} />
@@ -395,13 +395,13 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         </div>
       )}
 
-      {/* â•â•â• LIVE â•â•â• */}
+      {/* ═══ LIVE ═══ */}
       {phase === 'live' && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
           {/* Top bar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ background: '#EF4444', color: '#fff', padding: '4px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700' }}>â— LIVE</span>
+              <span style={{ background: '#EF4444', color: '#fff', padding: '4px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700' }}>● LIVE</span>
               <span style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace' }}>{formatTime(timer)}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -475,7 +475,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         </div>
       )}
 
-      {/* â•â•â• ENDED â•â•â• */}
+      {/* ═══ ENDED ═══ */}
       {phase === 'ended' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
           <Loader size={40} className="spin" style={{ color: '#3B82F6', marginBottom: '16px' }} />

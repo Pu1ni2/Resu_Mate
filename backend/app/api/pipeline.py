@@ -49,8 +49,8 @@ class BatchActionRequest(BaseModel):
     email_type: str = "interview"          # interest | interview
     send_emails: bool = False              # must be explicitly True to send
     # Interview format applied to every interview created in this batch:
-    # "avatar"          â€” existing LiveKit + Simli avatar flow (default).
-    # "conversational"  â€” audio-only OpenAI Realtime (no camera, no avatar).
+    # "avatar"          — existing LiveKit + Simli avatar flow (default).
+    # "conversational"  — audio-only OpenAI Realtime (no camera, no avatar).
     mode: str = "avatar"
 
 

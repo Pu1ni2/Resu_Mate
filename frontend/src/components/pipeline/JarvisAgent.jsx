@@ -1552,8 +1552,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         </div>
                       ))}
                     </div>
-                    {profile.location && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>ðŸ“ {profile.location}</div>}
-                    {profile.company  && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>ðŸ¢ {profile.company}</div>}
+                    {profile.location && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>📍 {profile.location}</div>}
+                    {profile.company  && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>🏢 {profile.company}</div>}
                     {profile.blog     && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 16 }}>🔗 {profile.blog}</div>}
                     {allLangs.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
@@ -1575,7 +1575,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7' }}>{r.name}</span>
                               {r.language && <span style={{ fontSize: 10, color: '#D97706', background: 'rgba(217,119,6,0.1)', padding: '1px 7px', borderRadius: 100 }}>{r.language}</span>}
-                              <span style={{ fontSize: 11, color: '#52525B', marginLeft: 'auto' }}>â­ {r.stars || 0}  ðŸ´ {r.forks || 0}</span>
+                              <span style={{ fontSize: 11, color: '#52525B', marginLeft: 'auto' }}>⭐ {r.stars || 0}  🍴 {r.forks || 0}</span>
                             </div>
                             {r.description && <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{r.description}</div>}
                           </div>
