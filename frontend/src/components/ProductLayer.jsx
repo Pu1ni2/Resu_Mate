@@ -10,6 +10,7 @@
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { TOAST_EVENT, NOTIFY_EVENT } from '../services/notify';
 import {
   X, ChevronRight, ChevronLeft, Bell, Sun, Moon, Keyboard,
   Upload, MessageSquare, Users, Cpu, Video, Check, AlertCircle, Info, ArrowRight
@@ -111,6 +112,22 @@ export default function ProductLayer({ children }) {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
   }, []);
 
+  // Both systems are driven by window events from services/notify.js. Before
+  // this they were reachable only through useProduct(), which nothing called —
+  // so the container rendered an empty list and the bell an empty panel.
+  useEffect(() => {
+    const onToast = e => addToast(e.detail?.message || '', e.detail?.type || 'info');
+    const onNotify = e => addNotification(
+      e.detail?.title || '', e.detail?.body || '', e.detail?.type || 'info',
+    );
+    window.addEventListener(TOAST_EVENT, onToast);
+    window.addEventListener(NOTIFY_EVENT, onNotify);
+    return () => {
+      window.removeEventListener(TOAST_EVENT, onToast);
+      window.removeEventListener(NOTIFY_EVENT, onNotify);
+    };
+  }, [addToast, addNotification]);
+
   const markAllRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
@@ -181,10 +198,8 @@ export default function ProductLayer({ children }) {
       {/* ═══ FLOATING TOOLBAR (bottom-right) ═══
           Product chrome, so it is hidden on the public pages. On the landing
           page the theme toggle does nothing (the landing scope sets its own
-          tokens unconditionally), the notification bell can never fill because
-          nothing calls addNotification, and a keyboard-shortcuts modal on a
-          marketing page is noise. Three controls that either misled or did
-          nothing. */}
+          tokens unconditionally), there is nothing to be notified about, and a
+          keyboard-shortcuts modal on a marketing page is noise. */}
       {!isPublicPage && (
       <div className="pl-toolbar">
         {/* Theme toggle */}
