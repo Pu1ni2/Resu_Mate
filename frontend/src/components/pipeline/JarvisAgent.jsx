@@ -19,7 +19,7 @@ const HANDS_FREE_DEFAULT = true;
  * queries against inline styles, which cannot be overridden from a stylesheet. */
 const ORB_SIZE = 'clamp(84px, 24vw, 120px)';
 
-// â”€â”€ Transcription quality filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Transcription quality filter ──────────────────────────────────────────────
 // Common single words that come from speaker echo / background noise
 const ECHO_WORDS = new Set([
   'you','the','a','an','and','or','but','in','on','at','to','for','it',
@@ -41,7 +41,7 @@ function isUsableTranscription(text) {
   return true;
 }
 
-// â”€â”€ Markdown renderer (for eval reports and other agent outputs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Markdown renderer (for eval reports and other agent outputs) ──────────────
 function renderMarkdown(text) {
   if (!text) return null;
   const lines = text.split('\n');
@@ -94,7 +94,7 @@ function renderMarkdown(text) {
   return <div>{elements}</div>;
 }
 
-// â”€â”€ Close-out detector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Close-out detector ────────────────────────────────────────────────────────
 // Returns true when Jarvis's reply is a conversational sign-off, so the caller
 // can auto-close the panel after TTS finishes.
 const CLOSEOUT_PATTERNS = [
@@ -124,11 +124,11 @@ function stripMarkdown(text) {
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '')
-    .replace(/^[\-\*]\s/gm, 'â€¢ ')
+    .replace(/^[\-\*]\s/gm, '• ')
     .trim();
 }
 
-// Extract a markdown section by keywords â€” handles any header format
+// Extract a markdown section by keywords — handles any header format
 function extractSection(text, keywords) {
   const lines = text.split('\n');
   let inSection = false;
@@ -138,7 +138,7 @@ function extractSection(text, keywords) {
       const lower = line.toLowerCase().replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '');
       const matches = keywords.some(kw => lower.includes(kw));
       if (matches) { inSection = true; continue; }
-      if (inSection) break; // hit next section â€” stop
+      if (inSection) break; // hit next section — stop
       inSection = false;
     } else if (inSection && line.trim()) {
       content.push(line);
@@ -147,7 +147,7 @@ function extractSection(text, keywords) {
   return stripMarkdown(content.join('\n').trim()) || null;
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildAtsSummary(data) {
   const { stats = {}, results = [], role = '', total_screened = 0 } = data;
@@ -324,7 +324,7 @@ function buildResearchArtifact(query, results = []) {
 let _id = 0;
 const newId = () => ++_id;
 
-// â”€â”€ CSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CSS ───────────────────────────────────────────────────────────────────────
 
 const CSS = `
 @keyframes jBreathe {
@@ -372,7 +372,7 @@ const CSS = `
 .j-msg { animation: jMsgIn 0.25s cubic-bezier(0.16,1,0.3,1) both; }
 `;
 
-// â”€â”€ Waveform bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Waveform bars ─────────────────────────────────────────────────────────────
 function WaveBars({ active }) {
   const delays = [0, 0.1, 0.2, 0.15, 0.05, 0.25, 0.1];
   return (
@@ -392,7 +392,7 @@ function WaveBars({ active }) {
   );
 }
 
-// â”€â”€ Typing dots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Typing dots ───────────────────────────────────────────────────────────────
 function TypingDots() {
   return (
     <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 20 }}>
@@ -407,10 +407,10 @@ function TypingDots() {
   );
 }
 
-// â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function JarvisAgent({ candidatesSummary = [], onClose, onComplete }) {
-  // â”€â”€ Session restore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Session restore ────────────────────────────────────────────────────────
   const candidateSignature = candidatesSummary
     .map(c => `${c.id}:${c.name || ''}`)
     .sort()
@@ -448,7 +448,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const voiceRef       = useRef(null);
   const listenAfterRef = useRef(null);   // timeout for auto-listen after TTS
   const autoListenEnabledRef = useRef(HANDS_FREE_DEFAULT);
-  const chainDepthRef  = useRef(0);      // guard against actionâ†’resultâ†’action loops
+  const chainDepthRef  = useRef(0);      // guard against action→result→action loops
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -467,14 +467,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   useEffect(() => { contextRef.current = context; }, [context]);
   useEffect(() => { processingRef.current = isProcessing; }, [isProcessing]);
 
-  // â”€â”€ Persist session to storage on every change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Persist session to storage on every change ────────────────────────────
   useEffect(() => {
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({ signature: candidateSignature, messages, context, status }));
     } catch {}
   }, [candidateSignature, messages, context, status]);
 
-  // â”€â”€ Append message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Append message ────────────────────────────────────────────────────────
   const appendMsg = useCallback((msg) => {
     setMessages(prev => [...prev, { id: newId(), ...msg }]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
@@ -489,7 +489,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     return next;
   }, []);
 
-  const queueAutoListen = useCallback((delay = AUTO_LISTEN_DELAY_MS, nextHint = 'Listeningâ€¦') => {
+  const queueAutoListen = useCallback((delay = AUTO_LISTEN_DELAY_MS, nextHint = 'Listening…') => {
     if (!autoListenEnabledRef.current) return;
     if (listenAfterRef.current) clearTimeout(listenAfterRef.current);
     listenAfterRef.current = setTimeout(() => {
@@ -501,9 +501,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     }, delay);
   }, []);
 
-  // â”€â”€ Voice callbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Voice callbacks ───────────────────────────────────────────────────────
 
-  // Transcription received â€” quality-filter, then send
+  // Transcription received — quality-filter, then send
   const handleTranscribed = useCallback((text) => {
     setHint('');
     if (!isUsableTranscription(text)) {
@@ -516,7 +516,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     handleSendMessageRef.current?.(text); // eslint-disable-line
   }, [queueAutoListen]);
 
-  // TTS finished â€” auto-start listening (conversational loop)
+  // TTS finished — auto-start listening (conversational loop)
   const handleSpeakingDone = useCallback(() => {
     setHint('');
     if (!autoListenEnabledRef.current) return;
@@ -525,16 +525,16 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
   // Silence auto-stopped recording
   const handleAutoStop = useCallback(() => {
-    setHint('Processingâ€¦');
+    setHint('Processing…');
   }, []);
 
-  // User spoke while Jarvis was speaking â€” stop TTS, capture their interruption
+  // User spoke while Jarvis was speaking — stop TTS, capture their interruption
   const handleBargeIn = useCallback(() => {
     const v = voiceRef.current;
     if (!v) return;
     interruptedRef.current = true;
     v.stopSpeaking();
-    setHint('Listeningâ€¦');
+    setHint('Listening…');
     // Short debounce so the mic that TTS was using is fully released
     setTimeout(() => {
       const vv = voiceRef.current;
@@ -544,28 +544,28 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     }, 120);
   }, []);
 
-  // Transcription failed â€” stop the loop, wait for user to speak or type again
+  // Transcription failed — stop the loop, wait for user to speak or type again
   const handleTranscribeFail = useCallback((reason) => {
     setHint('');
     if (reason === 'mic_denied') {
       autoListenEnabledRef.current = false;
-      setHint('Mic access denied â€” use the text box below.');
+      setHint('Mic access denied — use the text box below.');
     } else if (reason === 'session_expired') {
       autoListenEnabledRef.current = false;
       const msg = 'Your session has expired. Please log out and log back in to continue.';
       appendMsg({ role: 'assistant', content: msg });
-      setHint('Session expired â€” please log in again.');
+      setHint('Session expired — please log in again.');
     } else if (reason === 'too_short') {
       // Recording cut off too quickly. Quietly retry but show a brief nudge.
-      setHint("Didn't catch that â€” keep talking a bit longer.");
+      setHint("Didn't catch that — keep talking a bit longer.");
       if (autoListenEnabledRef.current) queueAutoListen(AUTO_RETRY_DELAY_MS);
     } else if (reason === 'no_speech') {
-      setHint('No speech detected â€” try again or type your message.');
+      setHint('No speech detected — try again or type your message.');
       if (autoListenEnabledRef.current) queueAutoListen(AUTO_RETRY_DELAY_MS);
     } else if (reason && reason.toLowerCase().includes('network')) {
-      setHint('Network hiccup â€” try again in a moment.');
+      setHint('Network hiccup — try again in a moment.');
     } else if (reason) {
-      // Unknown reason â€” show it so debugging in prod is possible.
+      // Unknown reason — show it so debugging in prod is possible.
       setHint(`Voice error: ${reason}`);
     }
   }, [appendMsg, queueAutoListen]);
@@ -581,7 +581,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
   voiceRef.current = voice;   // always current, no stale closure
 
-  // â”€â”€ Orb mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Orb mode ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (voice.isRecording)                    setOrbMode('listening');
     else if (voice.isTranscribing)            setOrbMode('thinking');
@@ -590,7 +590,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     else                                      setOrbMode('idle');
   }, [voice.isRecording, voice.isTranscribing, voice.speakingMsgIndex, isProcessing]);
 
-  // â”€â”€ Core message sender â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Core message sender ───────────────────────────────────────────────────
   const handleSendMessage = useCallback(async (text) => {
     if (!text?.trim()) return;
     if (processingRef.current) return;
@@ -606,7 +606,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
     const isSystem = text.startsWith('[');
     if (isSystem) {
-      // Cap actionâ†’resultâ†’action chains at 3 hops to prevent runaway loops.
+      // Cap action→result→action chains at 3 hops to prevent runaway loops.
       if (chainDepthRef.current >= 3) {
         console.warn('Jarvis: chain depth cap hit, dropping result feedback');
         chainDepthRef.current = 0;
@@ -657,7 +657,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         appendMsg({ role: 'assistant', content: msg });
         setIsProcessing(false);
         setStatus('SESSION EXPIRED');
-        setHint('Session expired â€” please log in again.');
+        setHint('Session expired — please log in again.');
         return;
       }
       if (!res.ok) throw new Error(`API ${res.status}`);
@@ -706,7 +706,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
     } catch (err) {
       console.error('Jarvis:', err);
-      const msg = `Something went wrong â€” ${err.message}.`;
+      const msg = `Something went wrong — ${err.message}.`;
       appendMsg({ role: 'assistant', content: msg });
       voiceRef.current?.speakText(msg, msgIndexRef.current++);
       setIsProcessing(false);
@@ -758,9 +758,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     });
   }, [updateContext]);
 
-  // â”€â”€ Action executor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Action executor ───────────────────────────────────────────────────────
   // IMPORTANT: batch_action and list_candidates do NOT recurse back into
-  // handleSendMessage â€” that was causing the infinite "want me to send?" loop.
+  // handleSendMessage — that was causing the infinite "want me to send?" loop.
   // They produce a direct Jarvis reply and speak it themselves.
   const executeAction = useCallback(async (action, params) => {
     const hdrs  = { 'Content-Type': 'application/json' };
@@ -776,7 +776,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     const handle401 = (res) => {
       if (res.status === 401) {
         setStatus('SESSION EXPIRED');
-        setHint('Session expired â€” please log in again.');
+        setHint('Session expired — please log in again.');
         directSay('Your session expired. Taking you back to the login screen.');
         return true;
       }
@@ -785,7 +785,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
     if (action === 'run_ats') {
       // ATS DOES recurse so Jarvis can summarize results conversationally
-      setStatus('RUNNING ATSâ€¦');
+      setStatus('RUNNING ATS…');
       try {
         const res = await authFetch(`${API_BASE}/api/pipeline/run`, {
           method: 'POST', headers: hdrs,
@@ -820,7 +820,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
 
     } else if (action === 'batch_action') {
-      setStatus('CREATING INTERVIEWSâ€¦');
+      setStatus('CREATING INTERVIEWS…');
       try {
         const batchBody = {
           candidate_ids: params.candidate_ids || ctx.shortlistedIds,
@@ -864,24 +864,24 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
 
         if (params.send_emails) {
-          // â”€â”€ Send mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Send mode ─────────────────────────────────────────────────────
           appendMsg({
             role: 'action',
-            content: `${created} interview${created !== 1 ? 's' : ''} created Â· ${sent} email${sent !== 1 ? 's' : ''} sent`,
+            content: `${created} interview${created !== 1 ? 's' : ''} created · ${sent} email${sent !== 1 ? 's' : ''} sent`,
           });
           setStatus(sent > 0 ? 'EMAILS SENT' : 'DONE');
           if (sent > 0) {
             directSay(`Done! Sent ${sent} interview invitation${sent !== 1 ? 's' : ''}. You're all set!`);
           } else {
-            directSay(`Interview created, but email couldn't be sent â€” check your email settings.`);
+            directSay(`Interview created, but email couldn't be sent — check your email settings.`);
           }
         } else {
-          // â”€â”€ Draft mode â€” show email card with inline Send button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Draft mode — show email card with inline Send button ──────────
           const first = outcomes[0] || {};
-          const emailSubject = first.email_subject || `Interview Invitation â€” ${batchBody.role}`;
+          const emailSubject = first.email_subject || `Interview Invitation — ${batchBody.role}`;
           const emailBody    = first.email_body    || '';
           const toNames      = outcomes.map(o => o.name || '?').join(', ');
-          // Store params needed for the Send button (send_emails excluded â€” added when clicked)
+          // Store params needed for the Send button (send_emails excluded — added when clicked)
           const storedParams = { ...batchBody, send_emails: undefined };
           delete storedParams.send_emails;
 
@@ -892,12 +892,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             batchParams: storedParams,
           });
           setStatus('EMAIL DRAFTED');
-          directSay(`Interview set up for ${toNames}. Here's the email draft â€” review it and hit Send when you're ready.`);
+          directSay(`Interview set up for ${toNames}. Here's the email draft — review it and hit Send when you're ready.`);
         }
       } catch (err) {
         appendMsg({ role: 'action', content: `Batch failed: ${err.message}` });
         setStatus('ERROR');
-        directSay(`Something went wrong creating the interview â€” ${err.message}.`);
+        directSay(`Something went wrong creating the interview — ${err.message}.`);
       }
 
     } else if (action === 'list_candidates') {
@@ -907,12 +907,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     } else if (action === 'show_results') {
       const ctx2 = contextRef.current;
       if (ctx2.lastAtsResults) setResultsData(ctx2.lastAtsResults);
-      else directSay("No results yet â€” tell me the role and I'll screen the candidates.");
+      else directSay("No results yet — tell me the role and I'll screen the candidates.");
 
-    // â”€â”€ Research / Intelligence actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Research / Intelligence actions ────────────────────────────────────
 
     } else if (action === 'research_web') {
-      setStatus('SEARCHINGâ€¦');
+      setStatus('SEARCHING…');
       try {
         const candidateName = params.candidate_name || ctx.activeCandidateName || null;
         const res = await authFetch(`${API_BASE}/api/chat/web-search`, {
@@ -947,11 +947,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Couldn't complete the search â€” ${err.message}.`);
+        directSay(`Couldn't complete the search — ${err.message}.`);
       }
 
     } else if (action === 'analyze_github') {
-      setStatus('SCANNING GITHUBâ€¦');
+      setStatus('SCANNING GITHUB…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const candidateMeta = getCandidateMeta(params.candidate_id);
@@ -965,7 +965,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const d = await res.json();
 
         if (d.error) {
-          directSay(`Couldn't find a GitHub profile for ${params.candidate_name || 'this candidate'} â€” ${d.error}`);
+          directSay(`Couldn't find a GitHub profile for ${params.candidate_name || 'this candidate'} — ${d.error}`);
           setStatus('DONE');
           return;
         }
@@ -1000,11 +1000,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`GitHub analysis failed â€” ${err.message}.`);
+        directSay(`GitHub analysis failed — ${err.message}.`);
       }
 
     } else if (action === 'deep_evaluate') {
-      setStatus('EVALUATINGâ€¦');
+      setStatus('EVALUATING…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const res = await authFetch(`${API_BASE}/api/chat/hiring-agent`, {
@@ -1026,7 +1026,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         appendMsg({
           role: 'action',
           content: `Deep evaluation complete`,
-          evalData: { report },   // full report â€” no truncation
+          evalData: { report },   // full report — no truncation
         });
         setStatus('DONE');
         // Send full report so Jarvis can read Growth Areas and score accurately
@@ -1035,11 +1035,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Evaluation failed â€” ${err.message}.`);
+        directSay(`Evaluation failed — ${err.message}.`);
       }
 
     } else if (action === 'scan_candidate') {
-      setStatus('SCANNING PROFILEâ€¦');
+      setStatus('SCANNING PROFILE…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const res = await authFetch(`${API_BASE}/api/chat/scan-resume`, {
@@ -1051,7 +1051,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const d = await res.json();
 
         if (d.error) {
-          directSay(`Couldn't scan ${params.candidate_name || 'this candidate'} â€” ${d.error}`);
+          directSay(`Couldn't scan ${params.candidate_name || 'this candidate'} — ${d.error}`);
           setStatus('DONE');
           return;
         }
@@ -1091,11 +1091,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Profile scan failed â€” ${err.message}.`);
+        directSay(`Profile scan failed — ${err.message}.`);
       }
 
     } else if (action === 'resume_intelligence') {
-      setStatus('ANALYZING RESUMEâ€¦');
+      setStatus('ANALYZING RESUME…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const res = await authFetch(`${API_BASE}/api/chat/resume-intelligence`, {
@@ -1120,11 +1120,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Resume analysis failed â€” ${err.message}.`);
+        directSay(`Resume analysis failed — ${err.message}.`);
       }
 
     } else if (action === 'create_interview') {
-      setStatus('CREATING INTERVIEWâ€¦');
+      setStatus('CREATING INTERVIEW…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
@@ -1166,11 +1166,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`I couldn't create the interview â€” ${err.message}.`);
+        directSay(`I couldn't create the interview — ${err.message}.`);
       }
 
     } else if (action === 'get_interview_report') {
-      setStatus('FETCHING REPORTâ€¦');
+      setStatus('FETCHING REPORT…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
@@ -1205,11 +1205,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`I couldn't fetch the interview report â€” ${err.message}.`);
+        directSay(`I couldn't fetch the interview report — ${err.message}.`);
       }
 
     } else if (action === 'credibility_analysis') {
-      setStatus('CHECKING CREDIBILITYâ€¦');
+      setStatus('CHECKING CREDIBILITY…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
         const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
@@ -1240,7 +1240,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Credibility analysis failed â€” ${err.message}.`);
+        directSay(`Credibility analysis failed — ${err.message}.`);
       }
 
     } else if (action === 'export_report') {
@@ -1279,7 +1279,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
 
     } else if (action === 'get_calendly') {
-      setStatus('FETCHING CALENDLYâ€¦');
+      setStatus('FETCHING CALENDLY…');
       try {
         const res = await authFetch(`${API_BASE}/api/chat/calendly-link`, {
           method: 'GET', headers: hdrs,
@@ -1289,7 +1289,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const d = await res.json();
 
         if (d.error) {
-          directSay(`Calendly isn't connected yet â€” ${d.error}. You can set it up in your account settings.`);
+          directSay(`Calendly isn't connected yet — ${d.error}. You can set it up in your account settings.`);
           setStatus('DONE');
           return;
         }
@@ -1308,12 +1308,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Couldn't fetch Calendly â€” ${err.message}.`);
+        directSay(`Couldn't fetch Calendly — ${err.message}.`);
       }
     }
   }, [appendMsg, cacheCandidateArtifact, candidatesSummary, focusCandidate, getCandidateMeta, getKnownEmail, updateContext]);
 
-  // â”€â”€ Greeting (once) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Greeting (once) ───────────────────────────────────────────────────────
   useEffect(() => {
     if (hasGreetedRef.current) return;
     hasGreetedRef.current = true;
@@ -1321,7 +1321,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     const n = candidatesSummary.length;
     const greeting = n > 0
       ? `Hey, I'm Jarvis. I can see ${n} resume${n !== 1 ? 's' : ''} loaded. What role are you hiring for?`
-      : "Hey, I'm Jarvis. No resumes uploaded yet â€” head back, add some, then come talk to me.";
+      : "Hey, I'm Jarvis. No resumes uploaded yet — head back, add some, then come talk to me.";
 
     setStatus(n > 0 ? `${n} CANDIDATE${n !== 1 ? 'S' : ''} READY` : 'NO CANDIDATES');
     autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
@@ -1332,7 +1332,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     }, 400);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // â”€â”€ Mic button â€” interrupt speaking or toggle recording â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mic button — interrupt speaking or toggle recording ───────────────────
   const handleMicClick = useCallback(() => {
     const v = voiceRef.current;
     if (!v) return;
@@ -1342,7 +1342,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       interruptedRef.current = true;
       v.stopSpeaking();
       autoListenEnabledRef.current = true;
-      queueAutoListen(120, 'Listeningâ€¦');
+      queueAutoListen(120, 'Listening…');
       return;
     }
 
@@ -1356,16 +1356,16 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       if (processingRef.current) return;
       autoListenEnabledRef.current = true;
       v.startRecording();
-      setHint('Listeningâ€¦');
+      setHint('Listening…');
     }
   }, [queueAutoListen]);
 
-  // â”€â”€ Orb click â€” same as mic (interrupt or start) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Orb click — same as mic (interrupt or start) ──────────────────────────
   const handleOrbClick = useCallback(() => {
     handleMicClick();
   }, [handleMicClick]);
 
-  // â”€â”€ Text input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Text input ────────────────────────────────────────────────────────────
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && textInput.trim() && !isProcessing) {
       e.preventDefault();
@@ -1384,7 +1384,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     handleSendMessage(t);
   };
 
-  // â”€â”€ Cleanup on unmount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       autoListenEnabledRef.current = false;
@@ -1394,7 +1394,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     };
   }, []);
 
-  // â”€â”€ New chat â€” clear everything and re-greet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── New chat — clear everything and re-greet ──────────────────────────────
   const handleNewChat = useCallback(() => {
     // Stop any active audio/recording/timers
     if (listenAfterRef.current) clearTimeout(listenAfterRef.current);
@@ -1426,7 +1426,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       const n = candidatesSummary.length;
       const greeting = n > 0
         ? `Hey, I'm Jarvis. I can see ${n} resume${n !== 1 ? 's' : ''} loaded. What role are you hiring for?`
-        : "Hey, I'm Jarvis. No resumes uploaded yet â€” head back, add some, then come talk to me.";
+        : "Hey, I'm Jarvis. No resumes uploaded yet — head back, add some, then come talk to me.";
       setStatus(n > 0 ? `${n} CANDIDATE${n !== 1 ? 'S' : ''} READY` : 'NO CANDIDATES');
       autoListenEnabledRef.current = HANDS_FREE_DEFAULT;
       appendMsg({ role: 'assistant', content: greeting });
@@ -1435,7 +1435,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     }, 100);
   }, [candidatesSummary, appendMsg]);
 
-  // â”€â”€ Show ATS results inline (no navigation away) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Show ATS results inline (no navigation away) ──────────────────────────
   if (resultsData) {
     return (
       <>
@@ -1451,7 +1451,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     );
   }
 
-  // â”€â”€ Expanded card modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Expanded card modal ────────────────────────────────────────────────────
   const expandBtn = (msg) => (
     <button
       onClick={() => setExpandedCard(msg)}
@@ -1468,7 +1468,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     </button>
   );
 
-  // â”€â”€ Orb animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Orb animation ──────────────────────────────────────────────────────────
   const orbAnim = {
     idle:      'jBreathe 4s ease-in-out infinite',
     listening: 'jListen 1s ease-in-out infinite',
@@ -1482,12 +1482,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
   const micActive = voice.isRecording || voice.speakingMsgIndex !== null;
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{CSS}</style>
 
-      {/* â”€â”€ Full-screen card detail modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Full-screen card detail modal ────────────────────────────────────── */}
       {expandedCard && (() => {
         const g  = expandedCard.githubData;
         const ev = expandedCard.evalData;
@@ -1534,7 +1534,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 </button>
               </div>
 
-              {/* â”€â”€ GitHub expanded â”€â”€ */}
+              {/* ── GitHub expanded ── */}
               {g && (() => {
                 const profile = g.profile || {};
                 const allLangs = Object.entries(profile.languages || {});
@@ -1543,7 +1543,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   <>
                     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(245,158,11,0.5)', marginBottom: 6 }}>GITHUB PROFILE</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{g.name}</div>
-                    {profile.login && <div style={{ fontSize: 13, color: '#52525B', marginBottom: 16 }}>@{profile.login} Â· Member since {profile.created_at || '?'}</div>}
+                    {profile.login && <div style={{ fontSize: 13, color: '#52525B', marginBottom: 16 }}>@{profile.login} · Member since {profile.created_at || '?'}</div>}
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
                       {[['Public Repos', g.repos], ['Total Stars', g.stars], ['Followers', profile.followers ?? '?'], ['Following', profile.following ?? '?']].map(([l, v]) => (
                         <div key={l}>
@@ -1554,7 +1554,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     </div>
                     {profile.location && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>ðŸ“ {profile.location}</div>}
                     {profile.company  && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 4 }}>ðŸ¢ {profile.company}</div>}
-                    {profile.blog     && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 16 }}>ðŸ”— {profile.blog}</div>}
+                    {profile.blog     && <div style={{ fontSize: 13, color: '#71717A', marginBottom: 16 }}>🔗 {profile.blog}</div>}
                     {allLangs.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>LANGUAGES</div>
@@ -1592,7 +1592,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 );
               })()}
 
-              {/* â”€â”€ Evaluation expanded â”€â”€ */}
+              {/* ── Evaluation expanded ── */}
               {ev && (() => {
                 const rpt = ev.report || '';
                 const scoreMatch = rpt.match(/(?:overall\s+fit\s+score|fit\s+score|overall\s+score)[^:]*?:\s*(\d+)/i);
@@ -1611,7 +1611,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 );
               })()}
 
-              {/* â”€â”€ Web search expanded â”€â”€ */}
+              {/* ── Web search expanded ── */}
               {s && (
                 <>
                   <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(56,189,248,0.5)', marginBottom: 6 }}>WEB SEARCH RESULTS</div>
@@ -1632,7 +1632,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 </>
               )}
 
-              {/* â”€â”€ Email draft expanded â”€â”€ */}
+              {/* ── Email draft expanded ── */}
               {em && (
                 <>
                   <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(245,158,11,0.5)', marginBottom: 6 }}>EMAIL DRAFT</div>
@@ -1642,11 +1642,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   <button
                     onClick={() => { setExpandedCard(null); executeAction('batch_action', { ...expandedCard.batchParams, send_emails: true }); }}
                     style={{ padding: '10px 24px', borderRadius: 100, background: 'rgba(217,119,6,0.25)', border: '1px solid rgba(245,158,11,0.45)', color: '#FDE68A', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-                  >Send Email â†’</button>
+                  >Send Email →</button>
                 </>
               )}
 
-              {/* â”€â”€ Scan expanded â”€â”€ */}
+              {/* ── Scan expanded ── */}
               {sc && (() => {
                 const ghP = sc.profiles?.github;
                 const liP = sc.profiles?.linkedin;
@@ -1671,8 +1671,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 8 }}>CONTACT</div>
-                      {ct.email && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>âœ‰ {ct.email}</div>}
-                      {ct.phone && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>ðŸ“ž {ct.phone}</div>}
+                      {ct.email && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>✉ {ct.email}</div>}
+                      {ct.phone && <div style={{ fontSize: 13, color: '#A1A1AA', marginBottom: 3 }}>📞 {ct.phone}</div>}
                     </div>
                     {sc.summary && (
                       <div>
@@ -1991,7 +1991,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           </button>
         </div>
 
-        {/* â”€â”€ ZONE 1: Orb â”€â”€ */}
+        {/* ── ZONE 1: Orb ── */}
         <div style={{
           position: 'relative', zIndex: 1, flexShrink: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -2034,9 +2034,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 ) : orbMode === 'thinking' ? (
                   <Loader size={22} style={{ color: 'rgba(255,255,255,0.8)', animation: 'jSpin 1s linear infinite' }} />
                 ) : orbMode === 'listening' ? (
-                  <div style={{ fontSize: 28, color: 'rgba(255,255,255,0.9)', fontWeight: 200 }}>â—Ž</div>
+                  <div style={{ fontSize: 28, color: 'rgba(255,255,255,0.9)', fontWeight: 200 }}>◎</div>
                 ) : (
-                  <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.75)', fontWeight: 200 }}>â—ˆ</div>
+                  <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.75)', fontWeight: 200 }}>◈</div>
                 )}
               </div>
             </div>
@@ -2067,7 +2067,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           }} />
         </div>
 
-        {/* â”€â”€ ZONE 2: Messages â”€â”€ */}
+        {/* ── ZONE 2: Messages ── */}
         <div
           role="log"
           aria-live="polite"
@@ -2082,7 +2082,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
 
             {messages.map(msg => {
-              // â”€â”€ Jarvis message
+              // ── Jarvis message
               if (msg.role === 'assistant') return (
                 <div key={msg.id} className="j-msg" style={{ marginBottom: 22, display: 'flex', gap: 11, alignItems: 'flex-start' }}>
                   <div style={{
@@ -2100,7 +2100,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 </div>
               );
 
-              // â”€â”€ User message
+              // ── User message
               if (msg.role === 'user') {
                 if (msg.content?.startsWith('[')) return null;
                 return (
@@ -2118,7 +2118,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 );
               }
 
-              // â”€â”€ Action card
+              // ── Action card
               if (msg.role === 'action') {
                 if (msg.actionData) {
                   const d = msg.actionData;
@@ -2136,7 +2136,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           fontSize: 9, fontWeight: 800, letterSpacing: '0.16em',
                           color: 'rgba(245,158,11,0.4)', marginBottom: 12,
                         }}>
-                          {(d.role || '').toUpperCase()} Â· {d.total_screened || 0} SCREENED
+                          {(d.role || '').toUpperCase()} · {d.total_screened || 0} SCREENED
                         </div>
                         {/* Same component the shortlist screen renders, compact
                             variant. This card used to hand-roll its own rows and
@@ -2163,7 +2163,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                               Create interviews for top {Math.min(shortlisted.length, 3)}
                             </button>
                           )}
-                          {/* View full results â€” opens inline, no navigation away */}
+                          {/* View full results — opens inline, no navigation away */}
                           <button
                             onClick={() => setResultsData(d)}
                             style={{
@@ -2173,21 +2173,21 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                               color: '#71717A', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                             }}
                           >
-                            View full results â†’
+                            View full results →
                           </button>
                         </div>
                       </div>
                     </div>
                   );
                 }
-                // â”€â”€ GitHub card
+                // ── GitHub card
                 if (msg.githubData) {
                   const g = msg.githubData;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)' }}>GITHUB Â· {g.name}</div>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.4)' }}>GITHUB · {g.name}</div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -2212,7 +2212,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         )}
                         {g.analysis && (
                           <p style={{ margin: 0, fontSize: 12, color: '#71717A', lineHeight: 1.5, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
-                            {g.analysis.slice(0, 200)}{g.analysis.length > 200 ? 'â€¦' : ''}
+                            {g.analysis.slice(0, 200)}{g.analysis.length > 200 ? '…' : ''}
                           </p>
                         )}
                       </div>
@@ -2220,7 +2220,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   );
                 }
 
-                // â”€â”€ Email draft card
+                // ── Email draft card
                 if (msg.emailDraftData) {
                   const e = msg.emailDraftData;
                   return (
@@ -2228,14 +2228,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.5)' }}>
-                            EMAIL DRAFT Â· TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more)` : ''}
+                            EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more)` : ''}
                           </div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{e.subject}</div>
                         {e.body && (
                           <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65, background: 'rgba(0,0,0,0.25)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxHeight: 120, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-                            {e.body.slice(0, 400)}{e.body.length > 400 ? 'â€¦' : ''}
+                            {e.body.slice(0, 400)}{e.body.length > 400 ? '…' : ''}
                           </div>
                         )}
                         <button
@@ -2243,32 +2243,32 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           style={{ padding: '7px 18px', borderRadius: 100, background: 'rgba(217,119,6,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: '#FDE68A', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                           onMouseEnter={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.35)'; }}
                           onMouseLeave={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.2)'; }}
-                        >Send Email â†’</button>
+                        >Send Email →</button>
                       </div>
                     </div>
                   );
                 }
 
-                // â”€â”€ Web search card
+                // ── Web search card
                 if (msg.searchData) {
                   const s = msg.searchData;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(56,189,248,0.5)' }}>WEB SEARCH Â· {s.query}</div>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(56,189,248,0.5)' }}>WEB SEARCH · {s.query}</div>
                           {expandBtn(msg)}
                         </div>
-                        {s.snippet && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{s.snippet.slice(0, 160)}â€¦</p>}
+                        {s.snippet && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#71717A', lineHeight: 1.5 }}>{s.snippet.slice(0, 160)}…</p>}
                         {(s.sources || []).slice(0, 2).map((src, i) => (
-                          <div key={i} style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>Â· {src.title}</div>
+                          <div key={i} style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>· {src.title}</div>
                         ))}
                       </div>
                     </div>
                   );
                 }
 
-                // â”€â”€ Evaluation / Deep analysis card
+                // ── Evaluation / Deep analysis card
                 if (msg.evalData) {
                   const ev = msg.evalData;
                   const rpt = ev.report || '';
@@ -2277,7 +2277,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const score = scoreMatch ? scoreMatch[1] : null;
                   const verdictMatch = rpt.match(/recommendation[^:]*?:\s*([^\n]{3,50})/i);
                   const verdict = verdictMatch ? stripMarkdown(verdictMatch[1].trim()).split('\n')[0] : null;
-                  // Extract sections by keyword â€” HR agent uses "Growth Areas" for weaknesses
+                  // Extract sections by keyword — HR agent uses "Growth Areas" for weaknesses
                   const weakText = extractSection(rpt, ['growth', 'area', 'concern', 'weakness', 'drawback', 'improvement', 'gap', 'limitation']);
                   const strengthText = extractSection(rpt, ['strength', 'match']);
                   return (
@@ -2294,30 +2294,30 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         {strengthText && (
                           <div style={{ marginBottom: 10 }}>
                             <div style={{ fontSize: 9, color: '#4ADE80', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>STRENGTHS</div>
-                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65 }}>{strengthText.slice(0, 250)}{strengthText.length > 250 ? 'â€¦' : ''}</div>
+                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65 }}>{strengthText.slice(0, 250)}{strengthText.length > 250 ? '…' : ''}</div>
                           </div>
                         )}
                         {weakText && (
                           <div style={{ marginBottom: 10 }}>
                             <div style={{ fontSize: 9, color: '#F87171', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
-                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65 }}>{weakText.slice(0, 250)}{weakText.length > 250 ? 'â€¦' : ''}</div>
+                            <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.65 }}>{weakText.slice(0, 250)}{weakText.length > 250 ? '…' : ''}</div>
                           </div>
                         )}
                         {!strengthText && !weakText && (
                           <div style={{ fontSize: 12, color: '#71717A', lineHeight: 1.65 }}>
-                            {plain.slice(0, 320)}{plain.length > 320 ? 'â€¦' : ''}
+                            {plain.slice(0, 320)}{plain.length > 320 ? '…' : ''}
                           </div>
                         )}
                         <div style={{ marginTop: 8, fontSize: 10, color: '#3F3F46', cursor: 'pointer' }}
                           onClick={() => setExpandedCard(msg)}>
-                          Tap â†— for full report
+                          Tap ↗ for full report
                         </div>
                       </div>
                     </div>
                   );
                 }
 
-                // â”€â”€ Scan / LinkedIn card
+                // ── Scan / LinkedIn card
                 if (msg.scanData) {
                   const sc = msg.scanData;
                   const gh = sc.profiles?.github;
@@ -2334,13 +2334,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         {li?.headline && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>LinkedIn: {li.headline}</div>}
                         {ct.email    && <div style={{ fontSize: 12, color: '#71717A', marginBottom: 3 }}>Email: {ct.email}</div>}
                         {ct.phone    && <div style={{ fontSize: 12, color: '#71717A' }}>Phone: {ct.phone}</div>}
-                        {sc.summary  && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#52525B', lineHeight: 1.5 }}>{sc.summary.slice(0, 120)}â€¦</p>}
+                        {sc.summary  && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#52525B', lineHeight: 1.5 }}>{sc.summary.slice(0, 120)}…</p>}
                       </div>
                     </div>
                   );
                 }
 
-                // â”€â”€ Calendly card
+                // ── Calendly card
                 if (msg.resumeIntelData) {
                   const ri = msg.resumeIntelData;
                   const intel = ri.intelligence || {};
@@ -2353,7 +2353,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(139,92,246,0.55)' }}>
-                            RESUME INTELLIGENCE {ri.candidateName ? `Â· ${ri.candidateName}` : ''}
+                            RESUME INTELLIGENCE {ri.candidateName ? `· ${ri.candidateName}` : ''}
                           </div>
                           {expandBtn(msg)}
                         </div>
@@ -2479,7 +2479,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   );
                 }
 
-                // â”€â”€ Simple action status line
+                // ── Simple action status line
                 return (
                   <div key={msg.id} className="j-msg" style={{
                     marginBottom: 18, padding: '7px 14px',
@@ -2491,7 +2491,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
                       color: '#4ADE80', fontFamily: "'JetBrains Mono', monospace",
                     }}>
-                      âœ“ {msg.content}
+                      ✓ {msg.content}
                     </span>
                   </div>
                 );
@@ -2517,7 +2517,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           </div>
         </div>
 
-        {/* â”€â”€ ZONE 3: Input bar â”€â”€ */}
+        {/* ── ZONE 3: Input bar ── */}
         <div style={{
           position: 'relative', zIndex: 1, flexShrink: 0,
           padding: '10px 20px 24px',
@@ -2553,9 +2553,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               onChange={e => setTextInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                voice.isRecording    ? 'Recordingâ€¦ (or type here)' :
-                voice.isTranscribing ? 'Transcribingâ€¦' :
-                isProcessing         ? 'Jarvis is thinkingâ€¦' :
+                voice.isRecording    ? 'Recording… (or type here)' :
+                voice.isTranscribing ? 'Transcribing…' :
+                isProcessing         ? 'Jarvis is thinking…' :
                 'Type a message, or let Jarvis keep listening'
               }
               disabled={isProcessing || voice.isTranscribing}
@@ -2618,10 +2618,10 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           {/* Caption */}
           <div style={{ fontSize: 10, color: '#27272A', letterSpacing: '0.06em', userSelect: 'none' }}>
             {voice.isRecording
-              ? 'RECORDING Â· PAUSE TO SEND AUTOMATICALLY'
+              ? 'RECORDING · PAUSE TO SEND AUTOMATICALLY'
               : voice.speakingMsgIndex !== null
-                ? 'JARVIS SPEAKING Â· CLICK ORB OR MIC TO INTERRUPT'
-                : 'TYPE OR CLICK MIC TO SPEAK Â· SILENCE STOPS RECORDING'}
+                ? 'JARVIS SPEAKING · CLICK ORB OR MIC TO INTERRUPT'
+                : 'TYPE OR CLICK MIC TO SPEAK · SILENCE STOPS RECORDING'}
           </div>
         </div>
 
