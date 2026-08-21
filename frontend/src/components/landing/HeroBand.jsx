@@ -46,7 +46,7 @@ export default function HeroBand({ navigate }) {
                 gold rule, which is the band's line repeated small. */}
             <div className="lg:pt-4">
               <div className="border-l-2 border-accent pl-5">
-                <p className="text-[17px] leading-[1.6] text-ink-muted">
+                <p className="text-[17px] leading-[1.7] text-ink-muted">
                   Five agents read the pile, score each candidate against the role on
                   fixed weights, and run the interview. Same resumes, same numbers,
                   every time &mdash; so a ranking is something you can explain.

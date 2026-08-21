@@ -34,7 +34,10 @@
   line-height: 1.08; letter-spacing: -0.03em;
   margin-bottom: var(--space-4);
 }
-.l-section-header p { font-size: 17px; line-height: 1.65; color: var(--color-ink-muted); max-width: 34rem; }
+/* 15px at 1.7, not 17px at 1.65. Seventeen is the size a landing page reaches
+   for when it wants to look friendly, and beside a serif display it reads soft.
+   Prose on this page sits where prose sits: content size, generous leading. */
+.l-section-header p { font-size: 15px; line-height: 1.7; color: var(--color-ink-muted); max-width: 34rem; }
 
 /* ─── Agent Showcase ─── */
 .l-agents-showcase { display: flex; gap: var(--space-6); align-items: flex-start; }

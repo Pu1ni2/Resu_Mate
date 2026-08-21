@@ -279,7 +279,7 @@ export default function Landing() {
                 <h3 className="text-[17px] font-bold tracking-[-0.01em] text-ink">
                   {step.title}
                 </h3>
-                <p className="text-[15px] leading-[1.65] text-ink-muted">{step.desc}</p>
+                <p className="text-[15px] leading-[1.7] text-ink-muted">{step.desc}</p>
               </li>
             ))}
           </ol>
@@ -304,7 +304,7 @@ export default function Landing() {
                 <span className="mt-0.5 shrink-0 text-accent">{f.icon}</span>
                 <div className="min-w-0">
                   <h4 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{f.title}</h4>
-                  <p className="mt-1.5 text-[14px] leading-[1.6] text-ink-muted">{f.desc}</p>
+                  <p className="mt-1.5 text-[14px] leading-[1.7] text-ink-muted">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -326,7 +326,7 @@ export default function Landing() {
                 <br />
                 Get a shortlist.
               </h2>
-              <p className="mt-5 max-w-[30rem] text-[17px] leading-[1.6] text-ink-inverse/75">
+              <p className="mt-5 max-w-[30rem] text-[17px] leading-[1.7] text-ink-inverse/75">
                 Screening runs on fixed weights, so the ranking is the same every time
                 and you can explain any placement in it.
               </p>
