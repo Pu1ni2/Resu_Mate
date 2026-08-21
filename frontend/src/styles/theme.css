@@ -260,9 +260,12 @@
 
   --color-highlight: rgba(247, 245, 239, 0.10);
   --color-highlight-strong: rgba(247, 245, 239, 0.18);
-  --shadow-e1: 0 1px 2px rgb(3 8 24 / 0.5);
-  --shadow-e2: 0 4px 14px -3px rgb(3 8 24 / 0.6);
-  --shadow-e3: 0 28px 60px -18px rgb(3 8 24 / 0.8), 0 8px 20px -8px rgb(3 8 24 / 0.55);
+  /* Lighter than they were: e3 was at 0.8, which is a shadow doing the job of a
+     border. Structure on this page comes from --color-line; a shadow only says
+     "this floats above the page", and only e3 is allowed to say it. */
+  --shadow-e1: 0 1px 2px rgb(3 8 24 / 0.30);
+  --shadow-e2: 0 4px 14px -3px rgb(3 8 24 / 0.40);
+  --shadow-e3: 0 24px 56px -16px rgb(3 8 24 / 0.50), 0 8px 20px -8px rgb(3 8 24 / 0.35);
 
   background: var(--color-canvas);
   color: var(--color-ink);

@@ -61,22 +61,18 @@
 }
 .l-agent-tab.active .l-agent-tab-icon { background: var(--color-accent-wash); color: var(--color-accent); }
 
-/* The detail panel is the raised plane in this section, so it gets the same
-   light model as the hero's product panel: e2 elevation and a lit top edge. */
+/* The detail panel does not float -- it sits in the flow beside its tabs, on the
+   same surface as everything else in the section. It used to carry e2 and a lit
+   top edge, which are both cues for something raised off the page, so it read as
+   a card hovering for no reason. Its border is the structure; the only thing on
+   this page allowed to cast a real shadow is the hero plate, which genuinely
+   straddles the gold band. */
 .l-agent-detail {
   position: relative;
   flex: 1; padding: var(--space-6);
   background: var(--color-surface); border: 1px solid var(--color-line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-e2);
   animation: fadeInScale var(--duration-normal) var(--ease-out);
-}
-.l-agent-detail::before {
-  content: ''; position: absolute; inset-inline: 0; top: 0; height: 1px;
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-  background: linear-gradient(90deg, transparent, var(--color-highlight) 18%,
-    var(--color-highlight-strong) 50%, var(--color-highlight) 82%, transparent);
-  pointer-events: none;
 }
 .l-agent-detail-header { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
 .l-agent-detail-icon {
