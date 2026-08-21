@@ -178,10 +178,10 @@ export default function Landing() {
                         <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
                       </polygon>
                       {/* Arrow to Scoring Agent */}
-                      <path d="M0,40 Q30,55 55,45" fill="none" stroke="#F59E0B" strokeWidth="2" strokeDasharray="4,4">
+                      <path d="M0,40 Q30,55 55,45" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeDasharray="4,4">
                         <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />
                       </path>
-                      <polygon points="52,42 58,46 52,50" fill="#F59E0B">
+                      <polygon points="52,42 58,46 52,50" style={{ fill: 'var(--color-accent)' }}>
                         <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
                       </polygon>
                     </svg>
@@ -195,12 +195,12 @@ export default function Landing() {
                       </div>
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-accent-hover)' }}>Interview Agent</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text3)' }}>LiveKit + Simli Avatar + OpenAI Realtime</div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-ink-subtle)' }}>LiveKit + Simli Avatar + OpenAI Realtime</div>
                       </div>
                     </div>
 
                     {/* Arrow between sub-agents */}
-                    <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <div style={{ textAlign: 'center', color: 'var(--color-ink-subtle)', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                       <svg width="20" height="20" viewBox="0 0 20 20">
                         <path d="M10,2 L10,14" strokeWidth="1.5" strokeDasharray="3,2" style={{ stroke: 'var(--color-ink-subtle)' }}>
                           <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.8s" repeatCount="indefinite" />
@@ -210,13 +210,13 @@ export default function Landing() {
                       <span style={{ fontSize: '10px', opacity: 0.6 }}>scores feed into</span>
                     </div>
 
-                    <div style={{ padding: '10px 16px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <BarChart2 size={14} style={{ color: '#F59E0B' }} />
+                    <div style={{ padding: '10px 16px', background: 'var(--color-accent-wash)', border: '1px solid var(--color-accent-line)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--color-accent-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BarChart2 size={14} style={{ color: 'var(--color-accent)' }} />
                       </div>
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: '700', color: '#FBBF24' }}>Scoring Agent</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text3)' }}>GPT-4o evaluation + per-question feedback</div>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-accent-hover)' }}>Scoring Agent</div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-ink-subtle)' }}>GPT-4o evaluation + per-question feedback</div>
                       </div>
                     </div>
                   </div>
