@@ -32,7 +32,7 @@ export default function HeroBand({ navigate }) {
                 Multi-agent hiring
               </p>
 
-              <h1 className="font-display text-[clamp(2.75rem,6.6vw,5.25rem)] font-black leading-[0.94] tracking-[-0.04em] text-ink">
+              <h1 className="font-display text-[clamp(2.75rem,6.6vw,5.25rem)] font-extrabold leading-[0.94] tracking-[-0.04em] text-ink">
                 Read every resume.
                 <br />
                 Interview the

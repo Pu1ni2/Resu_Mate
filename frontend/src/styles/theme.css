@@ -248,6 +248,16 @@
 
   --color-data-track: rgba(247, 245, 239, 0.10);
 
+  /* Fraunces for display, and only inside this scope. The product keeps Satoshi
+     -- pointing the global token at a serif would put it on every dashboard
+     heading, which is the opposite of the intent. Body text here stays on
+     --font-text.
+
+     It is allowed in exactly three places: the wordmark, the hero h1, and
+     .l-section-header h2. A serif that appears everywhere reads as a blog; one
+     that appears three times reads as a decision. */
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+
   --color-highlight: rgba(247, 245, 239, 0.10);
   --color-highlight-strong: rgba(247, 245, 239, 0.18);
   --shadow-e1: 0 1px 2px rgb(3 8 24 / 0.5);

@@ -254,7 +254,7 @@ export default function Landing() {
                 className="grid gap-x-8 gap-y-3 border-b border-line py-8 sm:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1.1fr)]"
               >
                 <span className="font-mono text-[13px] text-accent">{step.num}</span>
-                <h3 className="font-display text-[19px] font-bold tracking-[-0.02em] text-ink">
+                <h3 className="text-[17px] font-bold tracking-[-0.01em] text-ink">
                   {step.title}
                 </h3>
                 <p className="text-[15px] leading-[1.65] text-ink-muted">{step.desc}</p>
@@ -299,7 +299,7 @@ export default function Landing() {
         <div className="mx-auto max-w-[72rem]">
           <div className="grid gap-x-16 gap-y-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
-              <h2 className="font-display text-[clamp(2rem,4.5vw,3.25rem)] font-black leading-[0.98] tracking-[-0.035em] text-ink-inverse">
+              <h2 className="font-display text-[clamp(2rem,4.5vw,3.25rem)] font-extrabold leading-[0.98] tracking-[-0.035em] text-ink-inverse">
                 Upload a folder.
                 <br />
                 Get a shortlist.
