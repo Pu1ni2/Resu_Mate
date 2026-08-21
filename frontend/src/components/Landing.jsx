@@ -7,18 +7,35 @@ import Button from './ui/Button';
 import { cn } from './ui/cn';
 import HeroBand from './landing/HeroBand';
 
-// ─── Logo ───
+/* ─── Logo ───
+ * On the tokens, not on literals. The three colours it used were exactly
+ * --color-accent-hover, --color-accent and --color-canvas, so re-theming the
+ * page left the mark behind in the old palette.
+ *
+ * The glyph is --color-ink-inverse rather than --color-canvas: both resolve to
+ * the same navy here, but "ink on an accent fill" is what the mark actually is,
+ * so it stays correct if the page background ever moves independently.
+ *
+ * Stops are set through `style` rather than the stopColor attribute -- a CSS
+ * variable in the XML attribute form is not honoured across engines, but the
+ * inline style form is a plain CSS property and is.
+ */
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
     <defs>
       <linearGradient id="logo-g" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FFD666" />
-        <stop offset="100%" stopColor="#FFC93C" />
+        <stop offset="0%" style={{ stopColor: 'var(--color-accent-hover)' }} />
+        <stop offset="100%" style={{ stopColor: 'var(--color-accent)' }} />
       </linearGradient>
     </defs>
     <rect width="32" height="32" rx="8" fill="url(#logo-g)" />
-    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#0A1633" strokeWidth="1.6" fill="none" />
-    <circle cx="16" cy="16" r="3" fill="#0A1633" />
+    <path
+      d="M16 8L22 12V20L16 24L10 20V12L16 8Z"
+      strokeWidth="1.6"
+      fill="none"
+      style={{ stroke: 'var(--color-ink-inverse)' }}
+    />
+    <circle cx="16" cy="16" r="3" style={{ fill: 'var(--color-ink-inverse)' }} />
   </svg>
 );
 
