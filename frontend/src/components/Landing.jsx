@@ -6,6 +6,7 @@ import {
 import Button from './ui/Button';
 import { cn } from './ui/cn';
 import HeroBand from './landing/HeroBand';
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion';
 
 /* ─── Logo ───
  * On the tokens, not on literals. The three colours it used were exactly
@@ -42,6 +43,10 @@ const Logo = ({ size = 32 }) => (
 export default function Landing() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  /* The agent diagram's dashes and pulses are SVG SMIL, which the stylesheet's
+     prefers-reduced-motion rule cannot reach -- they are the only infinite
+     animations on the page, so they are gated here instead. */
+  const reducedMotion = usePrefersReducedMotion();
   const [activeAgent, setActiveAgent] = useState(0);
 
   useEffect(() => {
@@ -189,17 +194,17 @@ export default function Landing() {
                     <svg width="60" height="60" viewBox="0 0 60 60" style={{ overflow: 'visible' }}>
                       {/* Arrow to Interview Agent */}
                       <path d="M0,20 Q30,5 55,15" fill="none" strokeWidth="2" strokeDasharray="4,4" style={{ stroke: 'var(--color-accent)' }}>
-                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />
+                        {!reducedMotion && <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />}
                       </path>
                       <polygon points="52,12 58,16 52,20" style={{ fill: 'var(--color-accent)' }}>
-                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
+                        {!reducedMotion && <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />}
                       </polygon>
                       {/* Arrow to Scoring Agent */}
                       <path d="M0,40 Q30,55 55,45" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeDasharray="4,4">
-                        <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />
+                        {!reducedMotion && <animate attributeName="stroke-dashoffset" from="8" to="0" dur="1s" repeatCount="indefinite" />}
                       </path>
                       <polygon points="52,42 58,46 52,50" style={{ fill: 'var(--color-accent)' }}>
-                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />
+                        {!reducedMotion && <animate attributeName="opacity" values="0.4;1;0.4" dur="1s" repeatCount="indefinite" />}
                       </polygon>
                     </svg>
                   </div>
@@ -220,7 +225,7 @@ export default function Landing() {
                     <div style={{ textAlign: 'center', color: 'var(--color-ink-subtle)', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                       <svg width="20" height="20" viewBox="0 0 20 20">
                         <path d="M10,2 L10,14" strokeWidth="1.5" strokeDasharray="3,2" style={{ stroke: 'var(--color-ink-subtle)' }}>
-                          <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.8s" repeatCount="indefinite" />
+                          {!reducedMotion && <animate attributeName="stroke-dashoffset" from="5" to="0" dur="0.8s" repeatCount="indefinite" />}
                         </path>
                         <polygon points="7,12 10,18 13,12" style={{ fill: 'var(--color-ink-subtle)' }} />
                       </svg>
