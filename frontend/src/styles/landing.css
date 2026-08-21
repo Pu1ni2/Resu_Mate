@@ -15,10 +15,15 @@
    headers over left-aligned content is the inconsistency that made the old
    layout feel arbitrary. */
 .l-section-header { text-align: left; margin-bottom: var(--space-10); max-width: 44rem; }
+/* The eyebrow above each section heading. It whispers: faint ink, not accent.
+   Spending the accent on a label that appears above every section leaves nothing
+   for the one call to action that should own it. 0.08em is the tracking every
+   uppercase micro-label on this page now uses -- it was 0.14, 0.16, 0.18 and 0.2
+   in four different places. */
 .l-section-tag {
   display: block; font-family: var(--font-mono);
-  font-size: 11px; font-weight: 400;
-  color: var(--color-accent); text-transform: uppercase; letter-spacing: 0.18em;
+  font-size: 10px; font-weight: 700;
+  color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.08em;
   margin-bottom: var(--space-4);
 }
 /* Same family and the same tight-and-heavy treatment as the hero, a step down
@@ -91,14 +96,18 @@
 .l-pipeline-arrow { color: var(--color-ink-faint); font-size: 10px; }
 .l-agent-detail-desc { color: var(--color-ink-muted); font-size: var(--text-base); line-height: var(--leading-relaxed); margin-bottom: var(--space-4); }
 .l-agent-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
-.l-agent-tools-label { font-size: var(--text-xs); color: var(--color-ink-subtle); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
-/* Squared off, matching the hero's tech pills — a stadium-shaped mono chip
-   reads as a tag, a rounded-rect one reads as a token. */
+/* Same eyebrow recipe, so the two kinds of label on the page match. */
+.l-agent-tools-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.08em;
+}
+/* Squared off, matching the hero's tech pills — a stadium-shaped chip reads as a
+   tag, a rounded-rect one reads as a token. Not mono: these are tool names, and
+   mono is reserved on this page for figures and the uppercase eyebrows. */
 .l-tool-chip {
   font-size: 11px; padding: 4px 10px;
   background: var(--color-surface-raised); border: 1px solid var(--color-line);
   border-radius: var(--radius-sm); color: var(--color-ink-muted);
-  font-family: var(--font-mono);
 }
 
 /* ─── Responsive ─── */

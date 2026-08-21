@@ -28,7 +28,7 @@ export default function HeroBand({ navigate }) {
         <div className="mx-auto max-w-[72rem]">
           <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <div>
-              <p className="mb-7 font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+              <p className="mb-7 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-accent">
                 Multi-agent hiring
               </p>
 
@@ -84,7 +84,7 @@ export default function HeroBand({ navigate }) {
             {/* Caption sits on the gold, in navy — the accent doing the work of
                 a surface rather than a highlight. */}
             <figcaption className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-1">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-inverse/70">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-ink-inverse/70">
                 Screening
               </span>
               <span className="text-[14px] font-medium text-ink-inverse">

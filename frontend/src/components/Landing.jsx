@@ -111,7 +111,7 @@ export default function Landing() {
                 <a
                   key={href}
                   href={href}
-                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
+                  className="text-[13px] text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
                 >
                   {label}
                 </a>
@@ -360,7 +360,7 @@ export default function Landing() {
               <a
                 key={href}
                 href={href}
-                className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
+                className="text-[13px] text-ink-subtle no-underline transition-colors duration-[120ms] hover:text-ink"
               >
                 {label}
               </a>
