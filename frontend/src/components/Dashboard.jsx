@@ -560,11 +560,11 @@ export default function Dashboard() {
                   {(hiringManager.name || 'U')[0].toUpperCase()}
                 </div>
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {hiringManager.name}
                   </div>
                   {hiringManager.company && (
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {hiringManager.company}
                     </div>
                   )}
@@ -624,7 +624,7 @@ export default function Dashboard() {
                 }}>
                   {(hiringManager.name || 'U')[0].toUpperCase()}
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)' }}>
                   {hiringManager.name}
                 </span>
               </div>

@@ -36,14 +36,14 @@ export default function HiringLogin() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg-primary)',
+      background: 'var(--color-canvas)',
       padding: '24px',
     }}>
       <div style={{
         width: '100%',
         maxWidth: '420px',
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-line)',
         borderRadius: '16px',
         padding: '40px',
         boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
@@ -60,10 +60,10 @@ export default function HiringLogin() {
           }}>
             🎯
           </div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-ink)', margin: '0 0 6px' }}>
             Hiring Manager Login
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+          <p style={{ color: 'var(--color-ink-muted)', fontSize: '14px', margin: 0 }}>
             Sign in to your ResuMate dashboard
           </p>
         </div>
@@ -82,11 +82,11 @@ export default function HiringLogin() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-ink-muted)', marginBottom: '6px' }}>
               Email
             </label>
             <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="email"
                 value={email}
@@ -96,10 +96,10 @@ export default function HiringLogin() {
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   padding: '10px 12px 10px 38px',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--color-line)',
                   borderRadius: '8px',
-                  color: 'var(--text-primary)',
+                  color: 'var(--color-ink)',
                   fontSize: '14px',
                   outline: 'none',
                 }}
@@ -108,11 +108,11 @@ export default function HiringLogin() {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-ink-muted)', marginBottom: '6px' }}>
               Password
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -122,10 +122,10 @@ export default function HiringLogin() {
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   padding: '10px 38px 10px 38px',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--color-line)',
                   borderRadius: '8px',
-                  color: 'var(--text-primary)',
+                  color: 'var(--color-ink)',
                   fontSize: '14px',
                   outline: 'none',
                 }}
@@ -136,7 +136,7 @@ export default function HiringLogin() {
                 style={{
                   position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-secondary)', padding: 0,
+                  color: 'var(--color-ink-muted)', padding: 0,
                 }}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -150,8 +150,8 @@ export default function HiringLogin() {
             style={{
               width: '100%',
               padding: '11px',
-              background: loading ? 'var(--bg-secondary)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
-              color: loading ? 'var(--text-secondary)' : '#000',
+              background: loading ? 'var(--color-surface-raised)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
+              color: loading ? 'var(--color-ink-muted)' : '#000',
               border: 'none',
               borderRadius: '8px',
               fontWeight: 600,
@@ -164,7 +164,7 @@ export default function HiringLogin() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--color-ink-muted)' }}>
           Don't have an account?{' '}
           <Link to="/hiring/register" style={{ color: '#F59E0B', textDecoration: 'none', fontWeight: 500 }}>
             Create one

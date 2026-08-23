@@ -7,17 +7,17 @@ import api from '../../services/api';
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
   padding: '10px 12px 10px 38px',
-  background: 'var(--bg-secondary)',
-  border: '1px solid var(--border)',
+  background: 'var(--color-surface-raised)',
+  border: '1px solid var(--color-line)',
   borderRadius: '8px',
-  color: 'var(--text-primary)',
+  color: 'var(--color-ink)',
   fontSize: '14px',
   outline: 'none',
 };
 
 const labelStyle = {
   display: 'block', fontSize: '13px', fontWeight: 500,
-  color: 'var(--text-secondary)', marginBottom: '6px',
+  color: 'var(--color-ink-muted)', marginBottom: '6px',
 };
 
 export default function HiringRegister() {
@@ -67,11 +67,11 @@ export default function HiringRegister() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-primary)', padding: '24px',
+      background: 'var(--color-canvas)', padding: '24px',
     }}>
       <div style={{
         width: '100%', maxWidth: '440px',
-        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        background: 'var(--color-surface)', border: '1px solid var(--color-line)',
         borderRadius: '16px', padding: '40px',
         boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
       }}>
@@ -82,10 +82,10 @@ export default function HiringRegister() {
             borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px', fontSize: '22px',
           }}>🎯</div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-ink)', margin: '0 0 6px' }}>
             Create Account
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+          <p style={{ color: 'var(--color-ink-muted)', fontSize: '14px', margin: 0 }}>
             Set up your hiring manager account
           </p>
         </div>
@@ -106,7 +106,7 @@ export default function HiringRegister() {
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Full Name</label>
             <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="text"
                 value={form.name}
@@ -122,7 +122,7 @@ export default function HiringRegister() {
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Email</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="email"
                 value={form.email}
@@ -138,7 +138,7 @@ export default function HiringRegister() {
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Company (optional)</label>
             <div style={{ position: 'relative' }}>
-              <Building2 size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Building2 size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="text"
                 value={form.company}
@@ -153,7 +153,7 @@ export default function HiringRegister() {
           <div style={{ marginBottom: '14px' }}>
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
@@ -165,7 +165,7 @@ export default function HiringRegister() {
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)', padding: 0 }}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -176,7 +176,7 @@ export default function HiringRegister() {
           <div style={{ marginBottom: '24px' }}>
             <label style={labelStyle}>Confirm Password</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="password"
                 value={form.confirm}
@@ -193,8 +193,8 @@ export default function HiringRegister() {
             disabled={loading}
             style={{
               width: '100%', padding: '11px',
-              background: loading ? 'var(--bg-secondary)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
-              color: loading ? 'var(--text-secondary)' : '#000',
+              background: loading ? 'var(--color-surface-raised)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
+              color: loading ? 'var(--color-ink-muted)' : '#000',
               border: 'none', borderRadius: '8px', fontWeight: 600,
               fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer',
             }}
@@ -203,7 +203,7 @@ export default function HiringRegister() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--color-ink-muted)' }}>
           Already have an account?{' '}
           <Link to="/hiring/login" style={{ color: '#F59E0B', textDecoration: 'none', fontWeight: 500 }}>
             Sign in
