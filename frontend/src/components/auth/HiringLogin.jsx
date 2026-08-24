@@ -57,7 +57,7 @@ export default function HiringLogin() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px',
             fontSize: '22px',
-          }}>
+          }} aria-hidden="true">
             🎯
           </div>
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-ink)', margin: '0 0 6px' }}>
@@ -69,26 +69,30 @@ export default function HiringLogin() {
         </div>
 
         {error && (
-          <div style={{
+          <div role="alert" style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
             borderRadius: '8px', padding: '10px 14px',
             color: '#EF4444', fontSize: '13px', marginBottom: '20px',
           }}>
-            <AlertCircle size={16} />
+            <AlertCircle size={16} aria-hidden="true" />
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-ink-muted)', marginBottom: '6px' }}>
+            <label htmlFor="login-email" style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-ink-muted)', marginBottom: '6px' }}>
               Email
             </label>
             <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <Mail size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
+                id="login-email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                className="auth-field"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -101,20 +105,23 @@ export default function HiringLogin() {
                   borderRadius: '8px',
                   color: 'var(--color-ink)',
                   fontSize: '14px',
-                  outline: 'none',
                 }}
               />
             </div>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-ink-muted)', marginBottom: '6px' }}>
+            <label htmlFor="login-password" style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-ink-muted)', marginBottom: '6px' }}>
               Password
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <Lock size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
+                id="login-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                className="auth-field"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
@@ -127,19 +134,21 @@ export default function HiringLogin() {
                   borderRadius: '8px',
                   color: 'var(--color-ink)',
                   fontSize: '14px',
-                  outline: 'none',
                 }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="auth-field"
                 style={{
                   position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--color-ink-muted)', padding: 0,
                 }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
               </button>
             </div>
           </div>

@@ -1050,3 +1050,24 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 }
 
 
+
+/* ─── Auth form fields ───
+   The hiring login and register inputs set outline:none with nothing in its
+   place, so keyboard focus was invisible on both forms. This is the same
+   treatment components/ui/Input.jsx already gives its fields: an accent border
+   plus a soft ring.
+
+   :focus-visible rather than :focus, so it shows for keyboard users without
+   ringing on every mouse click. It lives in CSS because an inline style cannot
+   express a pseudo-class, which is why those pages had nothing. */
+.auth-field:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-wash);
+}
+/* The password toggle is a bare button over the input, so it needs a ring of
+   its own rather than a border swap. */
+button.auth-field:focus-visible {
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--color-accent);
+}

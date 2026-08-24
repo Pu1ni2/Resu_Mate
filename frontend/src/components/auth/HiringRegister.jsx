@@ -12,7 +12,6 @@ const inputStyle = {
   borderRadius: '8px',
   color: 'var(--color-ink)',
   fontSize: '14px',
-  outline: 'none',
 };
 
 const labelStyle = {
@@ -81,7 +80,7 @@ export default function HiringRegister() {
             background: 'linear-gradient(135deg, #F59E0B, #D97706)',
             borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px', fontSize: '22px',
-          }}>🎯</div>
+          }} aria-hidden="true">🎯</div>
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-ink)', margin: '0 0 6px' }}>
             Create Account
           </h1>
@@ -91,24 +90,28 @@ export default function HiringRegister() {
         </div>
 
         {error && (
-          <div style={{
+          <div role="alert" style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
             borderRadius: '8px', padding: '10px 14px',
             color: '#EF4444', fontSize: '13px', marginBottom: '16px',
           }}>
-            <AlertCircle size={16} />{error}
+            <AlertCircle size={16} aria-hidden="true" />{error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           {/* Full Name */}
           <div style={{ marginBottom: '14px' }}>
-            <label style={labelStyle}>Full Name</label>
+            <label htmlFor="reg-name" style={labelStyle}>Full Name</label>
             <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <User size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="text"
+                id="reg-name"
+                name="name"
+                autoComplete="name"
+                className="auth-field"
                 value={form.name}
                 onChange={update('name')}
                 placeholder="Jane Smith"
@@ -120,11 +123,15 @@ export default function HiringRegister() {
 
           {/* Email */}
           <div style={{ marginBottom: '14px' }}>
-            <label style={labelStyle}>Email</label>
+            <label htmlFor="reg-email" style={labelStyle}>Email</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <Mail size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="email"
+                id="reg-email"
+                name="email"
+                autoComplete="email"
+                className="auth-field"
                 value={form.email}
                 onChange={update('email')}
                 placeholder="jane@company.com"
@@ -136,11 +143,15 @@ export default function HiringRegister() {
 
           {/* Company */}
           <div style={{ marginBottom: '14px' }}>
-            <label style={labelStyle}>Company (optional)</label>
+            <label htmlFor="reg-company" style={labelStyle}>Company (optional)</label>
             <div style={{ position: 'relative' }}>
-              <Building2 size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <Building2 size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="text"
+                id="reg-company"
+                name="company"
+                autoComplete="organization"
+                className="auth-field"
                 value={form.company}
                 onChange={update('company')}
                 placeholder="Acme Inc."
@@ -151,11 +162,15 @@ export default function HiringRegister() {
 
           {/* Password */}
           <div style={{ marginBottom: '14px' }}>
-            <label style={labelStyle}>Password</label>
+            <label htmlFor="reg-password" style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <Lock size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type={showPassword ? 'text' : 'password'}
+                id="reg-password"
+                name="password"
+                autoComplete="new-password"
+                className="auth-field"
                 value={form.password}
                 onChange={update('password')}
                 placeholder="Min 8 characters"
@@ -165,20 +180,27 @@ export default function HiringRegister() {
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="auth-field"
                 style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)', padding: 0 }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
               </button>
             </div>
           </div>
 
           {/* Confirm Password */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={labelStyle}>Confirm Password</label>
+            <label htmlFor="reg-confirm" style={labelStyle}>Confirm Password</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
+              <Lock size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
               <input
                 type="password"
+                id="reg-confirm"
+                name="confirm"
+                autoComplete="new-password"
+                className="auth-field"
                 value={form.confirm}
                 onChange={update('confirm')}
                 placeholder="••••••••"
