@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import api from '../../services/api';
+import api, { messageForApiError } from '../../services/api';
 
 export default function HiringLogin() {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ export default function HiringLogin() {
       loginHiringManager(access_token, refresh_token, user);
       navigate('/hiring');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password');
+      setError(messageForApiError(err, 'Invalid email or password'));
     } finally {
       setLoading(false);
     }

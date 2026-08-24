@@ -31,6 +31,29 @@ api.interceptors.response.use(
   }
 );
 
+/* Turn an axios failure into something worth showing a user.
+ *
+ * The auth endpoints are rate limited to 5 requests a minute. slowapi answers a
+ * 429 with no `detail` field, so `err.response?.data?.detail || fallback` fell
+ * through to the caller's fallback -- which on the login page is "Invalid email
+ * or password". Someone who mistyped five times was told their password was
+ * wrong when they were actually throttled, and trying harder made it worse.
+ *
+ * Lives here rather than in each page because two copies of this would drift.
+ */
+export function messageForApiError(err, fallback) {
+  if (err?.response?.status === 429) {
+    return 'Too many attempts. Please wait a minute and try again.';
+  }
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string' && detail) return detail;
+  // A request that never reached the server has no response at all.
+  if (err && !err.response) {
+    return 'Could not reach the server. Please check your connection.';
+  }
+  return fallback;
+}
+
 export const candidatesAPI = {
   upload: file => {
     const formData = new FormData();

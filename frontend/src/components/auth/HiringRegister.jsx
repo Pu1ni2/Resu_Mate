@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Building2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import api from '../../services/api';
+import api, { messageForApiError } from '../../services/api';
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
@@ -33,16 +33,20 @@ export default function HiringRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (form.password !== form.confirm) {
-      setError('Passwords do not match');
+    // In the order the fields appear. The name check used to run last, so
+    // leaving it blank and mistyping the confirm reported the password instead
+    // -- you fixed the password, submitted again, and only then learned about
+    // the name.
+    if (!form.name.trim()) {
+      setError('Please enter your full name');
       return;
     }
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
     }
-    if (!form.name.trim()) {
-      setError('Please enter your full name');
+    if (form.password !== form.confirm) {
+      setError('Passwords do not match');
       return;
     }
     setLoading(true);
@@ -57,7 +61,7 @@ export default function HiringRegister() {
       loginHiringManager(access_token, refresh_token, user);
       navigate('/hiring');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      setError(messageForApiError(err, 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);
     }
