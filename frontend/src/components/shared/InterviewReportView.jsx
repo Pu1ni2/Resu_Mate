@@ -287,8 +287,11 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             <Download size={14} /> Export PDF Report
           </button>
         )}
+        {/* This was #FEF2F2 on #FECACA -- a light-theme alert, so on the dark
+            product it rendered as a glaring white box, at the one moment
+            something had gone wrong. */}
         {r.terminated && (
-          <div style={{ marginTop: '12px', padding: '10px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
+          <div style={{ marginTop: '12px', padding: '10px 16px', background: 'var(--color-critical-wash)', border: '1px solid var(--color-critical)', borderRadius: '10px', color: 'var(--color-critical)', fontSize: '13px', fontWeight: '600' }}>
             Terminated: exceeded proctoring violations limit
           </div>
         )}
@@ -316,7 +319,9 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           {scores.map((s, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
               <span style={{ fontSize: '12px', fontWeight: '600', color: '#94A3B8', width: '28px' }}>Q{i + 1}</span>
-              <div style={{ flex: 1, maxWidth: '180px', height: '6px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
+              {/* The track was #E2E8F0, slate-200, so every score bar was drawn
+                  on a bright white rail against a dark card. */}
+              <div style={{ flex: 1, maxWidth: '180px', height: '6px', background: 'var(--color-data-track)', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{ width: `${(s?.score || 0) * 10}%`, height: '100%', borderRadius: '3px', transition: 'width 0.5s',
                   background: (s?.score || 0) >= 7 ? '#22C55E' : (s?.score || 0) >= 4 ? '#F59E0B' : '#EF4444' }} />
               </div>
