@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { marked } from 'marked';
 import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import Badge from '../ui/Badge';
 import { authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
 
@@ -16,29 +17,55 @@ function SafeMarkdown({ text }) {
   }
 }
 
+/* Both of these hand-rolled the same thing Badge already does: solid text on a
+ * ~12% wash of the same hue with a ~30% border. They built the tints by
+ * concatenating hex alpha -- `${color}30` -- which only works on six-digit
+ * literals and is precisely why this file could not be put on tokens without
+ * being rewritten.
+ */
+export function toneForScore(score) {
+  if (score >= 80) return 'positive';
+  if (score >= 60) return 'caution';
+  return 'critical';
+}
+
+function labelForScore(score) {
+  if (score >= 80) return 'Highly Credible';
+  if (score >= 60) return 'Credible';
+  if (score >= 40) return 'Partially Credible';
+  return 'Low Credibility';
+}
+
 function CredibilityBadge({ score }) {
-  const color = score >= 80 ? '#22C55E' : score >= 60 ? '#F59E0B' : '#EF4444';
-  const label = score >= 80 ? 'Highly Credible' : score >= 60 ? 'Credible' : score >= 40 ? 'Partially Credible' : 'Low Credibility';
+  const tone = toneForScore(score);
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', border: `1px solid ${color}30`, background: `${color}10`, fontSize: '12px', fontWeight: '700', color }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-      {label} — {score}/100
-    </div>
+    <Badge tone={tone} className="gap-1.5 font-bold">
+      <span
+        className="h-2 w-2 rounded-full bg-current"
+        aria-hidden="true"
+      />
+      {labelForScore(score)} — {score}/100
+    </Badge>
   );
 }
 
+/* "Hidden strength" was blue, a sixth hue on a screen that already had five and
+ * a third semantic state with no token behind it. There is no info colour in
+ * this design system on purpose, so it reads as accent: notable, which is what
+ * a strength the resume omitted actually is.
+ */
+const SKILL_TONES = {
+  confirmed: 'positive',
+  overrated: 'critical',
+  unverified: 'neutral',
+  hidden: 'accent',
+};
+
 function SkillTag({ skill, type }) {
-  const colors = {
-    confirmed: { bg: '#22C55E15', border: '#22C55E30', text: '#22C55E' },
-    overrated: { bg: '#EF444415', border: '#EF444430', text: '#EF4444' },
-    unverified: { bg: '#94A3B815', border: '#94A3B830', text: '#94A3B8' },
-    hidden: { bg: '#3B82F615', border: '#3B82F630', text: '#3B82F6' },
-  };
-  const c = colors[type] || colors.unverified;
   return (
-    <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '12px', border: `1px solid ${c.border}`, background: c.bg, color: c.text, fontSize: '11px', fontWeight: '600', marginRight: '4px', marginBottom: '4px' }}>
+    <Badge tone={SKILL_TONES[type] || 'neutral'} size="sm" className="mr-1 mb-1">
       {skill}
-    </span>
+    </Badge>
   );
 }
 
@@ -72,10 +99,10 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   if (!credibility && !loading && !error) {
     return (
       <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', textAlign: 'center' }}>
-        <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+        <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
           <Target size={15} /> Run Credibility Analysis
         </button>
-        <p style={{ color: '#94A3B8', fontSize: '11px', marginTop: '8px' }}>Cross-reference resume claims against interview performance</p>
+        <p style={{ color: 'var(--color-ink-muted)', fontSize: '11px', marginTop: '8px' }}>Cross-reference resume claims against interview performance</p>
       </div>
     );
   }
@@ -83,15 +110,15 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   if (loading) {
     return (
       <div className="cd-card" style={{ padding: '28px', marginBottom: '16px', textAlign: 'center' }}>
-        <Loader size={20} className="spin" style={{ color: '#8B5CF6', marginBottom: '8px' }} />
-        <p style={{ color: '#94A3B8', fontSize: '13px' }}>Analyzing credibility...</p>
+        <Loader size={20} className="spin" style={{ color: 'var(--color-accent)', marginBottom: '8px' }} />
+        <p style={{ color: 'var(--color-ink-muted)', fontSize: '13px' }}>Analyzing credibility...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', textAlign: 'center', color: '#94A3B8', fontSize: '13px' }}>
+      <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '13px' }}>
         Credibility analysis unavailable: {error}
       </div>
     );
@@ -102,52 +129,52 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   const la = c.level_assessment || {};
 
   return (
-    <div className="cd-card" style={{ padding: '24px', marginBottom: '16px', borderColor: 'rgba(139,92,246,0.2)' }}>
+    <div className="cd-card" style={{ padding: '24px', marginBottom: '16px', borderColor: 'var(--color-accent-line)' }}>
       <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Target size={16} style={{ color: '#8B5CF6' }} /> Credibility Analysis
+        <Target size={16} style={{ color: 'var(--color-accent)' }} /> Credibility Analysis
       </h3>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <CredibilityBadge score={c.credibility_score || 0} />
-        <span style={{ fontSize: '12px', color: '#94A3B8' }}>Confidence: {c.confidence_in_assessment || 'Medium'}</span>
+        <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>Confidence: {c.confidence_in_assessment || 'Medium'}</span>
       </div>
 
       {/* Skills Comparison */}
       <div style={{ marginBottom: '14px' }}>
         {(rvi.confirmed_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#22C55E', display: 'block', marginBottom: '4px' }}>Confirmed in Interview</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-positive)', display: 'block', marginBottom: '4px' }}>Confirmed in Interview</span>
             {rvi.confirmed_skills.map((s, i) => <SkillTag key={i} skill={s} type="confirmed" />)}
           </div>
         )}
         {(rvi.overrated_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#EF4444', display: 'block', marginBottom: '4px' }}>Overrated (claimed but underperformed)</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-critical)', display: 'block', marginBottom: '4px' }}>Overrated (claimed but underperformed)</span>
             {rvi.overrated_skills.map((s, i) => <SkillTag key={i} skill={s} type="overrated" />)}
           </div>
         )}
         {(rvi.hidden_strengths || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#3B82F6', display: 'block', marginBottom: '4px' }}>Hidden Strengths (not on resume)</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Hidden Strengths (not on resume)</span>
             {rvi.hidden_strengths.map((s, i) => <SkillTag key={i} skill={s} type="hidden" />)}
           </div>
         )}
         {(rvi.unverified_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Unverified</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-ink-muted)', display: 'block', marginBottom: '4px' }}>Unverified</span>
             {rvi.unverified_skills.slice(0, 6).map((s, i) => <SkillTag key={i} skill={s} type="unverified" />)}
           </div>
         )}
       </div>
 
       {/* Level Assessment */}
-      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--bg3, rgba(255,255,255,0.04))', marginBottom: '12px' }}>
+      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--color-surface-raised)', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <TrendingUp size={14} style={{ color: '#8B5CF6' }} />
+          <TrendingUp size={14} style={{ color: 'var(--color-accent)' }} />
           <span style={{ fontSize: '12px', fontWeight: '700' }}>Level Assessment</span>
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--text2, #94A3B8)' }}>
-          Resume claims: <strong>{la.resume_claims || '—'}</strong> → Interview suggests: <strong style={{ color: la.match ? '#22C55E' : '#F59E0B' }}>{la.interview_suggests || '—'}</strong>
+        <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>
+          Resume claims: <strong>{la.resume_claims || '—'}</strong> → Interview suggests: <strong style={{ color: la.match ? 'var(--color-positive)' : 'var(--color-caution)' }}>{la.interview_suggests || '—'}</strong>
           {la.explanation && <span> — {la.explanation}</span>}
         </div>
       </div>
@@ -155,17 +182,17 @@ function CredibilitySection({ candidateId, candidateEmail }) {
       {/* Key Insights */}
       {(c.key_insights || []).length > 0 && (
         <div>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text3, #64748B)', display: 'block', marginBottom: '6px' }}>Key Insights</span>
+          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-ink-subtle)', display: 'block', marginBottom: '6px' }}>Key Insights</span>
           {c.key_insights.map((insight, i) => (
-            <p key={i} style={{ fontSize: '12px', color: 'var(--text2, #94A3B8)', marginBottom: '4px', paddingLeft: '10px', borderLeft: '2px solid rgba(139,92,246,0.3)' }}>{insight}</p>
+            <p key={i} style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginBottom: '4px', paddingLeft: '10px', borderLeft: '2px solid var(--color-accent-line)' }}>{insight}</p>
           ))}
         </div>
       )}
 
       {/* Recommendation */}
-      <div style={{ marginTop: '14px', padding: '10px 14px', borderRadius: '8px', background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginTop: '14px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-accent-wash)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '12px', fontWeight: '600' }}>Hiring Recommendation</span>
-        <span style={{ fontSize: '13px', fontWeight: '700', color: '#8B5CF6' }}>{c.hiring_recommendation || '—'}</span>
+        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-accent)' }}>{c.hiring_recommendation || '—'}</span>
       </div>
     </div>
   );
@@ -181,11 +208,11 @@ function TranscriptSection({ transcript }) {
         onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
       >
-        <h3 style={{ fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
-          <MessageSquare size={16} style={{ color: '#3B82F6' }} /> Conversation Transcript
-          <span style={{ fontSize: '12px', fontWeight: '400', color: '#94A3B8' }}>({transcript.length} turns)</span>
+        <h3 style={{ fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-ink)' }}>
+          <MessageSquare size={16} style={{ color: 'var(--color-accent)' }} /> Conversation Transcript
+          <span style={{ fontSize: '12px', fontWeight: '400', color: 'var(--color-ink-muted)' }}>({transcript.length} turns)</span>
         </h3>
-        {open ? <ChevronUp size={16} style={{ color: '#94A3B8' }} /> : <ChevronDown size={16} style={{ color: '#94A3B8' }} />}
+        {open ? <ChevronUp size={16} style={{ color: 'var(--color-ink-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--color-ink-muted)' }} />}
       </button>
 
       {open && (
@@ -195,15 +222,15 @@ function TranscriptSection({ transcript }) {
             return (
               <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flexDirection: isInterviewer ? 'row' : 'row-reverse' }}>
                 <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700',
-                  background: isInterviewer ? 'linear-gradient(135deg,#3B82F6,#6D28D9)' : 'rgba(255,255,255,0.08)',
-                  color: isInterviewer ? '#fff' : '#94A3B8', border: isInterviewer ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                  background: isInterviewer ? 'var(--color-accent)' : 'var(--color-surface-raised)',
+                  color: isInterviewer ? 'var(--color-ink-inverse)' : 'var(--color-ink-muted)', border: isInterviewer ? 'none' : '1px solid var(--color-line)'
                 }}>
                   {isInterviewer ? 'AI' : 'C'}
                 </div>
                 <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: '12px', fontSize: '13px', lineHeight: '1.5',
-                  background: isInterviewer ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)',
-                  border: isInterviewer ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(255,255,255,0.08)',
-                  color: 'var(--text, #E2E8F0)'
+                  background: isInterviewer ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
+                  border: isInterviewer ? '1px solid var(--color-accent-line)' : '1px solid var(--color-line)',
+                  color: 'var(--color-ink)'
                 }}>
                   {turn.text}
                 </div>
@@ -236,7 +263,7 @@ function TranscriptSection({ transcript }) {
  */
 export default function InterviewReportView({ report, candidateId, candidateEmail, viewer = 'candidate' }) {
   const isManager = viewer === 'manager';
-  if (!report) return <p style={{ color: '#94A3B8', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
+  if (!report) return <p style={{ color: 'var(--color-ink-muted)', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
   const r = report;
   const avgScore = r.avgScore || (r.scores?.length > 0 ? (r.scores.reduce((a, s) => a + (s?.score || 0), 0) / r.scores.length).toFixed(1) : '—');
@@ -253,13 +280,13 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       {/* Header */}
       <div className="cd-card" style={{ padding: '28px', textAlign: 'center', marginBottom: '16px' }}>
         {r.terminated
-          ? <AlertCircle size={40} style={{ color: '#EF4444', marginBottom: '12px' }} />
-          : <CheckCircle size={40} style={{ color: '#22C55E', marginBottom: '12px' }} />
+          ? <AlertCircle size={40} style={{ color: 'var(--color-critical)', marginBottom: '12px' }} />
+          : <CheckCircle size={40} style={{ color: 'var(--color-positive)', marginBottom: '12px' }} />
         }
         <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px' }}>
           {r.terminated ? 'Interview Terminated' : 'Interview Completed'}
         </h2>
-        <p style={{ color: '#64748B', fontSize: '14px' }}>
+        <p style={{ color: 'var(--color-ink-subtle)', fontSize: '14px' }}>
           {scores.length} questions answered · {mins}:{secs} duration
         </p>
         {isManager && candidateEmail && (
@@ -283,7 +310,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             } catch {
               toast('Could not export report. Please try again.', 'error');
             }
-          }} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+          }} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
             <Download size={14} /> Export PDF Report
           </button>
         )}
@@ -302,12 +329,12 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
         {[
           { val: avgScore, label: 'Avg Score' },
           { val: `${eyeContact}%`, label: 'Eye Contact' },
-          { val: violations, label: 'Violations', color: violations > 0 ? '#EF4444' : '#22C55E' },
+          { val: violations, label: 'Violations', color: violations > 0 ? 'var(--color-critical)' : 'var(--color-positive)' },
           { val: `${mins}:${secs}`, label: 'Duration' },
         ].map((s, i) => (
           <div key={i} className="cd-card" style={{ textAlign: 'center', padding: '16px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || 'var(--text)' }}>{s.val}</div>
-            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{s.label}</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || 'var(--color-ink)' }}>{s.val}</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -318,15 +345,15 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px' }}>Score Breakdown</h3>
           {scores.map((s, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#94A3B8', width: '28px' }}>Q{i + 1}</span>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-ink-muted)', width: '28px' }}>Q{i + 1}</span>
               {/* The track was #E2E8F0, slate-200, so every score bar was drawn
                   on a bright white rail against a dark card. */}
               <div style={{ flex: 1, maxWidth: '180px', height: '6px', background: 'var(--color-data-track)', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{ width: `${(s?.score || 0) * 10}%`, height: '100%', borderRadius: '3px', transition: 'width 0.5s',
-                  background: (s?.score || 0) >= 7 ? '#22C55E' : (s?.score || 0) >= 4 ? '#F59E0B' : '#EF4444' }} />
+                  background: (s?.score || 0) >= 7 ? 'var(--color-positive)' : (s?.score || 0) >= 4 ? 'var(--color-caution)' : 'var(--color-critical)' }} />
               </div>
               <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{s?.score || 0}/10</span>
-              {s?.feedback && <span style={{ fontSize: '12px', color: '#94A3B8', flex: 1 }}>{s.feedback}</span>}
+              {s?.feedback && <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)', flex: 1 }}>{s.feedback}</span>}
             </div>
           ))}
         </div>
@@ -336,7 +363,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       {reportText.length > 5 && (
         <div className="cd-card" style={{ padding: '24px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileText size={16} style={{ color: '#3B82F6' }} /> Evaluation
+            <FileText size={16} style={{ color: 'var(--color-accent)' }} /> Evaluation
           </h3>
           <SafeMarkdown text={reportText} />
         </div>
@@ -350,18 +377,18 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
 
       {/* Proctoring */}
       {(violations > 0 || (r.lookAwayCount || 0) > 10) && (
-        <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', borderColor: 'rgba(239,68,68,0.2)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="cd-card" style={{ padding: '20px', marginBottom: '16px', borderColor: 'var(--color-critical)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px', color: 'var(--color-critical)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Shield size={14} /> Proctoring Summary
           </h3>
           {violations > 0 && (
-            <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <XCircle size={13} style={{ color: '#F59E0B' }} /> {violations} violation{violations > 1 ? 's' : ''} detected
+            <p style={{ fontSize: '13px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <XCircle size={13} style={{ color: 'var(--color-caution)' }} /> {violations} violation{violations > 1 ? 's' : ''} detected
             </p>
           )}
           {(r.lookAwayCount || 0) > 10 && (
-            <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <EyeOff size={13} style={{ color: '#F59E0B' }} /> Gaze aversion: {r.lookAwayCount} times
+            <p style={{ fontSize: '13px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <EyeOff size={13} style={{ color: 'var(--color-caution)' }} /> Gaze aversion: {r.lookAwayCount} times
             </p>
           )}
         </div>
