@@ -115,6 +115,7 @@ Reply JSON: {{"needs_retry": false, "feedback": "brief assessment"}}"""
         jd = context.get("job_description", "")
         market_data = context.get("market_data", "")
         anonymize = context.get("anonymize", False)
+        ats_score = context.get("ats_score")
         display_name = "The Candidate" if anonymize else candidate.get("name", "Candidate")
 
         # Build candidate context
@@ -132,6 +133,16 @@ Reply JSON: {{"needs_retry": false, "feedback": "brief assessment"}}"""
             ctx += f"\nLinkedIn: {li.get('headline', '')} | {li.get('about', '')[:200]}\n"
 
         jd_section = f"\nJOB DESCRIPTION:\n{jd}\n" if jd else f"\nTARGET: {level} {role} ({experience})\n"
+
+        # Screening owns the number, so the report cites it rather than inventing
+        # one. If scoring failed upstream there is nothing to cite and the rule is
+        # omitted.
+        score_line = (
+            f"\n- Screening scored this candidate {ats_score}/100 on fixed weights. Treat that\n"
+            "  as given and cite it; do not restate it as your own or adjust it. Your\n"
+            "  recommendation may disagree with it, but if it does, say why."
+            if ats_score is not None else ""
+        )
 
         prompt = f"""Evaluate {display_name} for the {level} {role} position.
 
