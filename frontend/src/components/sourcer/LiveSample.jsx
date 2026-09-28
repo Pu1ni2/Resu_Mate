@@ -17,7 +17,9 @@ export default function LiveSample({ state }) {
       {sample.length === 0 ? (
         <p className="py-6 text-center text-[13px] text-ink-subtle">People appear here as they are read.</p>
       ) : (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(36px,1fr))] gap-1.5">
+        // list-none m-0 p-0: the app loads Tailwind without its preflight reset,
+        // so a bare <ul> keeps the browser's bullets and indent.
+        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(36px,1fr))] gap-1.5 p-0">
           {sample.map(pid => {
             const p = people[pid];
             const shortlisted = p.verdict === 'shortlist';

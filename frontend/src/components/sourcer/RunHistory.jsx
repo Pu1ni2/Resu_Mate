@@ -22,7 +22,7 @@ export default function RunHistory({ runs, onOpen, onDelete }) {
   return (
     <Card as="section" aria-label="Past searches" className="divide-y divide-line">
       <h2 className="px-4 py-3 text-[12px] font-semibold text-ink-subtle">Past searches</h2>
-      <ul className="divide-y divide-line">
+      <ul className="m-0 list-none divide-y divide-line p-0">
         {runs.map(run => (
           <li key={run.id} className="flex items-center gap-3 px-4 py-2.5">
             <button
