@@ -19,6 +19,7 @@ import LiveLog from './LiveLog';
 import TopOfShortlist from './TopOfShortlist';
 import ShortlistDrawer from './ShortlistDrawer';
 import OutreachModal from './OutreachModal';
+import RunHistory from './RunHistory';
 
 /* Find candidates: describe who you want, and watch the whole pool be read.
  *
@@ -33,6 +34,12 @@ const SOURCES = [
 ];
 
 const EXAMPLE = 'Backend engineer in Boston, strong Python, has shipped a real product. Ex-founder is a plus.';
+
+// A stopped run is saved by the server after the request ends, so reopening it
+// may take a moment: try a few times before giving up.
+const REOPEN_TRIES = 4;
+const REOPEN_WAIT_MS = 600;
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // jsdom and old browsers may lack requestAnimationFrame; a 16ms timer is a frame.
 const nextFrame = cb => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(cb) : setTimeout(cb, 16));
@@ -141,9 +148,63 @@ export default function SourcerPage() {
   const [shortlistOpen, setShortlistOpen] = useState(false);
   const closeShortlist = useCallback(() => setShortlistOpen(false), []);
   const [outreachPid, setOutreachPid] = useState(null);
+  const [runs, setRuns] = useState([]);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const { data } = await sourcerAPI.listRuns();
+      setRuns(data.runs || []);
+      return data.runs || [];
+    } catch {
+      return []; // history is a convenience; the page works without it
+    }
+  }, []);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  async function openRun(id) {
+    abortRef.current?.abort();
+    runTokenRef.current += 1;
+    try {
+      const { data } = await sourcerAPI.getRun(id);
+      dispatch({ type: 'loaded', run: data.run, profiles: data.profiles });
+      setDescription(data.run.description || '');
+      setEditing(false);
+    } catch (err) {
+      toast(messageForApiError(err, 'Could not open that search.'), 'error');
+    }
+  }
+
+  async function deleteRun(id) {
+    try {
+      await sourcerAPI.deleteRun(id);
+      setRuns(rs => rs.filter(r => r.id !== id));
+      toast('Search deleted, with everyone it found.', 'success');
+    } catch (err) {
+      toast(messageForApiError(err, 'Could not delete that search.'), 'error');
+    }
+  }
+
+  /* After Stop the server saves what was judged, a moment after the request
+   * ends. Reopen that saved run so its people can be saved, dismissed and
+   * written to, like a finished one. */
+  async function reopenStopped(text, token) {
+    for (let i = 0; i < REOPEN_TRIES; i += 1) {
+      await wait(REOPEN_WAIT_MS);
+      // A newer search has started since; this one must not replace it.
+      if (runTokenRef.current !== token) return;
+      const latest = (await loadHistory())[0];
+      if (runTokenRef.current !== token) return;
+      if (latest && latest.description === text && latest.status === 'stopped') {
+        await openRun(latest.id);
+        return;
+      }
+    }
+  }
   const abortRef = useRef(null);
   const queueRef = useRef([]);
   const frameRef = useRef(0);
+  const runTokenRef = useRef(0); // which search is current, for late async work
 
   const flush = useCallback(() => {
     frameRef.current = 0;
@@ -174,11 +235,18 @@ export default function SourcerPage() {
     const controller = new AbortController();
     abortRef.current = controller;
     queueRef.current = [];
+    runTokenRef.current += 1;
+    const token = runTokenRef.current;
     dispatch({ type: 'start', description: text });
     try {
       const result = await streamRun({ description: text, sources }, enqueue, controller.signal);
       flush();
-      if (result.stopped) dispatch({ type: 'stopped' });
+      if (result.stopped) {
+        dispatch({ type: 'stopped' });
+        reopenStopped(text, token);
+      } else {
+        loadHistory();
+      }
     } catch (err) {
       flush();
       dispatch({ type: 'failed', message: err.message });
@@ -236,6 +304,7 @@ export default function SourcerPage() {
               onSubmit={start}
               error={formError}
             />
+            <RunHistory runs={runs} onOpen={openRun} onDelete={deleteRun} />
           </div>
         ) : (
           <>
