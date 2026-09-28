@@ -89,15 +89,23 @@ People:
 {people}
 
 Return ONLY this JSON:
-{{"people": [{{"pid": "the id in brackets", "criteria": [{{"id": "c1", "value": "what the profile shows, max 40 chars", "level": "strong|partial|weak|none|unknown"}}], "judgement": "1-2 sentences"}}]}}
+{{"people": [{{"pid": "the id in brackets", "criteria": [{{"id": "c1", "value": "what the profile shows, max 40 chars", "level": "strong|partial|weak|none|unknown"}}], "judgement": "1-2 sentences", "miss_reason": ""}}]}}
 
 Rules:
+- miss_reason: only for someone worth meeting, why a title + keyword search would
+  overlook them: non_standard_title, career_pivot, no_brand_employer, thin_profile or other.
+  Empty for everyone else.
 - Use only what each profile shows. "unknown" when it says nothing about a criterion;
   "none" only when it shows the opposite.
 - value paraphrases the profile. Never invent a fact.
 - judgement names the strongest evidence and the biggest gap, for a hiring manager
   deciding whether to reach out.
 - Never mention or infer age, gender, ethnicity, nationality, religion, disability or family."""
+
+# Why a title + keyword search would have overlooked someone worth meeting.
+MISS_REASONS = ("non_standard_title", "career_pivot", "no_brand_employer", "thin_profile", "other")
+# Below this much profile text, there is too little for a keyword search to hit.
+THIN_PROFILE_CHARS = 400
 
 # Words that carry no meaning in a criterion label, for the no-LLM judgement.
 _STOP = {
@@ -288,6 +296,17 @@ def _answers(plan: Dict, given) -> List[Dict]:
             "level": level if level in LEVELS else "unknown",
         })
     return out
+
+
+def _guess_miss_reason(plan: Dict, person: Dict) -> str:
+    """What made the filter miss someone, when the model didn't say or wasn't asked."""
+    titles = plan["filter"].get("title_terms") or []
+    headline = (person.get("headline") or "").lower()
+    if titles and not any(_has_term(headline, t) for t in titles):
+        return "non_standard_title"
+    if len(person.get("text") or "") < THIN_PROFILE_CHARS:
+        return "thin_profile"
+    return "other"
 
 
 def _keyword_judgement(plan: Dict, person: Dict) -> Tuple[List[Dict], str]:
@@ -530,7 +549,7 @@ class SourcerAgent:
         """
         start = time.monotonic()
         usage = {"input_tokens": 0, "output_tokens": 0}
-        read: Dict[str, Tuple[List[Dict], str]] = {}
+        read: Dict[str, Tuple[List[Dict], str, str]] = {}
         failure = ""
         if openai_tool.llm:
             prompt = _JUDGE_PROMPT.format(
@@ -548,14 +567,21 @@ class SourcerAgent:
                 )
                 items = [i for i in (_parse_json(raw).get("people") or []) if isinstance(i, dict)]
                 parsed = [
-                    (str(i.get("pid", "")), _answers(plan, i.get("criteria")), str(i.get("judgement") or "").strip()[:400])
+                    (
+                        str(i.get("pid", "")),
+                        (
+                            _answers(plan, i.get("criteria")),
+                            str(i.get("judgement") or "").strip()[:400],
+                            str(i.get("miss_reason") or "").strip().lower(),
+                        ),
+                    )
                     for i in items
                 ]
-                read = {pid: (answers, judgement) for pid, answers, judgement in parsed}
+                read = dict(parsed)
                 # Models sometimes rewrite the ids. When none match but the
                 # count does, the answers are in the order the people were given.
                 if parsed and not any(p["pid"] in read for p in people) and len(parsed) == len(people):
-                    read = {p["pid"]: (answers, judgement) for p, (_, answers, judgement) in zip(people, parsed)}
+                    read = {p["pid"]: value for p, (_, value) in zip(people, parsed)}
             except (ValueError, TypeError) as e:
                 print(f"[WARN] sourcer judge reply unreadable: {e}")
                 failure = "Could not be judged: the model's reply was unreadable."
@@ -567,20 +593,29 @@ class SourcerAgent:
         n = max(1, len(people))
         results = []
         for p in people:
+            reason = ""
             if not openai_tool.llm:
                 answers, judgement = _keyword_judgement(plan, p)
             elif p["pid"] in read:
-                answers, judgement = read[p["pid"]]
+                answers, judgement, reason = read[p["pid"]]
             else:
                 answers, judgement = _answers(plan, []), failure or "The model returned no judgement for this person."
             points, verdict = score_person(plan["criteria"], answers)
+            found_by_filter = filter_match(p, plan["filter"])
+            # A reason only means something for people the filter would have
+            # missed and reading found. Everyone else has none, whatever the
+            # model wrote.
+            miss_reason = None
+            if verdict == "shortlist" and not found_by_filter:
+                miss_reason = reason if reason in MISS_REASONS else _guess_miss_reason(plan, p)
             results.append({
                 "pid": p["pid"],
                 "verdict": verdict,
                 "score": points,
                 "criteria": answers,
                 "judgement": judgement,
-                "filter_match": filter_match(p, plan["filter"]),
+                "filter_match": found_by_filter,
+                "miss_reason": miss_reason,
                 # One call judges the whole batch, so time and tokens are its share.
                 "ms": elapsed_ms // n,
                 "tokens": (usage["input_tokens"] + usage["output_tokens"]) // n,
