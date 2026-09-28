@@ -13,7 +13,7 @@
 
 **A full-stack multi-agent AI hiring platform** with real-time avatar interviews, career coaching, intelligent candidate evaluation, and an autonomous AI hiring agent that runs your entire pipeline through voice conversation.
 
-ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system where **5 specialized AI agents** orchestrate the entire hiring pipeline, from resume parsing to live video interviews with a lip-synced AI avatar — all controllable through **Jarvis**, a conversational AI that automates hiring end-to-end.
+ResuMate AI isn't a wrapper around ChatGPT — it's a production-grade system where **7 specialized AI agents** orchestrate the entire hiring pipeline, from resume parsing to live video interviews with a lip-synced AI avatar — all controllable through **Jarvis**, a conversational AI that automates hiring end-to-end.
 
 ---
 
@@ -195,7 +195,7 @@ Describe who you want in plain words — *"Backend engineer in Boston, strong Py
 
 ---
 
-## 6 Specialized Agents
+## 7 Specialized Agents
 
 | Agent | Role | Tools |
 |-------|------|-------|
