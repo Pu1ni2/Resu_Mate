@@ -32,6 +32,16 @@ GITHUB_CONCURRENCY = 4
 # GitHub search never returns more than the first 1,000 results of a query.
 GITHUB_SEARCH_LIMIT = 1000
 
+# Scoring. The model only says how strongly a profile shows each criterion; the
+# number comes from these fixed weights, so the same answers always give the
+# same score and a manager can see exactly why someone got theirs.
+LEVELS = {"strong": 1.0, "partial": 0.6, "weak": 0.3, "none": 0.0, "unknown": 0.0}
+WEIGHTS = {"must": 2, "nice": 1}
+SHORTLIST_AT = 60
+# A must-have the profile clearly lacks keeps someone off the shortlist however
+# well they do on the rest.
+MUST_MISS_CAP = SHORTLIST_AT - 11
+
 _PLAN_SYSTEM = (
     "You turn a hiring manager's description of who they want into a search plan. "
     "Return ONLY valid JSON."
@@ -202,6 +212,29 @@ def filter_match(person: Dict, filt: Dict) -> bool:
     if places and not any(p in location for p in places):
         return False
     return True
+
+
+def score_person(criteria: List[Dict], answers: List[Dict]) -> Tuple[int, str]:
+    """Score one person from their per-criterion levels. Returns (0-100, verdict).
+
+    Must-haves weigh twice a nice-to-have. "unknown" earns nothing but is not a
+    miss: a thin profile is not evidence against someone. "none" on a must-have
+    caps the score below the shortlist line.
+    """
+    levels = {a.get("id"): a.get("level", "unknown") for a in answers}
+    total = earned = 0.0
+    missed_must = False
+    for c in criteria:
+        weight = WEIGHTS[c["kind"]]
+        level = levels.get(c["id"], "unknown")
+        total += weight
+        earned += weight * LEVELS.get(level, 0.0)
+        if c["kind"] == "must" and level == "none":
+            missed_must = True
+    points = round(100 * earned / total) if total else 0
+    if missed_must:
+        points = min(points, MUST_MISS_CAP)
+    return points, ("shortlist" if points >= SHORTLIST_AT else "passed")
 
 
 def _person(source: str, external_id, name: str, *, url: str = "", avatar_url: str = "",
