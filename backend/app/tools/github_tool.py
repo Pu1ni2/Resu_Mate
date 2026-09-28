@@ -7,6 +7,43 @@ class GitHubTool:
     def __init__(self):
         self.token = settings.github_token
 
+    def _headers(self) -> Dict:
+        headers = {"Accept": "application/vnd.github.v3+json"}
+        if self.token:
+            headers["Authorization"] = f"token {self.token}"
+        return headers
+
+    async def search_users(self, q: str, per_page: int = 100, page: int = 1) -> Dict:
+        """Search GitHub users, e.g. 'language:python location:boston'.
+
+        Returns what the search endpoint gives (login, avatar, profile URL) plus
+        total_count, so a caller can say how many matched even when it reads
+        fewer. Enrich each login with call() for repos and languages.
+        """
+        import httpx
+        if not q:
+            return {"error": "No query provided", "total_count": 0, "items": []}
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    "https://api.github.com/search/users",
+                    params={"q": q, "per_page": min(per_page, 100), "page": page},
+                    headers=self._headers(),
+                )
+            if resp.status_code != 200:
+                return {"error": f"GitHub search failed ({resp.status_code})", "total_count": 0, "items": []}
+            data = resp.json()
+            # Search also returns organisations; only people can be hired.
+            items = [
+                {"login": u.get("login", ""), "avatar_url": u.get("avatar_url", ""), "html_url": u.get("html_url", "")}
+                for u in data.get("items", [])
+                if u.get("type") == "User"
+            ]
+            return {"total_count": data.get("total_count", 0), "items": items}
+        except Exception as e:
+            return {"error": f"GitHub API error: {str(e)}", "total_count": 0, "items": []}
+
     async def call(self, params: Dict, context: Dict = None) -> Dict:
         """Fetch GitHub profile data"""
         import httpx
@@ -14,9 +51,7 @@ class GitHubTool:
         if not username:
             return {"error": "No username provided"}
 
-        headers = {"Accept": "application/vnd.github.v3+json"}
-        if self.token:
-            headers["Authorization"] = f"token {self.token}"
+        headers = self._headers()
 
         try:
             # Default httpx timeout is 5s connect / no read cap; bound it so a
