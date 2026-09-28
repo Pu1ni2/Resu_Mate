@@ -195,3 +195,14 @@ describe('sourced people', () => {
     expect(screen.queryByRole('link', { name: /Bad/ })).toBeNull();
   });
 });
+
+describe('row actions', () => {
+  it('renders the given actions on each row, and none when not asked', () => {
+    const rows = [fromAtsResult(atsPayload)];
+    const { unmount } = render(<RankedCandidates rows={rows} renderActions={r => <button type="button">Save {r.name}</button>} />);
+    expect(screen.getByRole('button', { name: 'Save Maya Rodriguez' })).toBeTruthy();
+    unmount();
+    render(<RankedCandidates rows={rows} />);
+    expect(screen.queryByRole('button', { name: /Save/ })).toBeNull();
+  });
+});
