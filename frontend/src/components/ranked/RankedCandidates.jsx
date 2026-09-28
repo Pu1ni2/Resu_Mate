@@ -114,7 +114,7 @@ function CompactRow({ row }) {
   );
 }
 
-function FullRow({ row, selected, onToggleSelect, selectable, expandable }) {
+function FullRow({ row, selected, onToggleSelect, selectable, expandable, actions }) {
   const [open, setOpen] = useState(false);
   const hasDetail = expandable && (row.bars?.length || row.matched?.length || row.missing?.length || row.note || row.links?.length);
 
@@ -157,6 +157,8 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable }) {
             ))}
           </div>
         )}
+
+        {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
 
         {hasDetail && (
           <button
@@ -265,6 +267,8 @@ export default function RankedCandidates({
   expandable = true,
   summary = null,
   emptyMessage = 'No candidates in this category.',
+  // Optional per-row buttons, e.g. save / dismiss on the sourcer's shortlist.
+  renderActions,
   className,
 }) {
   if (variant === 'compact') {
@@ -290,6 +294,7 @@ export default function RankedCandidates({
               selected={selectedIds.includes(r.id)}
               onToggleSelect={onToggleSelect}
               expandable={expandable}
+              actions={renderActions?.(r)}
             />
           ))}
         </div>
