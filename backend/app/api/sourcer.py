@@ -11,12 +11,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.sourcer_agent import sourcer_agent
 from app.core.database import async_session, get_db
 from app.models.sourcing import SourcingRun, SourcedProfile
+from app.services import db_service
 from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/sourcer", tags=["sourcer"])
@@ -212,3 +213,21 @@ async def set_profile_status(profile_id: int, req: StatusRequest,
     profile.status = req.status
     await db.commit()
     return {"profile": profile.to_dict()}
+
+
+@router.delete("/runs/{run_id}")
+async def delete_run(run_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Delete a run and everyone it judged, and record that it was done."""
+    run = await _own_run(db, run_id, user.id)
+    # Children first, as explicit statements: an ORM cascade would lazy-load the
+    # profiles collection, which an async session can't do implicitly.
+    removed = await db.execute(
+        delete(SourcedProfile).where(SourcedProfile.run_id == run.id, SourcedProfile.manager_id == user.id)
+    )
+    await db.execute(delete(SourcingRun).where(SourcingRun.id == run.id))
+    await db.commit()
+    await db_service.log_event(
+        db, "sourcing.delete", actor="manager", manager_id=user.id,
+        detail=f"run {run_id}, {removed.rowcount} profiles",
+    )
+    return {"deleted": run_id}
