@@ -102,6 +102,64 @@ def _normalise_plan(raw: Dict) -> Dict:
     }
 
 
+# Languages GitHub's user search understands as language:<name>.
+_LANGUAGES = (
+    "python", "javascript", "typescript", "java", "go", "rust", "ruby", "php",
+    "kotlin", "swift", "scala", "c++", "c#", "elixir",
+)
+_MUST_WORDS = ("must", "strong", "required", "expert", "deep")
+
+
+def _fallback_plan(description: str) -> Dict:
+    """A usable plan with no LLM: the description's own phrases become criteria.
+
+    Cruder than the model's plan, but it keeps the sourcer working in dev and in
+    tests, and when the model's reply can't be read. The first phrase is the
+    role. A phrase that says "strong", "must", "required" and the like is a
+    must-have; the rest are nice-to-haves.
+    """
+    text = " ".join((description or "").split())
+    lower = text.lower()
+    m = re.search(r"\b(?:based in|in|near)\s+([A-Z][A-Za-z .'-]*?)(?=[,.;]|$|\s+(?:with|who|and)\b)", text)
+    location = m.group(1).strip() if m else ""
+    phrases = [
+        p.strip(" .")
+        for p in re.split(r",|;|\band\b|\bwith\b|\bwho\b", text, flags=re.I)
+        if p.strip(" .")
+    ]
+    title = phrases[0] if phrases else text[:60]
+    if location:
+        title = re.sub(rf"\s*\b(?:based in|in|near)\s+{re.escape(location)}\b", "", title).strip() or title
+
+    criteria = [{"id": "c1", "label": title[:40] or "Role fit", "kind": "must"}]
+    for p in phrases[1:]:
+        if p.lower().startswith(("in ", "based in", "near ")):
+            continue
+        kind = "must" if any(w in p.lower() for w in _MUST_WORDS) else "nice"
+        criteria.append({"id": f"c{len(criteria) + 1}", "label": p[:40], "kind": kind})
+    if location:
+        criteria.append({"id": f"c{len(criteria) + 1}", "label": f"Based in {location}"[:40], "kind": "nice"})
+    criteria = criteria[:MAX_CRITERIA]
+
+    languages = [lang for lang in _LANGUAGES if _has_term(lower, lang)]
+    gh_location = f' location:"{location}"' if " " in location else (f" location:{location}" if location else "")
+    github_queries = [f"language:{lang}{gh_location}" for lang in languages[:MAX_QUERIES]]
+    if not github_queries and location:
+        github_queries = [gh_location.strip()]
+
+    return {
+        "req": {"title": title[:80], "location": location[:80], "summary": text[:200]},
+        "criteria": criteria,
+        "filter": {
+            "title_terms": [title.lower()[:40]] if title else [],
+            "keyword_terms": languages[:3],
+            "location_terms": [location.lower()] if location else [],
+        },
+        "github_queries": github_queries,
+        "web_queries": [f"site:linkedin.com/in {title} {location}".strip()] if title else [],
+    }
+
+
 def _has_term(haystack: str, term: str) -> bool:
     # Whole-word match that still works for terms like "c++" or "node.js",
     # where \b would fail on the punctuation.
@@ -140,8 +198,12 @@ class SourcerAgent:
     async def plan(self, description: str) -> Tuple[Dict, Dict]:
         """Turn the manager's description into criteria and searches.
 
-        Returns (plan, usage).
+        Returns (plan, usage). Without an LLM, or when its reply has no usable
+        criteria, the plan is built from the description's own phrases.
         """
+        usage = {"input_tokens": 0, "output_tokens": 0}
+        if not openai_tool.llm:
+            return _fallback_plan(description), usage
         raw, usage = await openai_tool.structured_call_with_usage(
             _PLAN_PROMPT.format(description=description[:2000]),
             _PLAN_SYSTEM,
@@ -152,6 +214,8 @@ class SourcerAgent:
         except (ValueError, TypeError) as e:
             print(f"[WARN] sourcer plan unreadable: {e}")
             plan = _normalise_plan({})
+        if not plan["criteria"]:
+            plan = _fallback_plan(description)
         return plan, usage
 
 
