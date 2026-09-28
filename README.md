@@ -125,6 +125,20 @@ Every result appears as an interactive card in the chat — expand any card for 
 
 ---
 
+### Find Candidates — Talent Mapping for the Entire Pool
+
+Describe who you want in plain words — *"Backend engineer in Boston, strong Python, has shipped a real product; ex-founder is a plus"*. The **Sourcer Agent** turns that into a handful of must-have and nice-to-have criteria, then reads **everyone** it can reach — your uploaded resumes, GitHub, and public profiles found by web search — and writes a judgement on every single person, instead of keyword-filtering first and reading only what survives.
+
+- **Live talent map** — screened, judgements written, shortlisted, people per second, elapsed and cost so far; a live sample of the people being read; and a population map with one cell per person
+- **Judging now** — for the person being read: what their profile shows for each criterion, how strongly, and the written judgement
+- **Why filters would have missed them** — every shortlisted person is checked against the title + keyword search a recruiter would have run, so the page shows *Boolean + filters: N* vs *Read everyone: +M*, and why the filter missed them (non-standard title, career pivot, no brand-name employer, thin profile)
+- **Scores you can check** — the model only rates each criterion; the score is fixed arithmetic (must-haves weigh double, a clearly missed must-have keeps someone off the shortlist), so the same answers always give the same number
+- **Human in the loop** — save, dismiss, and draft outreach that cites the person's real work; nothing is ever sent automatically
+- **Honest about scale** — public data only, through official APIs (GitHub, web search results) and no LinkedIn scraping. A run reads up to a few hundred people, and says so when GitHub reports more matches than it read
+- **Stop any time** — everyone already judged is kept; past searches reopen as they ended and can be deleted with everyone they found
+
+---
+
 ### Hiring Manager Portal
 - **Resume Upload & RAG** — PDF/DOCX parsing, ChromaDB vector storage, contextual AI chat
 - **Screening** — scores every candidate against a role on fixed, inspectable weights and ranks them into a shortlist
@@ -192,6 +206,7 @@ Every result appears as an interactive card in the chat — expand any card for 
 | ↳ Interview Agent | Conducts live avatar interview with resume-informed probing | Voice AI, Simli lip-sync |
 | ↳ Scoring Agent | Per-question scoring, credibility cross-referencing | GPT-4o evaluation |
 | **Research Agent** | Web search, fact-checking, citation | Tavily Search API |
+| **Sourcer Agent** | Finds people beyond your uploads and writes a judgement on every one | GitHub API, Tavily, GPT-4o |
 | **Advisor Agent** | Candidate career coaching (3 modes) | GPT-4o, resume context |
 
 ---
