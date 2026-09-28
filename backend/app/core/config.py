@@ -2,7 +2,7 @@
 import os
 import warnings
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 _DEFAULT_SECRET = "change-me-in-production"
 _MIN_SECRET_LEN = 32
@@ -18,6 +18,20 @@ class Settings(BaseSettings):
 
     # GitHub
     github_token: str = ""
+
+    # Candidate sourcer. Judging a whole pool is many small calls, so it can run
+    # on a cheaper model than OPENAI_MODEL (blank = OPENAI_MODEL). Prices are per
+    # million tokens and optional: without them the page shows tokens rather than
+    # a guessed dollar figure. The caps bound one run's API quota and spend.
+    sourcer_model: str = ""
+    sourcer_price_in_per_1m: Optional[float] = None
+    sourcer_price_out_per_1m: Optional[float] = None
+    sourcer_max_github: int = 300
+    sourcer_max_web: int = 30
+
+    @property
+    def sourcer_llm_model(self) -> str:
+        return self.sourcer_model or self.openai_model
 
     # Calendly
     calendly_token: str = ""
