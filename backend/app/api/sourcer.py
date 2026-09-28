@@ -5,7 +5,7 @@ its results for the manager who ran it.
 """
 import asyncio
 import json
-from typing import Dict, Tuple
+from typing import Dict, Literal, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -38,6 +38,10 @@ class Sources(BaseModel):
 class RunRequest(BaseModel):
     description: str = Field(..., max_length=2000)
     sources: Sources = Sources()
+
+
+class StatusRequest(BaseModel):
+    status: Literal["new", "saved", "dismissed"]
 
 
 # ── Persistence ───────────────────────────────────────────────────────────────
@@ -187,3 +191,24 @@ async def get_run(run_id: int, user=Depends(get_current_user), db: AsyncSession 
         .order_by(SourcedProfile.score.desc(), SourcedProfile.id)
     )
     return {"run": run.to_dict(), "profiles": [p.to_dict() for p in result.scalars().all()]}
+
+
+async def _own_profile(db: AsyncSession, profile_id: int, manager_id: int) -> SourcedProfile:
+    """The profile if this manager's run judged it; otherwise 404, as for runs."""
+    result = await db.execute(
+        select(SourcedProfile).where(SourcedProfile.id == profile_id, SourcedProfile.manager_id == manager_id)
+    )
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(404, "Profile not found")
+    return profile
+
+
+@router.post("/profiles/{profile_id}/status")
+async def set_profile_status(profile_id: int, req: StatusRequest,
+                             user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Save someone to follow up with, dismiss them, or put them back to new."""
+    profile = await _own_profile(db, profile_id, user.id)
+    profile.status = req.status
+    await db.commit()
+    return {"profile": profile.to_dict()}
