@@ -84,8 +84,12 @@ class GitHubTool:
                 repos_resp = await client.get(f"https://api.github.com/users/{username}/repos?sort=updated&per_page=10", headers=headers)
                 repos = repos_resp.json() if repos_resp.status_code == 200 else []
 
-                events_resp = await client.get(f"https://api.github.com/users/{username}/events?per_page=30", headers=headers)
-                events = events_resp.json() if events_resp.status_code == 200 else []
+                # "light" skips recent activity: sourcing reads hundreds of people,
+                # and dropping this request is a third of the quota per person.
+                events = []
+                if not params.get("light"):
+                    events_resp = await client.get(f"https://api.github.com/users/{username}/events?per_page=30", headers=headers)
+                    events = events_resp.json() if events_resp.status_code == 200 else []
 
             languages = {}
             top_repos = []
