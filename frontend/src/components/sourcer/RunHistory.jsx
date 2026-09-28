@@ -28,7 +28,9 @@ export default function RunHistory({ runs, onOpen, onDelete }) {
             <button
               type="button"
               onClick={() => onOpen(run.id)}
-              className="min-w-0 flex-1 text-left"
+              // Without preflight a bare <button> is drawn with the browser's
+              // grey fill and border; this one is a text link.
+              className="m-0 min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit]"
             >
               <span className="block truncate text-[13px] text-ink hover:text-accent">{run.description}</span>
               <span className="block text-[11px] text-ink-subtle">

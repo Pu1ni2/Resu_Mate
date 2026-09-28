@@ -64,8 +64,10 @@ function SearchForm({ description, setDescription, sources, setSources, onSubmit
           Plain words are fine. Say what must be true and what would be a plus; every person found is read against it.
         </p>
       </div>
-      <fieldset className="flex flex-wrap items-center gap-2">
-        <legend className="mb-1.5 text-xs font-semibold text-ink-subtle">Where to look</legend>
+      {/* m-0 border-0 p-0: no preflight reset, so a fieldset keeps the
+          browser's frame otherwise. */}
+      <fieldset className="m-0 flex flex-wrap items-center gap-2 border-0 p-0">
+        <legend className="mb-1.5 p-0 text-xs font-semibold text-ink-subtle">Where to look</legend>
         {SOURCES.map(([key, label]) => (
           <label
             key={key}
