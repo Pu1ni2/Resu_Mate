@@ -143,9 +143,14 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
           {row.matchValue > 0 && (
             <MatchBar value={row.matchValue} label={row.matchLabel} className="mt-2" />
           )}
+          {/* Actions sit under the name, where they can wrap. Beside the chips
+              they overflowed a narrow list, squeezing the name to nothing. */}
+          {actions && <div className="mt-2 flex flex-wrap items-center gap-1.5">{actions}</div>}
         </div>
 
-        {row.matched?.length > 0 && (
+        {/* A row with actions skips the chip summary: the chips repeat what the
+            expanded detail lists, and the width is needed for the buttons. */}
+        {row.matched?.length > 0 && !actions && (
           <div className="hidden shrink-0 gap-1.5 lg:flex">
             {row.matched.slice(0, 3).map(s => (
               <span
@@ -157,8 +162,6 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
             ))}
           </div>
         )}
-
-        {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
 
         {hasDetail && (
           <button
