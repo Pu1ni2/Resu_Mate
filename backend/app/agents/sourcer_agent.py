@@ -579,11 +579,17 @@ class SourcerAgent:
         usage = {"input_tokens": 0, "output_tokens": 0}
         if not openai_tool.llm:
             return _fallback_plan(description), usage
-        raw, usage = await openai_tool.structured_call_with_usage(
-            _PLAN_PROMPT.format(description=description[:2000]),
-            _PLAN_SYSTEM,
-            model=settings.sourcer_llm_model,
-        )
+        try:
+            raw, usage = await openai_tool.structured_call_with_usage(
+                _PLAN_PROMPT.format(description=description[:2000]),
+                _PLAN_SYSTEM,
+                model=settings.sourcer_llm_model,
+            )
+        except Exception as e:
+            # A timeout or quota error here would otherwise end the run before
+            # anyone was read.
+            print(f"[WARN] sourcer plan call failed: {e}")
+            return _fallback_plan(description), usage
         try:
             plan = _normalise_plan(_parse_json(raw))
         except (ValueError, TypeError) as e:
