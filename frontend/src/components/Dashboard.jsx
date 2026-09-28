@@ -518,12 +518,13 @@ export default function Dashboard() {
               { id: 'screening', icon: <Zap size={18} />, label: 'Screening' },
               { id: 'analytics', icon: <BarChart2 size={18} />, label: 'Analytics' },
               { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
-              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus' }
+              // An item with a route is a page of its own rather than a tab.
+              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus', route: '/hiring/focus' }
             ].map(item => (
               <div
                 key={item.id}
                 className={`sidebar-link ${tab === item.id ? 'active' : ''}`}
-                onClick={() => item.id === 'focus' ? navigate('/hiring/focus') : setTab(item.id)}
+                onClick={() => item.route ? navigate(item.route) : setTab(item.id)}
               >
                 {item.icon}<span>{item.label}</span>
               </div>
