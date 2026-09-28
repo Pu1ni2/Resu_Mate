@@ -56,22 +56,22 @@ export default function JudgingNow({ state }) {
 
           <div className="min-w-0">
             {person.headline && <p className="mb-3 truncate text-[13px] text-ink-muted">{person.headline}</p>}
-            <dl className="space-y-1.5">
+            <dl className="m-0 space-y-1.5">
               {criteria.map(c => {
                 const a = answers[c.id] || { level: 'unknown', value: '' };
                 const level = LEVEL[a.level] || LEVEL.unknown;
                 const missedMust = c.kind === 'must' && a.level === 'none';
                 return (
-                  <div key={c.id} className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_5rem] items-center gap-3 text-[12px]">
+                  <div key={c.id} className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_7rem] items-center gap-3 text-[12px]">
                     <dt className="truncate text-ink-subtle" title={c.label}>
                       {c.label}{c.kind === 'must' && <span className="text-ink-faint"> · must</span>}
                     </dt>
-                    <dd className="truncate text-ink" title={a.value}>{a.value || '-'}</dd>
-                    <dd className="flex items-center gap-2">
+                    <dd className="m-0 truncate text-ink" title={a.value}>{a.value || '-'}</dd>
+                    <dd className="m-0 flex items-center gap-2">
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-data-track" aria-hidden="true">
                         <span className="block h-full rounded-full bg-accent" style={{ width: `${level.pct}%` }} />
                       </span>
-                      <span className={cn('w-12 text-right text-[11px]', missedMust ? 'text-critical' : 'text-ink-faint')}>
+                      <span className={cn('w-14 shrink-0 whitespace-nowrap text-right text-[11px]', missedMust ? 'text-critical' : 'text-ink-faint')}>
                         {level.word}
                       </span>
                     </dd>
