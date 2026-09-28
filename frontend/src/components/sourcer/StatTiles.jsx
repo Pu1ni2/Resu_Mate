@@ -20,7 +20,7 @@ function Tile({ label, value, of, strong, accent, progress }) {
       </div>
       {progress != null && (
         <div className="absolute inset-x-0 bottom-0 h-[3px] bg-ink-inverse/15" aria-hidden="true">
-          <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${Math.round(progress * 100)}%` }} />
+          <div className="h-full bg-accent transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
       )}
     </div>

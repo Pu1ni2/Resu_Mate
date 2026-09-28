@@ -25,7 +25,9 @@ const LEGEND = [
 /* Memoised on the cell's state alone, so a judgement re-renders one cell rather
  * than every cell on the map. */
 const Cell = memo(function Cell({ state }) {
-  return <span className={cn('block aspect-square rounded-[2px] transition-colors duration-300', CELL[state])} />;
+  return (
+    <span className={cn('block aspect-square rounded-[2px] transition-colors duration-300 motion-reduce:transition-none', CELL[state])} />
+  );
 });
 
 export default function PopulationMap({ state }) {
