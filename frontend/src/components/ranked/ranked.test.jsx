@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import RankedCandidates, { RankedSummary } from './RankedCandidates';
 import ScoreRing from './ScoreRing';
-import { fromAtsResult, fromRankingRow, verdictForScore, normalizeVerdict } from './adapters';
+import { fromAtsResult, fromRankingRow, fromSourcedProfile, toneForVerdict, verdictForScore, normalizeVerdict } from './adapters';
 
 const atsPayload = {
   candidate_id: 7,
@@ -137,5 +137,61 @@ describe('RankedSummary', () => {
   it('shows timing when provided', () => {
     const { container } = render(<RankedSummary screened={12} strongFits={4} elapsedMs={8200} />);
     expect(container.textContent).toMatch(/Ranked in 8\.2s/);
+  });
+});
+
+describe('sourced people', () => {
+  const plan = { criteria: [
+    { id: 'c1', label: 'Python depth', kind: 'must' },
+    { id: 'c2', label: 'Shipped a product', kind: 'nice' },
+    { id: 'c3', label: 'Based in Boston', kind: 'nice' },
+  ] };
+  const person = {
+    pid: 'github:ada', source: 'github', name: 'Ada Lovelace', headline: 'Engine builder', location: 'London',
+    url: 'https://github.com/ada', score: 74, verdict: 'shortlist', judgement: 'Ships real tools.',
+    criteria: [
+      { id: 'c1', value: '12 repos', level: 'strong' },
+      { id: 'c2', value: 'Engine', level: 'partial' },
+      { id: 'c3', value: 'London', level: 'none' },
+    ],
+  };
+
+  it('names matched and missing criteria in the run\'s own terms', () => {
+    const row = fromSourcedProfile(person, plan);
+    expect(row.id).toBe('github:ada');
+    expect(row.matched).toEqual(['Python depth', 'Shipped a product']);
+    expect(row.missing).toEqual(['Based in Boston']);
+    expect(row.meta).toBe('GitHub · Engine builder · London');
+    expect(row.note).toBe('Ships real tools.');
+    expect(row.links).toEqual([{ label: 'View profile', href: 'https://github.com/ada' }]);
+  });
+
+  it('uses the sourcer\'s own verdicts, not the screening labels', () => {
+    expect(fromSourcedProfile(person, plan).verdict).toBe('Shortlist');
+    expect(fromSourcedProfile({ ...person, verdict: 'passed' }, plan).verdict).toBe('Passed on');
+    expect(toneForVerdict('Shortlist')).toBe('accent');
+    expect(toneForVerdict('Passed on')).toBe('neutral');
+  });
+
+  it('keeps a dismissed person, dimmed, so it can be undone', () => {
+    expect(fromSourcedProfile({ ...person, status: 'dismissed' }, plan).rejected).toBe(true);
+    expect(fromSourcedProfile(person, plan).rejected).toBe(false);
+  });
+
+  it('survives a person with no criteria or plan', () => {
+    const row = fromSourcedProfile({ pid: 'web:x', source: 'web', name: '' }, null);
+    expect(row).toMatchObject({ name: 'Unknown', score: 0, matched: [], missing: [], links: [] });
+  });
+
+  it('shows the profile link when expanded, and only web addresses', () => {
+    const rows = [
+      fromSourcedProfile(person, plan),
+      { ...fromSourcedProfile({ ...person, pid: 'web:evil', name: 'Evil' }, plan), links: [{ label: 'Bad', href: 'javascript:alert(1)' }] },
+    ];
+    render(<RankedCandidates rows={rows} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show details for Ada Lovelace' }));
+    expect(screen.getByRole('link', { name: /View profile/ }).getAttribute('href')).toBe('https://github.com/ada');
+    fireEvent.click(screen.getByRole('button', { name: 'Show details for Evil' }));
+    expect(screen.queryByRole('link', { name: /Bad/ })).toBeNull();
   });
 });
