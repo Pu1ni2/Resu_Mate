@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.services.resume_rag import resume_rag
 from app.tools.github_tool import github_tool
 from app.tools.openai_tool import openai_tool
+from app.tools.tavily_tool import tavily_tool
 
 
 MAX_CRITERIA = 8
@@ -335,6 +336,57 @@ async def people_from_github(queries: List[str], cap: int) -> AsyncIterator[Tupl
         # A stopped run must not leave profile requests running in the background.
         for t in tasks:
             t.cancel()
+
+
+_LINKEDIN_IN = re.compile(r"linkedin\.com/in/([A-Za-z0-9_%-]+)", re.I)
+# Search results that are about a company, a job or a post rather than a person.
+_NOT_A_PROFILE = ("/jobs", "/company/", "/posts/", "/pulse/", "/school/", "/events/", "/feed/")
+_SNIPPET_LOCATION = re.compile(r"Location:\s*([^·|\n]{2,60})")
+
+
+def _web_person(result: Dict) -> Dict:
+    """A person from one search result, or {} if it isn't a person's profile page.
+
+    Titles are read the way data_agent._find_linkedin reads them:
+    "Name - Headline | LinkedIn". Only the search snippet is used; the page
+    itself is never fetched.
+    """
+    url = (result.get("url") or "").strip()
+    title = (result.get("title") or "").strip()
+    if not url or not title or any(part in url.lower() for part in _NOT_A_PROFILE):
+        return {}
+    parts = title.replace(" | LinkedIn", "").split(" - ")
+    name = parts[0].strip()
+    if not name or len(name) > 60:
+        return {}
+    headline = " - ".join(parts[1:]).strip()
+    content = result.get("content") or ""
+    loc = _SNIPPET_LOCATION.search(content)
+    m = _LINKEDIN_IN.search(url)
+    external_id = f"linkedin/{m.group(1).lower()}" if m else url.split("?")[0].rstrip("/").lower()
+    return _person(
+        "web", external_id, name,
+        url=url, location=loc.group(1).strip() if loc else "", headline=headline,
+        text=f"{title}\n{content}",
+    )
+
+
+async def people_from_web(queries: List[str], cap: int) -> AsyncIterator[Tuple[str, object]]:
+    """Public profile pages from web search. Yields ("person", p) and ("warning", msg)."""
+    seen = set()
+    for q in queries:
+        if len(seen) >= cap:
+            break
+        res = await tavily_tool.call({"query": q, "max_results": min(20, cap - len(seen))})
+        if res.get("error"):
+            yield "warning", f"Web search '{q}' failed: {res['error']}"
+            continue
+        for r in res.get("results") or []:
+            person = _web_person(r)
+            # Searches overlap; the cap counts people, not results.
+            if person and person["pid"] not in seen and len(seen) < cap:
+                seen.add(person["pid"])
+                yield "person", person
 
 
 class SourcerAgent:
