@@ -14,11 +14,15 @@ import re
 from typing import Dict, List, Tuple
 
 from app.core.config import settings
+from app.services.resume_rag import resume_rag
 from app.tools.openai_tool import openai_tool
 
 
 MAX_CRITERIA = 8
 MAX_QUERIES = 3
+# How much of a profile the judge reads. Enough for a resume summary and work
+# history, small enough that a batch of people fits one call.
+MAX_TEXT = 3000
 
 _PLAN_SYSTEM = (
     "You turn a hiring manager's description of who they want into a search plan. "
@@ -190,6 +194,54 @@ def filter_match(person: Dict, filt: Dict) -> bool:
     if places and not any(p in location for p in places):
         return False
     return True
+
+
+def _person(source: str, external_id, name: str, *, url: str = "", avatar_url: str = "",
+            email: str = "", location: str = "", headline: str = "", text: str = "") -> Dict:
+    """One person to read, whatever the source. `text` is what the judge reads."""
+    external_id = str(external_id)
+    return {
+        "pid": f"{source}:{external_id}",
+        "source": source,
+        "external_id": external_id,
+        "name": (name or "Unknown").strip()[:200],
+        "url": url or "",
+        "avatar_url": avatar_url or "",
+        "email": email or "",
+        "location": (location or "")[:200],
+        "headline": (headline or "")[:300],
+        "text": (text or "")[:MAX_TEXT],
+    }
+
+
+def people_from_uploads(manager_id) -> List[Dict]:
+    """The manager's own uploaded resumes, as people to read.
+
+    Goes through get_all_candidates(manager_id), so one manager's run can never
+    read another manager's candidates. Uploads that were not resumes are skipped.
+    """
+    people = []
+    for c in resume_rag.get_all_candidates(manager_id):
+        if c.get("is_resume") is False:
+            continue
+        skills = ", ".join(str(s) for s in (c.get("skills") or [])[:30])
+        work = "; ".join(
+            f"{w.get('title', '')} at {w.get('company', '')}"
+            for w in (c.get("work_experience") or [])[:8]
+            if isinstance(w, dict)
+        )
+        text = "\n".join(part for part in (
+            c.get("summary") or "",
+            f"Skills: {skills}" if skills else "",
+            f"Experience: {work}" if work else "",
+            c.get("text") or c.get("raw_text") or "",
+        ) if part)
+        headline = " · ".join(x for x in (c.get("predicted_role"), c.get("experience_level")) if x)
+        people.append(_person(
+            "upload", c.get("id"), c.get("name"),
+            email=c.get("email"), location=c.get("location"), headline=headline, text=text,
+        ))
+    return people
 
 
 class SourcerAgent:
