@@ -14,6 +14,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.hr_agent import hr_agent
 from app.agents.sourcer_agent import sourcer_agent
 from app.core.database import async_session, get_db
 from app.models.sourcing import SourcingRun, SourcedProfile
@@ -231,3 +232,37 @@ async def delete_run(run_id: int, user=Depends(get_current_user), db: AsyncSessi
         detail=f"run {run_id}, {removed.rowcount} profiles",
     )
     return {"deleted": run_id}
+
+
+@router.post("/profiles/{profile_id}/draft-outreach")
+@limiter.limit("30/hour")
+async def draft_outreach(request: Request, profile_id: int,
+                         user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Draft a first message to someone a run found. A draft only: nothing is sent."""
+    profile = await _own_profile(db, profile_id, user.id)
+    run = await _own_run(db, profile.run_id, user.id)
+    plan = run.plan or {}
+    title = (plan.get("req") or {}).get("title") or "a role"
+    labels = {c.get("id"): c.get("label") for c in plan.get("criteria") or []}
+    # What the judge actually saw, so the note cites real work, not a guess.
+    evidence = [
+        f"{labels.get(a.get('id'), a.get('id'))}: {a.get('value')}"
+        for a in profile.criteria or []
+        if a.get("level") in ("strong", "partial") and a.get("value")
+    ]
+    context = "\n".join(part for part in (profile.headline or "", profile.judgement or "", *evidence) if part)
+
+    draft = await hr_agent.draft_email(
+        {"name": profile.name, "predicted_role": title, "skills": []}, "outreach", context,
+    )
+    if not draft.get("body"):
+        # No language model configured: a plain note is still better than nothing.
+        first = (profile.name or "there").split()[0]
+        draft = {
+            "subject": f"{title}: would you be open to a conversation?",
+            "body": (
+                f"Hi {first},\n\nI came across your work and thought of a {title} role we're hiring for. "
+                "Would you be open to a short conversation? No pressure if the timing isn't right.\n\n[Your Name]"
+            ),
+        }
+    return {**draft, "to": profile.email or "", "profile_url": profile.url or ""}
