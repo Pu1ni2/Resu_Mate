@@ -286,7 +286,9 @@ export default function SourcerPage() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6">
+      {/* sm:pr-20 keeps the right column clear of ProductLayer's floating
+          buttons (theme, notifications, shortcuts) on the right edge. */}
+      <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:pl-6 sm:pr-20">
         <Link to="/hiring" className="inline-flex items-center gap-1.5 text-[13px] text-ink-subtle hover:text-ink">
           <ArrowLeft size={14} /> Dashboard
         </Link>
