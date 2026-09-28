@@ -11,9 +11,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.sourcer_agent import sourcer_agent
-from app.core.database import async_session
+from app.core.database import async_session, get_db
 from app.models.sourcing import SourcingRun, SourcedProfile
 from app.services.auth import get_current_user
 
@@ -75,6 +77,18 @@ async def _save_stopped_run(*args) -> None:
         await _save_run(*args)
     except Exception as e:
         print(f"[WARN] could not save stopped sourcing run: {e}")
+
+
+async def _own_run(db: AsyncSession, run_id: int, manager_id: int) -> SourcingRun:
+    """The run if this manager owns it. Another manager's run is a 404, not a
+    403, so ids can't be probed for existence."""
+    result = await db.execute(
+        select(SourcingRun).where(SourcingRun.id == run_id, SourcingRun.manager_id == manager_id)
+    )
+    run = result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(404, "Run not found")
+    return run
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -139,3 +153,37 @@ async def start_run(request: Request, req: RunRequest, user=Depends(get_current_
         # Proxies that buffer would hold every event until the run ends.
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/runs")
+async def list_runs(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """This manager's runs, newest first, for the history list."""
+    result = await db.execute(
+        select(SourcingRun)
+        .where(SourcingRun.manager_id == user.id)
+        .order_by(SourcingRun.created_at.desc(), SourcingRun.id.desc())
+        .limit(50)
+    )
+    return {"runs": [
+        {
+            "id": run.id,
+            "description": (run.description or "")[:200],
+            "status": run.status,
+            "created_at": run.created_at.isoformat() if run.created_at else None,
+            "judged": (run.stats or {}).get("judged", 0),
+            "shortlisted": (run.stats or {}).get("shortlisted", 0),
+        }
+        for run in result.scalars().all()
+    ]}
+
+
+@router.get("/runs/{run_id}")
+async def get_run(run_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A saved run with everyone it judged, best first, to reopen it as it ended."""
+    run = await _own_run(db, run_id, user.id)
+    result = await db.execute(
+        select(SourcedProfile)
+        .where(SourcedProfile.run_id == run.id, SourcedProfile.manager_id == user.id)
+        .order_by(SourcedProfile.score.desc(), SourcedProfile.id)
+    )
+    return {"run": run.to_dict(), "profiles": [p.to_dict() for p in result.scalars().all()]}
