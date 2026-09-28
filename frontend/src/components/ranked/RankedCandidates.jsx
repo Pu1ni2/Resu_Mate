@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, ChevronDown, Clock, Mic, Video } from 'lucide-react';
+import { Check, ChevronDown, Clock, ExternalLink, Mic, Video } from 'lucide-react';
 import { cn } from '../ui/cn';
 import ScoreRing from './ScoreRing';
 import { toneForVerdict } from './adapters';
@@ -78,6 +78,28 @@ function MatchBar({ value, label, className }) {
   );
 }
 
+/* Optional links in the expanded detail, e.g. a sourced person's profile. Rows
+ * can carry URLs from the open web, so anything that isn't http(s) is dropped. */
+function RowLinks({ links }) {
+  const safe = (links || []).filter(l => /^https?:\/\//i.test(l?.href || ''));
+  if (!safe.length) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-3">
+      {safe.map(l => (
+        <a
+          key={l.href}
+          href={l.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[12px] text-accent hover:underline"
+        >
+          {l.label} <ExternalLink size={11} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function CompactRow({ row }) {
   return (
     <div className="flex items-center gap-3 py-2">
@@ -94,7 +116,7 @@ function CompactRow({ row }) {
 
 function FullRow({ row, selected, onToggleSelect, selectable, expandable }) {
   const [open, setOpen] = useState(false);
-  const hasDetail = expandable && (row.bars?.length || row.matched?.length || row.missing?.length || row.note);
+  const hasDetail = expandable && (row.bars?.length || row.matched?.length || row.missing?.length || row.note || row.links?.length);
 
   return (
     <div className={cn('relative', row.rejected && 'opacity-60')}>
@@ -192,6 +214,8 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable }) {
           )}
 
           {row.note && <p className="text-[13px] leading-relaxed text-ink-muted">{row.note}</p>}
+
+          <RowLinks links={row.links} />
 
           {row.rejected && row.rejectionReason && (
             <p className="mt-3 rounded-md border border-caution/30 bg-caution-wash px-3 py-2 text-[12px] text-caution">
