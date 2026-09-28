@@ -13,6 +13,21 @@ class GitHubTool:
             headers["Authorization"] = f"token {self.token}"
         return headers
 
+    @staticmethod
+    def _rate_limited(resp) -> bool:
+        """GitHub signals an exhausted quota with 403 (primary) or 429 (secondary).
+
+        A 403 is also "forbidden" for other reasons, so it only counts as a rate
+        limit when the remaining-quota header says zero or the body says so.
+        """
+        if resp.status_code == 429:
+            return True
+        if resp.status_code != 403:
+            return False
+        if resp.headers.get("X-RateLimit-Remaining") == "0":
+            return True
+        return "rate limit" in (resp.text or "").lower()
+
     async def search_users(self, q: str, per_page: int = 100, page: int = 1) -> Dict:
         """Search GitHub users, e.g. 'language:python location:boston'.
 
@@ -31,6 +46,8 @@ class GitHubTool:
                     params={"q": q, "per_page": min(per_page, 100), "page": page},
                     headers=self._headers(),
                 )
+            if self._rate_limited(resp):
+                return {"error": "GitHub rate limit reached", "rate_limited": True, "total_count": 0, "items": []}
             if resp.status_code != 200:
                 return {"error": f"GitHub search failed ({resp.status_code})", "total_count": 0, "items": []}
             data = resp.json()
@@ -58,6 +75,8 @@ class GitHubTool:
             # slow GitHub response doesn't tie up a worker.
             async with httpx.AsyncClient(timeout=15.0) as client:
                 user_resp = await client.get(f"https://api.github.com/users/{username}", headers=headers)
+                if self._rate_limited(user_resp):
+                    return {"error": "GitHub rate limit reached", "rate_limited": True}
                 if user_resp.status_code != 200:
                     return {"error": f"GitHub user '{username}' not found"}
                 user = user_resp.json()
