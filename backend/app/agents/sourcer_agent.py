@@ -33,6 +33,16 @@ GITHUB_CONCURRENCY = 4
 # GitHub search never returns more than the first 1,000 results of a query.
 GITHUB_SEARCH_LIMIT = 1000
 
+# Judging runs this many batches at once, each of up to BATCH people. A judge
+# waits at most BATCH_WAIT_S for a batch to fill, so a slow source doesn't leave
+# people waiting to be read.
+JUDGES = 4
+BATCH = 5
+BATCH_WAIT_S = 0.4
+STATS_EVERY_S = 1.0
+
+_DONE = object()
+
 # Scoring. The model only says how strongly a profile shows each criterion; the
 # number comes from these fixed weights, so the same answers always give the
 # same score and a manager can see exactly why someone got theirs.
@@ -512,6 +522,28 @@ async def people_from_web(queries: List[str], cap: int) -> AsyncIterator[Tuple[s
                 yield "person", person
 
 
+async def _take_batch(queue: asyncio.Queue, size: int, wait: float) -> Tuple[List[Dict], bool]:
+    """Up to `size` people from the queue. Returns (batch, finished).
+
+    Blocks for the first person, then waits at most `wait` for each of the rest.
+    `finished` means the end marker was reached, so there is nothing more to read.
+    """
+    batch: List[Dict] = []
+    item = await queue.get()
+    if item is _DONE:
+        return batch, True
+    batch.append(item)
+    while len(batch) < size:
+        try:
+            item = await asyncio.wait_for(queue.get(), timeout=wait)
+        except asyncio.TimeoutError:
+            break
+        if item is _DONE:
+            return batch, True
+        batch.append(item)
+    return batch, False
+
+
 class RunStats:
     """Live counters for one run, and what it has cost so far."""
 
@@ -682,6 +714,121 @@ class SourcerAgent:
                 "tokens": (usage["input_tokens"] + usage["output_tokens"]) // n,
             })
         return results, usage
+
+    async def run_stream(self, description: str, manager_id, sources: Dict) -> AsyncIterator[Dict]:
+        """Run one search and yield its events as they happen.
+
+          plan     {plan}                   criteria, keyword-filter baseline, searches
+          pool     {sources, github_total}  people found per source so far
+          found    {person}                 someone to read (without their profile text)
+          judged   {pid, verdict, score, criteria, judgement, filter_match, miss_reason, ms, tokens}
+          stats    {...}                    about once a second, and once at the end
+          warning  {message}                a source failed or ran out of quota
+          error    {message}                the run could not continue
+          done     {stats}
+
+        Finding and judging overlap: gatherers push people onto a queue that
+        judge workers read in batches, so the map fills while people are read.
+        Every person is "found" before they are "judged". When the consumer
+        stops (the client disconnects), every task is cancelled.
+        """
+        stats = RunStats()
+        plan, usage = await self.plan(description)
+        stats.add_usage(usage)
+        yield {"type": "plan", "plan": plan}
+
+        out: asyncio.Queue = asyncio.Queue()
+        todo: asyncio.Queue = asyncio.Queue()
+        seen = set()
+        by_source = {"upload": 0, "github": 0, "web": 0}
+
+        async def pool_event():
+            await out.put({"type": "pool", "sources": dict(by_source), "github_total": stats.github_total})
+
+        async def add(person: Dict):
+            if person["pid"] in seen:
+                return
+            seen.add(person["pid"])
+            stats.found += 1
+            by_source[person["source"]] += 1
+            await out.put({"type": "found", "person": {k: v for k, v in person.items() if k != "text"}})
+            await todo.put(person)
+
+        async def drain(label: str, gen):
+            try:
+                async for kind, payload in gen:
+                    if kind == "person":
+                        await add(payload)
+                    elif kind == "total":
+                        stats.github_total = max(stats.github_total, payload)
+                        await pool_event()
+                    elif kind == "warning":
+                        await out.put({"type": "warning", "message": payload})
+            except Exception as e:
+                # One source failing shouldn't end the run for the others.
+                print(f"[WARN] sourcer {label} failed: {e}")
+                await out.put({"type": "warning", "message": f"Searching {label} failed; carrying on without it."})
+
+        async def gather():
+            try:
+                if sources.get("uploads", True):
+                    for person in people_from_uploads(manager_id):
+                        await add(person)
+                searches = []
+                if sources.get("github", True) and plan["github_queries"]:
+                    searches.append(drain("GitHub", people_from_github(plan["github_queries"], settings.sourcer_max_github)))
+                if sources.get("web", True) and plan["web_queries"]:
+                    searches.append(drain("the web", people_from_web(plan["web_queries"], settings.sourcer_max_web)))
+                await asyncio.gather(*searches)
+                await pool_event()
+            finally:
+                # One end marker per judge, queued behind every person.
+                for _ in range(JUDGES):
+                    await todo.put(_DONE)
+
+        async def judge_worker():
+            while True:
+                batch, finished = await _take_batch(todo, BATCH, BATCH_WAIT_S)
+                if batch:
+                    results, batch_usage = await self.judge(plan, batch)
+                    stats.add_usage(batch_usage)
+                    for result in results:
+                        stats.add_result(result)
+                        await out.put({"type": "judged", **result})
+                if finished:
+                    return
+
+        async def ticker():
+            while True:
+                await asyncio.sleep(STATS_EVERY_S)
+                await out.put({"type": "stats", **stats.snapshot()})
+
+        gatherer = asyncio.create_task(gather())
+        workers = [asyncio.create_task(judge_worker()) for _ in range(JUDGES)]
+
+        async def supervise():
+            try:
+                await gatherer
+                await asyncio.gather(*workers)
+            except Exception as e:
+                print(f"[ERROR] sourcer run failed: {e}")
+                await out.put({"type": "error", "message": "The search stopped unexpectedly."})
+            finally:
+                await out.put(_DONE)
+
+        tasks = [gatherer, *workers, asyncio.create_task(ticker()), asyncio.create_task(supervise())]
+        try:
+            while True:
+                event = await out.get()
+                if event is _DONE:
+                    break
+                yield event
+            final = stats.snapshot()
+            yield {"type": "stats", **final}
+            yield {"type": "done", "stats": final}
+        finally:
+            for t in tasks:
+                t.cancel()
 
 
 sourcer_agent = SourcerAgent()
