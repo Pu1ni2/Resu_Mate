@@ -9,12 +9,14 @@ instead of filtering on title and keywords first and reading only what survives.
 It streams events as it works, so it does not use BaseAgent's run loop:
 BaseAgent.run() reports nothing until it has finished.
 """
+import asyncio
 import json
 import re
-from typing import Dict, List, Tuple
+from typing import AsyncIterator, Dict, List, Tuple
 
 from app.core.config import settings
 from app.services.resume_rag import resume_rag
+from app.tools.github_tool import github_tool
 from app.tools.openai_tool import openai_tool
 
 
@@ -23,6 +25,11 @@ MAX_QUERIES = 3
 # How much of a profile the judge reads. Enough for a resume summary and work
 # history, small enough that a batch of people fits one call.
 MAX_TEXT = 3000
+# Concurrent GitHub profile requests. Enough to keep the map filling, few enough
+# not to trip GitHub's secondary (burst) rate limit.
+GITHUB_CONCURRENCY = 4
+# GitHub search never returns more than the first 1,000 results of a query.
+GITHUB_SEARCH_LIMIT = 1000
 
 _PLAN_SYSTEM = (
     "You turn a hiring manager's description of who they want into a search plan. "
@@ -242,6 +249,92 @@ def people_from_uploads(manager_id) -> List[Dict]:
             email=c.get("email"), location=c.get("location"), headline=headline, text=text,
         ))
     return people
+
+
+def _github_person(item: Dict, prof: Dict) -> Dict:
+    repos = "; ".join(
+        f"{r.get('name', '')} ({r.get('language', 'N/A')}, {r.get('stars', 0)} stars): {(r.get('description') or '')[:120]}"
+        for r in prof.get("top_repos") or []
+    )
+    languages = ", ".join(list((prof.get("languages") or {}).keys())[:8])
+    text = "\n".join(part for part in (
+        prof.get("bio") or "",
+        f"Company: {prof['company']}" if prof.get("company") else "",
+        f"Languages: {languages}" if languages else "",
+        f"Repos: {repos}" if repos else "",
+        f"{prof.get('public_repos', 0)} public repos, {prof.get('followers', 0)} followers, "
+        f"on GitHub since {prof.get('created_at', '') or 'unknown'}",
+        f"Website: {prof['blog']}" if prof.get("blog") else "",
+    ) if part)
+    return _person(
+        "github", item["login"], prof.get("name") or item["login"],
+        url=prof.get("profile_url") or item.get("html_url", ""),
+        avatar_url=prof.get("avatar_url") or item.get("avatar_url", ""),
+        location=prof.get("location") or "",
+        # GitHub has no job title; the bio is the nearest thing a title filter
+        # could match, so it stands in as the headline.
+        headline=prof.get("bio") or "",
+        text=text,
+    )
+
+
+async def people_from_github(queries: List[str], cap: int) -> AsyncIterator[Tuple[str, object]]:
+    """People from GitHub user search, each enriched with their repos.
+
+    Yields ("total", n) with the number GitHub reports matching each query,
+    ("person", person) as each profile arrives, and ("warning", message). The
+    first rate limit stops the search, and the people already found are kept.
+    """
+    logins: List[Dict] = []
+    seen = set()
+    rate_limited = False
+    for q in queries:
+        if rate_limited or len(logins) >= cap:
+            break
+        page = 1
+        while len(logins) < cap and page * 100 <= GITHUB_SEARCH_LIMIT:
+            res = await github_tool.search_users(q, per_page=100, page=page)
+            if res.get("rate_limited"):
+                rate_limited = True
+                yield "warning", "GitHub's rate limit was reached; reading the people found so far."
+                break
+            if res.get("error"):
+                yield "warning", f"GitHub search '{q}' failed: {res['error']}"
+                break
+            if page == 1:
+                yield "total", res.get("total_count", 0)
+            items = res.get("items") or []
+            for item in items:
+                if item["login"] not in seen and len(logins) < cap:
+                    seen.add(item["login"])
+                    logins.append(item)
+            if len(items) < 100:
+                break
+            page += 1
+
+    sem = asyncio.Semaphore(GITHUB_CONCURRENCY)
+
+    async def enrich(item: Dict):
+        async with sem:
+            return item, await github_tool.call({"username": item["login"], "light": True})
+
+    tasks = [asyncio.create_task(enrich(item)) for item in logins]
+    warned = False
+    try:
+        for done in asyncio.as_completed(tasks):
+            item, prof = await done
+            if prof.get("rate_limited"):
+                if not warned:
+                    warned = True
+                    yield "warning", "GitHub's rate limit was reached; some profiles could not be read."
+                continue
+            if prof.get("error"):
+                continue
+            yield "person", _github_person(item, prof)
+    finally:
+        # A stopped run must not leave profile requests running in the background.
+        for t in tasks:
+            t.cancel()
 
 
 class SourcerAgent:
