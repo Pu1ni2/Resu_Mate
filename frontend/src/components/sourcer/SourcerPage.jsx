@@ -5,6 +5,8 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { Label, Textarea } from '../ui/Input';
 import { cn } from '../ui/cn';
+import { messageForApiError, sourcerAPI } from '../../services/api';
+import { toast } from '../../services/notify';
 import { streamRun } from '../../services/sourcerStream';
 import { formatCount } from './format';
 import { initialState, talentMapReducer } from './talentMapModel';
@@ -14,6 +16,8 @@ import PopulationMap from './PopulationMap';
 import JudgingNow from './JudgingNow';
 import FilterComparison from './FilterComparison';
 import LiveLog from './LiveLog';
+import TopOfShortlist from './TopOfShortlist';
+import ShortlistDrawer from './ShortlistDrawer';
 
 /* Find candidates: describe who you want, and watch the whole pool be read.
  *
@@ -133,6 +137,8 @@ export default function SourcerPage() {
   const [sources, setSources] = useState({ uploads: true, github: true, web: true });
   const [editing, setEditing] = useState(true);
   const [formError, setFormError] = useState('');
+  const [shortlistOpen, setShortlistOpen] = useState(false);
+  const closeShortlist = useCallback(() => setShortlistOpen(false), []);
   const abortRef = useRef(null);
   const queueRef = useRef([]);
   const frameRef = useRef(0);
@@ -186,6 +192,17 @@ export default function SourcerPage() {
   function newSearch() {
     setDescription(state.description || description);
     setEditing(true);
+  }
+
+  async function setStatus(pid, status) {
+    const id = state.profileIds[pid];
+    if (!id) return;
+    try {
+      await sourcerAPI.setStatus(id, status);
+      dispatch({ type: 'profileStatus', pid, status });
+    } catch (err) {
+      toast(messageForApiError(err, 'Could not update that person. Please try again.'), 'error');
+    }
   }
 
   // Screen readers get a short update every 25 people rather than one per event.
@@ -248,8 +265,11 @@ export default function SourcerPage() {
               <div className="space-y-4">
                 <JudgingNow state={state} />
                 <FilterComparison state={state} />
+                <TopOfShortlist state={state} onOpen={() => setShortlistOpen(true)} />
               </div>
             </div>
+
+            <ShortlistDrawer open={shortlistOpen} onClose={closeShortlist} state={state} onStatus={setStatus} />
           </>
         )}
 
