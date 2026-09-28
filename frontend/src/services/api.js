@@ -81,4 +81,14 @@ export const chatAPI = {
   clear: () => api.post('/chat/clear')
 };
 
+/* The candidate sourcer. Starting a run streams, so it lives in
+ * services/sourcerStream.js; everything after the run is plain requests. */
+export const sourcerAPI = {
+  listRuns: () => api.get('/sourcer/runs'),
+  getRun: id => api.get(`/sourcer/runs/${id}`),
+  setStatus: (profileId, status) => api.post(`/sourcer/profiles/${profileId}/status`, { status }),
+  draftOutreach: profileId => api.post(`/sourcer/profiles/${profileId}/draft-outreach`),
+  deleteRun: id => api.delete(`/sourcer/runs/${id}`),
+};
+
 export default api;
