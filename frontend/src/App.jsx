@@ -11,6 +11,8 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
 // Lazy: an unlisted comparison page must not cost the product bundle anything.
 const StyleLab = lazy(() => import('./components/landing/StyleLab'));
+// Lazy: a page of its own, only loaded by managers who open it.
+const SourcerPage = lazy(() => import('./components/sourcer/SourcerPage'));
 
 function UnauthorizedHandler() {
   const navigate = useNavigate();
@@ -47,6 +49,10 @@ export default function App() {
 
       {/* Hiring manager dashboard — protected */}
       <Route path="/hiring/focus" element={<ProtectedRoute><CandidateFocus /></ProtectedRoute>} />
+      <Route
+        path="/hiring/sourcer"
+        element={<ProtectedRoute><Suspense fallback={null}><SourcerPage /></Suspense></ProtectedRoute>}
+      />
       <Route path="/hiring/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
       {/* Candidate portal */}
