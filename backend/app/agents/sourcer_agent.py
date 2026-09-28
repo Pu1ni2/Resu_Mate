@@ -33,6 +33,7 @@ Return ONLY this JSON:
 {{
   "req": {{"title": "short role title", "location": "city or region, or empty", "summary": "one line"}},
   "criteria": [{{"label": "2-4 words", "kind": "must or nice"}}],
+  "filter": {{"title_terms": [], "keyword_terms": [], "location_terms": []}},
   "github_queries": [],
   "web_queries": []
 }}
@@ -42,6 +43,9 @@ Rules:
   a skill, the kind of work, evidence of shipping, seniority, location. At least one is "must".
 - Never a criterion about age, gender, ethnicity, nationality, religion, disability,
   family, or any other protected trait. Not "young", not "native speaker", not "culture fit".
+- filter is what a recruiter would type into a title + keyword search, taken literally
+  from the description: title_terms are job-title words, keyword_terms are at most 3 hard
+  skills, location_terms are places. Lowercase.
 - github_queries use GitHub user-search syntax, e.g. "language:python location:boston". At most 3.
 - web_queries find public profile pages, e.g. "site:linkedin.com/in backend engineer boston python". At most 3."""
 
@@ -80,6 +84,7 @@ def _normalise_plan(raw: Dict) -> Dict:
     # A plan with no must-have would shortlist on nice-to-haves alone.
     if criteria and not any(c["kind"] == "must" for c in criteria):
         criteria[0]["kind"] = "must"
+    filt = raw.get("filter") if isinstance(raw.get("filter"), dict) else {}
     return {
         "req": {
             "title": str(req.get("title", "")).strip()[:80],
@@ -87,9 +92,46 @@ def _normalise_plan(raw: Dict) -> Dict:
             "summary": str(req.get("summary", "")).strip()[:200],
         },
         "criteria": criteria,
+        "filter": {
+            "title_terms": [t.lower() for t in _strings(filt.get("title_terms"), 6, 40)],
+            "keyword_terms": [t.lower() for t in _strings(filt.get("keyword_terms"), 3, 40)],
+            "location_terms": [t.lower() for t in _strings(filt.get("location_terms"), 4, 40)],
+        },
         "github_queries": _strings(raw.get("github_queries"), MAX_QUERIES),
         "web_queries": _strings(raw.get("web_queries"), MAX_QUERIES),
     }
+
+
+def _has_term(haystack: str, term: str) -> bool:
+    # Whole-word match that still works for terms like "c++" or "node.js",
+    # where \b would fail on the punctuation.
+    return re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", haystack) is not None
+
+
+def filter_match(person: Dict, filt: Dict) -> bool:
+    """Would a title + keyword search have returned this person?
+
+    This is the baseline that reading everyone is compared against, so it is
+    deliberately as literal as a boolean search: a title term in the headline,
+    AND every keyword term somewhere in the profile, AND a location term in the
+    location when the search named one. No LLM is involved, so the comparison is
+    arithmetic rather than a second opinion.
+    """
+    titles = filt.get("title_terms") or []
+    keywords = filt.get("keyword_terms") or []
+    places = filt.get("location_terms") or []
+    if not (titles or keywords or places):
+        return False
+    headline = (person.get("headline") or "").lower()
+    profile = f"{headline} {(person.get('text') or '').lower()}"
+    location = (person.get("location") or "").lower()
+    if titles and not any(_has_term(headline, t) for t in titles):
+        return False
+    if not all(_has_term(profile, k) for k in keywords):
+        return False
+    if places and not any(p in location for p in places):
+        return False
+    return True
 
 
 class SourcerAgent:
