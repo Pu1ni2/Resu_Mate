@@ -43,7 +43,9 @@ function RowActions({ person, profileId, onStatus, onDraft }) {
 
 /* Everyone shortlisted, best first, in a side panel over the map. A modal
  * dialog: focus moves in when it opens and back when it closes, and Escape or
- * the backdrop closes it. */
+ * the backdrop closes it. Escape is handled on the dialog itself, not the
+ * window, so it closes only the dialog it was pressed in: the outreach draft
+ * opens over this one. */
 export default function ShortlistDrawer({ open, onClose, state, onStatus, onDraft }) {
   const panelRef = useRef(null);
 
@@ -51,13 +53,8 @@ export default function ShortlistDrawer({ open, onClose, state, onStatus, onDraf
     if (!open) return undefined;
     const previous = document.activeElement;
     panelRef.current?.focus();
-    const onKey = e => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      previous?.focus?.();
-    };
-  }, [open, onClose]);
+    return () => previous?.focus?.();
+  }, [open]);
 
   if (!open) return null;
   const people = shortlistOf(state);
@@ -73,6 +70,7 @@ export default function ShortlistDrawer({ open, onClose, state, onStatus, onDraf
         aria-modal="true"
         aria-labelledby="sourcer-shortlist-title"
         tabIndex={-1}
+        onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
         className="relative flex h-full w-full max-w-2xl flex-col border-l border-line bg-canvas shadow-e3 outline-none"
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">

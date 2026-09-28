@@ -18,6 +18,7 @@ import FilterComparison from './FilterComparison';
 import LiveLog from './LiveLog';
 import TopOfShortlist from './TopOfShortlist';
 import ShortlistDrawer from './ShortlistDrawer';
+import OutreachModal from './OutreachModal';
 
 /* Find candidates: describe who you want, and watch the whole pool be read.
  *
@@ -139,6 +140,7 @@ export default function SourcerPage() {
   const [formError, setFormError] = useState('');
   const [shortlistOpen, setShortlistOpen] = useState(false);
   const closeShortlist = useCallback(() => setShortlistOpen(false), []);
+  const [outreachPid, setOutreachPid] = useState(null);
   const abortRef = useRef(null);
   const queueRef = useRef([]);
   const frameRef = useRef(0);
@@ -269,7 +271,17 @@ export default function SourcerPage() {
               </div>
             </div>
 
-            <ShortlistDrawer open={shortlistOpen} onClose={closeShortlist} state={state} onStatus={setStatus} />
+            <ShortlistDrawer
+              open={shortlistOpen} onClose={closeShortlist} state={state}
+              onStatus={setStatus} onDraft={setOutreachPid}
+            />
+            {outreachPid && state.profileIds[outreachPid] && (
+              <OutreachModal
+                person={state.people[outreachPid]}
+                profileId={state.profileIds[outreachPid]}
+                onClose={() => setOutreachPid(null)}
+              />
+            )}
           </>
         )}
 
