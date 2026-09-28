@@ -32,6 +32,10 @@ export function toneForVerdict(verdict) {
     case 'Good Fit': return 'accent';
     case 'Consider': return 'caution';
     case 'No Match': return 'neutral';
+    // The sourcer's two verdicts. Its line is 60 on its own weights, so it does
+    // not borrow the screening labels above, whose thresholds differ.
+    case 'Shortlist': return 'accent';
+    case 'Passed on': return 'neutral';
     default: return 'neutral';
   }
 }
@@ -99,6 +103,38 @@ export function fromRankingRow(r) {
     bars: [],
     note: r.standout || '',
     rejected: false,
+    rejectionReason: '',
+  };
+}
+
+const SOURCE_LABEL = { upload: 'Your upload', github: 'GitHub', web: 'Web profile' };
+
+/** A person the sourcer judged (live or from a saved run) -> row
+ *
+ *  Their criteria arrive as [{id, value, level}]; the names come from the run's
+ *  plan, so matched and missing read in the manager's own terms. The score is
+ *  the sourcer's fixed-weight one and already in the ring, so there is no
+ *  separate match bar. */
+export function fromSourcedProfile(p, plan) {
+  const labels = Object.fromEntries((plan?.criteria || []).map(c => [c.id, c.label]));
+  const named = a => labels[a.id] || a.id;
+  const answers = p.criteria || [];
+  return {
+    id: p.pid,
+    name: p.name || 'Unknown',
+    email: p.email || '',
+    score: Number(p.score) || 0,
+    verdict: p.verdict === 'shortlist' ? 'Shortlist' : 'Passed on',
+    meta: metaLine([SOURCE_LABEL[p.source] || p.source, p.headline, p.location]),
+    matchLabel: 'fit',
+    matchValue: 0,
+    matched: answers.filter(a => a.level === 'strong' || a.level === 'partial').map(named),
+    missing: answers.filter(a => a.level === 'none').map(named),
+    bars: [],
+    note: p.judgement || '',
+    links: p.url ? [{ label: 'View profile', href: p.url }] : [],
+    // A dismissed person stays in the list, dimmed, so the dismissal can be undone.
+    rejected: p.status === 'dismissed',
     rejectionReason: '',
   };
 }
