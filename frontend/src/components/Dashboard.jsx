@@ -10,7 +10,7 @@ import {
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch
 } from 'lucide-react';
 import { authFetch } from '../services/authFetch';
 import { toast } from '../services/notify';
@@ -519,7 +519,9 @@ export default function Dashboard() {
               { id: 'analytics', icon: <BarChart2 size={18} />, label: 'Analytics' },
               { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
               // An item with a route is a page of its own rather than a tab.
-              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus', route: '/hiring/focus' }
+              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus', route: '/hiring/focus' },
+              // Sourcing: finds people beyond the uploads and reads every one.
+              { id: 'sourcer', icon: <ScanSearch size={18} />, label: 'Find Candidates', route: '/hiring/sourcer' }
             ].map(item => (
               <div
                 key={item.id}
