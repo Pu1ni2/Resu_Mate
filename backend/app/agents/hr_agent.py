@@ -188,6 +188,14 @@ RULES:
             "offer": f"Initiate offer discussions with {name}. Express excitement.",
             "pass": f"Politely pass on {name}. Thank them genuinely. Encourage future applications.",
             "followup": f"Follow up with {name}. Check interest and availability. Be brief.",
+            # First contact with someone found by sourcing: they never applied and
+            # may not be looking, so the note has to earn a reply, not assume one.
+            "outreach": (
+                f"Write a first message to {name}, who has not applied and may not be looking. "
+                "Say why they stood out, citing one specific piece of their work from the context below. "
+                "Ask whether they would be open to a short conversation. Under 120 words, no hype, "
+                "and easy to say no to."
+            ),
         }
 
         eval_context = f"\nEvaluation context:\n{evaluation_report[:1000]}" if evaluation_report else ""
