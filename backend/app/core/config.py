@@ -1,6 +1,7 @@
 """Configuration settings for the application"""
 import os
 import warnings
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 
@@ -28,6 +29,13 @@ class Settings(BaseSettings):
     sourcer_price_out_per_1m: Optional[float] = None
     sourcer_max_github: int = 300
     sourcer_max_web: int = 30
+
+    @field_validator("sourcer_price_in_per_1m", "sourcer_price_out_per_1m", mode="before")
+    @classmethod
+    def _blank_price_is_unset(cls, value):
+        # "SOURCER_PRICE_IN_PER_1M=" arrives as "", which is not a number and
+        # would stop the app booting. Blank means no price, as leaving it out does.
+        return None if isinstance(value, str) and not value.strip() else value
 
     @property
     def sourcer_llm_model(self) -> str:
