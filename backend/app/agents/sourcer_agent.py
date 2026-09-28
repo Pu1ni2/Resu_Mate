@@ -512,6 +512,61 @@ async def people_from_web(queries: List[str], cap: int) -> AsyncIterator[Tuple[s
                 yield "person", person
 
 
+class RunStats:
+    """Live counters for one run, and what it has cost so far."""
+
+    def __init__(self):
+        self.started = time.monotonic()
+        self.found = 0
+        self.judged = 0
+        self.shortlisted = 0
+        self.shortlisted_by_filter = 0   # shortlisted AND the keyword filter would have found them
+        self.filter_would_show = 0       # everyone judged whom the keyword filter matches
+        self.github_total = 0            # how many people GitHub says matched, read or not
+        self.tokens_in = 0
+        self.tokens_out = 0
+
+    def add_usage(self, usage: Dict) -> None:
+        self.tokens_in += usage.get("input_tokens", 0)
+        self.tokens_out += usage.get("output_tokens", 0)
+
+    def add_result(self, result: Dict) -> None:
+        self.judged += 1
+        if result["filter_match"]:
+            self.filter_would_show += 1
+        if result["verdict"] == "shortlist":
+            self.shortlisted += 1
+            if result["filter_match"]:
+                self.shortlisted_by_filter += 1
+
+    def cost_usd(self):
+        """Dollars so far, or None when prices aren't configured.
+
+        None rather than a guess: a price hard-coded here would go stale, and a
+        wrong number on screen is worse than tokens.
+        """
+        price_in, price_out = settings.sourcer_price_in_per_1m, settings.sourcer_price_out_per_1m
+        if price_in is None or price_out is None:
+            return None
+        return round((self.tokens_in * price_in + self.tokens_out * price_out) / 1_000_000, 4)
+
+    def snapshot(self) -> Dict:
+        elapsed = time.monotonic() - self.started
+        return {
+            "found": self.found,
+            "judged": self.judged,
+            "shortlisted": self.shortlisted,
+            "shortlisted_by_filter": self.shortlisted_by_filter,
+            "filter_would_show": self.filter_would_show,
+            "github_total": self.github_total,
+            "elapsed_s": round(elapsed, 1),
+            "per_sec": round(self.judged / elapsed, 1) if elapsed > 0 else 0.0,
+            "tokens_in": self.tokens_in,
+            "tokens_out": self.tokens_out,
+            "cost_usd": self.cost_usd(),
+        }
+
+
 class SourcerAgent:
     name = "SourcerAgent"
 
