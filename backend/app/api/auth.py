@@ -12,7 +12,8 @@ from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.models.auth import HiringManager, OTPCode
-from app.models.candidate import CandidateAccess, Interview, Candidate
+from app.models.candidate import CandidateAccess
+from app.services import db_service
 from app.services.auth import (
     verify_password,
     get_password_hash,
@@ -229,37 +230,21 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
     otp_record.used = True
     await db.commit()
 
-    # Fetch access record
-    access_result = await db.execute(
-        select(CandidateAccess).where(CandidateAccess.email == email)
-    )
-    access = access_result.scalars().first()
+    # Grant, interview and profile all from one manager, and the profile only if
+    # it really is this person's (see db_service.candidate_view).
+    access, interview, cand = await db_service.candidate_view(db, email)
     if not access:
         raise HTTPException(status_code=404, detail="Access record not found")
 
-    # Fetch candidate profile if linked
     candidate_data = None
-    if access.candidate_id:
-        cand_result = await db.execute(
-            select(Candidate).where(Candidate.id == access.candidate_id)
-        )
-        cand = cand_result.scalar_one_or_none()
-        if cand:
-            candidate_data = {
-                "name": cand.name,
-                "predicted_role": cand.predicted_role,
-                "experience_level": cand.experience_level,
-                "skills": cand.skills or [],
-                "summary": cand.summary,
-            }
-
-    # Fetch interview info
-    interview_result = await db.execute(
-        select(Interview)
-        .where(Interview.candidate_email == email)
-        .order_by(Interview.created_at.desc())
-    )
-    interview = interview_result.scalars().first()
+    if cand:
+        candidate_data = {
+            "name": cand.name,
+            "predicted_role": cand.predicted_role,
+            "experience_level": cand.experience_level,
+            "skills": cand.skills or [],
+            "summary": cand.summary,
+        }
 
     has_interview = interview is not None
     interview_completed = interview.status == "completed" if interview else False
