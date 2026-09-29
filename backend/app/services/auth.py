@@ -1,5 +1,6 @@
 """JWT Authentication — real token validation with bcrypt password hashing"""
 import hashlib
+import hmac
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -171,7 +172,9 @@ def verify_agent_token(x_agent_token: Optional[str]) -> None:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Agent shared secret not configured on server",
         )
-    if not x_agent_token or x_agent_token.strip() != expected:
+    # compare_digest takes the same time however many leading characters match,
+    # so response timing can't be used to guess the secret one character at a time.
+    if not x_agent_token or not hmac.compare_digest(x_agent_token.strip().encode(), expected.encode()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing X-Agent-Token",
