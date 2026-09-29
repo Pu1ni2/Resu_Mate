@@ -14,6 +14,8 @@ import InterviewRoom from './InterviewRoom';
 import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
+import { clearCandidateSession, getCandidateToken } from '../services/session';
+import { candidateAuthHeaders as withCandidateToken } from '../services/authFetch';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -30,9 +32,10 @@ const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https:
 // OTP login. The server derives the candidate's identity from this token, so any
 // email in a request body is ignored — that is what stops one candidate reading
 // another's resume or report.
-function candidateAuthHeaders() {
-  const token = localStorage.getItem('resumate_candidate_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+function candidateAuthHeaders(extra = {}) {
+  // session.js reads storage safely; authFetch adds nothing when there is no
+  // token, never an empty "Bearer ".
+  return withCandidateToken(getCandidateToken(), extra);
 }
 
 // Advisor replies are built from the candidate's resume, so they are rendered
@@ -167,8 +170,9 @@ export default function CandidateDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('resumate_candidate');
-    localStorage.removeItem('resumate_interview_report');
+    // Token included: it used to survive logout, and outranked a manager's
+    // token on interview requests from the same browser.
+    clearCandidateSession();
     setCandidateSession(null);
     navigate('/candidate/login');
   };
@@ -181,10 +185,9 @@ export default function CandidateDashboard() {
     );
     if (!ok) return;
     try {
-      const token = localStorage.getItem('resumate_candidate_token') || '';
       const resp = await fetch(`${API_BASE}/api/chat/candidate/delete-my-data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: candidateAuthHeaders({ 'Content-Type': 'application/json' }),
       });
       if (!resp.ok) {
         toast('Could not delete your data. Please try again or contact the hiring team.', 'error');
