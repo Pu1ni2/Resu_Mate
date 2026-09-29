@@ -1035,14 +1035,16 @@ async def save_interview_result(
     db: AsyncSession = Depends(get_db),
     candidate_email: str = Depends(get_current_candidate),
 ):
-    """Save an interview result, posted by the candidate's browser after the session.
+    """Record the proctoring numbers the candidate's browser measured.
 
-    Requires the candidate's session token and writes to THAT email — the body
-    field is ignored. Previously this was fully unauthenticated, so anyone could
-    overwrite any candidate's interview report by guessing their address.
+    Requires the candidate's session token and writes to THAT email; the body
+    field is ignored. Only proctoring numbers are kept (db_service.save_proctoring):
+    this used to store the whole posted report, so a candidate could set their
+    own scores, and the avatar room's placeholder text could land after the
+    interviewer's real report and erase it.
     """
-    await db_service.save_interview_result(db, candidate_email, req.report)
-    return {"status": "saved"}
+    interview = await db_service.save_proctoring(db, candidate_email, req.report)
+    return {"status": "saved" if interview else "no interview"}
 
 
 @router.post("/candidate/delete-my-data")

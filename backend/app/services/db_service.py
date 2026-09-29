@@ -205,6 +205,67 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
         return None
 
 
+# What the candidate's own browser may record about their interview: the
+# proctoring it measured, nothing that judges them.
+PROCTORING_FIELDS = {
+    "violations": int, "eyeContact": float, "timer": int, "lookAwayCount": int, "terminated": bool,
+}
+TERMINATED_REPORT = (
+    "## Interview Terminated\n\n"
+    "Automatically terminated after exceeding the proctoring violation limit."
+)
+
+
+def _proctoring_numbers(data: dict) -> dict:
+    out = {}
+    for key, kind in PROCTORING_FIELDS.items():
+        if key not in data or data[key] is None:
+            continue
+        value = data[key]
+        try:
+            if kind is bool:
+                if not isinstance(value, bool):
+                    continue
+                out[key] = value
+            else:
+                out[key] = kind(value) if kind is float else int(value)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def save_proctoring(session: AsyncSession, email: str, data: dict) -> Optional[Interview]:
+    """Record the candidate browser's proctoring numbers on their latest interview.
+
+    Only PROCTORING_FIELDS are taken, and only the first time: the candidate's
+    own session must not be able to set its report or scores (it used to post a
+    whole report, including a placeholder that could overwrite the real one) or
+    lower its violation count later. A terminated interview is completed with a
+    server-written note if no report exists yet; otherwise the status is left to
+    the interviewer.
+    """
+    interview = await get_interview_by_email(session, email)
+    if not interview:
+        return None
+    numbers = _proctoring_numbers(data or {})
+    if not numbers or "violations" in report_dict(interview.report):
+        return interview
+    merged = merge_interview_report(interview, numbers)
+    if numbers.get("terminated") and interview.status != "completed":
+        if not merged.get("report"):
+            merge_interview_report(interview, {"report": TERMINATED_REPORT})
+        interview.status = "completed"
+        interview.completed_at = datetime.utcnow()
+    try:
+        await session.commit()
+        await session.refresh(interview)
+        return interview
+    except Exception as e:
+        await session.rollback()
+        print(f"[WARN] DB save_proctoring error: {e}")
+        return None
+
+
 async def get_all_completed_interviews(session: AsyncSession, manager_id: int = None) -> list:
     """Get completed interviews for a hiring manager's dashboard, scoped to them."""
     # selectinload the candidate so the name is available without an N+1 --
