@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?logo=openai&logoColor=white" />
@@ -185,7 +185,7 @@ Describe who you want in plain words — *"Backend engineer in Boston, strong Py
 | Layer | Technology |
 |-------|-----------|
 | **Frontend** | React 18, Vite, React Router, Lucide Icons |
-| **Backend** | FastAPI, Python 3.13, Uvicorn |
+| **Backend** | FastAPI, Python 3.12, Uvicorn |
 | **AI/LLM** | OpenAI GPT-4o, text-embedding-3-small, Whisper, TTS, Realtime API |
 | **Vector DB** | ChromaDB with LangChain integration |
 | **Interview** | LiveKit Cloud (WebRTC), Simli (avatar), OpenAI Realtime (voice) |
