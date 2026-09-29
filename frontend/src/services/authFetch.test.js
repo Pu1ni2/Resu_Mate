@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { authHeaders, authFetch, candidateAuthHeaders, interviewAuthHeaders } from './authFetch';
-import { getToken, clearSession, handleUnauthorized, TOKEN_KEY } from './session';
+import { getToken, clearSession, clearCandidateSession, handleUnauthorized, TOKEN_KEY } from './session';
 
 /* The shipped defect: 21 fetch call sites read the token as
  *   localStorage.getItem('resumate_hm_token') || 'demo-token'
@@ -193,5 +193,30 @@ describe('candidateAuthHeaders', () => {
 
   it('omits the header when the candidate has no token', () => {
     expect('Authorization' in candidateAuthHeaders(null)).toBe(false);
+  });
+});
+
+describe('clearCandidateSession', () => {
+  const CANDIDATE_KEYS = ['resumate_candidate_token', 'resumate_candidate', 'resumate_interview_report'];
+  const MANAGER_KEYS = ['resumate_hm_token', 'resumate_hm_refresh', 'resumate_hm_user', 'resumate_candidates'];
+
+  it('signs the candidate out, token included', () => {
+    for (const k of CANDIDATE_KEYS) localStorage.setItem(k, 'x');
+    clearCandidateSession();
+    for (const k of CANDIDATE_KEYS) expect(localStorage.getItem(k)).toBeNull();
+  });
+
+  it('leaves a manager signed in on the same browser alone', () => {
+    for (const k of [...CANDIDATE_KEYS, ...MANAGER_KEYS]) localStorage.setItem(k, 'x');
+    clearCandidateSession();
+    for (const k of MANAGER_KEYS) expect(localStorage.getItem(k)).toBe('x');
+    expect(getToken()).toBe('x');
+  });
+
+  it('after it, interview requests carry the manager token, not a stale candidate one', () => {
+    localStorage.setItem('resumate_hm_token', 'manager-jwt');
+    localStorage.setItem('resumate_candidate_token', 'old-candidate-jwt');
+    clearCandidateSession();
+    expect(interviewAuthHeaders().Authorization).toBe('Bearer manager-jwt');
   });
 });
