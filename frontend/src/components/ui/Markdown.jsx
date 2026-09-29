@@ -23,8 +23,17 @@ DOMPurify.addHook('afterSanitizeAttributes', node => {
   }
 });
 
+// DOMPurify's defaults still allow <style> blocks, forms and inline styles.
+// Markdown needs none of them, and in untrusted text they restyle or hide the
+// page, overlay it (position: fixed), or plant a form asking for a password.
+const OPTIONS = {
+  ADD_ATTR: ['target'],
+  FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'option'],
+  FORBID_ATTR: ['style'],
+};
+
 export function renderMarkdown(text) {
-  return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['target'] });
+  return DOMPurify.sanitize(marked.parse(text), OPTIONS);
 }
 
 export default function Markdown({ text, className = 'md', style }) {
