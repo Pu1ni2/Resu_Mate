@@ -17,8 +17,28 @@ from langchain_core.messages import HumanMessage
 from langchain_core.documents import Document
 
 from app.core.config import settings
+from app.tools.pdf_tool import pdf_tool
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def primary_email(candidate: Dict) -> str:
+    """The resume's own contact address, lowercased, or "" if it has none.
+
+    In order: the stored Candidate.email, the PDF's mailto: link, then the FIRST
+    address in the text, since a resume's contact line comes before any
+    reference or employer address it mentions. Candidate-facing access matches
+    on this, exactly: "the address appears somewhere in the text" let
+    hn@x.com unlock john@x.com's resume, and a reference unlock the candidate's.
+    """
+    for value in (
+        candidate.get("email"),
+        (candidate.get("embedded_links") or {}).get("email"),
+        pdf_tool.extract_contact_from_text(candidate.get("text") or candidate.get("raw_text") or "").get("email"),
+    ):
+        if value and str(value).strip():
+            return str(value).strip().lower()
+    return ""
 
 
 class ResumeRAGService:
@@ -471,6 +491,20 @@ BADGES (pick 2-3):
         for drawer in self.candidates.values():
             for cand in drawer.values():
                 yield cand
+
+    def candidates_with_email(self, email: str) -> List[Dict]:
+        """Every candidate, across all managers, whose OWN address is `email`.
+
+        For candidate-facing lookups, where the candidate is the data subject
+        and so may reach their resume wherever it was uploaded. "Own" means
+        primary_email(): an address merely mentioned in a resume (a reference, a
+        former manager) or one that merely contains `email` as a substring never
+        matches.
+        """
+        wanted = (email or "").strip().lower()
+        if not wanted:
+            return []
+        return [c for c in self.iter_all_candidates() if primary_email(c) == wanted]
 
     def get_candidate(self, candidate_id: int, manager_id=None) -> Optional[Dict]:
         """Return a candidate only if it belongs to this manager."""
