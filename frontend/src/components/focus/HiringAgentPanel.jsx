@@ -1,5 +1,5 @@
 import React from 'react';
-import { marked } from 'marked';
+import Markdown from '../ui/Markdown';
 import {
   UserCheck, FileText, Target, Briefcase, Award,
   ChevronRight, Loader, AlertCircle, MessageSquare
@@ -108,7 +108,7 @@ export default function HiringAgentPanel({
             <div className="agent-error glass-card"><AlertCircle size={24} /><p>{agentResult.error}</p></div>
           ) : (
             <>
-              <div className="agent-report"><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(agentResult.report || '') }} /></div>
+              <div className="agent-report"><Markdown text={agentResult.report} /></div>
               <div className="agent-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button className="btn btn-ghost btn-sm" onClick={onReset}>← Start Over</button>
                 <button className="btn btn-secondary btn-sm" onClick={onSwitchToChat}><MessageSquare size={14} /> Discuss</button>
