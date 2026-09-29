@@ -217,8 +217,13 @@ async def get_all_completed_interviews(session: AsyncSession, manager_id: int = 
 async def create_candidate_access(session: AsyncSession, email: str, name: str, candidate_id: int = None, manager_id: int = None) -> Optional[CandidateAccess]:
     """Grant portal access to a candidate email, owned by a manager."""
     email = email.strip().lower()
-    # Check if this manager already granted access to this email.
-    existing = await get_candidate_access(session, email, manager_id=manager_id)
+    # Check if THIS manager already granted access to this email. With no
+    # manager the check must be "no manager" too: get_candidate_access treats
+    # None as "any manager", which returned another tenant's grant as "existing".
+    owner = (CandidateAccess.manager_id == manager_id) if manager_id is not None else CandidateAccess.manager_id.is_(None)
+    existing = (await session.execute(
+        select(CandidateAccess).where(CandidateAccess.email == email, owner)
+    )).scalars().first()
     if existing:
         return existing
     try:
@@ -241,12 +246,18 @@ async def create_candidate_access(session: AsyncSession, email: str, name: str, 
 async def get_candidate_access(session: AsyncSession, email: str, manager_id: int = None) -> Optional[CandidateAccess]:
     """Check if a candidate email has portal access.
 
-    Candidate portal calls this email-only (returns any manager's grant — the
-    candidate authenticates by email/OTP, not by manager). Manager-facing calls
+    Candidate portal calls this email-only (the candidate authenticates by
+    email/OTP, not by manager), and gets the newest grant. Manager-facing calls
     pass manager_id to scope to their own grants.
+
+    Grants are unique per (email, manager), so one person invited by two
+    companies has two rows. This used scalar_one_or_none(), which raised
+    MultipleResultsFound for them and turned verify-email and the candidate
+    portal into 500s.
     """
     stmt = select(CandidateAccess).where(CandidateAccess.email == email.strip().lower())
     if manager_id is not None:
         stmt = stmt.where(CandidateAccess.manager_id == manager_id)
+    stmt = stmt.order_by(CandidateAccess.granted_at.desc(), CandidateAccess.id.desc())
     result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return result.scalars().first()
