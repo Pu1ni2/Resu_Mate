@@ -178,6 +178,11 @@ class _RunState:
 _run_state: ContextVar = ContextVar("agent_run_state", default=None)
 
 
+# Exceptions that mean the code is wrong, not that the world was briefly
+# unavailable. A step raising one of these fails at once instead of retrying.
+_CODING_ERRORS = (NameError, AttributeError, TypeError, KeyError, IndexError, ImportError)
+
+
 # ═══════ BASE AGENT ═══════
 
 class BaseAgent:
@@ -345,6 +350,14 @@ class BaseAgent:
             except asyncio.TimeoutError:
                 last_err = f"Timeout ({self.step_timeout}s)"
                 self.log(f"step_{idx}_timeout", f"Timeout: {step.action}", "warning")
+            except _CODING_ERRORS as e:
+                # A bug fails the same way on every try, so retrying only adds the
+                # backoff sleeps (about 4s) and hides the traceback. This is how an
+                # undefined name in hr_agent's prompt went unnoticed.
+                last_err = f"{type(e).__name__}: {e}"[:150]
+                self.log(f"step_{idx}_bug", f"Error (not retried): {last_err}", "error")
+                traceback.print_exc()
+                break
             except Exception as e:
                 last_err = str(e)[:150]
                 self.log(f"step_{idx}_err", f"Error: {last_err}", "error")
@@ -353,7 +366,8 @@ class BaseAgent:
         step.error = last_err or "Unknown"
         step.duration = time.time() - step_start
         self.metrics.steps_failed += 1
-        self.log(f"step_{idx}_failed", f"'{step.action}' failed after {self.max_step_retries} attempts", "error")
+        tries = attempt + 1
+        self.log(f"step_{idx}_failed", f"'{step.action}' failed after {tries} attempt{'s' if tries > 1 else ''}", "error")
         return None
 
     # ═══════ OVERRIDE IN SUBCLASSES ═══════
