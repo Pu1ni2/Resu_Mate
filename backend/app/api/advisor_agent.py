@@ -222,16 +222,16 @@ async def advisor_chat(
     resume_text = cached.get("text", "No resume uploaded yet.")
     candidate_name = cached.get("name", email.split("@")[0].title())
 
-    # Fallback: try hiring manager resume store
+    # Fallback: the candidate's own resume in the hiring manager store. Only a
+    # resume whose OWN address is exactly theirs: matching `email in text` put
+    # another person's resume into this prompt for a look-alike address.
     if not resume_text or resume_text == "No resume uploaded yet.":
         try:
             from app.api.chat import resume_rag
-            for c in resume_rag.iter_all_candidates():
-                c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
-                if email in c_text:
-                    resume_text = c.get('text', '') or c.get('raw_text', '')[:8000]
-                    candidate_name = c.get('name', candidate_name)
-                    break
+            for c in resume_rag.candidates_with_email(email):
+                resume_text = c.get('text', '') or c.get('raw_text', '')[:8000]
+                candidate_name = c.get('name', candidate_name)
+                break
         except Exception:
             pass
 
@@ -343,10 +343,8 @@ async def get_candidate_context(
     # the data subject and is authenticated as themselves.
     try:
         from app.api.chat import resume_rag
-        for c in resume_rag.iter_all_candidates():
-            c_text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
-            if email in c_text:
-                return {"found": True, "name": c.get('name', ''), "role": c.get('predicted_role', ''), "skills": c.get('skills', [])}
+        for c in resume_rag.candidates_with_email(email):
+            return {"found": True, "name": c.get('name', ''), "role": c.get('predicted_role', ''), "skills": c.get('skills', [])}
     except Exception:
         pass
 
