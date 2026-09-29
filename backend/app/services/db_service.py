@@ -261,3 +261,49 @@ async def get_candidate_access(session: AsyncSession, email: str, manager_id: in
     stmt = stmt.order_by(CandidateAccess.granted_at.desc(), CandidateAccess.id.desc())
     result = await session.execute(stmt)
     return result.scalars().first()
+
+
+def _is_this_candidate(row: Candidate, email: str, access: CandidateAccess) -> bool:
+    """Is this Candidate row really the person holding this grant?
+
+    Their resume's own address is the email they signed in with, or, when the
+    manager invited them at a different address, the grant was made out to the
+    row's name. Anything else is a different person reached by a wrong id.
+    """
+    from app.services.resume_rag import primary_email  # lazy: resume_rag starts Chroma on import
+    own = primary_email({
+        "email": row.email, "embedded_links": row.embedded_links or {},
+        "text": row.full_text or row.raw_text or "",
+    })
+    if own and own == email:
+        return True
+    return bool(access.name and row.name and access.name.strip().lower() == row.name.strip().lower())
+
+
+async def candidate_view(session: AsyncSession, email: str):
+    """What the candidate portal shows one person: (access, interview, candidate).
+
+    A person can be invited by several managers. Everything shown must come from
+    one of them: the newest interview, the grant of THAT interview's manager
+    (else the newest grant), and the profile only if it is the same manager's
+    Candidate row and really this person (_is_this_candidate). The profile used
+    to be loaded by bare id with no owner check, so a wrong or stale
+    candidate_id showed someone else's profile.
+    """
+    email = (email or "").strip().lower()
+    interview = await get_interview_by_email(session, email)
+    access = None
+    if interview is not None and interview.manager_id is not None:
+        access = await get_candidate_access(session, email, manager_id=interview.manager_id)
+    if access is None:
+        access = await get_candidate_access(session, email)
+
+    candidate = None
+    if access is not None and access.candidate_id:
+        owner = (Candidate.manager_id == access.manager_id) if access.manager_id is not None else Candidate.manager_id.is_(None)
+        row = (await session.execute(
+            select(Candidate).where(Candidate.id == access.candidate_id, owner)
+        )).scalar_one_or_none()
+        if row is not None and _is_this_candidate(row, email, access):
+            candidate = row
+    return access, interview, candidate
