@@ -1,5 +1,5 @@
 import React from 'react';
-import { marked } from 'marked';
+import Markdown from '../ui/Markdown';
 import {
   Send, Volume2, Mic, MicOff, Square, Bot, Users, Loader
 } from 'lucide-react';
@@ -25,7 +25,7 @@ export default function ChatPanel({
           <div key={i} className={`chat-message ${m.role}`}>
             {m.role === 'assistant' && <AIAvatar />}
             <div className={`chat-bubble ${m.role}`}>
-              {m.role === 'user' ? <p>{m.content}</p> : <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(m.content) }} />}
+              {m.role === 'user' ? <p>{m.content}</p> : <Markdown text={m.content} />}
             </div>
             {m.role === 'user' && <div className="avatar-sm" style={{ background: 'var(--bg3)' }}><Users size={16} /></div>}
             {m.role === 'assistant' && (
