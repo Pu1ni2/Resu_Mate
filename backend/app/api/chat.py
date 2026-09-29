@@ -1105,11 +1105,25 @@ async def candidate_delete_my_data(
         except Exception as exc:
             print(f"[WARN] object-store delete failed: {exc}")
 
-    # Delete DB rows: interviews, access grants, candidates (by email).
+    # Delete DB rows: interviews, access grants, candidates (by email), and
+    # everything else held under this address: the career advisor's session
+    # (their uploaded resume and chats), sign-in codes, and anything a sourcing
+    # run kept about them. Erasure that leaves those behind is not erasure.
+    from app.models.auth import OTPCode
+    from app.models.sourcing import SourcedProfile
+    from app.models.state import AdvisorSession
     await db.execute(sql_delete(Interview).where(Interview.candidate_email == email))
     await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email == email))
     await db.execute(sql_delete(Candidate).where(Candidate.email == email))
+    await db.execute(sql_delete(AdvisorSession).where(AdvisorSession.email == email))
+    await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
+    await db.execute(sql_delete(SourcedProfile).where(SourcedProfile.email == email))
     await db.commit()
+    try:
+        from app.api.advisor_agent import _session_cache
+        _session_cache.pop(email, None)
+    except Exception as exc:
+        print(f"[WARN] advisor cache clear failed: {exc}")
 
     await db_service.log_event(
         db, action="candidate.delete", actor="candidate", target_email=email,
