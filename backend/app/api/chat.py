@@ -16,7 +16,7 @@ import io
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.auth import get_current_user, get_current_candidate, decode_token
+from app.services.auth import get_current_user, get_current_candidate, decode_token, verify_agent_token
 from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
@@ -769,11 +769,7 @@ async def save_transcript(
     be configured in both backend and worker env. Without it, anyone could overwrite
     interview transcripts by guessing an email.
     """
-    expected = (settings.agent_shared_secret or "").strip()
-    if not expected:
-        raise HTTPException(status_code=503, detail="Agent shared secret not configured on server")
-    if not x_agent_token or x_agent_token.strip() != expected:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-Agent-Token")
+    verify_agent_token(x_agent_token)
 
     from sqlalchemy import select
     from app.models.candidate import Interview
