@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { marked } from 'marked';
+import Markdown from './ui/Markdown';
 import {
   Upload, BarChart2, MessageSquare, Video, Send, Bot,
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
@@ -35,14 +35,9 @@ function candidateAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function SafeMarkdown({ text }) {
-  if (!text || typeof text !== 'string') return null;
-  try {
-    return <div className="md" style={{ lineHeight: '1.7', color: 'var(--text2)' }} dangerouslySetInnerHTML={{ __html: marked.parse(text) }} />;
-  } catch (_) {
-    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: '13px', color: 'var(--text2)' }}>{text}</pre>;
-  }
-}
+// Advisor replies are built from the candidate's resume, so they are rendered
+// through the sanitising Markdown component.
+const ADVISOR_TEXT = { lineHeight: '1.7', color: 'var(--text2)' };
 
 export default function CandidateDashboard() {
   const navigate = useNavigate();
@@ -569,7 +564,7 @@ export default function CandidateDashboard() {
                     <div key={i} className={`cd-chat-msg ${m.role}`}>
                       {m.role === 'assistant' && <div className="cd-msg-avatar"><Bot size={16} /></div>}
                       <div className={`cd-msg-bubble ${m.role}`}>
-                        {m.role === 'user' ? <p>{m.content}</p> : <SafeMarkdown text={m.content} />}
+                        {m.role === 'user' ? <p>{m.content}</p> : <Markdown text={m.content} style={ADVISOR_TEXT} />}
                       </div>
                     </div>
                   ))}
