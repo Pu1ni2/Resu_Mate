@@ -70,6 +70,25 @@ export function clearSession() {
   }
 }
 
+// The rest of the candidate portal's session, next to its token.
+const CANDIDATE_SESSION_KEY = 'resumate_candidate';
+const CANDIDATE_REPORT_KEY = 'resumate_interview_report';
+
+/* Sign the candidate out: their token, their cached session and their saved
+ * report. The manager's keys are left alone, since the two are separate
+ * identities that can share a browser. Logout used to remove only the cached
+ * session and keep the token, which then outranked a manager's token on
+ * interview requests (interviewAuthHeaders prefers the candidate's). */
+export function clearCandidateSession() {
+  for (const key of [CANDIDATE_TOKEN_KEY, CANDIDATE_SESSION_KEY, CANDIDATE_REPORT_KEY]) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Nothing useful to do; carry on and clear the rest.
+    }
+  }
+}
+
 /* True for requests where a 401 is the expected answer and must not log the
  * user out — signing in with a wrong password is a 401, and treating it as an
  * expiry would fire a redirect from the page they are already on. */
