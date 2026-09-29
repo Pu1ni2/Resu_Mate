@@ -15,7 +15,15 @@ def _candidate_headers(email):
 
 
 def _grant_access(client, manager_token, email, name="Cand"):
-    """Manager creates an interview, which grants the candidate portal access."""
+    """Manager creates an interview, which grants the candidate portal access.
+
+    The candidate must be one of the manager's own, so it is seeded first.
+    """
+    from app.services.resume_rag import resume_rag
+    manager_id = client.get("/api/auth/me", headers=auth_headers(manager_token)).json()["id"]
+    resume_rag.candidates.setdefault(manager_id, {})[1] = {
+        "id": 1, "manager_id": manager_id, "name": name, "email": email, "text": "resume", "is_resume": True,
+    }
     r = client.post(
         "/api/chat/create-interview",
         headers=auth_headers(manager_token),

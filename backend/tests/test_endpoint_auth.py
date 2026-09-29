@@ -16,6 +16,15 @@ def _cand(email):
     return {"Authorization": f"Bearer {create_candidate_token(email)}"}
 
 
+def _own_candidate(client, manager_token, candidate_id=1):
+    """Seed a candidate the manager owns: create-interview only takes their own."""
+    from app.services.resume_rag import resume_rag
+    manager_id = client.get("/api/auth/me", headers=auth_headers(manager_token)).json()["id"]
+    resume_rag.candidates.setdefault(manager_id, {})[candidate_id] = {
+        "id": candidate_id, "manager_id": manager_id, "name": "Cand", "text": "resume", "is_resume": True,
+    }
+
+
 # ── LiveKit router ────────────────────────────────────────────────────────────
 
 def test_create_room_requires_auth(client):
@@ -63,6 +72,7 @@ def test_livekit_status_requires_auth(client):
 def test_candidate_cannot_create_room_for_another_candidate(client):
     """Body email is ignored; a candidate token only ever acts on its own email."""
     tok, _ = register(client, "mgr-lk@co.com")
+    _own_candidate(client, tok)
     client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
         "candidate_id": 1, "candidate_email": "victim@x.com",
         "candidate_name": "Victim", "role": "Dev", "level": "Mid-Level",
@@ -154,6 +164,7 @@ def test_manager_cannot_checkpoint_another_tenants_interview(client):
     owner, _ = register(client, "owner-rt@co.com")
     other, _ = register(client, "other-rt@co.com")
 
+    _own_candidate(client, owner)
     client.post("/api/chat/create-interview", headers=auth_headers(owner), json={
         "candidate_id": 1, "candidate_email": "cand-rt@x.com", "candidate_name": "Cand",
         "role": "Dev", "level": "Mid-Level", "num_questions": 5, "mode": "conversational",
@@ -172,6 +183,7 @@ def test_manager_cannot_checkpoint_another_tenants_interview(client):
 
 def test_candidate_cannot_checkpoint_someone_elses_interview(client):
     tok, _ = register(client, "owner-rt2@co.com")
+    _own_candidate(client, tok)
     client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
         "candidate_id": 1, "candidate_email": "victim-rt@x.com", "candidate_name": "Victim",
         "role": "Dev", "level": "Mid-Level", "num_questions": 5, "mode": "conversational",

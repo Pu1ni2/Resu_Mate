@@ -854,6 +854,14 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
     email = req.candidate_email.strip().lower()
     mgr = user.id
 
+    # Only for this manager's own candidate. The id comes from the request body,
+    # and was stored on the grant and the interview unchecked, so a manager
+    # could link an address they control to another tenant's candidate and
+    # read that profile through the candidate portal.
+    candidate = resume_rag.get_candidate(req.candidate_id, manager_id=mgr)
+    if not candidate:
+        raise HTTPException(404, "Candidate not found")
+
     # Grant portal access (owned by this manager)
     await db_service.create_candidate_access(db, email, req.candidate_name or "", req.candidate_id, manager_id=mgr)
 
@@ -872,13 +880,11 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
 
     # Generate resume intelligence for smart interview questions
     resume_intel = None
-    candidate = resume_rag.get_candidate(req.candidate_id, manager_id=mgr)
-    if candidate:
-        try:
-            resume_intel = await technical_agent.analyze_resume_gaps(candidate)
-            print(f"[OK] Resume intelligence generated: {len(resume_intel.get('verification_targets', []))} targets")
-        except Exception as e:
-            print(f"[WARN] Resume intel failed: {e}")
+    try:
+        resume_intel = await technical_agent.analyze_resume_gaps(candidate)
+        print(f"[OK] Resume intelligence generated: {len(resume_intel.get('verification_targets', []))} targets")
+    except Exception as e:
+        print(f"[WARN] Resume intel failed: {e}")
 
     config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",
