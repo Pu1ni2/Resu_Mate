@@ -1,6 +1,5 @@
 """Auth API — register, login, refresh, OTP for candidates"""
-import random
-import string
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -139,7 +138,9 @@ async def get_me(current_user: HiringManager = Depends(get_current_user)):
 # ── Candidate OTP Auth ────────────────────────────────────────────────────────
 
 def _generate_otp() -> str:
-    return "".join(random.choices(string.digits, k=6))
+    # secrets, not random: random's Mersenne Twister can be predicted from its
+    # past output, and these codes are what stands between a guess and a login.
+    return f"{secrets.randbelow(10**6):06d}"
 
 
 @router.post("/candidate/send-otp")
