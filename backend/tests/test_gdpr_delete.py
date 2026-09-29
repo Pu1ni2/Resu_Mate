@@ -66,3 +66,51 @@ def test_candidate_can_erase_own_data(client):
     # Postcondition: candidate, interview, and access rows are all gone.
     c2, i2, a2 = asyncio.get_event_loop().run_until_complete(_counts(email))
     assert (c2, i2, a2) == (0, 0, 0), (c2, i2, a2)
+
+
+async def _seed_everything_else(manager_id, email):
+    """The rest of what is held under an address: advisor session, a sign-in
+    code, and a sourcing run's profile of them."""
+    from datetime import datetime, timedelta
+    from app.core import database
+    from app.models.auth import OTPCode
+    from app.models.sourcing import SourcingRun, SourcedProfile
+    from app.models.state import AdvisorSession
+    async with database.async_session() as db:
+        db.add(AdvisorSession(email=email, resume_text="my resume", chat_history={"resume_coach": []}))
+        db.add(OTPCode(email=email, code="hash", expires_at=datetime.utcnow() + timedelta(minutes=10)))
+        run = SourcingRun(manager_id=manager_id, description="search")
+        db.add(run)
+        await db.flush()
+        db.add(SourcedProfile(run_id=run.id, manager_id=manager_id, source="upload", external_id="1",
+                              name="Dana", email=email))
+        await db.commit()
+
+
+async def _counts_everything_else(email):
+    from sqlalchemy import func, select
+    from app.core import database
+    from app.models.auth import OTPCode
+    from app.models.sourcing import SourcedProfile
+    from app.models.state import AdvisorSession
+    async with database.async_session() as db:
+        out = []
+        for model in (AdvisorSession, OTPCode, SourcedProfile):
+            out.append((await db.execute(select(func.count()).select_from(model).where(model.email == email))).scalar())
+        return tuple(out)
+
+
+def test_erasure_also_removes_advisor_sessions_codes_and_sourced_profiles(client):
+    from app.api.advisor_agent import _session_cache
+    _tok, user = register(client, "mgr3-gdpr@co.com")
+    email = "erin@x.com"
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_seed(user["id"], email))
+    loop.run_until_complete(_seed_everything_else(user["id"], email))
+    _session_cache[email] = {"text": "cached resume"}
+    assert loop.run_until_complete(_counts_everything_else(email)) == (1, 1, 1)
+
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers(email))
+    assert r.status_code == 200, r.text
+    assert loop.run_until_complete(_counts_everything_else(email)) == (0, 0, 0)
+    assert email not in _session_cache
