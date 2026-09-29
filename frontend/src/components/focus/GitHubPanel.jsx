@@ -1,5 +1,5 @@
 import React from 'react';
-import { marked } from 'marked';
+import Markdown from '../ui/Markdown';
 import { Github, Search, Loader, AlertCircle, ExternalLink, Brain } from 'lucide-react';
 
 export default function GitHubPanel({
@@ -53,7 +53,7 @@ export default function GitHubPanel({
           </div>
 
           {ghProfile.ai_analysis && (
-            <div className="tool-ai-analysis glass-card"><Brain size={16} /><div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(ghProfile.ai_analysis) }} /></div>
+            <div className="tool-ai-analysis glass-card"><Brain size={16} /><Markdown text={ghProfile.ai_analysis} /></div>
           )}
 
           {Object.keys(ghProfile.languages || {}).length > 0 && (
