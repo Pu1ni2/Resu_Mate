@@ -171,32 +171,29 @@ def merge_interview_report(interview: Interview, updates: dict) -> dict:
     return merged
 
 
-async def save_interview_result(session: AsyncSession, email: str, report_data: dict) -> Optional[Interview]:
-    """Save interview result and mark as completed."""
-    import json
+async def save_interview_result(session: AsyncSession, email: str, report_data: dict,
+                                manager_id: int = None) -> Optional[Interview]:
+    """Save a scored interview result and mark the interview completed.
+
+    Scoped to `manager_id` when given, so one tenant can't write another's
+    interview for the same address. Returns None when there is no such
+    interview; it used to invent one with candidate_id=0, an orphan row that
+    breaks the foreign key on Postgres. The report is merged, so proctoring
+    numbers saved earlier survive.
+    """
     email = email.strip().lower()
-    interview = await get_interview_by_email(session, email)
+    interview = await get_interview_by_email(session, email, manager_id=manager_id)
     if not interview:
-        # Create a minimal record if one doesn't exist
-        interview = Interview(
-            candidate_id=0,
-            candidate_email=email,
-            status="completed",
-            report=json.dumps(report_data),
-            completed_at=datetime.utcnow(),
-            transcript=report_data.get("transcript"),
-        )
-        session.add(interview)
-    else:
-        interview.status = "completed"
-        interview.report = json.dumps(report_data)
-        interview.completed_at = datetime.utcnow()
-        if report_data.get("scores"):
-            interview.scores = report_data["scores"]
-        if report_data.get("timer"):
-            interview.duration = report_data["timer"]
-        if report_data.get("transcript") is not None:
-            interview.transcript = report_data["transcript"]
+        return None
+    merge_interview_report(interview, report_data)
+    interview.status = "completed"
+    interview.completed_at = datetime.utcnow()
+    if report_data.get("scores"):
+        interview.scores = report_data["scores"]
+    if report_data.get("timer"):
+        interview.duration = report_data["timer"]
+    if report_data.get("transcript") is not None:
+        interview.transcript = report_data["transcript"]
 
     try:
         await session.commit()

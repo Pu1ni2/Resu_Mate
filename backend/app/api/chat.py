@@ -744,6 +744,11 @@ async def score_answer(req: ScoreAnswerRequest, user=Depends(get_current_user)):
 
 @router.post("/interview-report")
 async def interview_report(req: InterviewReportRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # This manager's interview for that address, or nothing: the save used to
+    # look up by email alone, so any manager could overwrite another tenant's
+    # report. Checked before generating, so no report is written for a stranger.
+    if not await db_service.get_interview_by_email(db, req.candidate_email, manager_id=user.id):
+        raise HTTPException(404, "Interview not found")
     report = await technical_agent.generate_report(
         req.candidate_name, req.candidate_email, req.role,
         req.questions, req.answers, req.scores, req.duration
@@ -752,7 +757,7 @@ async def interview_report(req: InterviewReportRequest, user=Depends(get_current
     await db_service.save_interview_result(db, req.candidate_email, {
         "report": report, "scores": req.scores, "timer": req.duration,
         "transcript": req.transcript,
-    })
+    }, manager_id=user.id)
     return {"report": report}
 
 
