@@ -19,14 +19,11 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "simli-client": "^3.0.1",
-    "standardized-audio-context": "^25.3.77",
     "three": "^0.185.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^14.2.0",
     "@vitejs/plugin-react": "^4.2.0",
     "eslint": "^10.8.1",
