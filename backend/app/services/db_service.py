@@ -1,4 +1,5 @@
 """Database CRUD operations for candidates, interviews, and access control."""
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy import select, update
@@ -136,6 +137,38 @@ async def update_interview_status(
         await session.rollback()
         print(f"[WARN] DB update_interview error: {e}")
         return None
+
+
+def report_dict(raw) -> dict:
+    """An interview's stored report as a dict, however it was written.
+
+    The column holds either JSON (the scoring path) or plain markdown (the agent's
+    and the Realtime room's quick report). Readers already treat markdown as
+    {"report": text}; this is that rule in one place.
+    """
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return dict(raw)
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return {"report": raw}
+    return parsed if isinstance(parsed, dict) else {"report": raw}
+
+
+def merge_interview_report(interview: Interview, updates: dict) -> dict:
+    """Add `updates` to an interview's stored report, keeping everything else.
+
+    Three writers touch one column: the candidate's browser (proctoring
+    numbers), the interview worker (its report) and the manager's scoring
+    path. Each used to replace the whole value, so whichever wrote last wiped
+    what the others had saved.
+    """
+    merged = report_dict(interview.report)
+    merged.update(updates)
+    interview.report = json.dumps(merged)
+    return merged
 
 
 async def save_interview_result(session: AsyncSession, email: str, report_data: dict) -> Optional[Interview]:
