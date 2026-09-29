@@ -27,6 +27,7 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.candidate import CandidateAccess, Interview
+from app.services import db_service
 from app.services.auth import Actor, get_current_actor
 
 logger = logging.getLogger("resumate.realtime")
@@ -149,6 +150,17 @@ async def _authorized_interview(db: AsyncSession, actor: Actor, interview_id: in
 
     return interview
 
+
+def _refuse_if_completed(interview: Interview) -> None:
+    """A finished interview stays finished.
+
+    /session and /checkpoint both set status back to "in_progress" with no
+    check, so the candidate could reopen a completed interview, overwrite its
+    transcript and finalise again to get a fresh report.
+    """
+    if interview.status == "completed":
+        raise HTTPException(status_code=409, detail="This interview is already complete.")
+
 @router.post("/session", response_model=RealtimeSessionResponse)
 @limiter.limit("20/hour")
 async def create_realtime_session(
@@ -179,6 +191,7 @@ async def create_realtime_session(
     # the candidate path this endpoint exists for could not authenticate at all.
     # It now takes either, and the ownership check lives in one place.
     interview = await _authorized_interview(db, actor, req.interview_id)
+    _refuse_if_completed(interview)
     email = (interview.candidate_email or "").strip().lower()
 
     # Resolve the candidate's display name (falls back to access table or email local part).
@@ -289,6 +302,7 @@ async def checkpoint(
 ):
     """Save a rolling transcript every N user turns. Idempotent — overwrites."""
     interview = await _authorized_interview(db, actor, req.interview_id)
+    _refuse_if_completed(interview)
     interview.transcript = req.transcript
     interview.status = "in_progress"
     await db.commit()
@@ -319,6 +333,16 @@ async def finalize(
 
     interview = await _authorized_interview(db, actor, req.interview_id)
 
+    # Finalising twice (a retry after a dropped response) returns what was
+    # saved. It must not regenerate the report from a transcript sent again.
+    if interview.status == "completed":
+        return {
+            "saved": False,
+            "already_completed": True,
+            "turns": len(interview.transcript or []),
+            "report_generated": bool(interview.report),
+        }
+
     interview.transcript = req.transcript
     interview.duration = req.duration
 
@@ -341,7 +365,7 @@ async def finalize(
             system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
         )
         if report:
-            interview.report = report
+            db_service.merge_interview_report(interview, {"report": report})
     except Exception as exc:
         logger.warning("finalize: report generation failed: %s", exc)
 
