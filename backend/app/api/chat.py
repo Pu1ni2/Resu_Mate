@@ -942,11 +942,12 @@ async def candidate_me(
     Identity comes from the candidate's own session token, so a candidate can
     only ever read their own profile and pending interview.
     """
-    access = await db_service.get_candidate_access(db, candidate_email)
+    # The grant and the interview from the same manager, for someone invited
+    # by more than one.
+    access, interview, _ = await db_service.candidate_view(db, candidate_email)
     if not access:
         raise HTTPException(404, "No access found for this email")
 
-    interview = await db_service.get_interview_by_email(db, candidate_email)
     has_iv = interview is not None
     completed = has_iv and interview.status == "completed"
 
