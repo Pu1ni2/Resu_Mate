@@ -129,6 +129,9 @@ class VerifyEmailRequest(BaseModel):
 
 class SaveTranscriptRequest(BaseModel):
     candidate_email: str = Field(..., max_length=320)
+    # The LiveKit room the interview ran in, which identifies the exact
+    # interview. Optional so workers deployed before it keep working.
+    room_name: Optional[str] = Field(default=None, max_length=200)
     candidate_name: str = Field(default="Candidate", max_length=200)
     role: str = Field(default="General", max_length=200)
     questions: list = Field(default_factory=list, max_length=50)
@@ -778,12 +781,19 @@ async def save_transcript(
 
     from sqlalchemy import select
     from app.models.candidate import Interview
-    result = await db.execute(
-        select(Interview)
-        .where(Interview.candidate_email == req.candidate_email.strip().lower())
-        .order_by(Interview.created_at.desc())
-    )
-    interview = result.scalars().first()
+    email = req.candidate_email.strip().lower()
+    interview = None
+    if req.room_name:
+        # The room is this exact interview. "Latest interview for this email"
+        # is a guess, and a wrong one for anyone interviewed by two companies.
+        interview = (await db.execute(
+            select(Interview).where(Interview.room_name == req.room_name, Interview.candidate_email == email)
+        )).scalars().first()
+    if interview is None:
+        # Workers deployed before they sent room_name.
+        interview = (await db.execute(
+            select(Interview).where(Interview.candidate_email == email).order_by(Interview.created_at.desc())
+        )).scalars().first()
     if not (interview and req.transcript):
         return {"saved": False, "reason": "No interview record found or empty transcript"}
 
@@ -811,7 +821,8 @@ async def save_transcript(
             system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
         )
         if report_text:
-            interview.report = report_text
+            # Merged, so the proctoring numbers the candidate's browser saved stay.
+            db_service.merge_interview_report(interview, {"report": report_text})
             interview.status = "completed"
     except Exception as exc:
         # Don't fail the transcript save if report generation hiccups.
