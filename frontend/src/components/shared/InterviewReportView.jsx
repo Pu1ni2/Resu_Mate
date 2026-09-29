@@ -1,22 +1,13 @@
 import React, { useState } from 'react';
-import { marked } from 'marked';
 import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import Badge from '../ui/Badge';
 import Card from '../ui/Card';
+import Markdown from '../ui/Markdown';
 import { authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
 
 const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
-function SafeMarkdown({ text }) {
-  if (!text || typeof text !== 'string') return null;
-  try {
-    return <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(text) }} />;
-  } catch (e) {
-    console.error('Markdown parse error:', e);
-    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: '13px' }}>{text}</pre>;
-  }
-}
 
 /* Both of these hand-rolled the same thing Badge already does: solid text on a
  * ~12% wash of the same hue with a ~30% border. They built the tints by
@@ -366,7 +357,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileText size={16} style={{ color: 'var(--color-accent)' }} /> Evaluation
           </h3>
-          <SafeMarkdown text={reportText} />
+          <Markdown text={reportText} />
         </Card>
       )}
 
