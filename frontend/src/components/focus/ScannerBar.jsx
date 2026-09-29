@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Github, Globe, Mail, ExternalLink, Brain, ChevronDown, Loader, Zap } from 'lucide-react';
-import { marked } from 'marked';
+import Markdown from '../ui/Markdown';
 
 export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanContact, scanRunning, scanDone, onRescan }) {
   const [expanded, setExpanded] = useState(false);
@@ -95,7 +95,7 @@ export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanCo
           {scanSummary && (
             <div className="scanner-ai-summary">
               <Brain size={14} />
-              <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(scanSummary) }} />
+              <Markdown text={scanSummary} />
             </div>
           )}
 
