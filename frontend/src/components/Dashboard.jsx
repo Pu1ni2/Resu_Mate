@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { marked } from 'marked';
+import Markdown from './ui/Markdown';
 import PipelineWizard from './pipeline/PipelineWizard';
 import ATSResultsView from './pipeline/ATSResultsView';
 import InterviewReportView from './shared/InterviewReportView';
@@ -1038,7 +1038,7 @@ export default function Dashboard() {
                             {m.role === 'user' ? (
                               <p>{m.content}</p>
                             ) : (
-                              <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(m.content) }} />
+                              <Markdown text={m.content} />
                             )}
                           </div>
                           
