@@ -919,16 +919,15 @@ async def verify_email(request: Request, req: VerifyEmailRequest, db: AsyncSessi
         return {"access": True}
 
     # Fallback: the candidate may have been uploaded by a manager but never
-    # explicitly granted portal access. Scan resume texts and auto-grant under the
-    # OWNING manager. This is deliberately cross-tenant — the candidate is the
-    # data subject. We grant ACCESS here but still return no data.
-    for c in resume_rag.iter_all_candidates():
-        text = (c.get('text', '') or c.get('raw_text', '') or '').lower()
-        emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
-        if email in text or email == emb_email.lower():
-            owner = c.get('manager_id') or None
-            await db_service.create_candidate_access(db, email, c.get('name', ''), c.get('id'), manager_id=owner)
-            return {"access": True}
+    # explicitly granted portal access. Auto-grant under the OWNING manager for
+    # a resume whose own contact address is exactly this one. This is
+    # deliberately cross-tenant, since the candidate is the data subject. It
+    # used to match `email in text`, so a look-alike address (hn@x.com inside
+    # john@x.com) or a reference's address unlocked someone else's resume.
+    for c in resume_rag.candidates_with_email(email):
+        owner = c.get('manager_id') or None
+        await db_service.create_candidate_access(db, email, c.get('name', ''), c.get('id'), manager_id=owner)
+        return {"access": True}
 
     return {"access": False, "message": "No access found for this email. Please contact your hiring manager."}
 
