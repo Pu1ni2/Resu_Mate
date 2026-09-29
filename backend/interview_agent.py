@@ -90,8 +90,12 @@ STRUCTURE: 1. IMMEDIATELY greet: "Hi {candidate}! I'm Alex, interviewing you for
 VOICE: Conversational, medium pace, friendly but professional. No emojis or markdown."""
 
 
-def post_transcript(config: dict, transcript: list):
-    """POST accumulated transcript to the backend interview-report endpoint."""
+def post_transcript(config: dict, transcript: list, room_name: str = ""):
+    """POST accumulated transcript to the backend interview-report endpoint.
+
+    room_name identifies the exact interview; without it the backend has to
+    guess "the latest interview for this email".
+    """
     candidate_email = config.get("candidate_email", "")
     candidate_name = config.get("candidate_name", "Candidate")
     role = config.get("role", "General")
@@ -102,6 +106,7 @@ def post_transcript(config: dict, transcript: list):
     payload = {
         "candidate_name": candidate_name,
         "candidate_email": candidate_email,
+        "room_name": room_name or None,
         "role": role,
         "questions": [],
         "answers": [],
@@ -206,7 +211,7 @@ async def entrypoint(ctx: JobContext):
     # POST the transcript when the worker tears down (room ends or candidate leaves).
     async def _on_shutdown():
         try:
-            post_transcript(config, transcript)
+            post_transcript(config, transcript, room_name=ctx.room.name)
             logger.info("Interview session ended, transcript posted.")
         except Exception as e:
             logger.warning(f"Transcript post on shutdown failed: {e}")
