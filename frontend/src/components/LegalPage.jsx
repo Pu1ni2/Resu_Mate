@@ -28,8 +28,9 @@ const PRIVACY_SECTIONS = [
   ['How we use it', 'To parse resumes, rank candidates, conduct AI interviews, and generate reports for the hiring manager who uploaded the data. [TODO]'],
   ['Data isolation', 'Each hiring manager can only access their own candidates and interviews; data is partitioned per account.'],
   ['Candidate rights', 'Candidates may request erasure of their own data at any time through the candidate portal ("Delete my data"). We honour deletion across our database, search index, and file storage.'],
+  ['Public profiles (Find candidates)', 'When a hiring manager runs Find candidates, we read public GitHub profiles and public web search results about people who may fit the role. We keep a short written judgement, the score and a link to the public profile, never a copy of the page. Hiring managers can delete a search, with everyone it found, at any time.'],
   ['Retention', 'Candidate data may be removed after a period of inactivity under our retention policy. [TODO: state the exact window.]'],
-  ['Sub-processors', 'We use OpenAI (AI processing), and optionally LiveKit/Simli (interviews), SendGrid (email), and S3-compatible storage (files). [TODO: confirm and link DPAs.]'],
+  ['Sub-processors', 'We use OpenAI (AI processing), and optionally LiveKit/Simli (interviews), SendGrid (email), S3-compatible storage (files), and the GitHub API and Tavily (public profile search for Find candidates). [TODO: confirm and link DPAs.]'],
   ['Contact', 'For privacy requests, contact [TODO: privacy@yourdomain]. '],
 ];
 
