@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.services import state_service
 from app.services.auth import get_current_candidate
@@ -30,12 +31,26 @@ limiter = Limiter(key_func=get_remote_address)
 MAX_RESUME_BYTES = 5 * 1024 * 1024
 ALLOWED_RESUME_EXT = (".pdf", ".docx", ".doc", ".txt")
 
-try:
-    from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-except ImportError:
-    print("⚠️ openai package not installed — advisor agent chat will not work")
-    client = None
+_client = None
+
+
+def _openai():
+    """The advisor's OpenAI client, built on first use. None without an API key.
+
+    It was built at import as OpenAI(api_key=os.getenv("OPENAI_API_KEY")), and the
+    SDK raises "Missing credentials" there when no key is set. So without a key
+    the whole backend failed to start, and CI, which has none, never got as far
+    as running a test. Locally it was hidden because livekit_routes loads .env
+    into the environment first.
+    """
+    global _client
+    if _client is None and settings.openai_api_key:
+        try:
+            from openai import OpenAI
+            _client = OpenAI(api_key=settings.openai_api_key)
+        except ImportError:
+            print("⚠️ openai package not installed — advisor agent chat will not work")
+    return _client
 
 router = APIRouter(prefix="/advisor", tags=["advisor"])
 
@@ -99,8 +114,11 @@ async def candidate_upload_resume(
         "email": email,
     }
 
-    # Quick analysis
+    # Quick analysis (falls back to defaults below when no model is configured)
     try:
+        client = _openai()
+        if client is None:
+            raise RuntimeError("no OpenAI API key configured")
         analysis = client.chat.completions.create(
             model="gpt-4o",
             messages=[{
@@ -251,6 +269,14 @@ async def advisor_chat(
     history.append({"role": "user", "content": req.message})
 
     messages = [{"role": "system", "content": system_prompt}] + history[-20:]
+
+    client = _openai()
+    if client is None:
+        return {
+            "reply": "The career advisor isn't available right now: no OpenAI API key is configured on the server.",
+            "mode": req.mode,
+            "suggestions": [],
+        }
 
     try:
         response = client.chat.completions.create(
