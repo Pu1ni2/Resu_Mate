@@ -12,7 +12,11 @@ from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-load_dotenv(override=True)
+# Fills in only what the environment doesn't already set. override=True let a
+# .env file overwrite real environment variables: a stray .env would beat the
+# host's settings, and in tests it put back the API key the tests clear, which
+# hid an import-time crash that CI (with no .env) hit on every run.
+load_dotenv()
 
 import jwt  # PyJWT
 
