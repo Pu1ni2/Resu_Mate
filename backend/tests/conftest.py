@@ -47,6 +47,26 @@ except Exception:
     pass
 
 
+@pytest.fixture(autouse=True)
+def _current_event_loop():
+    """Make sure synchronous test code has an open event loop to run on.
+
+    The client fixture and many tests run coroutines with
+    asyncio.get_event_loop().run_until_complete(...). pytest-asyncio 0.24 and
+    later close their loop after every async test and leave none current, so on
+    a fresh install (which is what CI does) every database test that ran after
+    an async one failed with "There is no current event loop". Older versions
+    left a loop behind, which is why it passed locally.
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+    yield
+
+
 @pytest.fixture()
 def client():
     """A TestClient with a freshly-created schema and empty resume_rag store."""
