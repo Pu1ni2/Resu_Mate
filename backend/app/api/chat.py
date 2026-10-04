@@ -1090,21 +1090,9 @@ async def candidate_delete_my_data(
         sql_select(Candidate).where(Candidate.email == email)
     )).scalars().all()
 
-    # Remove from the in-memory store + ChromaDB + object storage, scoped to the
-    # row's owning manager so we hit the right drawer.
-    for row in cand_rows:
-        try:
-            resume_rag.delete_candidate(row.id, manager_id=row.manager_id)
-        except Exception as exc:
-            print(f"[WARN] in-memory delete failed for candidate {row.id}: {exc}")
-        # Object storage (no-op if S3 unconfigured).
-        try:
-            from app.services.storage_service import storage_service
-            if getattr(row, "file_object_key", None):
-                storage_service.delete(row.file_object_key)
-        except Exception as exc:
-            print(f"[WARN] object-store delete failed: {exc}")
-
+    # Database first: if it fails, nothing is half-erased. Memory went first, so
+    # a failed commit left the résumé in the database, and the startup warm-up
+    # put it back in the portal after the next restart.
     # Delete DB rows: interviews, access grants, candidates (by email), and
     # everything else held under this address: the career advisor's session
     # (their uploaded resume and chats), sign-in codes, and anything a sourcing
@@ -1120,6 +1108,22 @@ async def candidate_delete_my_data(
     await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
     await db.execute(sql_delete(SourcedProfile).where(SourcedProfile.email == email))
     await db.commit()
+
+    # Then the in-memory store + ChromaDB + object storage, scoped to the row's
+    # owning manager so we hit the right drawer.
+    for row in cand_rows:
+        try:
+            resume_rag.delete_candidate(row.id, manager_id=row.manager_id)
+        except Exception as exc:
+            print(f"[WARN] in-memory delete failed for candidate {row.id}: {exc}")
+        # Object storage (no-op if S3 unconfigured).
+        try:
+            from app.services.storage_service import storage_service
+            if getattr(row, "file_object_key", None):
+                storage_service.delete(row.file_object_key)
+        except Exception as exc:
+            print(f"[WARN] object-store delete failed: {exc}")
+
     try:
         from app.api.advisor_agent import _session_cache
         _session_cache.pop(email, None)
