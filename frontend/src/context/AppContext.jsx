@@ -166,7 +166,14 @@ export const AppProvider = ({ children }) => {
       // Small delay to ensure backend state is consistent
       await new Promise(r => setTimeout(r, 800));
     } catch (err) {
-      console.error('Failed to delete from backend:', err);
+      // A 404 means it is already gone, so it leaves the list. Anything else
+      // means it is still there: it used to leave the list anyway, and came
+      // back on the next reload.
+      if (err?.response?.status !== 404) {
+        toast(messageForApiError(err, 'Could not delete the candidate. Please try again.'), 'error');
+        setDeleting(false);
+        return false;
+      }
     }
     // Remove from state
     setCandidates(prev => {
@@ -178,6 +185,7 @@ export const AppProvider = ({ children }) => {
     setMessages([]);
     setSuggestions([]);
     setDeleting(false);
+    return true;
   }, []);
 
   /* Resolves true once the server has deleted them. On failure the list stays
