@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { getToken, handleUnauthorized } from './session';
+import { refreshSession } from './authFetch';
 
 const API_BASE_URL = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -21,11 +22,20 @@ api.interceptors.request.use(config => {
 
 api.interceptors.response.use(
   response => response,
-  error => {
+  async error => {
+    const { config, response } = error;
+    // An expired session gets one renewal and one retry, as in authFetch. The
+    // request interceptor re-attaches the renewed token on the retry. Sign-in
+    // calls are left alone: their 401 means a wrong password.
+    const isAuthCall = String(config?.url || '').includes('/auth/');
+    if (response?.status === 401 && config && !config._renewed && !isAuthCall) {
+      config._renewed = true;
+      if (await refreshSession()) return api(config);
+    }
     // Expiry handling lives in services/session.js so the raw fetch() call
     // sites behave identically — they used to do nothing at all on a 401.
-    if (error.response?.status === 401) {
-      handleUnauthorized(error.config?.url);
+    if (response?.status === 401) {
+      handleUnauthorized(config?.url);
     }
     return Promise.reject(error);
   }
