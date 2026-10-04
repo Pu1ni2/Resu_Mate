@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
+import ConfirmDialog from './ui/ConfirmDialog';
 import {
   Upload, BarChart2, MessageSquare, Video, Send, Bot,
   FileText, AlertCircle, Briefcase, Award, MapPin, Check, Loader,
@@ -52,6 +53,10 @@ export default function CandidateDashboard() {
   const [tab, setTab] = useState('upload');
   const [input, setInput] = useState('');
   const msgEndRef = useRef(null);
+
+  // "Delete my data": asking first, then erasing.
+  const [confirmingErase, setConfirmingErase] = useState(false);
+  const [erasing, setErasing] = useState(false);
 
   // Interview state
   const [showInterviewRoom, setShowInterviewRoom] = useState(false);
@@ -180,10 +185,8 @@ export default function CandidateDashboard() {
   const handleDeleteMyData = async () => {
     // GDPR erasure — wipes this candidate's resume, interviews, and stored
     // files. Calls the backend endpoint authenticated by the candidate token.
-    const ok = window.confirm(
-      'Permanently delete all your data (resume, interviews, reports)? This cannot be undone.'
-    );
-    if (!ok) return;
+    // Runs from the confirm dialog, not window.confirm.
+    setErasing(true);
     try {
       const resp = await fetch(`${API_BASE}/api/chat/candidate/delete-my-data`, {
         method: 'POST',
@@ -197,6 +200,9 @@ export default function CandidateDashboard() {
       handleLogout();
     } catch {
       toast('Could not reach the server. Please try again.', 'error');
+    } finally {
+      setErasing(false);
+      setConfirmingErase(false);
     }
   };
 
@@ -290,7 +296,7 @@ export default function CandidateDashboard() {
           <button className="cd-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
           <button
             className="cd-logout"
-            onClick={handleDeleteMyData}
+            onClick={() => setConfirmingErase(true)}
             style={{ marginTop: 8, color: '#F87171' }}
             title="Permanently delete all your data"
           >
@@ -298,6 +304,18 @@ export default function CandidateDashboard() {
           </button>
         </div>
       </aside>
+
+      <ConfirmDialog
+        open={confirmingErase}
+        title="Delete all your data?"
+        confirmLabel="Delete my data"
+        busy={erasing}
+        onConfirm={handleDeleteMyData}
+        onCancel={() => setConfirmingErase(false)}
+      >
+        Your résumé, interviews, reports and advisor chats are deleted for good, and you
+        will be signed out. This can't be undone.
+      </ConfirmDialog>
 
       {/* ═══ MAIN ═══ */}
       <main className="cd-main">
