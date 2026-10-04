@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
+import ConfirmDialog from './ui/ConfirmDialog';
 import PipelineWizard from './pipeline/PipelineWizard';
 import ATSResultsView from './pipeline/ATSResultsView';
 import InterviewReportView from './shared/InterviewReportView';
@@ -214,7 +215,7 @@ function InterviewAnalytics() {
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
-    candidates, selectedIds, selectedCandidates, uploadProgress, loading,
+    candidates, selectedIds, selectedCandidates, uploadProgress, loading, deleting,
     loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
     anonymize, setAnonymize, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
@@ -225,7 +226,8 @@ export default function Dashboard() {
   const [tab, setTab] = useState('upload');
   const [input, setInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
-  
+  const [confirmingClearAll, setConfirmingClearAll] = useState(false);
+
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [speakingMsgIndex, setSpeakingMsgIndex] = useState(null);
@@ -692,16 +694,22 @@ export default function Dashboard() {
                       )}
                       <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
                       <button onClick={clearSelection} className="btn btn-ghost btn-sm">Clear</button>
-                    <button
-                     onClick={async () => {
-            if (window.confirm('Delete ALL candidates? This cannot be undone.')) {
-              await clearAllCandidates();
-            }
-          }} 
-          className="btn btn-danger btn-sm"
-        >
-          Delete All
-        </button>
+                      <button onClick={() => setConfirmingClearAll(true)} className="btn btn-danger btn-sm">
+                        Delete All
+                      </button>
+                      <ConfirmDialog
+                        open={confirmingClearAll}
+                        title={`Delete all ${candidates.length} candidates?`}
+                        confirmLabel="Delete all"
+                        busy={deleting}
+                        onConfirm={async () => {
+                          await clearAllCandidates();
+                          setConfirmingClearAll(false);
+                        }}
+                        onCancel={() => setConfirmingClearAll(false)}
+                      >
+                        Their résumés, analysis and interviews are deleted for good. This can't be undone.
+                      </ConfirmDialog>
 
                     </div>
                   </div>
