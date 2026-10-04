@@ -1114,7 +1114,8 @@ async def candidate_delete_my_data(
     from app.models.state import AdvisorSession
     await db.execute(sql_delete(Interview).where(Interview.candidate_email == email))
     await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email == email))
-    await db.execute(sql_delete(Candidate).where(Candidate.email == email))
+    # Their résumé rows with any interview still attached under another address.
+    await db_service.delete_candidates(db, Candidate.email == email)
     await db.execute(sql_delete(AdvisorSession).where(AdvisorSession.email == email))
     await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
     await db.execute(sql_delete(SourcedProfile).where(SourcedProfile.email == email))

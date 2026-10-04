@@ -2,10 +2,10 @@
 import json
 from datetime import datetime, timedelta
 from typing import Optional
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
+from app.models.candidate import Candidate, Interview, Evaluation, CandidateAccess, AuditLog
 
 
 # ═══════ AUDIT LOG ═══════
@@ -68,6 +68,23 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
         await session.rollback()
         print(f"[WARN] DB create_candidate error: {e}")
         return None
+
+
+async def delete_candidates(session: AsyncSession, *where) -> None:
+    """Delete the candidates matching `where`, their interviews and evaluations first.
+
+    Neither foreign key to candidates has ON DELETE CASCADE, and the ORM cascade
+    on Candidate.interviews covers only deletes made through the session, not a
+    bulk DELETE. So Postgres refused to delete anyone who had been invited to an
+    interview, while SQLite, which enforces foreign keys only when asked to, let
+    it through and left the interviews pointing at nobody.
+
+    Does not commit: the caller commits along with the rest of its work.
+    """
+    ids = select(Candidate.id).where(*where)
+    await session.execute(delete(Interview).where(Interview.candidate_id.in_(ids)))
+    await session.execute(delete(Evaluation).where(Evaluation.candidate_id.in_(ids)))
+    await session.execute(delete(Candidate).where(*where))
 
 
 # ═══════ INTERVIEW ═══════

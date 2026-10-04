@@ -166,17 +166,14 @@ async def get_candidate_file(candidate_id: int, user=Depends(get_current_user), 
 
 @router.delete("/{candidate_id}")
 async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Delete one of THIS manager's candidates from memory and DB."""
-    from sqlalchemy import delete as sql_delete
+    """Delete one of THIS manager's candidates, with their interviews, from memory and DB."""
     from app.models.candidate import Candidate
     # Only delete if the candidate is in this manager's drawer.
     if not resume_rag.get_candidate(candidate_id, manager_id=user.id):
         raise HTTPException(404, "Candidate not found")
     resume_rag.delete_candidate(candidate_id, manager_id=user.id)
-    await db.execute(
-        sql_delete(Candidate).where(
-            Candidate.id == candidate_id, Candidate.manager_id == user.id
-        )
+    await db_service.delete_candidates(
+        db, Candidate.id == candidate_id, Candidate.manager_id == user.id
     )
     await db.commit()
     return {"message": "Candidate deleted"}
@@ -184,10 +181,9 @@ async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db
 
 @router.delete("")
 async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Delete ALL of THIS manager's candidates from memory and DB (never global)."""
-    from sqlalchemy import delete as sql_delete
+    """Delete ALL of THIS manager's candidates, with their interviews, from memory and DB (never global)."""
     from app.models.candidate import Candidate
     resume_rag.clear_all(manager_id=user.id)
-    await db.execute(sql_delete(Candidate).where(Candidate.manager_id == user.id))
+    await db_service.delete_candidates(db, Candidate.manager_id == user.id)
     await db.commit()
     return {"message": "All candidates and data deleted"}
