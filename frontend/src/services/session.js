@@ -51,6 +51,24 @@ export function saveSession(token, refreshToken, user) {
   }
 }
 
+export function getRefreshToken() {
+  try {
+    return localStorage.getItem(REFRESH_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+/* Store a renewed access token, keeping the refresh token and user as they are. */
+export function saveAccessToken(token) {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // Storage unavailable: the renewed token is lost and the next request
+    // falls back to signing in again, as before.
+  }
+}
+
 export function readStoredUser() {
   try {
     const raw = localStorage.getItem(USER_KEY);
