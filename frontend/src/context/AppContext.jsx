@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { candidatesAPI, chatAPI } from '../services/api';
+import { candidatesAPI, chatAPI, messageForApiError } from '../services/api';
 import { saveSession, clearSession, readStoredUser } from '../services/session';
+import { toast } from '../services/notify';
 import { computeAnalytics } from './analytics';
 
 const AppContext = createContext(null);
@@ -179,13 +180,18 @@ export const AppProvider = ({ children }) => {
     setDeleting(false);
   }, []);
 
+  /* Resolves true once the server has deleted them. On failure the list stays
+   * and the manager is told: it used to be emptied either way, so a failed
+   * delete looked like a successful one until a reload brought everyone back. */
   const clearAllCandidates = useCallback(async () => {
     setDeleting(true);
     try {
       await candidatesAPI.deleteAll();
       await new Promise(r => setTimeout(r, 800));
     } catch (err) {
-      console.error('Failed to clear backend:', err);
+      toast(messageForApiError(err, 'Could not delete the candidates. Please try again.'), 'error');
+      setDeleting(false);
+      return false;
     }
     setCandidates([]);
     setSelectedIds([]);
@@ -193,6 +199,7 @@ export const AppProvider = ({ children }) => {
     setSuggestions([]);
     localStorage.removeItem('resumate_candidates');
     setDeleting(false);
+    return true;
   }, []);
 
   // FIX: toggleSelection with strict equality
