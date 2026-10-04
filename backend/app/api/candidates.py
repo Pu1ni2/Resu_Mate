@@ -171,11 +171,13 @@ async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db
     # Only delete if the candidate is in this manager's drawer.
     if not resume_rag.get_candidate(candidate_id, manager_id=user.id):
         raise HTTPException(404, "Candidate not found")
-    resume_rag.delete_candidate(candidate_id, manager_id=user.id)
+    # Database first: if it fails, the candidate is still everywhere, rather
+    # than gone from the list but kept in the database and back after a restart.
     await db_service.delete_candidates(
         db, Candidate.id == candidate_id, Candidate.manager_id == user.id
     )
     await db.commit()
+    resume_rag.delete_candidate(candidate_id, manager_id=user.id)
     return {"message": "Candidate deleted"}
 
 
@@ -183,7 +185,8 @@ async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db
 async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Delete ALL of THIS manager's candidates, with their interviews, from memory and DB (never global)."""
     from app.models.candidate import Candidate
-    resume_rag.clear_all(manager_id=user.id)
+    # Database first, as in delete_candidate.
     await db_service.delete_candidates(db, Candidate.manager_id == user.id)
     await db.commit()
+    resume_rag.clear_all(manager_id=user.id)
     return {"message": "All candidates and data deleted"}
