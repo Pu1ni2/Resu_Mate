@@ -66,10 +66,15 @@ export function refreshSession() {
 }
 
 export async function authFetch(url, options = {}) {
-  const resp = await fetch(url, {
-    ...options,
-    headers: authHeaders(options.headers || {}),
-  });
+  // Rebuilt for the retry so it carries the renewed token.
+  const send = () => fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
+  let resp = await send();
+  // An expired session gets one renewal and one retry before it counts as a
+  // sign-out. Sign-in calls are left alone: their 401 means a wrong password.
+  const isAuthCall = typeof url === 'string' && url.includes('/auth/');
+  if (resp.status === 401 && !isAuthCall && (await refreshSession())) {
+    resp = await send();
+  }
   if (resp.status === 401) handleUnauthorized(url);
   return resp;
 }
