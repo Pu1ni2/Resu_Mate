@@ -8,7 +8,7 @@
  * Returns the Response untouched, so existing `resp.ok` / `resp.json()` call
  * sites keep working and this can be swapped in one file at a time.
  */
-import { getToken, getCandidateToken, handleUnauthorized } from './session';
+import { getToken, getCandidateToken, getRefreshToken, handleUnauthorized, saveAccessToken } from './session';
 
 export const API_BASE = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -25,6 +25,44 @@ export function authHeaders(extra = {}) {
   const headers = { ...extra };
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
+}
+
+/* Renew the manager's session with the refresh token. Resolves to the new
+ * access token, or null when there is no refresh token or the server refuses it.
+ *
+ * Access tokens last 30 minutes and refresh tokens 30 days, but nothing used the
+ * refresh token, so every manager was signed out half an hour into their work.
+ *
+ * One renewal at a time: when the token expires, every request in flight gets a
+ * 401 together, and they all wait for the same call instead of each making one.
+ * Plain fetch on purpose, so a refused renewal can't trigger another renewal.
+ */
+let renewing = null;
+
+export function refreshSession() {
+  if (!renewing) {
+    renewing = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return null;
+      try {
+        const resp = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (!data?.access_token) return null;
+        saveAccessToken(data.access_token);
+        return data.access_token;
+      } catch {
+        return null;
+      }
+    })().finally(() => {
+      renewing = null;
+    });
+  }
+  return renewing;
 }
 
 export async function authFetch(url, options = {}) {
