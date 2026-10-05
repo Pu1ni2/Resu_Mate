@@ -111,3 +111,24 @@ def test_create_interview_works_for_the_managers_own_candidate(client):
     })
     assert r.status_code == 200, r.text
     assert client.post("/api/chat/verify-email", json={"email": "own@x.com"}).json()["access"] is True
+
+
+def test_create_interview_says_so_when_the_interview_is_not_saved(client):
+    """A candidate in memory with no database row: the foreign key refuses the
+    interview, and the manager must hear about it rather than get a 200."""
+    from sqlalchemy import func, select
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services.resume_rag import resume_rag
+    tok_a, a = register(client, "a6@co.com")
+    resume_rag.candidates.setdefault(a["id"], {})[4] = {"id": 4, "manager_id": a["id"], "name": "Ghost", "text": "x"}
+    r = client.post("/api/chat/create-interview", headers=auth_headers(tok_a), json={
+        "candidate_id": 4, "candidate_email": "ghost@x.com", "candidate_name": "Ghost", "role": "Dev",
+    })
+    assert r.status_code == 500, r.text
+
+    async def interviews():
+        async with database.async_session() as db:
+            return (await db.execute(select(func.count()).select_from(Interview))).scalar()
+
+    assert _run(interviews()) == 0
