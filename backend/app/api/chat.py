@@ -893,6 +893,11 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         "focus_areas": req.focus_areas or [],
         "mode": (req.mode or "avatar").strip().lower(),
     })
+    # create_interview reports a failed insert as None. It was ignored, so a
+    # manager was told the interview was created, and the invitation went out,
+    # when nothing had been saved: a refused foreign key, for one.
+    if interview is None:
+        raise HTTPException(500, "Could not save the interview. Please try again.")
 
     # Generate resume intelligence for smart interview questions
     resume_intel = None
