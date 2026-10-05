@@ -21,9 +21,12 @@ def _run(coro):
 
 async def _interview(manager_id, email, **fields):
     from app.core import database
-    from app.models.candidate import Interview
+    from app.models.candidate import Candidate, Interview
     async with database.async_session() as db:
-        iv = Interview(candidate_id=1, manager_id=manager_id, candidate_email=email, role="Dev", **fields)
+        cand = Candidate(manager_id=manager_id, name="Cand", email=email)
+        db.add(cand)
+        await db.flush()
+        iv = Interview(candidate_id=cand.id, manager_id=manager_id, candidate_email=email, role="Dev", **fields)
         db.add(iv)
         await db.commit()
         await db.refresh(iv)

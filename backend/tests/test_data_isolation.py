@@ -64,8 +64,9 @@ def test_interview_results_are_isolated(client):
 
     async def make_interview(manager_id, email):
         async with database.async_session() as db:
+            cand = await db_service.create_candidate_db(db, {"name": "Cand", "email": email}, manager_id=manager_id)
             iv = await db_service.create_interview(db, {
-                "candidate_id": 0, "manager_id": manager_id,
+                "candidate_id": cand.id, "manager_id": manager_id,
                 "candidate_email": email, "role": "Engineer",
             })
             await db_service.update_interview_status(

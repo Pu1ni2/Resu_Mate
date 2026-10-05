@@ -31,6 +31,20 @@ from app.core import database  # noqa: E402
 import main  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from app.services.resume_rag import resume_rag  # noqa: E402
+from sqlalchemy import event  # noqa: E402
+
+
+@event.listens_for(database.engine.sync_engine, "connect")
+def _enforce_foreign_keys(dbapi_conn, _record):
+    """Make SQLite check foreign keys, as Postgres always does.
+
+    SQLite skips them unless asked. Deleting a candidate who had an interview
+    passed here and failed in production, and tests could file interviews
+    under candidates that did not exist.
+    """
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 # Disable per-router rate limiters once — TestClient shares one IP so limits
 # would trip across unrelated tests.
