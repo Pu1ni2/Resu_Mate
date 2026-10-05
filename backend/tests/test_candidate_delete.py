@@ -95,6 +95,7 @@ def test_erasure_takes_an_interview_filed_under_another_address(client):
             })
 
     _run(second_invite())
+    assert _run(_rows(user["id"])) == (1, 2)  # both interviews exist to begin with
     r = client.post("/api/chat/candidate/delete-my-data",
                     headers={"Authorization": f"Bearer {create_candidate_token('dana@x.com')}"})
     assert r.status_code == 200, r.text
@@ -149,3 +150,102 @@ def test_an_uploaded_candidate_keeps_their_id_in_the_database(client, monkeypatc
     r = client.delete("/api/candidates/41", headers=auth_headers(tok))
     assert r.status_code == 200, r.text
     assert _run(stored()) == []
+
+
+# ── what a delete takes, and what it leaves ───────────────────────────────────
+
+async def _file(cid, manager_id, email, *, grant=False, key=None):
+    """Extras for candidate `cid`: an interview filed by `manager_id`, and
+    optionally that manager's portal grant and a stored-file key."""
+    from app.core import database
+    from app.models.candidate import Candidate
+    from app.services import db_service
+    async with database.async_session() as db:
+        await db_service.create_interview(db, {
+            "candidate_id": cid, "manager_id": manager_id, "candidate_email": email, "role": "Dev",
+        })
+        if grant:
+            await db_service.create_candidate_access(db, email, "Cand", cid, manager_id=manager_id)
+        if key:
+            row = await db.get(Candidate, cid)
+            row.file_object_key = key
+            await db.commit()
+
+
+async def _grants():
+    from app.core import database
+    from app.models.candidate import CandidateAccess
+    async with database.async_session() as db:
+        return (await db.execute(select(func.count()).select_from(CandidateAccess))).scalar()
+
+
+def test_deleting_one_candidate_leaves_the_others(client):
+    from app.services.resume_rag import resume_rag
+    tok, user = register(client, "del7@co.com")
+    ada = _run(_candidate_with_interview(user["id"], "Ada", "ada@x.com"))
+    grace = _run(_candidate_with_interview(user["id"], "Grace", "grace@x.com"))
+
+    r = client.delete(f"/api/candidates/{ada}", headers=auth_headers(tok))
+    assert r.status_code == 200, r.text
+    assert _run(_rows(user["id"])) == (1, 1)
+    assert resume_rag.get_candidate(grace, manager_id=user["id"]) is not None
+
+
+def test_a_delete_takes_the_candidates_portal_grants(client):
+    """Grants have no foreign key: one left behind kept the portal open."""
+    tok, user = register(client, "del8@co.com")
+    cid = _run(_candidate_with_interview(user["id"], "Ada", "ada@x.com"))
+    _run(_file(cid, user["id"], "ada.personal@x.com", grant=True))
+    assert _run(_grants()) == 1
+
+    r = client.delete(f"/api/candidates/{cid}", headers=auth_headers(tok))
+    assert r.status_code == 200, r.text
+    assert _run(_grants()) == 0
+
+
+def test_another_managers_interview_under_the_id_stops_the_delete(client):
+    """Before ids were unified, manager B's interview could be filed under
+    manager A's candidate. Deleting A's candidate must not take it: the foreign
+    key refuses, and nothing at all is deleted."""
+    from sqlalchemy.exc import IntegrityError
+    from app.services.resume_rag import resume_rag
+    tok_a, a = register(client, "del9@co.com")
+    _tok_b, b = register(client, "del10@co.com")
+    cid = _run(_candidate_with_interview(a["id"], "Ada", "ada@x.com"))
+    _run(_file(cid, b["id"], "bob@y.com"))
+
+    with pytest.raises(IntegrityError):
+        client.delete(f"/api/candidates/{cid}", headers=auth_headers(tok_a))
+    assert _run(_rows(a["id"])) == (1, 1)
+    assert _run(_rows(b["id"])) == (0, 1)
+    assert resume_rag.get_candidate(cid, manager_id=a["id"]) is not None
+
+
+def test_delete_all_takes_the_managers_interviews_filed_under_another_id(client):
+    tok_a, a = register(client, "del11@co.com")
+    _tok_b, b = register(client, "del12@co.com")
+    _run(_candidate_with_interview(a["id"], "Ada", "ada@x.com"))
+    linus = _run(_candidate_with_interview(b["id"], "Linus", "linus@x.com"))
+    _run(_file(linus, a["id"], "ada.other@x.com", grant=True))  # A's, misfiled under B's candidate
+
+    r = client.delete("/api/candidates", headers=auth_headers(tok_a))
+    assert r.status_code == 200, r.text
+    assert _run(_rows(a["id"])) == (0, 0)
+    assert _run(_rows(b["id"])) == (1, 1)
+    assert _run(_grants()) == 0
+
+
+def test_deletes_remove_the_stored_resume_files(client, monkeypatch):
+    from app.services.storage_service import storage_service
+    removed = []
+    monkeypatch.setattr(storage_service, "delete", lambda key: removed.append(key) or True)
+    tok, user = register(client, "del13@co.com")
+    ada = _run(_candidate_with_interview(user["id"], "Ada", "ada@x.com"))
+    grace = _run(_candidate_with_interview(user["id"], "Grace", "grace@x.com"))
+    _run(_file(ada, user["id"], "ada@x.com", key="resumes/ada.pdf"))
+    _run(_file(grace, user["id"], "grace@x.com", key="resumes/grace.pdf"))
+
+    assert client.delete(f"/api/candidates/{ada}", headers=auth_headers(tok)).status_code == 200
+    assert removed == ["resumes/ada.pdf"]
+    assert client.delete("/api/candidates", headers=auth_headers(tok)).status_code == 200
+    assert removed == ["resumes/ada.pdf", "resumes/grace.pdf"]
