@@ -11,10 +11,11 @@ import argparse
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, delete as sql_delete
+from sqlalchemy import select
 
 from app.core.database import async_session
-from app.models.candidate import Candidate, Interview, CandidateAccess
+from app.models.candidate import Candidate
+from app.services import db_service
 
 
 async def run(days: int, apply: bool) -> None:
@@ -34,13 +35,13 @@ async def run(days: int, apply: bool) -> None:
             print("\nDry run — nothing deleted. Re-run with --apply to delete.")
             return
 
-        emails = [c.email for c in stale if c.email]
         ids = [c.id for c in stale]
         if ids:
-            if emails:
-                await db.execute(sql_delete(Interview).where(Interview.candidate_email.in_(emails)))
-                await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email.in_(emails)))
-            await db.execute(sql_delete(Candidate).where(Candidate.id.in_(ids)))
+            # By candidate, not by address. Deleting every interview and grant
+            # for a stale row's email also took another manager's, for whom the
+            # same person is a current candidate, and it missed interviews filed
+            # under the row at another address, which the foreign key refuses.
+            await db_service.delete_candidates(db, Candidate.id.in_(ids))
             await db.commit()
         print(f"\nDeleted {len(ids)} candidate(s) and their interviews/access.")
         print("Note: in-memory store + ChromaDB are refreshed on next app restart.")
