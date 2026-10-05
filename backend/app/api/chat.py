@@ -1087,7 +1087,7 @@ async def candidate_delete_my_data(
     if not email:
         raise HTTPException(400, "Token has no email subject")
 
-    from sqlalchemy import delete as sql_delete
+    from sqlalchemy import delete as sql_delete, func
     from app.models.candidate import Interview, CandidateAccess, Candidate
 
     # Their own résumés: those whose own address is theirs, in any case,
@@ -1115,7 +1115,8 @@ async def candidate_delete_my_data(
     await db_service.delete_candidates(db, Candidate.id.in_([row.id for row in cand_rows]))
     await db.execute(sql_delete(AdvisorSession).where(AdvisorSession.email == email))
     await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
-    await db.execute(sql_delete(SourcedProfile).where(SourcedProfile.email == email))
+    # In any case: a sourcing run keeps the address as it found it.
+    await db.execute(sql_delete(SourcedProfile).where(func.lower(SourcedProfile.email) == email))
     await db.commit()
 
     # Then the in-memory store + ChromaDB + object storage, scoped to the row's
