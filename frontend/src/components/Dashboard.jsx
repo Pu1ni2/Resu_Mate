@@ -214,7 +214,7 @@ function InterviewAnalytics() {
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
-    candidates, selectedIds, selectedCandidates, uploadProgress, loading, deleting,
+    candidates, selectedIds, selectedCandidates, uploadProgress, loading,
     loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
     anonymize, setAnonymize, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
@@ -225,7 +225,16 @@ export default function Dashboard() {
   const [tab, setTab] = useState('upload');
   const [input, setInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  // Delete All: asking, then deleting. Its own busy flag: the context's
+  // `deleting` is also set by a single card's delete, which opened this dialog
+  // already showing "Deleting…" before anything was confirmed.
   const [confirmingClearAll, setConfirmingClearAll] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
+  // Nothing left to delete, as when the list empties while the question is
+  // open: drop the question. Kept, it came back by itself with the next upload.
+  useEffect(() => {
+    if (candidates.length === 0) setConfirmingClearAll(false);
+  }, [candidates.length]);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -696,16 +705,23 @@ export default function Dashboard() {
                       </button>
                       <ConfirmDialog
                         open={confirmingClearAll}
-                        title={`Delete all ${candidates.length} candidates?`}
-                        confirmLabel="Delete all"
-                        busy={deleting}
+                        title={candidates.length === 1 ? 'Delete 1 candidate?' : `Delete all ${candidates.length} candidates?`}
+                        confirmLabel={candidates.length === 1 ? 'Delete' : 'Delete all'}
+                        busy={clearingAll}
                         onConfirm={async () => {
-                          await clearAllCandidates();
-                          setConfirmingClearAll(false);
+                          setClearingAll(true);
+                          try {
+                            await clearAllCandidates();
+                          } finally {
+                            setClearingAll(false);
+                            setConfirmingClearAll(false);
+                          }
                         }}
                         onCancel={() => setConfirmingClearAll(false)}
                       >
-                        Their résumés, analysis and interviews are deleted for good. This can't be undone.
+                        {candidates.length === 1
+                          ? "Their résumé, analysis and interviews are deleted for good. This can't be undone."
+                          : "Their résumés, analysis and interviews are deleted for good. This can't be undone."}
                       </ConfirmDialog>
 
                     </div>
