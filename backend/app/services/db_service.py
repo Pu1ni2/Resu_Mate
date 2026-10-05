@@ -2,7 +2,7 @@
 import json
 from datetime import datetime, timedelta
 from typing import Optional
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, Evaluation, CandidateAccess, AuditLog
@@ -371,12 +371,13 @@ async def get_candidate_access(session: AsyncSession, email: str, manager_id: in
     return result.scalars().first()
 
 
-def _is_this_candidate(row: Candidate, email: str, access: CandidateAccess) -> bool:
+def _is_this_candidate(row: Candidate, email: str, access: Optional[CandidateAccess]) -> bool:
     """Is this Candidate row really the person holding this grant?
 
     Their resume's own address is the email they signed in with, or, when the
     manager invited them at a different address, the grant was made out to the
     row's name. Anything else is a different person reached by a wrong id.
+    With no grant, only the address counts.
     """
     from app.services.resume_rag import primary_email  # lazy: resume_rag starts Chroma on import
     own = primary_email({
@@ -385,7 +386,34 @@ def _is_this_candidate(row: Candidate, email: str, access: CandidateAccess) -> b
     })
     if own and own == email:
         return True
-    return bool(access.name and row.name and access.name.strip().lower() == row.name.strip().lower())
+    return bool(access is not None and access.name and row.name
+                and access.name.strip().lower() == row.name.strip().lower())
+
+
+async def resumes_of(session: AsyncSession, email: str, ids=()) -> list:
+    """Every Candidate row that is this person's resume, as the portal sees them.
+
+    A row is theirs when its own address is `email` (primary_email: the email
+    column in any case, else the PDF's mailto: link, else the first address in
+    the text), or when one of their grants points at it and names it
+    (_is_this_candidate, as candidate_view checks). `ids` adds rows found
+    elsewhere, such as the in-memory store; they pass the same check, so a wrong
+    id never reaches someone else's resume.
+    """
+    email = (email or "").strip().lower()
+    grants = (await session.execute(
+        select(CandidateAccess).where(CandidateAccess.email == email)
+    )).scalars().all()
+    wanted = set(ids) | {g.candidate_id for g in grants if g.candidate_id}
+    rows = (await session.execute(
+        select(Candidate).where(or_(Candidate.id.in_(wanted), func.lower(Candidate.email) == email))
+    )).scalars().all()
+
+    def theirs(row: Candidate) -> bool:
+        grant = next((g for g in grants if g.candidate_id == row.id and g.manager_id == row.manager_id), None)
+        return _is_this_candidate(row, email, grant)
+
+    return [row for row in rows if theirs(row)]
 
 
 async def candidate_view(session: AsyncSession, email: str):

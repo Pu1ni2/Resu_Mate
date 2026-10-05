@@ -1082,13 +1082,17 @@ async def candidate_delete_my_data(
     if not email:
         raise HTTPException(400, "Token has no email subject")
 
-    from sqlalchemy import delete as sql_delete, select as sql_select
+    from sqlalchemy import delete as sql_delete
     from app.models.candidate import Interview, CandidateAccess, Candidate
 
-    # Find DB candidate rows for this email (to clean memory/Chroma/object store).
-    cand_rows = (await db.execute(
-        sql_select(Candidate).where(Candidate.email == email)
-    )).scalars().all()
+    # Their résumés as the portal and the advisor find them: by the résumé's own
+    # address in any case, wherever it came from (the email column, the PDF's
+    # mailto: link or the text), and the profile each invitation points at.
+    # Matching the email column exactly missed the rest, so "delete my data"
+    # could leave behind a résumé the candidate had just been shown. Read before
+    # the grants are deleted, since the grants point at some of them.
+    in_memory = resume_rag.candidates_with_email(email)
+    cand_rows = await db_service.resumes_of(db, email, ids=[c["id"] for c in in_memory])
 
     # Database first: if it fails, nothing is half-erased. Memory went first, so
     # a failed commit left the résumé in the database, and the startup warm-up
@@ -1103,7 +1107,7 @@ async def candidate_delete_my_data(
     await db.execute(sql_delete(Interview).where(Interview.candidate_email == email))
     await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email == email))
     # Their résumé rows with any interview still attached under another address.
-    await db_service.delete_candidates(db, Candidate.email == email)
+    await db_service.delete_candidates(db, Candidate.id.in_([row.id for row in cand_rows]))
     await db.execute(sql_delete(AdvisorSession).where(AdvisorSession.email == email))
     await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
     await db.execute(sql_delete(SourcedProfile).where(SourcedProfile.email == email))
@@ -1123,6 +1127,12 @@ async def candidate_delete_my_data(
                 storage_service.delete(row.file_object_key)
         except Exception as exc:
             print(f"[WARN] object-store delete failed: {exc}")
+    # And any in-memory copy kept under an id the database doesn't share.
+    for cand in in_memory:
+        try:
+            resume_rag.delete_candidate(cand["id"], manager_id=cand.get("manager_id"))
+        except Exception as exc:
+            print(f"[WARN] in-memory delete failed for candidate {cand['id']}: {exc}")
 
     try:
         from app.api.advisor_agent import _session_cache
