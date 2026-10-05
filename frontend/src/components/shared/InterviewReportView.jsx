@@ -3,10 +3,8 @@ import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp
 import Badge from '../ui/Badge';
 import Card from '../ui/Card';
 import Markdown from '../ui/Markdown';
-import { authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 /* Both of these hand-rolled the same thing Badge already does: solid text on a
  * ~12% wash of the same hue with a ~30% border. They built the tints by
