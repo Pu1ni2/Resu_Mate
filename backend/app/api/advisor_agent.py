@@ -9,6 +9,7 @@ ResuMate AI — Advisor Agent (Candidate-facing)
 Add to your existing backend: from app.agents.advisor_agent import advisor_router
 Then: app.include_router(advisor_router, prefix="/api")
 """
+import asyncio
 import os
 import json
 from fastapi import APIRouter, UploadFile, File, Form, Depends, Request, HTTPException
@@ -61,6 +62,32 @@ router = APIRouter(prefix="/advisor", tags=["advisor"])
 _session_cache = {}
 
 
+def _resume_text(filename: str, content: bytes) -> str:
+    """The text of an uploaded resume, falling back to the raw bytes as text.
+
+    Run in a thread: parsing a PDF or DOCX of up to 5 MB is slow, and done in
+    the handler it held up every other request until it finished.
+    """
+    name = filename.lower()
+    if name.endswith('.pdf'):
+        try:
+            import PyPDF2
+            import io
+            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
+        except Exception:
+            return content.decode('utf-8', errors='ignore')
+    if name.endswith(('.docx', '.doc')):
+        try:
+            import docx
+            import io
+            doc = docx.Document(io.BytesIO(content))
+            return "\n".join(p.text for p in doc.paragraphs)
+        except Exception:
+            return content.decode('utf-8', errors='ignore')
+    return content.decode('utf-8', errors='ignore')
+
+
 # ═══ RESUME UPLOAD FOR CANDIDATES ═══
 @router.post("/upload-resume")
 @limiter.limit("10/hour")
@@ -88,26 +115,7 @@ async def candidate_upload_resume(
     content = await file.read()
     if len(content) > MAX_RESUME_BYTES:
         raise HTTPException(400, f"File exceeds {MAX_RESUME_BYTES // (1024 * 1024)}MB limit")
-    text = ""
-
-    if filename.lower().endswith('.pdf'):
-        try:
-            import PyPDF2
-            import io
-            reader = PyPDF2.PdfReader(io.BytesIO(content))
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        except Exception:
-            text = content.decode('utf-8', errors='ignore')
-    elif filename.lower().endswith(('.docx', '.doc')):
-        try:
-            import docx
-            import io
-            doc = docx.Document(io.BytesIO(content))
-            text = "\n".join(p.text for p in doc.paragraphs)
-        except Exception:
-            text = content.decode('utf-8', errors='ignore')
-    else:
-        text = content.decode('utf-8', errors='ignore')
+    text = await asyncio.to_thread(_resume_text, filename, content)
 
     cid = hashlib.md5(f"{email}-{filename}".encode()).hexdigest()[:12]
     metadata = {
