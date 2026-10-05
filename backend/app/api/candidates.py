@@ -188,8 +188,14 @@ async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db
 @router.delete("")
 async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Delete ALL of THIS manager's candidates, with their interviews, from memory and DB (never global)."""
-    from app.models.candidate import Candidate
-    # Database first, as in delete_candidate.
+    from sqlalchemy import delete as sql_delete
+    from app.models.candidate import Candidate, CandidateAccess, Interview
+    # Database first, as in delete_candidate. Every interview and grant this
+    # manager filed goes too, including any filed under another manager's
+    # candidate id before ids were unified, which delete_candidates leaves
+    # alone: with every candidate gone, they belong to no one.
+    await db.execute(sql_delete(Interview).where(Interview.manager_id == user.id))
+    await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.manager_id == user.id))
     await db_service.delete_candidates(db, Candidate.manager_id == user.id)
     await db.commit()
     resume_rag.clear_all(manager_id=user.id)
