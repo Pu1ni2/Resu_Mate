@@ -34,7 +34,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # The major Render builds the site with: frontend/package.json's
+          # engines range resolves to the newest 24.x.
+          node-version: "24"
       - name: Install dependencies
         run: npm ci
       # Lint before build. no-undef is the rule that matters here: a real
