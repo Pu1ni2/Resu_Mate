@@ -1,14 +1,10 @@
 import axios from 'axios';
 
 import { getToken, handleUnauthorized } from './session';
-import { refreshSession } from './authFetch';
-
-const API_BASE_URL = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
-  : '';
+import { API_BASE, refreshSession } from './authFetch';
 
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: `${API_BASE}/api`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 120000
 });
