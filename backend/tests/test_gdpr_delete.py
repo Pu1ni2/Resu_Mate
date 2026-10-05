@@ -114,3 +114,90 @@ def test_erasure_also_removes_advisor_sessions_codes_and_sourced_profiles(client
     assert r.status_code == 200, r.text
     assert loop.run_until_complete(_counts_everything_else(email)) == (0, 0, 0)
     assert email not in _session_cache
+
+
+# ── which résumés are theirs ──────────────────────────────────────────────────
+
+async def _resume(manager_id, name, email=None, text="", in_memory=False):
+    """A résumé row, optionally also in the in-memory store. Returns its id."""
+    from app.core import database
+    from app.services import db_service
+    from app.services.resume_rag import resume_rag
+    async with database.async_session() as db:
+        cand = await db_service.create_candidate_db(
+            db, {"name": name, "email": email, "text": text, "is_resume": True}, manager_id=manager_id
+        )
+    if in_memory:
+        resume_rag.candidates.setdefault(manager_id, {})[cand.id] = {
+            "id": cand.id, "manager_id": manager_id, "name": name, "email": email or "",
+            "text": text, "is_resume": True,
+        }
+    return cand.id
+
+
+async def _exists(cid):
+    from app.core import database
+    from app.models.candidate import Candidate
+    async with database.async_session() as db:
+        return (await db.get(Candidate, cid)) is not None
+
+
+def test_erasure_finds_the_resume_whatever_the_case_of_its_address(client):
+    _tok, user = register(client, "mgr4-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+    cid = loop.run_until_complete(_resume(user["id"], "Dana Case", email="Dana.Case@X.com"))
+
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("dana.case@x.com"))
+    assert r.status_code == 200, r.text
+    assert r.json()["records_removed"] == 1
+    assert not loop.run_until_complete(_exists(cid))
+
+
+def test_erasure_finds_a_resume_whose_address_is_only_in_its_text(client):
+    """The portal finds a résumé by the first address in its text when the email
+    column is empty, so erasure must find that one too."""
+    from app.services.resume_rag import resume_rag
+    _tok, user = register(client, "mgr5-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+    cid = loop.run_until_complete(_resume(
+        user["id"], "Dana Text", text="Dana Text\ndana.text@x.com\nPython developer, 6 years.", in_memory=True,
+    ))
+    assert [c["id"] for c in resume_rag.candidates_with_email("dana.text@x.com")] == [cid]
+
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("dana.text@x.com"))
+    assert r.status_code == 200, r.text
+    assert not loop.run_until_complete(_exists(cid))
+    assert resume_rag.candidates_with_email("dana.text@x.com") == []
+
+
+def test_erasure_leaves_a_resume_that_only_mentions_the_address(client):
+    _tok, user = register(client, "mgr6-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+    own = loop.run_until_complete(_resume(user["id"], "Dana Own", email="dana.own@x.com"))
+    referee = loop.run_until_complete(_resume(
+        user["id"], "Ref Person", text="Ref Person\nref@y.com\nReferences: dana.own@x.com", in_memory=True,
+    ))
+
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("dana.own@x.com"))
+    assert r.status_code == 200, r.text
+    assert not loop.run_until_complete(_exists(own))
+    assert loop.run_until_complete(_exists(referee))
+
+
+def test_erasure_never_follows_a_wrong_id_to_someone_else(client):
+    """An in-memory record under an id that, in the database, is another
+    person's résumé: the in-memory record goes, the other person stays."""
+    from app.services.resume_rag import resume_rag
+    _tok, a = register(client, "mgr7-gdpr@co.com")
+    _tok_b, b = register(client, "mgr8-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+    other = loop.run_until_complete(_resume(b["id"], "Someone Else", email="else@y.com"))
+    resume_rag.candidates.setdefault(a["id"], {})[other] = {
+        "id": other, "manager_id": a["id"], "name": "Dana Drift", "email": "dana.drift@x.com",
+        "text": "Dana Drift", "is_resume": True,
+    }
+
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("dana.drift@x.com"))
+    assert r.status_code == 200, r.text
+    assert loop.run_until_complete(_exists(other))
+    assert resume_rag.candidates_with_email("dana.drift@x.com") == []
