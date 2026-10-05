@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
-import { authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function BatchActionConfirm({ selectedCandidates, role, onClose, onDone }) {
   const [level, setLevel] = useState('Mid-Level');

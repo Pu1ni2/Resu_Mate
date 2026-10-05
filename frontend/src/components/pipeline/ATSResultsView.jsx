@@ -4,11 +4,7 @@ import BatchActionConfirm from './BatchActionConfirm';
 import RankedCandidates, { RankedSummary } from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { cn } from '../ui/cn';
-import { authFetch } from '../../services/authFetch';
-
-const API_BASE = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
-  : '';
+import { API_BASE, authFetch } from '../../services/authFetch';
 
 const TABS = ['All', 'Strong Fit', 'Good Fit', 'Consider', 'No Match'];
 

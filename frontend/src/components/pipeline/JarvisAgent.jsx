@@ -4,9 +4,8 @@ import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
-import { authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch } from '../../services/authFetch';
 
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
 const AUTO_RETRY_DELAY_MS = 650;

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Zap, Loader } from 'lucide-react';
-import { authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 /* Screening: four fields, then the ranked shortlist.
  *
