@@ -64,6 +64,11 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
         # Register file and get hash (scoped to this manager)
         file_hash = resume_rag.register_file(content, manager_id=mgr)
 
+        # The row takes the store's next id, so the counter must be past every
+        # row. The startup warm-up sets it, but not when the warm-up failed, nor
+        # for rows another instance has saved since (two overlap in a deploy).
+        resume_rag.candidate_counter = max(resume_rag.candidate_counter, await db_service.max_candidate_id(db))
+
         # Process resume with hash. Pass the safe name so downstream display uses
         # something stable; the original filename is never trusted as a path.
         result = await resume_rag.add_resume(file_path, safe_name, file_hash, manager_id=mgr)
@@ -75,6 +80,12 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
 
         # Persist to PostgreSQL database, owned by this manager
         cand_row = await db_service.create_candidate_db(db, {**result, "file_hash": file_hash}, manager_id=mgr)
+        if cand_row is None:
+            # Not saved, so it must not live on in memory, least of all under an
+            # id that may be another candidate's row: it used to, until the next
+            # restart, while the upload reported success.
+            resume_rag.discard_upload(result["id"], safe_name, file_hash, manager_id=mgr)
+            raise HTTPException(500, "Could not save the résumé. Please try again.")
 
         # If object storage is configured, keep the ORIGINAL file so the manager
         # can re-download it later. No-op (and no error) when S3 is off.

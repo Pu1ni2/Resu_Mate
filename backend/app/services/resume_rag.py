@@ -540,6 +540,27 @@ BADGES (pick 2-3):
             del drawer[candidate_id]
             print(f"Deleted candidate {candidate_id}")
 
+    def discard_upload(self, candidate_id: int, file_name: str, file_hash: str, manager_id=None):
+        """Undo add_resume for an upload whose database row could not be saved.
+
+        Its chunks are matched by file name as well as id: when the save failed
+        because the id was taken, that id is also another candidate's, and their
+        chunks stay. Likewise the record goes only if it is still this upload's.
+        """
+        with self._sync_lock:
+            drawer = self._drawer(manager_id)
+            record = drawer.get(candidate_id)
+            if record is not None and record.get("file_name") == file_name:
+                del drawer[candidate_id]
+            self._hash_drawer(manager_id).discard(file_hash)
+            if self.vectordb:
+                try:
+                    self.vectordb._collection.delete(
+                        where={"$and": [{"candidate_id": candidate_id}, {"file_name": file_name}]}
+                    )
+                except Exception as exc:
+                    print(f"ChromaDB delete failed for upload {file_name}: {exc}")
+
     def clear_all(self, manager_id=None):
         """Clear ONLY this manager's candidates + hashes.
 

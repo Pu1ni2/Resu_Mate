@@ -83,6 +83,11 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
         return None
 
 
+async def max_candidate_id(session: AsyncSession) -> int:
+    """The highest candidate id in the table, 0 when it is empty."""
+    return (await session.execute(select(func.max(Candidate.id)))).scalar() or 0
+
+
 async def delete_candidates(session: AsyncSession, *where) -> None:
     """Delete the candidates matching `where`, their interviews, evaluations and
     portal grants first.
