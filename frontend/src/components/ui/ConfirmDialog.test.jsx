@@ -89,6 +89,51 @@ describe('ConfirmDialog', () => {
     expect(document.activeElement).toBe(confirm);
   });
 
+  it('lets no key through to the page behind it', () => {
+    // The page's shortcuts listen on window: t flips the theme, n opens notifications.
+    const pageKeys = vi.fn();
+    window.addEventListener('keydown', pageKeys);
+    try {
+      const { dialog } = renderOpen();
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 't' });
+      fireEvent.keyDown(dialog, { key: 'Escape' });
+      expect(pageKeys).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('keydown', pageKeys);
+    }
+  });
+
+  it('holds focus itself while busy, with both buttons disabled', () => {
+    const props = { open: true, title: 'Delete everything?', onConfirm: () => {}, onCancel: () => {} };
+    const { rerender } = render(<ConfirmDialog {...props}>Gone.</ConfirmDialog>);
+    rerender(<ConfirmDialog {...props} busy>Gone.</ConfirmDialog>);
+    expect(document.activeElement).toBe(screen.getByRole('alertdialog'));
+  });
+
+  it('ignores the second click of a double-click on the button that opened it', () => {
+    const { onCancel, dialog } = renderOpen();
+    fireEvent.click(dialog.previousSibling, { detail: 2 });
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.click(dialog.previousSibling, { detail: 1 });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Tab inside when the message holds a field', () => {
+    render(
+      <ConfirmDialog open title="Rename?" onConfirm={() => {}} onCancel={() => {}}>
+        <input aria-label="New name" />
+      </ConfirmDialog>,
+    );
+    const dialog = screen.getByRole('alertdialog');
+    const field = screen.getByRole('textbox', { name: 'New name' });
+    const confirm = screen.getByRole('button', { name: 'Delete' });
+    confirm.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(field);
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(confirm);
+  });
+
   it('returns focus to the button that opened it', () => {
     render(<Page />);
     const opener = screen.getByRole('button', { name: 'Delete all' });
