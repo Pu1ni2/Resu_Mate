@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 import { API_BASE } from './authFetch';
 
@@ -23,5 +23,27 @@ describe('the backend address', () => {
 
   it('is the same origin in development, where Vite proxies /api', () => {
     expect(API_BASE).toBe('');
+  });
+});
+
+describe('the backend address in a production build', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function apiBaseWith(url) {
+    vi.stubEnv('PROD', true);
+    vi.stubEnv('VITE_API_URL', url);
+    vi.resetModules();
+    return (await import('./authFetch')).API_BASE;
+  }
+
+  it('is VITE_API_URL when the build sets it', async () => {
+    expect(await apiBaseWith('https://api.example.com')).toBe('https://api.example.com');
+  });
+
+  it('falls back to the Render backend when it does not', async () => {
+    expect(await apiBaseWith('')).toBe('https://resumate-api-74dm.onrender.com');
   });
 });
