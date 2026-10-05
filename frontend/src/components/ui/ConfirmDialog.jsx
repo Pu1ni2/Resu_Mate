@@ -16,8 +16,11 @@ import Button from './Button';
  * - Focus goes back to whatever opened it.
  * - While `busy` nothing cancels it: the request is already on its way.
  *
- * Rendered into <body> so no parent's stacking or overflow can clip it, on the
- * modal layer (--z-modal), which is below toasts, so an error still shows.
+ * Rendered into <body> so no parent's stacking or overflow can clip it, and
+ * above every other layer, toasts included. Jarvis's full-screen overlay does
+ * not trap focus, so a keyboard user could reach Delete All behind it, and the
+ * dialog opened underneath, out of sight. Both callers show their errors after
+ * it closes.
  */
 
 const FOCUSABLE =
@@ -86,7 +89,7 @@ export default function ConfirmDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center p-4">
+    <div className="fixed inset-0 z-[10000] grid place-items-center overflow-y-auto p-4">
       <div className="absolute inset-0 bg-black/60" onClick={cancel} aria-hidden="true" />
       <div
         ref={panelRef}
