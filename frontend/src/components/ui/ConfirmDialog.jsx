@@ -11,13 +11,19 @@ import Button from './Button';
  *
  * - role="alertdialog": it interrupts, and needs an answer.
  * - Focus starts on Cancel, the safe choice, so a stray Enter deletes nothing.
- * - Escape, Cancel and the backdrop all cancel. Tab stays inside the dialog.
+ * - Escape, Cancel and the backdrop all cancel. Tab stays inside the dialog,
+ *   and no key reaches the page behind it.
  * - Focus goes back to whatever opened it.
  * - While `busy` nothing cancels it: the request is already on its way.
  *
  * Rendered into <body> so no parent's stacking or overflow can clip it, on the
  * modal layer (--z-modal), which is below toasts, so an error still shows.
  */
+
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), ' +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export default function ConfirmDialog({
   open,
   title,
@@ -40,6 +46,13 @@ export default function ConfirmDialog({
     return () => opener?.focus?.();
   }, [open]);
 
+  // While busy both buttons are disabled, and the browser moves focus off a
+  // button that becomes disabled, to the page, where Tab and the page's
+  // shortcuts then work behind the dialog. The panel holds it instead.
+  useEffect(() => {
+    if (open && busy) panelRef.current?.focus();
+  }, [open, busy]);
+
   if (!open) return null;
 
   const cancel = () => {
@@ -47,19 +60,21 @@ export default function ConfirmDialog({
   };
 
   function onKeyDown(e) {
+    // Nothing behind a modal answers keys: the page's shortcuts (t for the
+    // theme, n for notifications) fired through it.
+    e.stopPropagation();
     if (e.key === 'Escape') {
-      e.stopPropagation();
       cancel();
       return;
     }
     if (e.key !== 'Tab') return;
-    const buttons = [...panelRef.current.querySelectorAll('button:not([disabled])')];
-    if (!buttons.length) {
+    const focusable = [...panelRef.current.querySelectorAll(FOCUSABLE)];
+    if (!focusable.length) {
       e.preventDefault();
       return;
     }
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
     const active = document.activeElement;
     if (e.shiftKey && (active === first || active === panelRef.current)) {
       e.preventDefault();
