@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Video, Loader, Check, Mic } from 'lucide-react';
-import { authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact }) {
   const [interviewEmail, setInterviewEmail] = useState('');

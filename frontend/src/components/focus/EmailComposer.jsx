@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Loader, Check, Clipboard } from 'lucide-react';
-import { authFetch } from '../../services/authFetch';
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
+import { API_BASE, authFetch } from '../../services/authFetch';
 
 export default function EmailComposer({ focusCandidate, agentResult, anonymize, getCandidatePayload }) {
   const [emailTo, setEmailTo] = useState('');

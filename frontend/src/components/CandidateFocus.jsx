@@ -19,12 +19,8 @@ import SchedulePanel from './focus/SchedulePanel';
 import EmailComposer from './focus/EmailComposer';
 import InterviewCreator from './focus/InterviewCreator';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
-import { authFetch } from '../services/authFetch';
+import { API_BASE, authFetch } from '../services/authFetch';
 import { toast } from '../services/notify';
-
-const API_BASE = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
-  : '';
 
 // ─── Full-Screen Matrix Rain ───
 const MatrixRain = () => {
