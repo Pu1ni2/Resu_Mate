@@ -95,7 +95,9 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
                 import mimetypes
                 ctype = mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
                 key = storage_service.key_for(mgr, cand_row.id, safe_name)
-                if storage_service.upload(key, content, content_type=ctype):
+                # In a thread: boto3 blocks, and sending up to 5 MB held up
+                # every other request until the bucket answered.
+                if await asyncio.to_thread(storage_service.upload, key, content, content_type=ctype):
                     cand_row.file_object_key = key
                     await db.commit()
                     result["file_object_key"] = key
