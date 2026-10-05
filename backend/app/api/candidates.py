@@ -179,6 +179,19 @@ async def get_candidate_file(candidate_id: int, user=Depends(get_current_user), 
     )
 
 
+async def _delete_stored_files(keys) -> None:
+    """Remove deleted candidates' original files from object storage.
+
+    They used to stay there after the candidate was deleted, with nothing left
+    pointing at them. A no-op without object storage. Called after the database
+    commit, so a failed commit leaves the files with their rows, and in a thread,
+    since boto3 blocks.
+    """
+    from app.services.storage_service import storage_service
+    for key in keys:
+        await asyncio.to_thread(storage_service.delete, key)
+
+
 @router.delete("/{candidate_id}")
 async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Delete one of THIS manager's candidates, with their interviews, from memory and DB."""
@@ -188,11 +201,12 @@ async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db
         raise HTTPException(404, "Candidate not found")
     # Database first: if it fails, the candidate is still everywhere, rather
     # than gone from the list but kept in the database and back after a restart.
-    await db_service.delete_candidates(
-        db, Candidate.id == candidate_id, Candidate.manager_id == user.id
-    )
+    theirs = (Candidate.id == candidate_id, Candidate.manager_id == user.id)
+    files = await db_service.stored_file_keys(db, *theirs)
+    await db_service.delete_candidates(db, *theirs)
     await db.commit()
     resume_rag.delete_candidate(candidate_id, manager_id=user.id)
+    await _delete_stored_files(files)
     return {"message": "Candidate deleted"}
 
 
@@ -205,9 +219,11 @@ async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession
     # manager filed goes too, including any filed under another manager's
     # candidate id before ids were unified, which delete_candidates leaves
     # alone: with every candidate gone, they belong to no one.
+    files = await db_service.stored_file_keys(db, Candidate.manager_id == user.id)
     await db.execute(sql_delete(Interview).where(Interview.manager_id == user.id))
     await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.manager_id == user.id))
     await db_service.delete_candidates(db, Candidate.manager_id == user.id)
     await db.commit()
     resume_rag.clear_all(manager_id=user.id)
+    await _delete_stored_files(files)
     return {"message": "All candidates and data deleted"}

@@ -88,6 +88,14 @@ async def max_candidate_id(session: AsyncSession) -> int:
     return (await session.execute(select(func.max(Candidate.id)))).scalar() or 0
 
 
+async def stored_file_keys(session: AsyncSession, *where) -> list:
+    """Object-storage keys of the original files of the candidates matching `where`."""
+    rows = await session.execute(
+        select(Candidate.file_object_key).where(*where, Candidate.file_object_key.isnot(None))
+    )
+    return [key for (key,) in rows.all() if key]
+
+
 async def delete_candidates(session: AsyncSession, *where) -> None:
     """Delete the candidates matching `where`, their interviews, evaluations and
     portal grants first.
