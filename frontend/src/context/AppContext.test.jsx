@@ -71,6 +71,8 @@ describe('deleting one candidate', () => {
     expect(result).toBe(false);
     expect(app.candidates.map(c => c.name)).toEqual(['Ada', 'Grace']);
     expect(toasts).toEqual([{ message: 'Could not delete the candidate. Please try again.', type: 'error' }]);
+    // Left true, the Delete All dialog would open stuck on "Deleting…".
+    expect(app.deleting).toBe(false);
   });
 
   it('removes them when the server says they are already gone', async () => {
