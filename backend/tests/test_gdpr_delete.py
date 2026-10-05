@@ -201,3 +201,85 @@ def test_erasure_never_follows_a_wrong_id_to_someone_else(client):
     assert r.status_code == 200, r.text
     assert loop.run_until_complete(_exists(other))
     assert resume_rag.candidates_with_email("dana.drift@x.com") == []
+
+
+def test_erasure_unlinks_a_resume_an_invitation_merely_points_at(client):
+    """The manager invited colleague@co.com for Dana's résumé: a typo, or the
+    wrong person. That address may see the profile, but erasing must not delete
+    Dana's résumé or her own interview; it only removes the invitation."""
+    from sqlalchemy import func, select
+    from app.core import database
+    from app.models.candidate import CandidateAccess, Interview
+    from app.services import db_service
+    _tok, user = register(client, "mgr9-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+    dana = loop.run_until_complete(_resume(user["id"], "Dana Scully", email="dana.real@x.com"))
+
+    async def invite():
+        async with database.async_session() as db:
+            await db_service.create_candidate_access(db, "colleague@co.com", "Dana Scully", dana, manager_id=user["id"])
+            for address in ("dana.real@x.com", "colleague@co.com"):
+                await db_service.create_interview(db, {
+                    "candidate_id": dana, "manager_id": user["id"], "candidate_email": address, "role": "Dev",
+                })
+
+    async def left():
+        async with database.async_session() as db:
+            interviews = (await db.execute(select(Interview.candidate_email))).scalars().all()
+            grants = (await db.execute(select(func.count()).select_from(CandidateAccess))).scalar()
+            return sorted(interviews), grants
+
+    loop.run_until_complete(invite())
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("colleague@co.com"))
+    assert r.status_code == 200, r.text
+    assert r.json()["records_removed"] == 0
+    assert loop.run_until_complete(_exists(dana))
+    assert loop.run_until_complete(left()) == (["dana.real@x.com"], 0)
+
+
+def test_erasure_changes_the_database_before_memory(client, monkeypatch):
+    """When the database step fails, the résumé stays in memory too, instead of
+    vanishing from the portal until a restart puts it back."""
+    import pytest
+    from app.services import db_service
+    from app.services.resume_rag import resume_rag
+    _tok, user = register(client, "mgr10-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+    cid = loop.run_until_complete(_resume(user["id"], "Dana First", email="dana.first@x.com", in_memory=True))
+
+    async def refuse(*a, **k):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(db_service, "delete_candidates", refuse)
+    with pytest.raises(RuntimeError):
+        client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("dana.first@x.com"))
+    assert resume_rag.get_candidate(cid, manager_id=user["id"]) is not None
+    assert loop.run_until_complete(_exists(cid))
+
+
+def test_erasure_removes_sourced_profiles_whatever_the_case(client):
+    """A sourcing run keeps the address as it found it."""
+    from sqlalchemy import func, select
+    from app.core import database
+    from app.models.sourcing import SourcingRun, SourcedProfile
+    _tok, user = register(client, "mgr11-gdpr@co.com")
+    loop = asyncio.get_event_loop()
+
+    async def seed():
+        async with database.async_session() as db:
+            run = SourcingRun(manager_id=user["id"], description="search")
+            db.add(run)
+            await db.flush()
+            db.add(SourcedProfile(run_id=run.id, manager_id=user["id"], source="upload", external_id="9",
+                                  name="Dana Case", email="Dana.Case@X.com"))
+            await db.commit()
+
+    async def profiles():
+        async with database.async_session() as db:
+            return (await db.execute(select(func.count()).select_from(SourcedProfile))).scalar()
+
+    loop.run_until_complete(seed())
+    assert loop.run_until_complete(profiles()) == 1
+    r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers("dana.case@x.com"))
+    assert r.status_code == 200, r.text
+    assert loop.run_until_complete(profiles()) == 0
