@@ -3,7 +3,7 @@ import { AxiosError } from 'axios';
 
 import api from './api';
 import { authFetch, refreshSession } from './authFetch';
-import { getToken, TOKEN_KEY } from './session';
+import { clearSession, getRefreshToken, getToken, saveSession, TOKEN_KEY } from './session';
 
 /* Access tokens last 30 minutes, refresh tokens 30 days. An expired session is
  * renewed once and the request retried; only a failed renewal signs out. */
@@ -102,6 +102,55 @@ describe('authFetch and an expired session', () => {
     });
     expect(await refreshSession()).toBeNull();
   });
+
+  it('sends the body again on the retry', async () => {
+    const spy = server();
+    const body = JSON.stringify({ text: 'hi' });
+    await authFetch('/api/notes', { method: 'POST', body, headers: { 'Content-Type': 'application/json' } });
+    const sends = spy.mock.calls.filter(([url]) => url === '/api/notes');
+    expect(sends).toHaveLength(2);
+    expect(sends[1][1].body).toBe(body);
+    expect(sends[1][1].headers).toEqual({ 'Content-Type': 'application/json', Authorization: 'Bearer new-jwt' });
+  });
+});
+
+/* A renewal takes one round trip. The session can change while it is out. */
+describe('a session that changes while it is being renewed', () => {
+  function slowRenewal() {
+    let answer;
+    const pending = new Promise(resolve => { answer = resolve; });
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
+      if (String(url).endsWith('/api/auth/refresh')) return pending;
+      if (options.headers?.Authorization === 'Bearer new-jwt') return json(200, { ok: true });
+      return json(401, { detail: 'expired' });
+    });
+    return { spy, answer: () => answer(json(200, { access_token: 'new-jwt' })) };
+  }
+
+  it('is not brought back after the manager signs out', async () => {
+    const { spy, answer } = slowRenewal();
+    const request = authFetch('/api/candidates');
+    await vi.waitFor(() => expect(refreshCalls(spy)).toHaveLength(1));
+    clearSession();
+    answer();
+    const resp = await request;
+    expect(resp.status).toBe(401);
+    expect(getToken()).toBeNull();
+    expect(spy.mock.calls.filter(([url]) => url === '/api/candidates')).toHaveLength(1);
+    expect(unauthorized).toBe(0);
+  });
+
+  it('neither overwrites nor signs out a manager who signed in meanwhile', async () => {
+    const { spy, answer } = slowRenewal();
+    const request = authFetch('/api/candidates');
+    await vi.waitFor(() => expect(refreshCalls(spy)).toHaveLength(1));
+    saveSession('b-jwt', 'b-refresh', { id: 2, name: 'B' });
+    answer();
+    await request;
+    expect(getToken()).toBe('b-jwt');
+    expect(getRefreshToken()).toBe('b-refresh');
+    expect(unauthorized).toBe(0);
+  });
 });
 
 describe('the axios client and an expired session', () => {
@@ -139,5 +188,34 @@ describe('the axios client and an expired session', () => {
     await expect(api.post('/auth/login', {})).rejects.toBeTruthy();
     expect(refreshCalls(spy)).toHaveLength(0);
     expect(unauthorized).toBe(0);
+  });
+
+  it('renews once and signs out once when the retry is refused too', async () => {
+    adapter.mockImplementation(async config => {
+      const refused = { status: 401, statusText: 'Unauthorized', headers: {}, config, data: {} };
+      throw new AxiosError('Request failed with status code 401', AxiosError.ERR_BAD_REQUEST, config, null, refused);
+    });
+    const spy = server();
+    await expect(api.get('/candidates')).rejects.toMatchObject({ response: { status: 401 } });
+    expect(adapter).toHaveBeenCalledTimes(2);
+    expect(refreshCalls(spy)).toHaveLength(1);
+    expect(unauthorized).toBe(1);
+  });
+
+  it('replays a JSON body as it was sent, not encoded twice', async () => {
+    server();
+    await api.post('/notes', { text: 'hello' });
+    expect(adapter).toHaveBeenCalledTimes(2);
+    expect(adapter.mock.calls[1][0].data).toBe(JSON.stringify({ text: 'hello' }));
+  });
+
+  it('replays an upload as the same multipart form', async () => {
+    server();
+    const form = new FormData();
+    form.append('file', new Blob(['%PDF-1.4']), 'cv.pdf');
+    await api.post('/candidates/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    expect(adapter).toHaveBeenCalledTimes(2);
+    expect(adapter.mock.calls[1][0].data).toBe(form);
+    expect(adapter.mock.calls[1][0].headers.Authorization).toBe('Bearer new-jwt');
   });
 });
