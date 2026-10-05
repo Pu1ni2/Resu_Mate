@@ -53,6 +53,10 @@ export function refreshSession() {
         if (!resp.ok) return null;
         const data = await resp.json();
         if (!data?.access_token) return null;
+        // Signed out, or signed in as someone else, while this was on its way:
+        // the session it renewed is gone. Saving it anyway put a signed-out
+        // manager's token back, or wrote it over the new manager's.
+        if (getRefreshToken() !== refreshToken) return null;
         saveAccessToken(data.access_token);
         return data.access_token;
       } catch {
@@ -66,8 +70,13 @@ export function refreshSession() {
 }
 
 export async function authFetch(url, options = {}) {
-  // Rebuilt for the retry so it carries the renewed token.
-  const send = () => fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
+  // Rebuilt for the retry so it carries the renewed token; `sent` remembers
+  // which token the last attempt carried.
+  let sent;
+  const send = () => {
+    sent = getToken();
+    return fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
+  };
   let resp = await send();
   // An expired session gets one renewal and one retry before it counts as a
   // sign-out. Sign-in calls are left alone: their 401 means a wrong password.
@@ -75,7 +84,7 @@ export async function authFetch(url, options = {}) {
   if (resp.status === 401 && !isAuthCall && (await refreshSession())) {
     resp = await send();
   }
-  if (resp.status === 401) handleUnauthorized(url);
+  if (resp.status === 401) handleUnauthorized(url, sent);
   return resp;
 }
 

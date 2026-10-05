@@ -121,9 +121,15 @@ function isAuthFlow(url) {
  * Deliberately not window.location.href — a hard reload kills in-progress
  * Jarvis conversations, voice sessions and uploads. That is only the fallback
  * for browsers without CustomEvent.
+ *
+ * `sentToken`, when given, is the access token the refused request carried. A
+ * 401 for a token that is no longer the current one says nothing about the
+ * current session (the manager signed out, or someone else signed in, while it
+ * was on its way), so that session is left alone.
  */
-export function handleUnauthorized(url) {
+export function handleUnauthorized(url, sentToken) {
   if (isAuthFlow(url)) return;
+  if (sentToken !== undefined && sentToken !== getToken()) return;
   clearSession();
   try {
     window.dispatchEvent(new CustomEvent('resumate:unauthorized'));

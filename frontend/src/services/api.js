@@ -30,8 +30,11 @@ api.interceptors.response.use(
     }
     // Expiry handling lives in services/session.js so the raw fetch() call
     // sites behave identically — they used to do nothing at all on a 401.
+    // It is told which token was refused, so a 401 for a session that has
+    // since been replaced cannot sign the new one out.
     if (response?.status === 401) {
-      handleUnauthorized(config?.url);
+      const sent = String(config?.headers?.Authorization || '').replace(/^Bearer /, '') || null;
+      handleUnauthorized(config?.url, sent);
     }
     return Promise.reject(error);
   }
