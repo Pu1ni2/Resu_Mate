@@ -84,7 +84,8 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
 
 
 async def delete_candidates(session: AsyncSession, *where) -> None:
-    """Delete the candidates matching `where`, their interviews and evaluations first.
+    """Delete the candidates matching `where`, their interviews, evaluations and
+    portal grants first.
 
     Neither foreign key to candidates has ON DELETE CASCADE, and the ORM cascade
     on Candidate.interviews covers only deletes made through the session, not a
@@ -92,11 +93,23 @@ async def delete_candidates(session: AsyncSession, *where) -> None:
     interview, while SQLite, which enforces foreign keys only when asked to, let
     it through and left the interviews pointing at nobody.
 
+    Only what the candidate's own manager filed (or nobody did) goes with them.
+    Before candidate ids were unified, another manager's interview could be filed
+    under this candidate's id. Deleting it would lose that manager's record, so
+    the foreign key is left to refuse the delete instead. Grants have no foreign
+    key: one left behind kept the portal open for a deleted candidate.
+
     Does not commit: the caller commits along with the rest of its work.
     """
-    ids = select(Candidate.id).where(*where)
-    await session.execute(delete(Interview).where(Interview.candidate_id.in_(ids)))
-    await session.execute(delete(Evaluation).where(Evaluation.candidate_id.in_(ids)))
+    def filed_under_them(model):
+        return select(Candidate.id).where(
+            *where,
+            Candidate.id == model.candidate_id,
+            or_(model.manager_id == Candidate.manager_id, model.manager_id.is_(None)),
+        ).correlate(model).exists()
+
+    for model in (Interview, Evaluation, CandidateAccess):
+        await session.execute(delete(model).where(filed_under_them(model)))
     await session.execute(delete(Candidate).where(*where))
 
 
