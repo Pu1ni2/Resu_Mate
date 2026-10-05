@@ -1,6 +1,20 @@
 """Browser Tool — Playwright-based web scraping (sync in thread for Windows)"""
-import concurrent.futures
+import asyncio
 from typing import Dict, Any
+
+# How long a scrape may take before the caller gives up on it.
+SCRAPE_TIMEOUT = 30
+
+
+async def _in_thread(fn, *args):
+    """Run a blocking scrape in a worker thread, waiting at most SCRAPE_TIMEOUT.
+
+    It used to wait with future.result(timeout=30) inside the async method,
+    which froze the server for up to 30 seconds, and leaving the executor's
+    `with` block then waited for the scrape to finish even after the timeout.
+    A scrape that overruns now finishes in its thread with nobody waiting.
+    """
+    return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout=SCRAPE_TIMEOUT)
 
 
 class BrowserTool:
@@ -8,14 +22,14 @@ class BrowserTool:
         """Scrape a webpage using Playwright"""
         url = params.get("url", "")
         selectors = params.get("selectors", {})
-        
+
         if not url:
             return {"error": "No URL provided"}
 
         try:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(self._scrape_sync, url, selectors)
-                return future.result(timeout=30)
+            return await _in_thread(self._scrape_sync, url, selectors)
+        except asyncio.TimeoutError:
+            return {"error": f"Browser error: no answer within {SCRAPE_TIMEOUT} seconds"}
         except Exception as e:
             return {"error": f"Browser error: {str(e)}"}
 
@@ -87,8 +101,9 @@ class BrowserTool:
                     browser.close()
                     return data
             
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                return executor.submit(_scrape).result(timeout=30)
+            return await _in_thread(_scrape)
+        except asyncio.TimeoutError:
+            return {"error": f"no answer within {SCRAPE_TIMEOUT} seconds"}
         except Exception as e:
             return {"error": str(e)}
 
