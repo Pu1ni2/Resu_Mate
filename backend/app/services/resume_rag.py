@@ -358,7 +358,10 @@ class ResumeRAGService:
             )
             documents.append(doc)
 
-        self.vectordb.add_documents(documents)
+        # In a thread: embedding the chunks is a blocking call to OpenAI, and
+        # made here it held up every other request on the server until it
+        # returned, a few seconds for a long résumé.
+        await asyncio.to_thread(self.vectordb.add_documents, documents)
         summary_data = await self._analyze_resume(text, name, is_resume)
 
         candidate_data = {
