@@ -13,7 +13,7 @@ import {
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
   Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch
 } from 'lucide-react';
-import { authFetch } from '../services/authFetch';
+import { API_BASE, authFetch } from '../services/authFetch';
 import { toast } from '../services/notify';
 
 const Logo = ({ size = 32 }) => (
@@ -39,12 +39,11 @@ function InterviewAnalytics() {
   // export -- and was mounted only in the candidate portal. The manager's only
   // route to it was asking the voice agent.
   const [openReport, setOpenReport] = useState(null);
-  const API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const resp = await authFetch(`${API}/api/chat/get-all-interview-results`);
+      const resp = await authFetch(`${API_BASE}/api/chat/get-all-interview-results`);
       const json = await resp.json();
       setData(json.results || []);
     } catch { setData([]); }
@@ -360,8 +359,7 @@ export default function Dashboard() {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
 
-    const STT_API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
-    const response = await authFetch(`${STT_API}/api/chat/speech-to-text`, {
+    const response = await authFetch(`${API_BASE}/api/chat/speech-to-text`, {
       method: 'POST',
       body: formData
     });
@@ -443,8 +441,7 @@ export default function Dashboard() {
         cleanText = cleanText.substring(0, 4000) + '...';
       }
       
-      const TTS_API = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
-      const response = await authFetch(`${TTS_API}/api/chat/text-to-speech`, {
+      const response = await authFetch(`${API_BASE}/api/chat/text-to-speech`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: cleanText, voice: 'nova' }),
