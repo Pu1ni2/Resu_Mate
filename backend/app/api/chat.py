@@ -1090,12 +1090,12 @@ async def candidate_delete_my_data(
     from sqlalchemy import delete as sql_delete
     from app.models.candidate import Interview, CandidateAccess, Candidate
 
-    # Their résumés as the portal and the advisor find them: by the résumé's own
-    # address in any case, wherever it came from (the email column, the PDF's
-    # mailto: link or the text), and the profile each invitation points at.
-    # Matching the email column exactly missed the rest, so "delete my data"
-    # could leave behind a résumé the candidate had just been shown. Read before
-    # the grants are deleted, since the grants point at some of them.
+    # Their own résumés: those whose own address is theirs, in any case,
+    # wherever it came from (the email column, the PDF's mailto: link or the
+    # text). Matching the email column exactly missed the rest. A résumé an
+    # invitation merely points at is someone's profile the manager linked to
+    # this address, so it is unlinked (the grant goes below), not deleted. Read
+    # before the grants are deleted, since the grants point at some of them.
     in_memory = resume_rag.candidates_with_email(email)
     cand_rows = await db_service.resumes_of(db, email, ids=[c["id"] for c in in_memory])
 

@@ -404,14 +404,19 @@ def _is_this_candidate(row: Candidate, email: str, access: Optional[CandidateAcc
 
 
 async def resumes_of(session: AsyncSession, email: str, ids=()) -> list:
-    """Every Candidate row that is this person's resume, as the portal sees them.
+    """Every Candidate row that is this person's own resume.
 
     A row is theirs when its own address is `email` (primary_email: the email
     column in any case, else the PDF's mailto: link, else the first address in
-    the text), or when one of their grants points at it and names it
-    (_is_this_candidate, as candidate_view checks). `ids` adds rows found
-    elsewhere, such as the in-memory store; they pass the same check, so a wrong
-    id never reaches someone else's resume.
+    the text). The rows their grants point at, and `ids` found elsewhere (the
+    in-memory store), are considered too, but must pass the same check, so a
+    wrong id never reaches someone else's resume.
+
+    A grant alone is not proof. The portal shows the profile a grant points at
+    when the grant names it, and every invitation is made out to the row's own
+    name, so a manager who invites a wrong address gives that person a view of
+    the profile, not the right to erase it. Erasure deletes their grants, which
+    unlinks such a row, and leaves the row to its manager.
     """
     email = (email or "").strip().lower()
     grants = (await session.execute(
@@ -421,12 +426,7 @@ async def resumes_of(session: AsyncSession, email: str, ids=()) -> list:
     rows = (await session.execute(
         select(Candidate).where(or_(Candidate.id.in_(wanted), func.lower(Candidate.email) == email))
     )).scalars().all()
-
-    def theirs(row: Candidate) -> bool:
-        grant = next((g for g in grants if g.candidate_id == row.id and g.manager_id == row.manager_id), None)
-        return _is_this_candidate(row, email, grant)
-
-    return [row for row in rows if theirs(row)]
+    return [row for row in rows if _is_this_candidate(row, email, None)]
 
 
 async def candidate_view(session: AsyncSession, email: str):
