@@ -47,6 +47,9 @@
   --color-positive-wash: rgba(34, 197, 94, 0.12);
   --color-critical: #ef4444;
   --color-critical-wash: rgba(239, 68, 68, 0.12);
+  /* For text on a critical tint, e.g. a danger button: --color-critical there
+     is ~4.2:1, below the 4.5:1 that text this size needs. red-400 is 5.7:1. */
+  --color-critical-ink: #f87171;
   /* Caution is amber-400 rather than the brand amber-500 so a warning is not
      mistaken for a call to action. It must always ship with an icon. */
   --color-caution: #fbbf24;
@@ -179,6 +182,7 @@
   --color-positive-wash: rgba(21, 128, 61, 0.10);
   --color-critical: #dc2626;
   --color-critical-wash: rgba(220, 38, 38, 0.10);
+  --color-critical-ink: #b91c1c;  /* red-700, 5.4:1 on the tint; red-600 is 4.0:1 */
   --color-caution: #b45309;
   --color-caution-wash: rgba(180, 83, 9, 0.10);
 
@@ -243,6 +247,7 @@
   --color-positive-wash: rgba(110, 231, 168, 0.12);
   --color-critical: #ff8080;
   --color-critical-wash: rgba(255, 128, 128, 0.12);
+  --color-critical-ink: #ff8080;
   --color-caution: #ffc93c;
   --color-caution-wash: rgba(255, 201, 60, 0.12);
 

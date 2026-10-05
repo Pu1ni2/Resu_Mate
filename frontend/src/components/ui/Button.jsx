@@ -37,7 +37,7 @@ const variants = {
     'bg-transparent text-ink-muted border border-transparent ' +
     'hover:bg-surface-raised hover:text-ink',
   danger:
-    'bg-critical/12 text-critical border border-critical/35 ' +
+    'bg-critical/12 text-critical-ink border border-critical/35 ' +
     'hover:bg-critical/20',
   // Amber outline for a secondary action that still needs to read as the
   // accent path — used sparingly.
