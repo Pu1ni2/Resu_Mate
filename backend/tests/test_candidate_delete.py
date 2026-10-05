@@ -249,3 +249,64 @@ def test_deletes_remove_the_stored_resume_files(client, monkeypatch):
     assert removed == ["resumes/ada.pdf"]
     assert client.delete("/api/candidates", headers=auth_headers(tok)).status_code == 200
     assert removed == ["resumes/ada.pdf", "resumes/grace.pdf"]
+
+
+# ── an upload's id ────────────────────────────────────────────────────────────
+
+def _store_like_add_resume(monkeypatch):
+    """add_resume without OpenAI: takes the store's next id, as the real one does."""
+    from app.services.resume_rag import resume_rag
+
+    async def analysed(file_path, file_name, file_hash=None, manager_id=None):
+        resume_rag.candidate_counter += 1
+        cid = resume_rag.candidate_counter
+        record = {"id": cid, "manager_id": manager_id, "name": "Ada", "email": "ada.new@x.com",
+                  "file_name": file_name, "file_hash": file_hash, "is_resume": True, "text": "Ada"}
+        resume_rag.candidates.setdefault(manager_id, {})[cid] = record
+        return record
+
+    monkeypatch.setattr(resume_rag, "add_resume", analysed)
+
+
+def _upload(client, tok):
+    return client.post("/api/candidates/upload", headers=auth_headers(tok),
+                       files={"file": ("ada.txt", b"Ada Lovelace, ada.new@x.com, engineer. " * 4, "text/plain")})
+
+
+def test_an_upload_takes_an_id_past_every_row(client, monkeypatch):
+    """The counter is behind the table, as when the startup warm-up failed or
+    another instance saved rows since. The upload must still get a free id."""
+    from app.core import database
+    from app.models.candidate import Candidate
+    from app.services.resume_rag import resume_rag
+    tok, user = register(client, "del14@co.com")
+    existing = _run(_candidate_with_interview(user["id"], "Grace", "grace@x.com"))
+    resume_rag.candidate_counter = 0
+    _store_like_add_resume(monkeypatch)
+
+    r = _upload(client, tok)
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == existing + 1
+
+    async def names():
+        async with database.async_session() as db:
+            return {row.id: row.name for row in (await db.execute(select(Candidate))).scalars().all()}
+
+    assert _run(names()) == {existing: "Grace", existing + 1: "Ada"}
+
+
+def test_an_upload_that_cannot_be_saved_is_undone(client, monkeypatch):
+    from app.services import db_service
+    from app.services.resume_rag import resume_rag
+    tok, user = register(client, "del15@co.com")
+    _store_like_add_resume(monkeypatch)
+
+    async def not_saved(*a, **k):
+        return None
+
+    monkeypatch.setattr(db_service, "create_candidate_db", not_saved)
+    r = _upload(client, tok)
+    assert r.status_code == 500, r.text
+    assert resume_rag.candidates.get(user["id"], {}) == {}
+    # Its hash is released, so the same file can be uploaded again.
+    assert resume_rag.uploaded_file_hashes.get(user["id"], set()) == set()
