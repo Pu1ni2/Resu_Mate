@@ -42,12 +42,15 @@ def _openai():
     the whole backend failed to start, and CI, which has none, never got as far
     as running a test. Locally it was hidden because livekit_routes loads .env
     into the environment first.
+
+    The async client: the handlers that call it are async, and the blocking one
+    held up every other request on the server until OpenAI answered.
     """
     global _client
     if _client is None and settings.openai_api_key:
         try:
-            from openai import OpenAI
-            _client = OpenAI(api_key=settings.openai_api_key)
+            from openai import AsyncOpenAI
+            _client = AsyncOpenAI(api_key=settings.openai_api_key)
         except ImportError:
             print("⚠️ openai package not installed — advisor agent chat will not work")
     return _client
@@ -119,7 +122,7 @@ async def candidate_upload_resume(
         client = _openai()
         if client is None:
             raise RuntimeError("no OpenAI API key configured")
-        analysis = client.chat.completions.create(
+        analysis = await client.chat.completions.create(
             model="gpt-4o",
             messages=[{
                 "role": "system",
@@ -279,7 +282,7 @@ async def advisor_chat(
         }
 
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
             max_tokens=1000,
