@@ -15,11 +15,8 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, PhoneOff, Loader, AlertCircle } from 'lucide-react';
-import { interviewAuthHeaders } from '../services/authFetch';
+import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
 
-const API_BASE = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
-  : '';
 const OPENAI_REALTIME_URL = 'https://api.openai.com/v1/realtime';
 
 // How many user turns before we POST a checkpoint. Low number so a disconnect

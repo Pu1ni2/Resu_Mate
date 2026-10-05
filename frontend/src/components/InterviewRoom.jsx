@@ -12,9 +12,8 @@ import {
   Clock, Loader, Shield, Briefcase,
   Phone, PhoneOff
 } from 'lucide-react';
-import { interviewAuthHeaders } from '../services/authFetch';
+import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
 
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
 const MAX_VIOLATIONS = 3;
