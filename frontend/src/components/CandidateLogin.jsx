@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { API_BASE } from '../services/authFetch';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, FileText, KeyRound } from 'lucide-react';
 
 const DEMO_EMAIL = 'saipunithkolla@gmail.com';
@@ -58,8 +59,6 @@ const Logo = ({ size = 32 }) => (
     <circle cx="16" cy="16" r="3" fill="#fff"/>
   </svg>
 );
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 export default function CandidateLogin() {
   const navigate = useNavigate();

@@ -16,7 +16,7 @@ import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
 import { clearCandidateSession, getCandidateToken } from '../services/session';
-import { candidateAuthHeaders as withCandidateToken } from '../services/authFetch';
+import { API_BASE, candidateAuthHeaders as withCandidateToken } from '../services/authFetch';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -26,8 +26,6 @@ const Logo = ({ size = 32 }) => (
     <circle cx="16" cy="16" r="3" fill="#fff"/>
   </svg>
 );
-
-const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com') : '';
 
 // Candidate-portal calls authenticate with the candidate session token minted at
 // OTP login. The server derives the candidate's identity from this token, so any
