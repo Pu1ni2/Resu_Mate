@@ -18,7 +18,7 @@
     "marked": "^9.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
+    "react-router-dom": "^7.18.4",
     "three": "^0.185.1"
   },
   "devDependencies": {
