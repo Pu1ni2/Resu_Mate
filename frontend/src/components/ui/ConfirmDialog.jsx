@@ -90,7 +90,14 @@ export default function ConfirmDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[10000] grid place-items-center overflow-y-auto p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={cancel} aria-hidden="true" />
+      {/* The second click of a double-click on the opener lands here, the
+          dialog being open by then. It used to cancel at once, so the dialog
+          only flashed. A click that is part of a double-click doesn't count. */}
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={e => { if (e.detail <= 1) cancel(); }}
+        aria-hidden="true"
+      />
       <div
         ref={panelRef}
         role="alertdialog"
