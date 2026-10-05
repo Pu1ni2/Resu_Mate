@@ -322,13 +322,15 @@ class ResumeRAGService:
         if not self.vectordb:
             return {"error": "Service not initialized. Check OpenAI API key."}
     
-        text = self._extract_text(file_path, file_name)
-    
+        # Parsing runs in a thread, like the embedding below: reading a PDF of up
+        # to 5 MB is slow Python work, and done here it held up every request.
+        text = await asyncio.to_thread(self._extract_text, file_path, file_name)
+
         if not text or len(text) < 50:
           return {"error": "Could not extract text from file"}
-        
+
         # Extract embedded hyperlinks from PDF
-        embedded_links = self._extract_embedded_links(file_path, file_name)
+        embedded_links = await asyncio.to_thread(self._extract_embedded_links, file_path, file_name)
     
         is_resume = self._is_valid_resume(text)
         name = self._extract_candidate_name(text, file_name)
