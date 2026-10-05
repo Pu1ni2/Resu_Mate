@@ -64,6 +64,10 @@ const submit = () => fireEvent.click(screen.getByRole('button', { name: /^create
 
 beforeEach(() => {
   localStorage.clear();
+  // Creating the account signs in, which starts AppProvider's sync with the
+  // backend. Unanswered, it went to the real network and failed with a
+  // connection error, sometimes after its test had ended, which crashed the run.
+  vi.spyOn(api, 'get').mockResolvedValue({ data: { candidates: [] } });
 });
 
 afterEach(() => {
