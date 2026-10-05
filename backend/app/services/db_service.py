@@ -36,9 +36,22 @@ async def log_event(
 # ═══════ CANDIDATE ═══════
 
 async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int = None) -> Optional[Candidate]:
-    """Persist a candidate to the database (alongside in-memory/ChromaDB storage)."""
+    """Persist a candidate to the database (alongside in-memory/ChromaDB storage).
+
+    The row takes the id the in-memory store gave the candidate (data["id"]),
+    which is also the id on their ChromaDB chunks and the one the frontend
+    uses. Postgres used to number the row itself. The two agreed only until
+    a gap: Postgres never reuses an id, so after the newest candidate was
+    deleted (or Delete All ran) and the server restarted, the store's counter,
+    which resumes from the highest id left, fell behind. From then on every
+    candidate had two ids. Deleting one removed the database row with the
+    other's id, and interviews were filed under the wrong candidate.
+    The counter starts past every existing row (main.py's warm-up), so the id
+    is free.
+    """
     try:
         candidate = Candidate(
+            id=data.get("id"),
             manager_id=manager_id if manager_id is not None else data.get("manager_id"),
             name=data.get("name", ""),
             email=data.get("email") or (data.get("embedded_links", {}) or {}).get("email"),
