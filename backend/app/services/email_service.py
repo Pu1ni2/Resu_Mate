@@ -1,4 +1,5 @@
 """Email Service — SendGrid with graceful console fallback"""
+import asyncio
 import logging
 from app.core.config import settings
 
@@ -38,7 +39,9 @@ class EmailService:
                 subject=subject,
                 html_content=html_body,
             )
-            response = self._sg.send(message)
+            # In a thread: the SendGrid client blocks, and every sign-in code
+            # and invitation held up all other requests until SendGrid answered.
+            response = await asyncio.to_thread(self._sg.send, message)
             success = 200 <= response.status_code < 300
             if not success:
                 logger.warning("SendGrid rejected message: status=%s", response.status_code)
