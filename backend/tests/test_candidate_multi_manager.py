@@ -93,8 +93,18 @@ def test_create_interview_refuses_another_managers_candidate(client):
 
 
 def test_create_interview_works_for_the_managers_own_candidate(client):
+    from app.core import database
+    from app.services import db_service
     from app.services.resume_rag import resume_rag
     tok_a, a = register(client, "a5@co.com")
+
+    async def own_row():
+        # In the database too: the interview refers to the row, and without one
+        # it was never saved, while the endpoint still answered 200.
+        async with database.async_session() as db:
+            await db_service.create_candidate_db(db, {"id": 3, "name": "Own", "text": "x"}, manager_id=a["id"])
+
+    _run(own_row())
     resume_rag.candidates.setdefault(a["id"], {})[3] = {"id": 3, "manager_id": a["id"], "name": "Own", "text": "x"}
     r = client.post("/api/chat/create-interview", headers=auth_headers(tok_a), json={
         "candidate_id": 3, "candidate_email": "own@x.com", "candidate_name": "Own", "role": "Dev",

@@ -17,9 +17,26 @@ def _cand(email):
 
 
 def _own_candidate(client, manager_token, candidate_id=1):
-    """Seed a candidate the manager owns: create-interview only takes their own."""
+    """Seed a candidate the manager owns: create-interview only takes their own.
+
+    In the database as well as in memory: the interview refers to the row, and
+    with foreign keys checked, an interview for a candidate with no row is never
+    saved, which left the ownership tests below with no interview to protect.
+    """
+    import asyncio
+    from app.core import database
+    from app.services import db_service
     from app.services.resume_rag import resume_rag
     manager_id = client.get("/api/auth/me", headers=auth_headers(manager_token)).json()["id"]
+
+    async def seed():
+        async with database.async_session() as db:
+            row = await db_service.create_candidate_db(
+                db, {"id": candidate_id, "name": "Cand", "text": "resume"}, manager_id=manager_id
+            )
+            assert row is not None and row.id == candidate_id
+
+    asyncio.get_event_loop().run_until_complete(seed())
     resume_rag.candidates.setdefault(manager_id, {})[candidate_id] = {
         "id": candidate_id, "manager_id": manager_id, "name": "Cand", "text": "resume", "is_resume": True,
     }
@@ -73,11 +90,12 @@ def test_candidate_cannot_create_room_for_another_candidate(client):
     """Body email is ignored; a candidate token only ever acts on its own email."""
     tok, _ = register(client, "mgr-lk@co.com")
     _own_candidate(client, tok)
-    client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
+    r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
         "candidate_id": 1, "candidate_email": "victim@x.com",
         "candidate_name": "Victim", "role": "Dev", "level": "Mid-Level",
         "num_questions": 5,
     })
+    assert r.status_code == 200, r.text  # there is a victim's interview to protect
     # Attacker authenticates as themselves but names the victim in the body.
     r = client.post("/api/livekit/create-room", headers=_cand("attacker@x.com"), json={
         "candidate_email": "victim@x.com", "candidate_name": "V", "interview_config": {},
@@ -165,10 +183,11 @@ def test_manager_cannot_checkpoint_another_tenants_interview(client):
     other, _ = register(client, "other-rt@co.com")
 
     _own_candidate(client, owner)
-    client.post("/api/chat/create-interview", headers=auth_headers(owner), json={
+    r = client.post("/api/chat/create-interview", headers=auth_headers(owner), json={
         "candidate_id": 1, "candidate_email": "cand-rt@x.com", "candidate_name": "Cand",
         "role": "Dev", "level": "Mid-Level", "num_questions": 5, "mode": "conversational",
     })
+    assert r.status_code == 200, r.text  # there is an interview to protect
 
     # Sweep a range of ids: the other manager must not be able to write to any
     # of them. 404 (not found for you) is the expected answer, never 200.
@@ -184,10 +203,11 @@ def test_manager_cannot_checkpoint_another_tenants_interview(client):
 def test_candidate_cannot_checkpoint_someone_elses_interview(client):
     tok, _ = register(client, "owner-rt2@co.com")
     _own_candidate(client, tok)
-    client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
+    r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
         "candidate_id": 1, "candidate_email": "victim-rt@x.com", "candidate_name": "Victim",
         "role": "Dev", "level": "Mid-Level", "num_questions": 5, "mode": "conversational",
     })
+    assert r.status_code == 200, r.text  # there is a victim's interview to protect
     for iid in range(1, 6):
         r = client.post(
             "/api/realtime/checkpoint",
