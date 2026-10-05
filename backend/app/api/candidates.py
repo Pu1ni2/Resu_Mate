@@ -1,4 +1,5 @@
 """Candidates API"""
+import asyncio
 import os
 import re
 import uuid
@@ -98,9 +99,12 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
         return result
 
     finally:
-        # Windows fix: file may still be locked by PDF reader
-        import time
-        time.sleep(0.5)
+        # Windows fix: file may still be locked by PDF reader. Linux deletes an
+        # open file without complaint, so only Windows waits. asyncio.sleep, not
+        # time.sleep: this handler is async, and time.sleep froze the whole
+        # server, every other request included, for half a second per upload.
+        if os.name == "nt":
+            await asyncio.sleep(0.5)
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
