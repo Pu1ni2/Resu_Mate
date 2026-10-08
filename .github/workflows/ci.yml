@@ -8,7 +8,10 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest, which moves to Ubuntu 26.04 from 2026-10-19:
+    # CI changes operating system when we choose to, not underneath a push.
+    # 24.04 is the image ubuntu-latest has given CI until now.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -26,7 +29,7 @@ jobs:
         run: pytest -q
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned, as for the backend job
     defaults:
       run:
         working-directory: frontend
