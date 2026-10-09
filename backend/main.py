@@ -11,7 +11,7 @@ if sys.platform == "win32":
         pass
 
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -225,22 +225,45 @@ async def root():
 
 @app.get("/health")
 async def health():
-    from app.agents.orchestrator import orchestrator
-    return {
-        "status": "healthy",
-        "agents": list(orchestrator._agents.keys()),
-        "llm": bool(settings.openai_api_key),
-        "search": bool(settings.tavily_api_key),
-        "github": bool(settings.github_token),
-    }
+    """Up, and the database answers within 3 seconds. Render's health check.
+
+    It answered "healthy" without looking at anything, so a backend whose
+    database had gone still looked fine. It also told anyone which API keys
+    were set; that moved to /monitoring.
+    """
+    import asyncio
+    from sqlalchemy import text
+    from app.core.database import engine
+
+    async def ping():
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+
+    try:
+        await asyncio.wait_for(ping(), timeout=3)
+    except Exception:
+        return JSONResponse({"status": "unavailable", "database": "unreachable"}, status_code=503)
+    return {"status": "ok", "database": "ok"}
 
 
 @app.get("/monitoring")
-async def monitoring():
+async def monitoring(x_agent_token: str = Header(default=None, alias="X-Agent-Token")):
+    """App-wide agent activity and which integrations are set up.
+
+    For the operator only (the shared agent secret, as the interview worker
+    uses): it covers every company's activity, and it was open to anyone.
+    """
     from app.agents.orchestrator import orchestrator
     from app.agents.base_agent import memory_store
+    from app.services.auth import verify_agent_token
+    verify_agent_token(x_agent_token)
     return {
         "orchestrator": orchestrator.get_monitoring_data(),
         "memory_agents": list(memory_store._store.keys()),
         "memory_entries": {k: len(v) for k, v in memory_store._store.items()},
+        "integrations": {
+            "llm": bool(settings.openai_api_key),
+            "search": bool(settings.tavily_api_key),
+            "github": bool(settings.github_token),
+        },
     }
