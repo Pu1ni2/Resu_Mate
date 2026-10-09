@@ -169,3 +169,16 @@ def test_a_completed_realtime_interview_stays_completed(client, monkeypatch):
     assert again.status_code == 200 and again.json()["already_completed"] is True
     saved = _run(_read(iid))
     assert saved["transcript"] == [{"role": "user", "text": "done"}] and saved["report"]["report"] == "## Final"
+
+
+def test_a_completed_avatar_interview_cannot_get_a_new_room(client):
+    """A new room set the interview back to in_progress, so it could be sat again."""
+    _, m = register(client, "ra2@co.com")
+    iid = _run(_interview(m["id"], "av@x.com", status="completed", mode="avatar",
+                          report=json.dumps({"report": "## Final"})))
+    r = client.post("/api/livekit/create-room", headers=_cand("av@x.com"), json={"candidate_email": "av@x.com"})
+    assert r.status_code == 409, r.text
+    assert _run(_read(iid))["status"] == "completed"
+    # Ownership is checked first: someone else's interview is still not found.
+    other = client.post("/api/livekit/create-room", headers=_cand("intruder@x.com"), json={"candidate_email": "av@x.com"})
+    assert other.status_code == 404, other.text
