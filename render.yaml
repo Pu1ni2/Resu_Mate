@@ -1,15 +1,20 @@
 # render.yaml — Render Blueprint for ResuMate AI
 # Place in project root for one-click deploy.
 #
-# Deploys three services + a Postgres database:
+# Deploys two services + a Postgres database, all on Render's free plans:
 #   1. resumate-backend       — FastAPI API (web service)
 #   2. resumate-frontend      — Vite static site
-#   3. resumate-interview     — LiveKit worker for the avatar interview agent
-#                                (run as a separate worker so it can stay
-#                                 connected to LiveKit without blocking the API)
-#   4. resumate-db (Postgres) — persistent storage; without this the backend
+#   3. resumate-db (Postgres) — persistent storage; without this the backend
 #                                falls back to ephemeral SQLite that wipes on
 #                                every deploy.
+#
+# Free-plan limits worth knowing (see backend/DEPLOY.md):
+#   - the backend sleeps after about 15 idle minutes; the next request wakes
+#     it, which takes up to a minute;
+#   - the free database is deleted 30 days after it is created, so back it up;
+#   - background workers have no free plan, so the avatar interview worker is
+#     not deployed here (see the commented block at the end). Interviews run
+#     voice-only, which needs no worker.
 
 databases:
   - name: resumate-db
@@ -24,11 +29,12 @@ services:
     runtime: python
     rootDir: backend
     # Install deps, then run any pending alembic migrations. Idempotent — a
-    # deploy with no new migrations is a no-op. Without this, the fresh DB
-    # has only what Base.metadata.create_all builds, which skips the indexes
-    # and the interview.mode column added in migrations.
+    # deploy with no new migrations is a no-op. The app refuses to start on a
+    # Postgres that isn't migrated to the newest revision.
     buildCommand: pip install -r requirements.txt && alembic upgrade head
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Answers 503 when the database can't be reached, so a broken deploy shows.
+    healthCheckPath: /health
     envVars:
       # Pin Python to 3.12 so pip resolves pre-built wheels for tokenizers,
       # chromadb, langchain-* etc. Python 3.14 has no wheels for tokenizers
@@ -46,14 +52,62 @@ services:
         generateValue: true
       - key: AGENT_SHARED_SECRET
         generateValue: true
+      # Never true in production: debug mode returns sign-in codes in responses.
+      - key: DEBUG
+        value: "false"
+      # The frontend's public URL, for the links in emails (invitations,
+      # password resets). Also allowed by CORS.
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: REALTIME_MODEL
+        value: gpt-realtime-2
+      - key: REALTIME_VOICE
+        value: marin
+      - key: REALTIME_MAX_TOTAL_MINUTES
+        value: "8"
       - key: TAVILY_API_KEY
         sync: false
       - key: GITHUB_TOKEN
         sync: false
-      - key: CORS_ORIGINS
+      # Find Candidates. SOURCER_MODEL and the prices are optional.
+      - key: SOURCER_MODEL
         sync: false
+      - key: SOURCER_PRICE_IN_PER_1M
+        sync: false
+      - key: SOURCER_PRICE_OUT_PER_1M
+        sync: false
+      - key: SOURCER_MAX_GITHUB
+        value: "300"
+      - key: SOURCER_MAX_WEB
+        value: "30"
+      # Email (sign-in codes, invitations). FROM_EMAIL must be a sender
+      # SendGrid has verified, or every email is refused.
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      # Optional: one shared Calendly account for the Schedule tool.
+      - key: CALENDLY_TOKEN
+        sync: false
+      # Optional: keep original résumé files in S3-compatible storage. Left
+      # blank, uploads keep only their extracted text.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      # Only for avatar interviews, which also need the worker below.
       - key: LIVEKIT_URL
         sync: false
       - key: LIVEKIT_API_KEY
@@ -64,8 +118,6 @@ services:
         sync: false
       - key: SIMLI_FACE_ID
         sync: false
-      - key: SENDGRID_API_KEY
-        sync: false
     plan: free
 
   # Frontend Static Site
@@ -73,7 +125,8 @@ services:
     name: resumate-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    # npm ci installs exactly the lock file, as CI does.
+    buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
@@ -88,33 +141,35 @@ services:
         destination: /index.html
     plan: free
 
-  # LiveKit interview worker. Runs as a background worker because it needs to
-  # hold long-lived WebSocket connections to both LiveKit and OpenAI Realtime.
-  # Shares OPENAI/LIVEKIT/SIMLI credentials with the backend and authenticates
-  # to it via AGENT_SHARED_SECRET (X-Agent-Token header on /save-transcript).
-  - type: worker
-    name: resumate-interview
-    runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: python interview_agent.py start
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.8
-      - key: BACKEND_URL
-        sync: false           # set to the resumate-backend external URL
-      - key: AGENT_SHARED_SECRET
-        sync: false           # must match the backend's AGENT_SHARED_SECRET
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: LIVEKIT_URL
-        sync: false
-      - key: LIVEKIT_API_KEY
-        sync: false
-      - key: LIVEKIT_API_SECRET
-        sync: false
-      - key: SIMLI_API_KEY
-        sync: false
-      - key: SIMLI_FACE_ID
-        sync: false
-    plan: free
+  # LiveKit interview worker, for avatar interviews. Render has no free plan
+  # for background workers, so it isn't deployed by default. To add it,
+  # uncomment this block and pick a paid plan (starter). BACKEND_URL is the
+  # backend's external URL, and AGENT_SHARED_SECRET must be the backend's
+  # value: copy it from the backend's Environment tab.
+  #
+  # - type: worker
+  #   name: resumate-interview
+  #   runtime: python
+  #   rootDir: backend
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python interview_agent.py start
+  #   envVars:
+  #     - key: PYTHON_VERSION
+  #       value: 3.12.8
+  #     - key: BACKEND_URL
+  #       sync: false
+  #     - key: AGENT_SHARED_SECRET
+  #       sync: false
+  #     - key: OPENAI_API_KEY
+  #       sync: false
+  #     - key: LIVEKIT_URL
+  #       sync: false
+  #     - key: LIVEKIT_API_KEY
+  #       sync: false
+  #     - key: LIVEKIT_API_SECRET
+  #       sync: false
+  #     - key: SIMLI_API_KEY
+  #       sync: false
+  #     - key: SIMLI_FACE_ID
+  #       sync: false
+  #   plan: starter
