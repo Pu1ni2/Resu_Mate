@@ -97,3 +97,29 @@ def test_sign_in_counts_per_address_on_the_real_routes(client, limits):
     assert codes == [401] * 5 + [429]
     other = client.post("/api/auth/login", json=attempt, headers={"X-Forwarded-For": "198.51.100.21"})
     assert other.status_code == 401
+
+
+# Every endpoint that calls OpenAI, web search or GitHub, or starts a paid
+# interview session. Nineteen of them had no limit at all.
+SPENDING = {
+    "app.api.chat": ["get_intro", "speech_to_text", "text_to_speech", "focus_chat", "draft_email",
+                     "scan_resume", "resume_intelligence", "smart_questions", "credibility_analysis",
+                     "automate_ranking", "score_answer", "interview_report", "export_report_pdf",
+                     "send_message", "web_search", "hiring_agent", "github_analyze",
+                     "generate_interview_questions", "create_interview"],
+    "app.api.jarvis": ["jarvis_chat"],
+    "app.api.realtime": ["create_realtime_session", "checkpoint", "finalize"],
+    "app.api.livekit_routes": ["create_room", "join_room"],
+    "app.api.pipeline": ["parse_jd", "run_pipeline", "batch_action"],
+    "app.api.advisor_agent": ["advisor_chat", "candidate_upload_resume"],
+    "app.api.sourcer": ["start_run", "draft_outreach"],
+    "app.api.candidates": ["upload_resume"],
+}
+
+
+def test_every_endpoint_that_spends_money_has_a_limit():
+    # slowapi records each decorated endpoint as "module.function".
+    limited = set(limiter._route_limits)
+    missing = [f"{module}.{name}" for module, names in SPENDING.items() for name in names
+               if f"{module}.{name}" not in limited]
+    assert missing == []
