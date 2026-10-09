@@ -85,9 +85,23 @@ class EmailService:
         """
         return await self.send(to_email, f"Interview Invitation: {role}", body)
 
-    async def send_email_draft(self, to_email: str, subject: str, body: str) -> bool:
-        html = body.replace("\n", "<br>")
-        return await self.send(to_email, subject, f'<div style="font-family:sans-serif;">{html}</div>')
+    async def send_email_draft(self, to_email: str, subject: str, body: str, login_url: str = "") -> bool:
+        """A plain-text email the manager reviewed, sent as written.
+
+        With login_url, it ends with the button and link to the candidate
+        portal, as the invitation does.
+        """
+        text = html.escape(body).replace("\n", "<br>")
+        page = f'<div style="font-family:sans-serif;max-width:600px;margin:0 auto;"><p>{text}</p>'
+        if login_url:
+            link = html.escape(login_url)
+            page += (
+                f'<p><a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;'
+                f'border-radius:6px;text-decoration:none;display:inline-block;">Start Interview</a></p>'
+                f'<p style="color:#6B7280;">If the button doesn\'t work, copy this link: {link}</p>'
+            )
+        # One line: a line break in a subject is not a valid header.
+        return await self.send(to_email, " ".join(subject.split()), page + "</div>")
 
 
 email_service = EmailService()

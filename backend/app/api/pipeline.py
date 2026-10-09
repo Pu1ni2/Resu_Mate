@@ -4,9 +4,10 @@ Orchestrates ATS scoring, candidate shortlisting, and batch interview/email acti
 """
 import json
 import time
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 
@@ -19,6 +20,7 @@ from app.services import db_service
 from app.services import interview_modes
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
+from app.models.candidate import Interview
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -51,6 +53,16 @@ class BatchActionRequest(BaseModel):
     # "avatar"          — existing LiveKit + Simli avatar flow (default).
     # "conversational"  — audio-only OpenAI Realtime (no camera, no avatar).
     mode: str = "avatar"
+
+
+class InviteDraft(BaseModel):
+    interview_id: int
+    subject: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=10_000)
+
+
+class SendInvitesRequest(BaseModel):
+    invites: List[InviteDraft] = Field(..., min_length=1, max_length=100)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -256,6 +268,54 @@ async def batch_action(
         "skipped": sum(1 for o in outcomes if o.get("skipped")),
         # Where invited candidates sign in, for the manager to share when
         # an invite wasn't emailed.
+        "portal_link": settings.candidate_login_url,
+        "outcomes": outcomes,
+    }
+
+
+@router.post("/send-invites")
+@limiter.limit("20/hour")
+async def send_invites(
+    request: Request,
+    req: SendInvitesRequest,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Email each candidate the invitation draft the manager reviewed.
+
+    Jarvis's Send button ran the batch action again, so every interview was
+    created a second time, and what went out was a fixed template rather than
+    the draft on screen. This sends the drafts for interviews already made.
+    """
+    if not email_service.configured:
+        raise HTTPException(503, "Email isn't set up on this server. Share the portal link instead.")
+
+    outcomes, seen = [], set()
+    for draft in req.invites:
+        if draft.interview_id in seen:
+            continue
+        seen.add(draft.interview_id)
+        outcome = {"interview_id": draft.interview_id, "email_sent": False}
+        # Only this manager's interviews, as everywhere else.
+        interview = (await db.execute(
+            select(Interview).where(Interview.id == draft.interview_id, Interview.manager_id == user.id)
+        )).scalar_one_or_none()
+        if interview is None:
+            outcome["error"] = "Interview not found"
+        elif interview.status == "completed":
+            outcome["email"] = interview.candidate_email
+            outcome["error"] = "This interview is already complete."
+        else:
+            outcome["email"] = interview.candidate_email
+            outcome["email_sent"] = await email_service.send_email_draft(
+                interview.candidate_email, draft.subject, draft.body, settings.candidate_login_url,
+            )
+            if not outcome["email_sent"]:
+                outcome["error"] = "The email service didn't accept this invite."
+        outcomes.append(outcome)
+
+    return {
+        "emails_sent": sum(1 for o in outcomes if o["email_sent"]),
         "portal_link": settings.candidate_login_url,
         "outcomes": outcomes,
     }
