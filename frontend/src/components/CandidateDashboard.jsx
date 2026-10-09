@@ -59,6 +59,9 @@ export default function CandidateDashboard() {
   // Interview state
   const [showInterviewRoom, setShowInterviewRoom] = useState(false);
   const [showFullReport, setShowFullReport] = useState(false);
+  // The report comes from the server (verify-otp at sign-in, then
+  // /candidate/my-report). A copy cached separately in localStorage is no
+  // longer read: it could be stale, or the placeholder the room used to make up.
   const [interviewReport, setInterviewReport] = useState(() => {
     try {
       const stored = localStorage.getItem('resumate_candidate');
@@ -67,12 +70,12 @@ export default function CandidateDashboard() {
         if (session.interview_completed && session.interview_report) return session.interview_report;
       }
     } catch {}
-    try {
-      const stored = localStorage.getItem('resumate_interview_report');
-      if (stored) return JSON.parse(stored);
-    } catch {}
     return null;
   });
+  // While waiting for the server to finish writing the report.
+  const [reportPending, setReportPending] = useState(false);
+  const aliveRef = useRef(true);
+  useEffect(() => () => { aliveRef.current = false; }, []);
 
   // Redirect if no session
   useEffect(() => {
@@ -204,26 +207,73 @@ export default function CandidateDashboard() {
     }
   };
 
-  const handleInterviewComplete = (reportData) => {
+  // The candidate's report, from the server. Null while there isn't one yet
+  // (404), or when it can't be reached.
+  const fetchMyReport = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/candidate/my-report`, { headers: candidateAuthHeaders() });
+      if (!resp.ok) return null;
+      return (await resp.json()).interview_report || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const showReport = (report) => {
+    setInterviewReport(report);
+    setCandidateSession(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, interview_completed: true, interview_report: report };
+      try { localStorage.setItem('resumate_candidate', JSON.stringify(updated)); } catch { /* storage unavailable */ }
+      return updated;
+    });
+  };
+
+  // The server writes the report after the interview: straight away for a
+  // voice interview, and within a minute or so for an avatar one (once the
+  // interviewer leaves the room). So keep asking for a while.
+  const waitForReport = async (attempts = 20, delayMs = 4000) => {
+    setReportPending(true);
+    for (let i = 0; i < attempts && aliveRef.current; i++) {
+      const report = await fetchMyReport();
+      if (report) {
+        if (aliveRef.current) showReport(report);
+        break;
+      }
+      if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
+    }
+    if (aliveRef.current) setReportPending(false);
+  };
+
+  // Signed in after the interview finished, with no report yet: ask once.
+  useEffect(() => {
+    if (candidateSession?.interview_completed && !interviewReport) waitForReport(1);
+    // Only when the session first arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidateSession?.email]);
+
+  const handleInterviewComplete = async (measured) => {
     setShowInterviewRoom(false);
-    setInterviewReport(reportData);
-    localStorage.setItem('resumate_interview_report', JSON.stringify(reportData));
+    setTab('interview');
+    setInterviewReport(null);
     if (candidateSession) {
       // Demo account: keep interview always available (reset after completion)
       const updated = isDemo
-        ? { ...candidateSession, has_interview: true, interview_completed: true, interview_report: reportData }
-        : { ...candidateSession, has_interview: false, interview_completed: true, interview_report: reportData };
+        ? { ...candidateSession, has_interview: true, interview_completed: true, interview_report: null }
+        : { ...candidateSession, has_interview: false, interview_completed: true, interview_report: null };
       localStorage.setItem('resumate_candidate', JSON.stringify(updated));
       setCandidateSession(updated);
     }
+    // What the avatar room measured (violations, face reading, time). The
+    // server keeps only those numbers from this, and writes the report itself.
     try {
-      fetch(`${API_BASE}/api/chat/save-interview-result`, {
+      await fetch(`${API_BASE}/api/chat/save-interview-result`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...candidateAuthHeaders() },
-        body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: reportData })
-      }).catch(() => {});
-    } catch {}
-    setTab('interview');
+        body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: measured })
+      });
+    } catch { /* offline: the report request below shows it */ }
+    await waitForReport();
   };
 
   if (!candidateSession) {
@@ -637,7 +687,7 @@ export default function CandidateDashboard() {
                       <div className="cd-interview-done-info">
                         <h3>Interview Completed</h3>
                         <p>
-                          Score: {interviewReport.avgScore || '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
+                          Score: {interviewReport.avgScore ?? '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
                         </p>
                       </div>
                       <button className="cd-report-toggle" onClick={() => setShowFullReport(prev => !prev)}>
@@ -652,6 +702,28 @@ export default function CandidateDashboard() {
                     )}
                   </div>
                   <p className="cd-interview-footer-text">Your hiring manager has been notified of your interview results.</p>
+                </div>
+              )}
+
+              {/* Completed, report not written yet */}
+              {interviewCompleted && !interviewReport && (
+                <div className="cd-card cd-interview-done-header" role="status">
+                  <div className="cd-interview-done-top">
+                    <div className="cd-interview-done-badge">
+                      {reportPending ? <Loader size={20} className="spin" /> : <CheckCircle size={20} />}
+                    </div>
+                    <div className="cd-interview-done-info">
+                      <h3>Interview Completed</h3>
+                      <p>
+                        {reportPending
+                          ? 'Preparing your report…'
+                          : 'Your report is still being prepared. Check back in a few minutes.'}
+                      </p>
+                    </div>
+                    {!reportPending && (
+                      <button className="cd-report-toggle" onClick={() => waitForReport(1)}>Refresh</button>
+                    )}
+                  </div>
                 </div>
               )}
 
