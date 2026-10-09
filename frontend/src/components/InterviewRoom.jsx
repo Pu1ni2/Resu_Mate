@@ -274,40 +274,20 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
     setPhase('ended');
 
-    // Send proctoring data to backend and get report
-    const reportData = {
-      report: terminated
-        ? '## Interview Terminated\n\nAutomatically terminated after exceeding proctoring violation limit.'
-        : '## Interview Completed\n\nThe AI interviewer has concluded the session. Full transcript and scoring available from the agent.',
-      scores: [],
+    // Only what this room measured. The report itself is written by the server
+    // once the interviewer has finished, and the dashboard fetches it. This
+    // used to make one up ("Full transcript and scoring available", score 0),
+    // then ask the manager-only results endpoint, which refuses a candidate's
+    // token, so the made-up one was what the candidate saw.
+    const proctoring = {
       violations: violationCountRef.current,
       eyeContact,
       timer,
       terminated,
-      avgScore: 0,
       lookAwayCount,
     };
 
-    // Try to fetch transcript/scores from backend (agent may have saved them)
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
-        headers: interviewAuthHeaders()
-      });
-      const data = await resp.json();
-      if (data.results?.length > 0) {
-        const latest = data.results[data.results.length - 1];
-        if (latest.report) Object.assign(reportData, latest.report);
-      }
-    } catch {}
-
-    // Add proctoring data
-    reportData.violations = violationCountRef.current;
-    reportData.eyeContact = eyeContact;
-    reportData.timer = timer;
-    reportData.terminated = terminated;
-    reportData.lookAwayCount = lookAwayCount;
-
-    if (onComplete) onComplete(reportData);
+    if (onComplete) onComplete(proctoring);
     else if (onExit) onExit();
   };
 
