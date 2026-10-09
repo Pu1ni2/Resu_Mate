@@ -1,5 +1,6 @@
 """Database connection and session management"""
 import os
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
@@ -21,7 +22,16 @@ elif not DATABASE_URL or DATABASE_URL == "":
     # Fallback to SQLite for local dev
     DATABASE_URL = "sqlite+aiosqlite:///./resumate.db"
 
-print(f"Database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}")
+def display_url(url: str) -> str:
+    """The database URL with its password masked, for logs.
+
+    The boot line printed everything before the "@", which for Postgres is
+    user:password, into the logs on every boot.
+    """
+    return make_url(url).render_as_string(hide_password=True)
+
+
+print(f"Database: {display_url(DATABASE_URL)}")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
