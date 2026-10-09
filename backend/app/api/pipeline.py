@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service
-from app.services.resume_rag import resume_rag
+from app.services.resume_rag import resume_rag, primary_email
 from app.services import db_service
 from app.services import interview_modes
 from app.agents.hr_agent import hr_agent
@@ -163,9 +163,18 @@ async def batch_action(
             outcomes.append({"candidate_id": cid, "error": "Candidate not found"})
             continue
 
-        email = candidate.get("email", "")
+        # The résumé's own address, as the portal matches it. This read
+        # candidate["email"], which an upload usually doesn't set, so the
+        # interview and the portal grant went to an empty address while the
+        # manager was told the candidate was invited.
+        email = primary_email(candidate)
         name = candidate.get("name", "Candidate")
         result = {"candidate_id": cid, "name": name, "email": email}
+        if not email:
+            result.update(interview_created=False, email_sent=False,
+                          skipped="No email address on this résumé, so they can't be invited.")
+            outcomes.append(result)
+            continue
 
         # ── Create interview record (owned by this manager) ───────────────────
         try:
@@ -180,10 +189,13 @@ async def batch_action(
                 # Voice when avatar interviews aren't set up here.
                 "mode": interview_modes.effective_mode(req.mode),
             })
+            if interview is None:
+                raise RuntimeError("the interview could not be saved")
             # Grant portal access (owned by this manager)
             await db_service.create_candidate_access(db, email, name, cid, manager_id=mgr)
             result["interview_created"] = True
-            result["interview_id"] = interview.id if interview else None
+            result["interview_id"] = interview.id
+            result["mode"] = interview.mode
         except Exception as e:
             result["interview_created"] = False
             result["interview_error"] = str(e)
@@ -215,15 +227,22 @@ async def batch_action(
             result["email_body"] = body
 
         # ── Send email (only if explicitly requested) ─────────────────────────
+        # Only for a saved interview: an invite to one that wasn't saved
+        # sent the candidate to a portal with nothing for them.
         result["email_sent"] = False
-        if req.send_emails and email:
-            try:
-                sent = await email_service.send_interview_invitation(
-                    email, name, req.role, settings.candidate_login_url
-                )
-                result["email_sent"] = sent
-            except Exception as e:
-                result["email_send_error"] = str(e)
+        if req.send_emails and result["interview_created"]:
+            if not email_service.configured:
+                result["email_send_error"] = "Email isn't set up on this server. Share the portal link instead."
+            else:
+                try:
+                    sent = await email_service.send_interview_invitation(
+                        email, name, req.role, settings.candidate_login_url
+                    )
+                    result["email_sent"] = sent
+                    if not sent:
+                        result["email_send_error"] = "The email service didn't accept this invite."
+                except Exception as e:
+                    result["email_send_error"] = str(e)
 
         outcomes.append(result)
 
@@ -234,5 +253,9 @@ async def batch_action(
         "total": len(req.candidate_ids),
         "interviews_created": created_count,
         "emails_sent": sent_count,
+        "skipped": sum(1 for o in outcomes if o.get("skipped")),
+        # Where invited candidates sign in, for the manager to share when
+        # an invite wasn't emailed.
+        "portal_link": settings.candidate_login_url,
         "outcomes": outcomes,
     }
