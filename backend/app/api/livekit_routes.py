@@ -127,6 +127,11 @@ async def create_room(
     email, a manager by manager_id.
     """
     interview = await _authorized_interview(db, actor, req.candidate_email)
+    # A finished interview stays finished, as for voice interviews
+    # (realtime._refuse_if_completed): a new room set it back to in_progress,
+    # so the candidate could sit it again and get a fresh report.
+    if interview.status == "completed":
+        raise HTTPException(status_code=409, detail="This interview is already complete.")
     candidate_email = (interview.candidate_email or "").strip().lower()
     candidate_name = (
         req.candidate_name
