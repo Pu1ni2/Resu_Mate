@@ -243,3 +243,73 @@ def test_the_managers_completion_email_is_escaped_too(client, mailbox):
     html = mailbox[0]["html"]
     assert "Hi &lt;i&gt;Boss&lt;/i&gt;," in html
     assert "&lt;script&gt;" in html and "<script>" not in html
+
+
+# ── sending the drafts the manager reviewed ──────────────────────────────────
+
+def _send(client, tok, invites, status=200):
+    r = client.post("/api/pipeline/send-invites", headers=auth_headers(tok), json={"invites": invites})
+    assert r.status_code == status, r.text
+    return r.json()
+
+
+def _drafted(client, tok, email):
+    """A batch in draft mode: the interview is made, nothing is emailed."""
+    cid = _own_candidate(client, tok, f"Cand\n{email}")
+    outcome = _batch(client, tok, [cid])["outcomes"][0]
+    assert outcome["interview_created"] and not outcome["email_sent"]
+    return cid, outcome["interview_id"]
+
+
+def test_the_reviewed_draft_is_sent_as_written_with_the_link(client, mailbox):
+    from app.models.candidate import Interview
+    tok, _ = register(client, "d1@co.com")
+    cid, iv = _drafted(client, tok, "d1@x.com")
+    body = _send(client, tok, [{"interview_id": iv, "subject": "Let's talk\nsoon", "body": "Dear Cand,\nSee you <soon>."}])
+    assert body["emails_sent"] == 1
+    assert body["outcomes"] == [{"interview_id": iv, "email": "d1@x.com", "email_sent": True}]
+    assert [(m["to"], m["subject"]) for m in mailbox] == [("d1@x.com", "Let's talk soon")]
+    assert "Dear Cand,<br>See you &lt;soon&gt;." in mailbox[0]["html"]
+    assert PORTAL in mailbox[0]["html"]
+    # The interview isn't made a second time.
+    assert len(_rows(Interview, candidate_id=cid)) == 1
+
+
+def test_drafts_go_only_to_this_managers_interviews(client, mailbox):
+    owner, _ = register(client, "d2@co.com")
+    other, _ = register(client, "d3@co.com")
+    _, iv = _drafted(client, owner, "d2@x.com")
+    body = _send(client, other, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}])
+    assert body["outcomes"] == [{"interview_id": iv, "email_sent": False, "error": "Interview not found"}]
+    assert mailbox == []
+
+
+def test_no_draft_for_a_finished_interview(client, mailbox):
+    from app.core import database
+    from app.models.candidate import Interview
+    tok, _ = register(client, "d4@co.com")
+    _, iv = _drafted(client, tok, "d4@x.com")
+
+    async def finish():
+        async with database.async_session() as db:
+            (await db.get(Interview, iv)).status = "completed"
+            await db.commit()
+    _run(finish())
+    body = _send(client, tok, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}])
+    assert body["outcomes"][0]["error"] == "This interview is already complete."
+    assert mailbox == []
+
+
+def test_an_interview_listed_twice_is_emailed_once(client, mailbox):
+    tok, _ = register(client, "d5@co.com")
+    _, iv = _drafted(client, tok, "d5@x.com")
+    draft = {"interview_id": iv, "subject": "Hi", "body": "Hello"}
+    assert _send(client, tok, [draft, draft])["emails_sent"] == 1
+    assert len(mailbox) == 1
+
+
+def test_sending_drafts_without_email_set_up_says_so(client, no_email):
+    tok, _ = register(client, "d6@co.com")
+    _, iv = _drafted(client, tok, "d6@x.com")
+    body = _send(client, tok, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}], status=503)
+    assert "isn't set up" in body["detail"]
