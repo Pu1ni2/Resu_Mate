@@ -7,6 +7,7 @@ import json
 import re
 from typing import Optional
 from app.tools.openai_tool import openai_tool
+from app.services.resume_rag import primary_email
 
 
 class ATSService:
@@ -208,7 +209,9 @@ Return only valid JSON."""
         return {
             "candidate_id": candidate.get("id"),
             "name": candidate.get("name", "Unknown"),
-            "email": candidate.get("email", ""),
+            # The résumé's own address, as the batch actions invite. An upload
+            # rarely sets candidate["email"], so most showed "no email".
+            "email": primary_email(candidate),
             "ats_score": ats_score,
             "skills_match": skills_score,
             "experience_match": round(experience_score),
