@@ -213,6 +213,45 @@ def report_dict(raw) -> dict:
     return parsed if isinstance(parsed, dict) else {"report": raw}
 
 
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def candidate_report(interview: Interview) -> dict:
+    """A finished interview as the candidate's report screen reads it.
+
+    Sign-in (verify-otp) sent the stored report column as its raw JSON text,
+    so a candidate who signed back in saw JSON; my-report sent the parsed
+    report without the scores or the duration. Both send this now:
+    - "report", the text;
+    - the proctoring numbers the room saved (violations, eyeContact, ...);
+    - "scores", per question as stored;
+    - "avgScore", the stored average or one worked out from the scores, or
+      None when nothing was scored (shown as "—", never 0);
+    - "timer" (what the screen reads) and "duration", in seconds;
+    - "transcript".
+    """
+    report = report_dict(interview.report)
+    scores = interview.scores or report.get("scores") or []
+    numbers = [s.get("score") if isinstance(s, dict) else s for s in scores]
+    numbers = [n for n in numbers if _is_number(n)]
+    average = report.get("avgScore")
+    if not _is_number(average):
+        average = round(sum(numbers) / len(numbers), 1) if numbers else None
+    seconds = interview.duration or report.get("timer") or report.get("duration") or 0
+    text = report.get("report")
+    return {
+        **report,
+        "report": text if isinstance(text, str) else "",
+        "scores": scores,
+        "avgScore": average,
+        "timer": seconds,
+        "duration": seconds,
+        "transcript": interview.transcript or report.get("transcript") or [],
+        "mode": interview.mode or "avatar",
+    }
+
+
 def merge_interview_report(interview: Interview, updates: dict) -> dict:
     """Add `updates` to an interview's stored report, keeping everything else.
 

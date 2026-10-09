@@ -1022,14 +1022,7 @@ async def candidate_my_report(
     if not interview or interview.status != "completed" or not interview.report:
         raise HTTPException(404, "No completed interview report found")
 
-    try:
-        report = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
-    except (ValueError, TypeError):
-        report = {"report": interview.report}
-    if interview.transcript and isinstance(report, dict):
-        report["transcript"] = interview.transcript
-
-    return {"interview_completed": True, "interview_report": report}
+    return {"interview_completed": True, "interview_report": db_service.candidate_report(interview)}
 
 @router.get("/interview-status/{email}")
 async def interview_status(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):

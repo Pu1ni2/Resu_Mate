@@ -261,12 +261,9 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
             "interview_id": interview.id,
         }
         if interview_completed:
-            interview_report = {
-                "scores": interview.scores,
-                "report": interview.report,
-                "duration": interview.duration,
-                "transcript": interview.transcript,
-            }
+            # Parsed, in the shape my-report sends: this used to be the raw
+            # report column, JSON text the candidate saw as-is.
+            interview_report = db_service.candidate_report(interview)
 
     access_token = create_candidate_token(email)
 
