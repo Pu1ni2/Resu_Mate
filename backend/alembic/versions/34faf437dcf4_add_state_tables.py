@@ -22,6 +22,26 @@ def _is_sqlite():
     return op.get_bind().dialect.name == 'sqlite'
 
 
+# a3b65984032c already makes these on PostgreSQL: the composite unique
+# constraint, the non-unique email index, and a manager foreign key on each of
+# the three tables. Making them again failed on a fresh database ("relation
+# uq_access_email_manager already exists"), so `alembic upgrade head` stopped
+# here. Each is now made only if it is missing. A database that has already run
+# this migration is unaffected: alembic never runs it again.
+_MANAGER_FKS = (
+    ('fk_ca_manager', 'candidate_access'),
+    ('fk_candidates_manager2', 'candidates'),
+    ('fk_evaluations_manager2', 'evaluations'),
+)
+
+
+def _has_manager_fk(inspector, table):
+    return any(
+        fk['referred_table'] == 'hiring_managers' and fk['constrained_columns'] == ['manager_id']
+        for fk in inspector.get_foreign_keys(table)
+    )
+
+
 def upgrade() -> None:
     op.create_table(
         'advisor_sessions',
@@ -55,21 +75,27 @@ def upgrade() -> None:
     # PostgreSQL-only: add FK constraints (SQLite doesn't support ALTER TABLE constraints)
     if not _is_sqlite():
         op.create_foreign_key('fk_chat_histories_manager', 'chat_histories', 'hiring_managers', ['manager_id'], ['id'])
-        # These were skipped in Phase 2 migration for SQLite — apply them now on PostgreSQL
-        op.drop_index('ix_candidate_access_email', table_name='candidate_access')
-        op.create_index('ix_candidate_access_email', 'candidate_access', ['email'], unique=False)
-        op.create_unique_constraint('uq_access_email_manager', 'candidate_access', ['email', 'manager_id'])
-        op.create_foreign_key('fk_ca_manager', 'candidate_access', 'hiring_managers', ['manager_id'], ['id'])
-        op.create_foreign_key('fk_candidates_manager2', 'candidates', 'hiring_managers', ['manager_id'], ['id'])
-        op.create_foreign_key('fk_evaluations_manager2', 'evaluations', 'hiring_managers', ['manager_id'], ['id'])
+        inspector = sa.inspect(op.get_bind())
+        if any(ix['name'] == 'ix_candidate_access_email' and ix['unique']
+               for ix in inspector.get_indexes('candidate_access')):
+            op.drop_index('ix_candidate_access_email', table_name='candidate_access')
+            op.create_index('ix_candidate_access_email', 'candidate_access', ['email'], unique=False)
+        if not any(uc['name'] == 'uq_access_email_manager'
+                   for uc in inspector.get_unique_constraints('candidate_access')):
+            op.create_unique_constraint('uq_access_email_manager', 'candidate_access', ['email', 'manager_id'])
+        for name, table in _MANAGER_FKS:
+            if not _has_manager_fk(inspector, table):
+                op.create_foreign_key(name, table, 'hiring_managers', ['manager_id'], ['id'])
 
 
 def downgrade() -> None:
     if not _is_sqlite():
-        op.drop_constraint('fk_evaluations_manager2', 'evaluations', type_='foreignkey')
-        op.drop_constraint('fk_candidates_manager2', 'candidates', type_='foreignkey')
-        op.drop_constraint('fk_ca_manager', 'candidate_access', type_='foreignkey')
-        op.drop_constraint('uq_access_email_manager', 'candidate_access', type_='unique')
+        # Only this migration's own foreign keys, and only where it made them.
+        # The unique constraint is a3b65984032c's, and its downgrade drops it.
+        inspector = sa.inspect(op.get_bind())
+        for name, table in _MANAGER_FKS:
+            if any(fk['name'] == name for fk in inspector.get_foreign_keys(table)):
+                op.drop_constraint(name, table, type_='foreignkey')
         op.drop_index('ix_candidate_access_email', table_name='candidate_access')
         op.create_index('ix_candidate_access_email', 'candidate_access', ['email'], unique=True)
         op.drop_constraint('fk_chat_histories_manager', 'chat_histories', type_='foreignkey')
