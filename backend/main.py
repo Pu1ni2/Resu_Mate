@@ -36,11 +36,11 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     print("\n🚀 Starting ResuMate AI...")
 
-    try:
-        await init_db()
-    except Exception as e:
-        print(f"⚠️ Database init failed (using in-memory): {e}")
-    
+    # Not caught: a database that is down or behind on migrations stops the
+    # start, so Render reports the deploy as failed. It used to be printed and
+    # ignored, and the app came up without a working database.
+    await init_db()
+
     from app.agents.orchestrator import orchestrator
     from app.agents.data_agent import data_agent
     from app.agents.hr_agent import hr_agent
