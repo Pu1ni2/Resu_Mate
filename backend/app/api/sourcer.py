@@ -9,8 +9,7 @@ from typing import Dict, Literal, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.rate_limit import limiter
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +21,6 @@ from app.services import db_service
 from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/sourcer", tags=["sourcer"])
-limiter = Limiter(key_func=get_remote_address)
 
 # Saves of stopped runs finish after their request is gone; holding them here
 # keeps them from being garbage-collected half way.

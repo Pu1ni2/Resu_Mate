@@ -5,8 +5,7 @@ import re
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.rate_limit import limiter
 
 from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag, MAX_FILE_SIZE
@@ -14,7 +13,6 @@ from app.core.database import get_db
 from app.services import db_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
-limiter = Limiter(key_func=get_remote_address)
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)

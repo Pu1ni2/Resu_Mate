@@ -16,15 +16,13 @@ from fastapi import APIRouter, UploadFile, File, Form, Depends, Request, HTTPExc
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.rate_limit import limiter
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import state_service
 from app.services.auth import get_current_candidate
 
-limiter = Limiter(key_func=get_remote_address)
 
 # Candidate resume uploads go through the same 5 MB ceiling as the manager-side
 # upload path. Previously this endpoint read an unbounded body from an

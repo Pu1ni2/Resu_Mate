@@ -8,8 +8,7 @@ import json
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header, Request
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.rate_limit import limiter
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 import io
@@ -32,10 +31,6 @@ from app.tools.tavily_tool import tavily_tool
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-# Per-IP rate limiter for the LLM-heavy endpoints. slowapi reads app.state.limiter
-# (registered in main.py) at request time, so this Limiter only contributes the
-# decorator — limits are still tracked globally.
-limiter = Limiter(key_func=get_remote_address)
 
 # ═══════ REQUEST MODELS ═══════
 
