@@ -199,7 +199,8 @@ async def send_message(request: Request, req: ChatRequest, user=Depends(get_curr
         return {"response": f"Error: {str(e)}", "suggestions": []}
 
 @router.get("/intro")
-async def get_intro(count: int = 0, anonymize: bool = False, user=Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def get_intro(request: Request, count: int = 0, anonymize: bool = False, user=Depends(get_current_user)):
     """Get chat intro message"""
     return resume_rag.get_intro_message(count, anonymize)
 
@@ -217,7 +218,8 @@ async def clear_chat(user=Depends(get_current_user)):
 # ═══════ VOICE ENDPOINTS ═══════
 
 @router.post("/speech-to-text")
-async def speech_to_text(audio: UploadFile = File(...), user=Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def speech_to_text(request: Request, audio: UploadFile = File(...), user=Depends(get_current_user)):
     try:
         audio_data = await audio.read()
         text = await voice_tool.speech_to_text(audio_data, audio.filename or "audio.webm")
@@ -226,7 +228,8 @@ async def speech_to_text(audio: UploadFile = File(...), user=Depends(get_current
         return {"error": str(e), "text": ""}
 
 @router.post("/text-to-speech")
-async def text_to_speech(req: dict, user=Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def text_to_speech(request: Request, req: dict, user=Depends(get_current_user)):
     try:
         text = req.get("text", "")
         if not text or not text.strip():
@@ -245,7 +248,8 @@ async def text_to_speech(req: dict, user=Depends(get_current_user)):
 # ═══════ FOCUS CHAT → Research Agent + LLM ═══════
 
 @router.post("/focus")
-async def focus_chat(req: FocusChatRequest, user=Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def focus_chat(request: Request, req: FocusChatRequest, user=Depends(get_current_user)):
     """Single-candidate deep chat — powered by Research Agent for auto web search"""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
@@ -428,7 +432,8 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
 # ═══════ EMAIL → HR Agent ═══════
 
 @router.post("/draft-email")
-async def draft_email(req: EmailDraftRequest, user=Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def draft_email(request: Request, req: EmailDraftRequest, user=Depends(get_current_user)):
     """Email drafting powered by HR Agent"""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
@@ -514,7 +519,8 @@ async def github_analyze(request: Request, req: GitHubRequest, user=Depends(get_
 # ═══════ SCANNER → Data Agent ═══════
 
 @router.post("/scan-resume")
-async def scan_resume(req: ScanRequest, user=Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def scan_resume(request: Request, req: ScanRequest, user=Depends(get_current_user)):
     """Resume scanning powered by Data Agent"""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
@@ -604,7 +610,8 @@ class CredibilityRequest(BaseModel):
     candidate_email: str
 
 @router.post("/resume-intelligence")
-async def resume_intelligence(req: ResumeIntelRequest, user=Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def resume_intelligence(request: Request, req: ResumeIntelRequest, user=Depends(get_current_user)):
     """Analyze resume for gaps, unverified skills, and verification targets."""
     candidate = resume_rag.get_candidate(req.candidate_id, manager_id=user.id)
     if not candidate:
@@ -613,7 +620,8 @@ async def resume_intelligence(req: ResumeIntelRequest, user=Depends(get_current_
     return {"intelligence": intel, "candidate_id": req.candidate_id}
 
 @router.post("/smart-questions")
-async def smart_questions(req: GenerateQuestionsRequest, user=Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def smart_questions(request: Request, req: GenerateQuestionsRequest, user=Depends(get_current_user)):
     """Generate interview questions informed by resume gap analysis."""
     candidate_data = None
     # Try to find candidate by name within THIS manager's candidates only
@@ -627,7 +635,8 @@ async def smart_questions(req: GenerateQuestionsRequest, user=Depends(get_curren
     return result
 
 @router.post("/credibility-analysis")
-async def credibility_analysis(req: CredibilityRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def credibility_analysis(request: Request, req: CredibilityRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Cross-reference resume claims against interview performance."""
     candidate = resume_rag.get_candidate(req.candidate_id, manager_id=user.id)
     if not candidate:
@@ -652,7 +661,8 @@ class AutomateRankingRequest(BaseModel):
     candidate_ids: list = []
 
 @router.post("/automate-ranking")
-async def automate_ranking(req: AutomateRankingRequest, user=Depends(get_current_user)):
+@limiter.limit("5/minute")
+async def automate_ranking(request: Request, req: AutomateRankingRequest, user=Depends(get_current_user)):
     """Rank this manager's uploaded candidates for a role — full automated analysis."""
     # Gather candidates from THIS manager's drawer only.
     drawer = {c["id"]: c for c in resume_rag.get_all_candidates(manager_id=user.id)}
@@ -737,11 +747,13 @@ RULES:
         raise HTTPException(500, f"Ranking failed: {str(e)}")
 
 @router.post("/score-answer")
-async def score_answer(req: ScoreAnswerRequest, user=Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def score_answer(request: Request, req: ScoreAnswerRequest, user=Depends(get_current_user)):
     return await technical_agent.score_answer(req.question, req.answer, req.role, req.candidate_name)
 
 @router.post("/interview-report")
-async def interview_report(req: InterviewReportRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def interview_report(request: Request, req: InterviewReportRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # This manager's interview for that address, or nothing: the save used to
     # look up by email alone, so any manager could overwrite another tenant's
     # report. Checked before generating, so no report is written for a stranger.
@@ -1199,7 +1211,8 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
 # ═══════ PDF REPORT EXPORT ═══════
 
 @router.get("/export-report/{email}")
-async def export_report_pdf(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def export_report_pdf(request: Request, email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Generate a branded PDF report for one of THIS manager's candidates.
 
     Auth + ownership required — previously this was public and any email could

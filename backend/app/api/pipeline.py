@@ -55,7 +55,8 @@ class BatchActionRequest(BaseModel):
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/parse-jd")
-async def parse_jd(req: ParseJDRequest, user=Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def parse_jd(request: Request, req: ParseJDRequest, user=Depends(get_current_user)):
     """Parse a job description into structured requirements."""
     requirements = await ats_service.parse_jd(req.jd_text, req.role)
     return {"requirements": requirements}

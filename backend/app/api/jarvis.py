@@ -5,10 +5,11 @@ import re
 from typing import Any, Dict, List, Optional
 
 import openai
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.services.auth import get_current_user
 
 logger = logging.getLogger("resumate.jarvis")
@@ -581,7 +582,9 @@ def _apply_action_guards(
 
 
 @router.post("/chat", response_model=JarvisChatResponse)
+@limiter.limit("30/minute")
 async def jarvis_chat(
+    request: Request,
     req: JarvisChatRequest,
     user=Depends(get_current_user),
 ):

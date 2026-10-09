@@ -293,7 +293,9 @@ class CheckpointRequest(BaseModel):
 
 
 @router.post("/checkpoint")
+@limiter.limit("120/hour")
 async def checkpoint(
+    request: Request,
     req: CheckpointRequest,
     db: AsyncSession = Depends(get_db),
     actor: Actor = Depends(get_current_actor),
@@ -314,7 +316,9 @@ class FinalizeRequest(BaseModel):
 
 
 @router.post("/finalize")
+@limiter.limit("10/hour")
 async def finalize(
+    request: Request,
     req: FinalizeRequest,
     db: AsyncSession = Depends(get_db),
     actor: Actor = Depends(get_current_actor),

@@ -6,7 +6,7 @@ import os
 import time
 import hashlib
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ load_dotenv()
 import jwt  # PyJWT
 
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.models.candidate import Interview
 from app.services.auth import Actor, get_current_actor, verify_agent_token
 
@@ -112,7 +113,9 @@ async def _authorized_interview(db: AsyncSession, actor: Actor, candidate_email:
 
 
 @router.post("/create-room")
+@limiter.limit("10/hour")
 async def create_room(
+    request: Request,
     req: CreateRoomRequest,
     db: AsyncSession = Depends(get_db),
     actor: Actor = Depends(get_current_actor),
@@ -169,7 +172,9 @@ async def create_room(
 
 
 @router.post("/join-room")
+@limiter.limit("30/hour")
 async def join_room(
+    request: Request,
     req: JoinRoomRequest,
     db: AsyncSession = Depends(get_db),
     actor: Actor = Depends(get_current_actor),
