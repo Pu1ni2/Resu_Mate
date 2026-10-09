@@ -298,6 +298,18 @@ export default function Dashboard() {
     }
   };
 
+  // A made-up person's résumé, to try ResuMate with nothing to upload.
+  const loadSample = async () => {
+    try {
+      const resp = await fetch(`${import.meta.env.BASE_URL}sample-resume.pdf`);
+      if (!resp.ok) throw new Error(`it isn't available (${resp.status})`);
+      const blob = await resp.blob();
+      await handleUpload([new File([blob], 'sample-resume.pdf', { type: 'application/pdf' })]);
+    } catch (err) {
+      toast(`Could not load the sample résumé: ${err.message}`, 'error');
+    }
+  };
+
   const [showPipeline, setShowPipeline] = useState(false);
   const [pipelineResult, setPipelineResult] = useState(null);
 
@@ -661,6 +673,11 @@ export default function Dashboard() {
                     <h3>Drop resumes here or click to upload</h3>
                     <p>PDF, DOCX, TXT • Max 5MB each • No duplicates</p>
                   </div>
+                  {candidates.length === 0 && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={loadSample} style={{ marginTop: 12 }}>
+                      <FileText size={14} /> No résumés to hand? Try a made-up sample
+                    </button>
+                  )}
 
                   {Object.entries(uploadProgress).map(([id, p]) => (
                     <div key={id} className="upload-progress">
