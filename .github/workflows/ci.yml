@@ -28,6 +28,48 @@ jobs:
           DEBUG: "true"
         run: pytest -q
 
+  # Builds a database from empty with the migrations, as every Render deploy
+  # does, and checks it. The tests use SQLite built from the models, so they
+  # never saw two migrations clash on Postgres, or a column too narrow for
+  # what the app stores in it.
+  migrations:
+    runs-on: ubuntu-24.04  # pinned, as for the backend job
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: resumate
+          POSTGRES_PASSWORD: resumate
+          POSTGRES_DB: resumate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resumate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://resumate:resumate@localhost:5432/resumate
+      SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Migrate an empty database
+        run: alembic upgrade head
+      - name: The schema matches the models
+        run: alembic check
+      - name: The app starts on it
+        run: python -c "import asyncio, main; from app.core.database import init_db; asyncio.run(init_db())"
+      - name: The migrations roll back and forward
+        run: alembic downgrade base && alembic upgrade head
+
   frontend:
     runs-on: ubuntu-24.04  # pinned, as for the backend job
     defaults:
