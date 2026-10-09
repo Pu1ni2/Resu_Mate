@@ -3,6 +3,7 @@ import { Video, Loader, Check, Mic } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
 import { useAvatarInterviews } from '../../services/features';
+import PortalLink from '../shared/PortalLink';
 
 export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact }) {
   const [interviewEmail, setInterviewEmail] = useState('');
@@ -16,7 +17,9 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   const avatarAvailable = useAvatarInterviews();
   const [interviewMode, setInterviewMode] = useState('conversational');
   const [interviewCreating, setInterviewCreating] = useState(false);
-  const [interviewCreated, setInterviewCreated] = useState(false);
+  const [sendInvite, setSendInvite] = useState(true);
+  // What the server did: { mode, inviteSent, inviteError, portalLink }.
+  const [created, setCreated] = useState(null);
 
   useEffect(() => {
     if (scanContact?.email && !interviewEmail) {
@@ -41,37 +44,58 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
           num_questions: parseInt(interviewNumQuestions) || 8,
           focus_areas: interviewFocusAreas ? interviewFocusAreas.split(',').map(s => s.trim()) : [],
           mode: interviewMode,
+          send_invite: sendInvite,
         }),
       });
-      const data = await resp.json();
-      if (data.message) {
-        setInterviewCreated(true);
-        toast('Interview created! Candidate can now login.', 'success');
-        // The candidate takes the interview on their own time, so the result
-        // arrives long after this screen is closed.
-        notify(
-          'Interview created',
-          `${focusCandidate.name || interviewEmail.trim()} can now log in and start`,
-          'success',
-        );
-      }
-    } catch {
-      toast('Failed to create interview', 'error');
+      const data = await resp.json().catch(() => ({}));
+      // A refusal used to end the spinner with no word at all.
+      if (!resp.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Failed to create interview');
+      setCreated({
+        mode: data.interview_config?.mode || interviewMode,
+        inviteSent: !!data.invite_sent,
+        inviteError: data.invite_error || null,
+        portalLink: data.portal_link || '',
+      });
+      toast(data.invite_sent ? 'Interview created and invitation emailed.' : 'Interview created. Send the candidate the sign-in link.', 'success');
+      // The candidate takes the interview on their own time, so the result
+      // arrives long after this screen is closed.
+      notify(
+        'Interview created',
+        data.invite_sent
+          ? `Invitation emailed to ${interviewEmail.trim()}`
+          : `${focusCandidate.name || interviewEmail.trim()} can start once you send them the sign-in link`,
+        'success',
+      );
+    } catch (err) {
+      toast(err.message || 'Failed to create interview', 'error');
     } finally {
       setInterviewCreating(false);
     }
   };
 
-  if (interviewCreated) {
+  if (created) {
     return (
       <div style={{ padding: '20px', maxWidth: '640px' }}>
         <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
           <Check size={40} style={{ color: '#22C55E', marginBottom: '14px' }} />
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>Interview Created!</h3>
-          <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '4px' }}>Candidate can now login with:</p>
-          <p style={{ fontSize: '16px', fontWeight: '600', color: 'var(--info)', marginBottom: '12px' }}>{interviewEmail}</p>
+          {created.inviteSent ? (
+            <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px' }}>
+              Invitation emailed to <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>.
+            </p>
+          ) : (
+            <div style={{ textAlign: 'left', marginBottom: '12px' }}>
+              {created.inviteError && (
+                <p role="status" style={{ color: 'var(--warning)', fontSize: '13px', marginBottom: '8px' }}>{created.inviteError}</p>
+              )}
+              <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '8px' }}>
+                Send the candidate this link. They sign in with <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>.
+              </p>
+              <PortalLink link={created.portalLink} />
+            </div>
+          )}
           <p style={{ color: 'var(--text3)', fontSize: '13px' }}>
-            {interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions · {interviewMode === 'conversational' ? 'Voice conversation' : 'Avatar interview'}
+            {interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions · {created.mode === 'conversational' ? 'Voice conversation' : 'Avatar interview'}
           </p>
           {interviewFocusAreas && <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Focus: {interviewFocusAreas}</p>}
         </div>
@@ -158,7 +182,11 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
             <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Focus Areas</label>
             <input type="text" className="input" value={interviewFocusAreas} onChange={e => setInterviewFocusAreas(e.target.value)} placeholder="System Design, Python, Leadership (comma-separated)" style={{ padding: '11px 14px' }} />
           </div>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', paddingTop: '4px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text2)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={sendInvite} onChange={e => setSendInvite(e.target.checked)} />
+              Email the invitation to the candidate
+            </label>
             <button className="btn btn-primary" onClick={createInterview} disabled={!interviewEmail.trim() || interviewCreating} style={{ background: 'rgba(139,92,246,0.9)', padding: '12px 24px' }}>
               {interviewCreating ? <Loader size={16} className="spin" /> : <Video size={16} />}
               <span>{interviewCreating ? 'Creating...' : 'Create Interview & Grant Access'}</span>
