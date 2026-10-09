@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
+import { useAvatarInterviews } from '../../services/features';
 
 export default function BatchActionConfirm({ selectedCandidates, role, onClose, onDone }) {
   const [level, setLevel] = useState('Mid-Level');
@@ -10,8 +11,10 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
   const [sendEmails, setSendEmails] = useState(false);
   // Same format toggle as InterviewCreator: avatar (LiveKit + Simli) vs
   // conversational (audio-only OpenAI Realtime). Applies to every interview
-  // created by this batch confirm.
-  const [interviewMode, setInterviewMode] = useState('avatar');
+  // created by this batch confirm. Voice by default, which always works;
+  // avatar only when the server runs the interview worker it needs.
+  const avatarAvailable = useAvatarInterviews();
+  const [interviewMode, setInterviewMode] = useState('conversational');
   const [candidateToggles, setCandidateToggles] = useState(() =>
     Object.fromEntries(selectedCandidates.map(c => [c.candidate_id, { interview: true, email: true }]))
   );
@@ -125,8 +128,11 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
             <button
               type="button"
               onClick={() => setInterviewMode('avatar')}
+              aria-pressed={interviewMode === 'avatar'}
+              disabled={!avatarAvailable}
               style={{
-                padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
+                padding: '10px 12px', textAlign: 'left', cursor: avatarAvailable ? 'pointer' : 'not-allowed',
+                opacity: avatarAvailable ? 1 : 0.55,
                 borderRadius: 10,
                 background: interviewMode === 'avatar' ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
                 border: `1px solid ${interviewMode === 'avatar' ? 'var(--color-accent)' : 'var(--color-line)'}`,
@@ -136,11 +142,14 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Video size={12} /> Avatar interview
               </span>
-              <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>Camera + lip-synced AI face</span>
+              <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>
+                {avatarAvailable ? 'Camera + lip-synced AI face' : 'Not set up on this server yet'}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setInterviewMode('conversational')}
+              aria-pressed={interviewMode === 'conversational'}
               style={{
                 padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
                 borderRadius: 10,

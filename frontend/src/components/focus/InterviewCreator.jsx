@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Video, Loader, Check, Mic } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
+import { useAvatarInterviews } from '../../services/features';
 
 export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact }) {
   const [interviewEmail, setInterviewEmail] = useState('');
@@ -10,8 +11,10 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   const [interviewFocusAreas, setInterviewFocusAreas] = useState('');
   // Interview format: "avatar" (LiveKit + lip-synced Simli face on camera) or
   // "conversational" (audio-only OpenAI Realtime via WebRTC — no video, no
-  // avatar, lower latency). Defaults to avatar so existing flows are unchanged.
-  const [interviewMode, setInterviewMode] = useState('avatar');
+  // avatar, lower latency). Defaults to voice, which always works. Avatar can
+  // be picked only when the server runs the interview worker it needs.
+  const avatarAvailable = useAvatarInterviews();
+  const [interviewMode, setInterviewMode] = useState('conversational');
   const [interviewCreating, setInterviewCreating] = useState(false);
   const [interviewCreated, setInterviewCreated] = useState(false);
 
@@ -94,8 +97,10 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                 type="button"
                 onClick={() => setInterviewMode('avatar')}
                 aria-pressed={interviewMode === 'avatar'}
+                disabled={!avatarAvailable}
                 style={{
-                  padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                  padding: '12px 14px', textAlign: 'left', cursor: avatarAvailable ? 'pointer' : 'not-allowed',
+                  opacity: avatarAvailable ? 1 : 0.55,
                   width: '100%', minWidth: 0, borderRadius: '10px',
                   fontFamily: 'inherit', color: 'var(--text)',
                   background: interviewMode === 'avatar' ? 'rgba(139,92,246,0.22)' : 'var(--bg3)',
@@ -107,7 +112,9 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                 <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Video size={14} /> Avatar interview
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>Camera + lip-synced AI face. Slower but richer.</span>
+                <span style={{ fontSize: '11px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>
+                  {avatarAvailable ? 'Camera + lip-synced AI face. Slower but richer.' : 'Not set up on this server yet.'}
+                </span>
               </button>
               <button
                 type="button"
