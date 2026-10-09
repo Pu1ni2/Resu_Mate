@@ -2,54 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { API_BASE } from '../services/authFetch';
-import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, FileText, KeyRound } from 'lucide-react';
-
-const DEMO_EMAIL = 'saipunithkolla@gmail.com';
-const DEMO_SESSION = {
-  email: DEMO_EMAIL,
-  name: 'Sai Punith Kolla',
-  candidate_id: 'demo-sample',
-  has_interview: true,
-  interview_config: {
-    role: 'AI/ML Engineer',
-    level: 'Mid-Level',
-    num_questions: 8,
-    focus_areas: ['Python', 'LLMs', 'Multi-Agent Systems', 'RAG', 'FastAPI'],
-  },
-  interview_completed: false,
-  interview_report: null,
-  is_demo: true,
-  profile: {
-    name: 'Sai Punith Kolla',
-    predicted_role: 'AI/ML Engineer',
-    experience_level: 'Mid-Level',
-    total_experience_years: 3,
-    location: 'Boston, MA',
-    summary: 'AI/ML engineer with 3 years of experience building production-grade systems at Wipro Technologies and Northeastern University. Specializes in multi-agent AI platforms, NLP pipelines, RAG-based retrieval, and full-stack development with React and FastAPI.',
-    skills: ['Python', 'PyTorch', 'TensorFlow', 'LangChain', 'FastAPI', 'React', 'RAG', 'NLP', 'Multi-Agent Systems', 'ChromaDB', 'AWS', 'Docker'],
-    key_strengths: [
-      'Multi-agent AI system design and orchestration',
-      'LLM integration with RAG and vector search',
-      'Full-stack AI application development',
-    ],
-    work_experience: [
-      {
-        title: 'Generative AI Product Development Fellow',
-        company: 'Burnes Center for Social Change, Northeastern University',
-        duration: 'Jan 2026 – Present',
-      },
-      {
-        title: 'Python Developer L2 / IICS Developer',
-        company: 'Wipro Technologies, Bengaluru, India',
-        duration: 'Apr 2022 – Oct 2024',
-      },
-    ],
-    education: [
-      { degree: 'MS in Artificial Intelligence', institution: 'Northeastern University, Boston, MA', year: '2025–2027' },
-      { degree: 'B.Tech in ECE', institution: 'VIT, India', year: '2018–2022' },
-    ],
-  },
-};
+import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, KeyRound } from 'lucide-react';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -74,15 +27,6 @@ export default function CandidateLogin() {
   const handleSendOTP = async () => {
     if (!email.trim()) return;
     const trimmed = email.trim().toLowerCase();
-
-    // Demo account bypass — DEV ONLY. In production a real OTP is required.
-    if (import.meta.env.DEV && trimmed === DEMO_EMAIL) {
-      localStorage.removeItem('resumate_interview_report');
-      localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
-      setCandidateSession(DEMO_SESSION);
-      setTimeout(() => navigate('/candidate/dashboard'), 300);
-      return;
-    }
 
     setLoading(true);
     setError('');
@@ -145,13 +89,6 @@ export default function CandidateLogin() {
     }
   };
 
-  const handleDemoAccess = () => {
-    localStorage.removeItem('resumate_interview_report');
-    localStorage.setItem('resumate_candidate', JSON.stringify(DEMO_SESSION));
-    setCandidateSession(DEMO_SESSION);
-    navigate('/candidate/dashboard');
-  };
-
   return (
     <div className="candidate-login-page">
       <div className="cl-bg-gradient" />
@@ -198,17 +135,6 @@ export default function CandidateLogin() {
                   <span>{loading ? 'Sending code...' : 'Send Access Code'}</span>
                 </button>
               </div>
-
-              {import.meta.env.DEV && (
-                <>
-                  <div className="cl-divider"><span>or</span></div>
-                  <button className="cl-demo-btn" onClick={handleDemoAccess}>
-                    <FileText size={16} />
-                    <span>Try Sample Resume</span>
-                    <span className="cl-demo-badge">Demo</span>
-                  </button>
-                </>
-              )}
 
               <div className="cl-info">
                 <Shield size={14} />
