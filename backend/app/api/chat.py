@@ -20,6 +20,7 @@ from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import db_service
+from app.services import interview_modes
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
 from app.agents.technical_agent import technical_agent
@@ -888,6 +889,10 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
     # Grant portal access (owned by this manager)
     await db_service.create_candidate_access(db, email, req.candidate_name or "", req.candidate_id, manager_id=mgr)
 
+    # The kind it will actually run as: voice when avatar interviews aren't
+    # set up here (see app/services/interview_modes.py).
+    mode = interview_modes.effective_mode(req.mode)
+
     # Create interview record (owned by this manager)
     interview = await db_service.create_interview(db, {
         "candidate_id": req.candidate_id,
@@ -898,7 +903,7 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         "experience_required": req.experience_required,
         "num_questions": req.num_questions,
         "focus_areas": req.focus_areas or [],
-        "mode": (req.mode or "avatar").strip().lower(),
+        "mode": mode,
     })
     # create_interview reports a failed insert as None. It was ignored, so a
     # manager was told the interview was created, and the invitation went out,
@@ -919,12 +924,13 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         "role": req.role or "General", "level": req.level or "Mid-Level",
         "num_questions": req.num_questions, "focus_areas": req.focus_areas or [],
         "status": "pending",
+        "mode": mode,
         "resume_intelligence": resume_intel,
     }
     await db_service.log_event(
         db, action="interview.create", actor="manager",
         manager_id=mgr, target_email=email,
-        detail=f"role={req.role or 'General'} mode={(req.mode or 'avatar')}",
+        detail=f"role={req.role or 'General'} mode={mode}",
     )
     print(f"[OK] Interview created for {email}")
     return {"message": f"Interview created for {email}", "interview_config": config}
@@ -992,7 +998,7 @@ async def candidate_me(
             "num_questions": interview.num_questions,
             "focus_areas": interview.focus_areas or [],
             "status": interview.status,
-            "mode": interview.mode or "avatar",
+            "mode": interview_modes.mode_of(interview),
             "interview_id": interview.id,
         }
 
@@ -1034,12 +1040,12 @@ async def interview_status(email: str, user=Depends(get_current_user), db: Async
             "exists": True,
             "status": interview.status,
             "completed": interview.status == "completed",
-            "mode": interview.mode or "avatar",
+            "mode": interview_modes.mode_of(interview),
             "interview_id": interview.id,
             "config": {
                 "role": interview.role, "level": interview.level,
                 "num_questions": interview.num_questions,
-                "mode": interview.mode or "avatar",
+                "mode": interview_modes.mode_of(interview),
                 "interview_id": interview.id,
             }
         }
@@ -1205,7 +1211,8 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
     for email, status, mode, iv_id in rows:
         key = (email or "").lower()
         if key and key not in out:
-            out[key] = {"status": status, "mode": mode or "avatar", "id": iv_id}
+            shown = (mode or "avatar") if status == "completed" else interview_modes.effective_mode(mode)
+            out[key] = {"status": status, "mode": shown, "id": iv_id}
     return {"statuses": out, "count": len(out)}
 
 # ═══════ PDF REPORT EXPORT ═══════

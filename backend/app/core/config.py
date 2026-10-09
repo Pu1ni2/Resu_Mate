@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     # calls like /save-transcript. Set in both backend and worker env vars.
     agent_shared_secret: str = ""
 
+    # Avatar interviews need the LiveKit interview worker (interview_agent.py)
+    # running somewhere. Turn this on only once it is; until then every
+    # interview runs voice-only. See app/services/interview_modes.py.
+    avatar_interviews: bool = False
+
     # OpenAI Realtime API — used by the conversational interview mode (audio-only,
     # no LiveKit). Both the model name and the voice are allow-listed in
     # app/api/realtime.py so a typo here surfaces as a clean 400, not an opaque

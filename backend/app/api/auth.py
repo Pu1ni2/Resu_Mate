@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.models.auth import HiringManager, OTPCode
 from app.models.candidate import CandidateAccess
 from app.services import db_service
+from app.services import interview_modes
 from app.services.auth import (
     verify_password,
     get_password_hash,
@@ -256,7 +257,7 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
             "num_questions": interview.num_questions,
             "focus_areas": interview.focus_areas or [],
             "questions": interview.questions or [],
-            "mode": interview.mode or "avatar",
+            "mode": interview_modes.mode_of(interview),
             "interview_id": interview.id,
         }
         if interview_completed:

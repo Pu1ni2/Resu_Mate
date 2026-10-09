@@ -223,6 +223,16 @@ async def root():
     }
 
 
+@app.get("/api/features")
+async def features():
+    """What this server can do, for the frontend to show only what works.
+
+    Public on purpose: the interview forms ask before anyone signs in.
+    """
+    from app.services import interview_modes
+    return {"avatar_interviews": interview_modes.avatar_available()}
+
+
 @app.get("/health")
 async def health():
     """Up, and the database answers within 3 seconds. Render's health check.

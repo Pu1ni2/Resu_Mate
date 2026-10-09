@@ -107,6 +107,10 @@ services:
         sync: false
       - key: S3_SECRET_KEY
         sync: false
+      # Avatar interviews: off until the worker below is deployed. With it
+      # off, every interview runs voice-only.
+      - key: AVATAR_INTERVIEWS
+        value: "false"
       # Only for avatar interviews, which also need the worker below.
       - key: LIVEKIT_URL
         sync: false

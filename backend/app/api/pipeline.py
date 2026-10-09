@@ -16,6 +16,7 @@ from app.services.auth import get_current_user
 from app.services.ats_service import ats_service
 from app.services.resume_rag import resume_rag
 from app.services import db_service
+from app.services import interview_modes
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
 
@@ -176,7 +177,8 @@ async def batch_action(
                 "level": req.level,
                 "num_questions": req.num_questions,
                 "focus_areas": req.focus_areas,
-                "mode": (req.mode or "avatar").strip().lower(),
+                # Voice when avatar interviews aren't set up here.
+                "mode": interview_modes.effective_mode(req.mode),
             })
             # Grant portal access (owned by this manager)
             await db_service.create_candidate_access(db, email, name, cid, manager_id=mgr)

@@ -53,7 +53,8 @@ def test_two_companies_inviting_one_person_works_end_to_end(client):
     data = _sign_in(client, EMAIL)
     # Name, interview and profile all from the same company: B, the newest.
     assert data["name"] == "Maya (B)"
-    assert data["interview_config"]["mode"] == "avatar"
+    # Avatar interviews aren't set up here, so the interview runs voice-only.
+    assert data["interview_config"]["mode"] == "conversational"
     assert data["profile"]["predicted_role"] == "Data Engineer"
 
     me = client.get("/api/chat/candidate/me", headers={"Authorization": f"Bearer {create_candidate_token(EMAIL)}"})

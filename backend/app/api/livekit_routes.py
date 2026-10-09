@@ -24,6 +24,7 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.models.candidate import Interview
 from app.services.auth import Actor, get_current_actor, verify_agent_token
+from app.services import interview_modes
 
 router = APIRouter(prefix="/api/livekit", tags=["livekit"])
 
@@ -132,6 +133,13 @@ async def create_room(
     # so the candidate could sit it again and get a fresh report.
     if interview.status == "completed":
         raise HTTPException(status_code=409, detail="This interview is already complete.")
+    # No room for an interview that runs voice-only: it was made as a voice
+    # interview, or avatar interviews aren't set up on this server, in which
+    # case no worker would ever join and the candidate would wait alone.
+    if interview_modes.effective_mode(interview.mode) != interview_modes.AVATAR:
+        detail = ("This interview runs voice-only." if interview_modes.avatar_available()
+                  else "Avatar interviews aren't set up on this server, so this interview runs voice-only.")
+        raise HTTPException(status_code=409, detail=detail)
     candidate_email = (interview.candidate_email or "").strip().lower()
     candidate_name = (
         req.candidate_name
