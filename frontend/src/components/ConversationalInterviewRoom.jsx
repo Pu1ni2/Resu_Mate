@@ -110,7 +110,10 @@ export default function ConversationalInterviewRoom({
         body: JSON.stringify({
           interview_id: interviewId,
           transcript: turnsRef.current,
-          duration: timerRef.current ? Math.floor(timer) : 0,
+          // The elapsed seconds themselves. This sent 0 unless the timer was
+          // still running, and endInterview stops it (cleanup) before
+          // finalising, so every interview ended with the button was 0:00.
+          duration: Math.floor(timer),
         }),
       });
       if (resp.ok) {
