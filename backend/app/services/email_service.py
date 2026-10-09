@@ -1,5 +1,6 @@
 """Email Service — SendGrid with graceful console fallback"""
 import asyncio
+import html
 import logging
 from app.core.config import settings
 
@@ -66,20 +67,23 @@ class EmailService:
     async def send_interview_invitation(
         self, to_email: str, candidate_name: str, role: str, login_url: str
     ) -> bool:
-        html = f"""
+        # Escaped: the name comes from a résumé, and a "<" in it, or in the
+        # role, broke the email or put markup in it.
+        name, role_text, link = (html.escape(v or "") for v in (candidate_name, role, login_url))
+        body = f"""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">Interview Invitation — {role}</h2>
-          <p>Hi {candidate_name},</p>
-          <p>You have been invited to complete an AI-powered interview for the <strong>{role}</strong> position.</p>
+          <h2 style="color: #3B82F6;">Interview Invitation — {role_text}</h2>
+          <p>Hi {name},</p>
+          <p>You have been invited to complete an AI-powered interview for the <strong>{role_text}</strong> position.</p>
           <p>
-            <a href="{login_url}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
+            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
               Start Interview
             </a>
           </p>
-          <p style="color:#6B7280;">If the button doesn't work, copy this link: {login_url}</p>
+          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
         </div>
         """
-        return await self.send(to_email, f"Interview Invitation: {role}", html)
+        return await self.send(to_email, f"Interview Invitation: {role}", body)
 
     async def send_email_draft(self, to_email: str, subject: str, body: str) -> bool:
         html = body.replace("\n", "<br>")

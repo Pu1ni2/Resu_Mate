@@ -860,12 +860,13 @@ async def _notify_manager_interview_complete(db, interview) -> None:
         )).scalar_one_or_none()
         if not mgr or not mgr.email:
             return
+        from html import escape
         from app.services.email_service import email_service
         subject = f"Interview completed — {interview.candidate_email}"
         body = (
-            f"<p>Hi {mgr.name or 'there'},</p>"
-            f"<p><strong>{interview.candidate_email}</strong> just completed their "
-            f"{interview.role or 'interview'}.</p>"
+            f"<p>Hi {escape(mgr.name or 'there')},</p>"
+            f"<p><strong>{escape(interview.candidate_email or '')}</strong> just completed their "
+            f"{escape(interview.role or 'interview')}.</p>"
             f"<p>Log in to ResuMate to review the report.</p>"
         )
         await email_service.send(mgr.email, subject, body)
