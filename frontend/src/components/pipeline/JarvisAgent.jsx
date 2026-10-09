@@ -782,6 +782,37 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       return false;
     };
 
+    // Email the drafts the manager reviewed, for the interviews already made.
+    const sendInvites = async (invites, messageId) => {
+      setStatus('SENDING INVITES…');
+      try {
+        const res = await authFetch(`${API_BASE}/api/pipeline/send-invites`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ invites }),
+        });
+        if (handle401(res)) return;
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof d.detail === 'string' ? d.detail : `Send ${res.status}`);
+        const sent = d.emails_sent || 0;
+        if (messageId) {
+          setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, invitesSent: true } : m)));
+        }
+        appendMsg({ role: 'action', content: `${sent} of ${invites.length} invitation${invites.length !== 1 ? 's' : ''} emailed` });
+        setStatus(sent > 0 ? 'EMAILS SENT' : 'DONE');
+        if (sent === invites.length) {
+          directSay(`Sent ${sent} interview invitation${sent !== 1 ? 's' : ''}.`);
+        } else {
+          const why = (d.outcomes || []).find(o => o.error)?.error;
+          appendMsg({ role: 'action', content: `Candidate sign-in link: ${d.portal_link}` });
+          directSay(`I sent ${sent} of ${invites.length}.${why ? ` ${why}` : ''} The sign-in link is below for the rest.`);
+        }
+      } catch (err) {
+        setStatus('ERROR');
+        appendMsg({ role: 'action', content: `Candidate sign-in link: ${window.location.origin}/candidate/login` });
+        directSay(`I couldn't send the invitations — ${err.message}`);
+      }
+    };
+
     if (action === 'run_ats') {
       // ATS DOES recurse so Jarvis can summarize results conversationally
       setStatus('RUNNING ATS…');
@@ -818,7 +849,22 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         setStatus('ERROR');
       }
 
+    } else if (action === 'send_invites') {
+      await sendInvites(params.invites || [], params.messageId);
+
     } else if (action === 'batch_action') {
+      // "Send it" after a draft sends that draft for the interviews already
+      // made. Running the batch again made every interview a second time, and
+      // sent a fixed template rather than the draft.
+      if (params.send_emails) {
+        const wanted = [...(params.candidate_ids || ctx.shortlistedIds || [])].map(String).sort().join(',');
+        const draft = [...messagesRef.current].reverse()
+          .find(m => m.invites?.length && !m.invitesSent && m.draftCandidateIds === wanted);
+        if (draft) {
+          await sendInvites(draft.invites, draft.id);
+          return;
+        }
+      }
       setStatus('CREATING INTERVIEWS…');
       try {
         const batchBody = {
@@ -862,36 +908,48 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           }
         });
 
-        if (params.send_emails) {
+        const skipped = outcomes.filter(o => o.skipped).map(o => o.name || 'One candidate');
+        const skippedNote = skipped.length
+          ? ` ${skipped.join(', ')} couldn't be invited: there's no email address on the résumé.`
+          : '';
+        const invited = outcomes.filter(o => o.interview_created && o.interview_id);
+
+        if (!invited.length) {
+          setStatus('DONE');
+          directSay(`I couldn't create any interviews.${skippedNote}`);
+        } else if (params.send_emails) {
           // ── Send mode ─────────────────────────────────────────────────────
           appendMsg({
             role: 'action',
             content: `${created} interview${created !== 1 ? 's' : ''} created · ${sent} email${sent !== 1 ? 's' : ''} sent`,
           });
           setStatus(sent > 0 ? 'EMAILS SENT' : 'DONE');
-          if (sent > 0) {
-            directSay(`Done! Sent ${sent} interview invitation${sent !== 1 ? 's' : ''}. You're all set!`);
+          if (sent === created) {
+            directSay(`Done! Sent ${sent} interview invitation${sent !== 1 ? 's' : ''}.${skippedNote}`);
           } else {
-            directSay(`Interview created, but email couldn't be sent — check your email settings.`);
+            const why = outcomes.find(o => o.email_send_error)?.email_send_error;
+            appendMsg({ role: 'action', content: `Candidate sign-in link: ${d.portal_link}` });
+            directSay(`${created} interview${created !== 1 ? 's are' : ' is'} ready, but ${sent} invitation${sent !== 1 ? 's were' : ' was'} emailed.${why ? ` ${why}` : ''} The sign-in link is below for the rest.${skippedNote}`);
           }
         } else {
           // ── Draft mode — show email card with inline Send button ──────────
-          const first = outcomes[0] || {};
-          const emailSubject = first.email_subject || `Interview Invitation — ${batchBody.role}`;
-          const emailBody    = first.email_body    || '';
-          const toNames      = outcomes.map(o => o.name || '?').join(', ');
-          // Store params needed for the Send button (send_emails excluded — added when clicked)
-          const storedParams = { ...batchBody, send_emails: undefined };
-          delete storedParams.send_emails;
+          // Each candidate gets their own draft; the card shows the first.
+          const invites = invited.map(o => ({
+            interview_id: o.interview_id,
+            subject: o.email_subject || `Interview Invitation — ${batchBody.role}`,
+            body: o.email_body || '',
+          }));
+          const toNames = invited.map(o => o.name || '?').join(', ');
 
           appendMsg({
             role: 'action',
             content: 'Email draft ready',
-            emailDraftData: { subject: emailSubject, body: emailBody, to: toNames, count: outcomes.length },
-            batchParams: storedParams,
+            emailDraftData: { subject: invites[0].subject, body: invites[0].body, to: invited[0].name || '?', count: invites.length },
+            invites,
+            draftCandidateIds: [...batchBody.candidate_ids].map(String).sort().join(','),
           });
           setStatus('EMAIL DRAFTED');
-          directSay(`Interview set up for ${toNames}. Here's the email draft — review it and hit Send when you're ready.`);
+          directSay(`Interview set up for ${toNames}. Here's the email draft — review it and hit Send when you're ready.${skippedNote}`);
         }
       } catch (err) {
         appendMsg({ role: 'action', content: `Batch failed: ${err.message}` });
@@ -1157,11 +1215,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         appendMsg({
           role: 'action',
           content: `Interview created for ${body.candidate_name}`,
-          interviewData: { candidateName: body.candidate_name, candidateEmail, config: interviewConfig },
+          // Nothing is emailed from here, so the card carries the sign-in
+          // link for the manager to send.
+          interviewData: { candidateName: body.candidate_name, candidateEmail, config: interviewConfig, portalLink: d.portal_link || '' },
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[INTERVIEW_CREATED_RESULT] Created an interview for ${body.candidate_name} at ${candidateEmail}. Role: ${interviewConfig.role || body.role}. ${interviewConfig.num_questions || body.num_questions} questions. Focus: ${(interviewConfig.focus_areas || body.focus_areas || []).join(', ') || 'general skills'}.`
+          `[INTERVIEW_CREATED_RESULT] Created an interview for ${body.candidate_name} at ${candidateEmail}. Role: ${interviewConfig.role || body.role}. ${interviewConfig.num_questions || body.num_questions} questions. Focus: ${(interviewConfig.focus_areas || body.focus_areas || []).join(', ') || 'general skills'}. No invitation was emailed: the candidate needs the sign-in link shown on the card.`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1639,9 +1699,10 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#E4E4E7', marginBottom: 16 }}>{em.subject}</div>
                   <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.8, background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '16px 18px', whiteSpace: 'pre-wrap', marginBottom: 20 }}>{em.body}</div>
                   <button
-                    onClick={() => { setExpandedCard(null); executeAction('batch_action', { ...expandedCard.batchParams, send_emails: true }); }}
+                    onClick={() => { setExpandedCard(null); executeAction('send_invites', { invites: expandedCard.invites, messageId: expandedCard.id }); }}
+                    disabled={!expandedCard.invites?.length || !!expandedCard.invitesSent}
                     style={{ padding: '10px 24px', borderRadius: 100, background: 'rgba(217,119,6,0.25)', border: '1px solid rgba(245,158,11,0.45)', color: '#FDE68A', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-                  >Send Email →</button>
+                  >{expandedCard.invitesSent ? 'Sent ✓' : 'Send Email →'}</button>
                 </>
               )}
 
@@ -2227,7 +2288,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(245,158,11,0.5)' }}>
-                            EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more)` : ''}
+                            EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more, each with their own draft)` : ''}
                           </div>
                           {expandBtn(msg)}
                         </div>
@@ -2238,11 +2299,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           </div>
                         )}
                         <button
-                          onClick={() => executeAction('batch_action', { ...msg.batchParams, send_emails: true })}
+                          onClick={() => executeAction('send_invites', { invites: msg.invites, messageId: msg.id })}
+                          disabled={!msg.invites?.length || !!msg.invitesSent}
                           style={{ padding: '7px 18px', borderRadius: 100, background: 'rgba(217,119,6,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: '#FDE68A', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
                           onMouseEnter={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.35)'; }}
                           onMouseLeave={e2 => { e2.currentTarget.style.background = 'rgba(217,119,6,0.2)'; }}
-                        >Send Email →</button>
+                        >{msg.invitesSent ? 'Sent ✓' : 'Send Email →'}</button>
                       </div>
                     </div>
                   );
@@ -2398,6 +2460,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         {focusAreas.length > 0 && (
                           <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.5 }}>
                             Focus: {focusAreas.slice(0, 3).join(', ')}
+                          </div>
+                        )}
+                        {iv.portalLink && (
+                          <div style={{ fontSize: 11, color: '#A1A1AA', marginTop: 10, wordBreak: 'break-all' }}>
+                            Not emailed. Send them this sign-in link: <span style={{ color: '#E4E4E7', userSelect: 'all' }}>{iv.portalLink}</span>
                           </div>
                         )}
                       </div>
