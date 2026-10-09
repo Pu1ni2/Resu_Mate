@@ -213,3 +213,33 @@ def test_a_refused_invite_is_reported(client, monkeypatch):
     body = _create(client, tok, cid, "c4@x.com", send_invite=True)
     assert body["invite_sent"] is False
     assert "didn't accept" in body["invite_error"]
+
+
+def test_a_name_with_markup_is_escaped_in_the_invite(client, mailbox):
+    tok, _ = register(client, "c5@co.com")
+    cid = _own_candidate(client, tok, "Cand\nc5@x.com")
+    r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
+        "candidate_id": cid, "candidate_email": "c5@x.com", "candidate_name": "<b>Cand</b>",
+        "role": "R&D <Lead>", "send_invite": True,
+    })
+    assert r.status_code == 200, r.text
+    html = mailbox[0]["html"]
+    assert "Hi &lt;b&gt;Cand&lt;/b&gt;," in html
+    assert "R&amp;D &lt;Lead&gt;" in html
+    assert "<b>Cand</b>" not in html
+
+
+def test_the_managers_completion_email_is_escaped_too(client, mailbox):
+    from types import SimpleNamespace
+    from app.api.chat import _notify_manager_interview_complete
+    from app.core import database
+    _, m = register(client, "c6@co.com", name="<i>Boss</i>")
+    interview = SimpleNamespace(manager_id=m["id"], candidate_email="c6@x.com", role="<script>x</script>")
+
+    async def notify():
+        async with database.async_session() as db:
+            await _notify_manager_interview_complete(db, interview)
+    _run(notify())
+    html = mailbox[0]["html"]
+    assert "Hi &lt;i&gt;Boss&lt;/i&gt;," in html
+    assert "&lt;script&gt;" in html and "<script>" not in html
