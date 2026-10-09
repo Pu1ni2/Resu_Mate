@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { X, Zap, Mail, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
+import { X, Zap, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
 import { useAvatarInterviews } from '../../services/features';
+import PortalLink from '../shared/PortalLink';
 
 export default function BatchActionConfirm({ selectedCandidates, role, onClose, onDone }) {
   const [level, setLevel] = useState('Mid-Level');
   const [numQuestions, setNumQuestions] = useState(8);
-  const [emailType, setEmailType] = useState('interview');
   const [sendEmails, setSendEmails] = useState(false);
   // Same format toggle as InterviewCreator: avatar (LiveKit + Simli) vs
   // conversational (audio-only OpenAI Realtime). Applies to every interview
@@ -16,7 +16,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
   const avatarAvailable = useAvatarInterviews();
   const [interviewMode, setInterviewMode] = useState('conversational');
   const [candidateToggles, setCandidateToggles] = useState(() =>
-    Object.fromEntries(selectedCandidates.map(c => [c.candidate_id, { interview: true, email: true }]))
+    Object.fromEntries(selectedCandidates.map(c => [c.candidate_id, { interview: true }]))
   );
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
@@ -29,7 +29,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
   };
 
   const activeIds = selectedCandidates
-    .filter(c => candidateToggles[c.candidate_id]?.interview || candidateToggles[c.candidate_id]?.email)
+    .filter(c => candidateToggles[c.candidate_id]?.interview)
     .map(c => c.candidate_id);
 
   const handleConfirm = async () => {
@@ -47,7 +47,6 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           role,
           level,
           num_questions: numQuestions,
-          email_type: emailType,
           send_emails: sendEmails,
           mode: interviewMode,
         }),
@@ -79,24 +78,44 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
             <StatBox value={results.total} label="Total Processed" color="var(--color-ink-muted)" />
           </div>
 
-          {/* Per-candidate outcome */}
+          {/* Per-candidate outcome, and why when someone wasn't invited or emailed */}
           <div style={styles.outcomeList}>
-            {results.outcomes.map(o => (
-              <div key={o.candidate_id} style={styles.outcomeRow}>
-                <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{o.name}</span>
-                <span style={{ fontSize: 12, color: o.interview_created ? 'var(--color-positive)' : 'var(--color-critical)' }}>
-                  {o.interview_created ? '✓ Interview' : '✗ Interview'}
-                </span>
-                <span style={{ fontSize: 12, color: o.email_drafted ? 'var(--color-positive)' : 'var(--color-ink-subtle)', marginLeft: 10 }}>
-                  {o.email_drafted ? '✓ Email drafted' : '✗ Email'}
-                </span>
-              </div>
-            ))}
+            {results.outcomes.map(o => {
+              const reason = o.skipped || o.error
+                || (o.interview_created ? o.email_send_error : 'The interview could not be saved. Try again.');
+              return (
+                <div key={o.candidate_id} style={{ ...styles.outcomeRow, flexWrap: 'wrap' }}>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{o.name || `Candidate #${o.candidate_id}`}</span>
+                    {o.email && <span style={{ fontSize: 12, color: 'var(--color-ink-subtle)', marginLeft: 8 }}>{o.email}</span>}
+                  </span>
+                  <span style={{ fontSize: 12, color: o.interview_created ? 'var(--color-positive)' : 'var(--color-critical)' }}>
+                    {o.interview_created ? '✓ Interview' : '✗ Interview'}
+                  </span>
+                  <span style={{ fontSize: 12, color: o.email_sent ? 'var(--color-positive)' : 'var(--color-ink-subtle)', marginLeft: 10 }}>
+                    {o.email_sent ? '✓ Invite emailed' : 'Not emailed'}
+                  </span>
+                  {reason && (
+                    <span style={{ flexBasis: '100%', fontSize: 12, color: 'var(--color-ink-muted)', marginTop: 4 }}>{reason}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
-            Candidates can now log in at <strong style={{ color: 'var(--color-accent)' }}>/candidate/login</strong> using their email and OTP.
-          </p>
+          {results.interviews_created > 0 && (results.emails_sent < results.interviews_created ? (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 8 }}>
+                Send {results.emails_sent ? 'the candidates who weren’t emailed' : 'the invited candidates'} this link.
+                They sign in with the email address shown above.
+              </p>
+              <PortalLink link={results.portal_link} />
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
+              Each invited candidate was emailed their sign-in link.
+            </p>
+          ))}
 
           <button onClick={onDone} style={styles.primaryBtn}>Done</button>
         </div>
@@ -116,7 +135,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           Confirm Batch Actions
         </h3>
         <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 20 }}>
-          For each candidate, choose whether to create an interview and/or draft an email.
+          Choose who gets an interview. Each one can sign in to the candidate portal to take it.
         </p>
 
         {/* Interview format — avatar vs conversational. Mirrors the toggle in
@@ -180,13 +199,6 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               {[5, 8, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div style={styles.configField}>
-            <label style={styles.label}>Email type</label>
-            <select value={emailType} onChange={e => setEmailType(e.target.value)} style={styles.select}>
-              <option value="interview">Interview Invite</option>
-              <option value="interest">Expression of Interest</option>
-            </select>
-          </div>
         </div>
 
         {/* Send emails toggle */}
@@ -194,14 +206,14 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           <input type="checkbox" id="sendEmails" checked={sendEmails} onChange={e => setSendEmails(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
           <label htmlFor="sendEmails" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', color: sendEmails ? 'var(--color-accent)' : 'var(--color-ink-muted)' }}>
             <Send size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-            Actually send emails (requires SendGrid configured)
+            Email the invitations to the candidates
           </label>
         </div>
 
         {/* Candidate list with toggles */}
         <div style={styles.candidateList}>
           {selectedCandidates.map(c => {
-            const tog = candidateToggles[c.candidate_id] || { interview: true, email: true };
+            const tog = candidateToggles[c.candidate_id] || { interview: true };
             return (
               <div key={c.candidate_id} style={styles.candidateRow}>
                 <div style={{ flex: 1 }}>
@@ -219,13 +231,6 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
                     color="var(--color-accent)"
                     onClick={() => toggle(c.candidate_id, 'interview')}
                   />
-                  <ToggleChip
-                    icon={<Mail size={12} />}
-                    label="Email"
-                    active={tog.email}
-                    color="var(--color-accent)"
-                    onClick={() => toggle(c.candidate_id, 'email')}
-                  />
                 </div>
               </div>
             );
@@ -235,14 +240,14 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         {!sendEmails && (
           <div style={{ display: 'flex', gap: 8, padding: '8px 12px', background: 'var(--color-caution-wash)', border: '1px solid var(--color-caution)', borderRadius: 8, fontSize: 12, color: 'var(--color-caution)', marginBottom: 16 }}>
             <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            Emails will be drafted but not sent. You can copy them after.
+            Invitations won’t be emailed. You’ll get a sign-in link to send the candidates yourself.
           </div>
         )}
 
         <button onClick={handleConfirm} disabled={running || activeIds.length === 0} style={{ ...styles.primaryBtn, opacity: activeIds.length > 0 ? 1 : 0.5 }}>
           {running
-            ? <><Loader size={14} className="spin" /> Processing {selectedCandidates.length} candidates...</>
-            : <><Zap size={14} /> Confirm — {selectedCandidates.length} candidate{selectedCandidates.length !== 1 ? 's' : ''}</>}
+            ? <><Loader size={14} className="spin" /> Processing {activeIds.length} candidates...</>
+            : <><Zap size={14} /> Confirm — {activeIds.length} candidate{activeIds.length !== 1 ? 's' : ''}</>}
         </button>
       </div>
     </div>
@@ -251,7 +256,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
 
 function ToggleChip({ icon, label, active, color, onClick }) {
   return (
-    <button onClick={onClick} style={{
+    <button type="button" onClick={onClick} aria-pressed={active} style={{
       display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
       borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
       background: active ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
