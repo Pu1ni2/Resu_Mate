@@ -119,6 +119,9 @@ class CreateInterviewRequest(BaseModel):
     # audio-only OpenAI Realtime via WebRTC. Defaults to avatar to preserve
     # existing client behaviour.
     mode: str = Field(default="avatar", max_length=20)
+    # Email the candidate their invitation. Off unless asked for, as with
+    # the batch actions' send_emails.
+    send_invite: bool = False
 
 class VerifyEmailRequest(BaseModel):
     email: str
@@ -933,7 +936,25 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         detail=f"role={req.role or 'General'} mode={mode}",
     )
     print(f"[OK] Interview created for {email}")
-    return {"message": f"Interview created for {email}", "interview_config": config}
+
+    # Nothing told the candidate before: the manager was told they "can now
+    # log in", with no email sent and no link to pass on.
+    invite_sent, invite_error = False, None
+    if req.send_invite:
+        from app.services.email_service import email_service
+        if not email_service.configured:
+            invite_error = "Email isn't set up on this server. Share the portal link instead."
+        else:
+            invite_sent = await email_service.send_interview_invitation(
+                email, req.candidate_name or "there", req.role or "General", settings.candidate_login_url,
+            )
+            if not invite_sent:
+                invite_error = "The email service didn't accept the invite. Share the portal link instead."
+    return {
+        "message": f"Interview created for {email}", "interview_config": config,
+        "invite_sent": invite_sent, "invite_error": invite_error,
+        "portal_link": settings.candidate_login_url,
+    }
 
 @router.post("/verify-email")
 @limiter.limit("10/minute")
