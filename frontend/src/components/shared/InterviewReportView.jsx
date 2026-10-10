@@ -5,7 +5,7 @@ import Card from '../ui/Card';
 import Markdown from '../ui/Markdown';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
-import { averageScore, isScore, scoreOf } from '../../services/scores';
+import { averageScore, isScore, measured, scoreOf } from '../../services/scores';
 
 /* Both of these hand-rolled the same thing Badge already does: solid text on a
  * ~12% wash of the same hue with a ~30% border. They built the tints by
@@ -261,13 +261,20 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
   // Only the scored answers count; with none there is no average.
   const average = isScore(r.avgScore) ? r.avgScore : averageScore(r.scores);
   const avgScore = isScore(average) ? average.toFixed(1) : '—';
-  const eyeContact = r.eyeContact || 0;
-  const violations = r.violations || 0;
+  // Left out when not measured, as in every voice interview, rather than 0.
+  const eyeContact = measured(r.eyeContact);
+  const violations = measured(r.violations);
   const timerVal = r.timer || 0;
   const mins = Math.floor(timerVal / 60);
   const secs = String(timerVal % 60).padStart(2, '0');
   const scores = Array.isArray(r.scores) ? r.scores : [];
   const reportText = typeof r.report === 'string' ? r.report : '';
+  const stats = [
+    { val: avgScore, label: 'Avg Score' },
+    ...(eyeContact === null ? [] : [{ val: `${eyeContact}%`, label: 'Face in view' }]),
+    ...(violations === null ? [] : [{ val: violations, label: 'Violations', color: violations > 0 ? 'var(--color-critical)' : 'var(--color-positive)' }]),
+    { val: `${mins}:${secs}`, label: 'Duration' },
+  ];
 
   return (
     <div style={{ maxWidth: '780px', margin: '0 auto' }}>
@@ -319,13 +326,8 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       </Card>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
-        {[
-          { val: avgScore, label: 'Avg Score' },
-          { val: `${eyeContact}%`, label: 'Face in view' },
-          { val: violations, label: 'Violations', color: violations > 0 ? 'var(--color-critical)' : 'var(--color-positive)' },
-          { val: `${mins}:${secs}`, label: 'Duration' },
-        ].map((s, i) => (
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, 1fr)`, gap: '10px', marginBottom: '16px' }}>
+        {stats.map((s, i) => (
           <Card key={i} style={{ textAlign: 'center', padding: '16px' }}>
             <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || 'var(--color-ink)' }}>{s.val}</div>
             <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>{s.label}</div>

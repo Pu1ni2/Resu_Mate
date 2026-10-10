@@ -19,3 +19,7 @@ export function averageScore(scores) {
 
 /* A score for display: the number, or the dash that means "not scored". */
 export const shownScore = (value) => (isScore(value) ? value : '—');
+
+/* A camera reading (face in view, violations): the number, or null when none
+ * was taken. A voice interview has no camera, so it has none; that is not 0%. */
+export const measured = (value) => (isScore(value) ? value : null);

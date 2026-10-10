@@ -5,7 +5,7 @@ import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
-import { averageScore, isScore, shownScore } from '../../services/scores';
+import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
 
 const SESSION_KEY = 'jarvis_session_v3';
@@ -298,8 +298,9 @@ function buildInterviewReportArtifact(report = {}, candidateEmail = '') {
   return {
     candidateEmail,
     avgScore,
-    eyeContact: report.eyeContact || 0,
-    violations: report.violations || 0,
+    // null when not measured (a voice interview has no camera), not 0.
+    eyeContact: measured(report.eyeContact),
+    violations: measured(report.violations),
     summary: stripMarkdown(report.report || '').slice(0, 320),
     report,
   };
@@ -1267,7 +1268,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.avgScore ?? 'N/A'} on average. Face in view ${artifact.eyeContact} percent of the time. Violations ${artifact.violations}. ${artifact.summary || ''}`
+          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.avgScore ?? 'N/A'} on average.${artifact.eyeContact === null ? '' : ` Face in view ${artifact.eyeContact} percent of the time.`}${artifact.violations === null ? '' : ` Violations ${artifact.violations}.`} ${artifact.summary || ''}`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1871,7 +1872,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{rp.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{rp.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
-                      {[['Avg Score', shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores))], ['Face in view', `${report.eyeContact || 0}%`], ['Violations', report.violations || 0], ['Questions', scores.length]].map(([label, value]) => (
+                      {[['Avg Score', shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores))], ...(isScore(report.eyeContact) ? [['Face in view', `${report.eyeContact}%`]] : []), ...(isScore(report.violations) ? [['Violations', report.violations]] : []), ['Questions', scores.length]].map(([label, value]) => (
                         <div key={label}>
                           <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
@@ -2495,7 +2496,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{rp.candidateName}</div>
                         <div style={{ display: 'flex', gap: 18, marginBottom: summary ? 8 : 0, flexWrap: 'wrap' }}>
-                          {[{ label: 'AVG', val: avgScore }, { label: 'FACE IN VIEW', val: `${report.eyeContact || 0}%` }, { label: 'VIOLATIONS', val: report.violations || 0 }].map(({ label, val }) => (
+                          {[{ label: 'AVG', val: avgScore }, ...(isScore(report.eyeContact) ? [{ label: 'FACE IN VIEW', val: `${report.eyeContact}%` }] : []), ...(isScore(report.violations) ? [{ label: 'VIOLATIONS', val: report.violations }] : [])].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 12, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>

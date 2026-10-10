@@ -16,6 +16,7 @@ import { toast } from '../services/notify';
 import { clearCandidateSession } from '../services/session';
 import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
 import { pressable } from './ui/pressable';
+import { measured } from '../services/scores';
 import Logo from './ui/Logo';
 
 // Loaded when the interview starts: the video room brings LiveKit with it.
@@ -681,7 +682,10 @@ export default function CandidateDashboard() {
                       <div className="cd-interview-done-info">
                         <h3>Interview Completed</h3>
                         <p>
-                          Score: {interviewReport.avgScore ?? '—'}/10 · Face in view: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
+                          Score: {interviewReport.avgScore ?? '—'}/10
+                          {measured(interviewReport.eyeContact) !== null && ` · Face in view: ${interviewReport.eyeContact}%`}
+                          {measured(interviewReport.violations) !== null && ` · Violations: ${interviewReport.violations}`}
+                          {' · '}{Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
                         </p>
                       </div>
                       <button className="cd-report-toggle" onClick={() => setShowFullReport(prev => !prev)}>

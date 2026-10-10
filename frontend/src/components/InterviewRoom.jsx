@@ -285,7 +285,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     const latest = latestRef.current;
     const proctoring = {
       violations: violationCountRef.current,
-      eyeContact: latest.eyeContact,
+      // No face reading taken (the detector didn't load) is not 0%.
+      eyeContact: eyeContactSamples.current.length ? latest.eyeContact : null,
       timer: latest.timer,
       terminated,
       lookAwayCount: latest.lookAwayCount,
