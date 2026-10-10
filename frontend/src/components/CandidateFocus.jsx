@@ -19,7 +19,7 @@ import SchedulePanel from './focus/SchedulePanel';
 import EmailComposer from './focus/EmailComposer';
 import InterviewCreator from './focus/InterviewCreator';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
-import { API_BASE, authFetch } from '../services/authFetch';
+import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { toast } from '../services/notify';
 
 // ─── Full-Screen Matrix Rain ───
@@ -218,6 +218,11 @@ export default function CandidateFocus() {
           },
         }),
       });
+      if (!resp.ok) {
+        const message = await responseError(resp, 'The scan failed. Please try again.');
+        setScanLogs(prev => [...prev, { step: 'error', msg: message, status: 'error' }]);
+        return;
+      }
       const data = await resp.json();
 
       const allLogs = data.logs || [];
@@ -349,6 +354,8 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), github_username: username || null, anonymize }),
       });
+      // A failed reply's error is an object; shown as is, it crashed the page.
+      if (!resp.ok) { setGhError(await responseError(resp, 'GitHub analysis failed. Please try again.')); return; }
       const data = await resp.json();
       if (data.error) { setGhError(data.error); if (data.needs_username) setGhNeedsInput(true); }
       else setGhProfile(data.profile);
@@ -361,6 +368,7 @@ export default function CandidateFocus() {
     setCalLoading(true); setCalError(''); setCalData(null);
     try {
       const resp = await authFetch(`${API_BASE}/api/chat/calendly-link`);
+      if (!resp.ok) { setCalError(await responseError(resp, 'Could not reach Calendly. Please try again.')); return; }
       const data = await resp.json();
       if (data.error) setCalError(data.error);
       else setCalData(data);
@@ -381,6 +389,10 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), role, experience_required: selectedExperience, level: selectedLevel, job_description: jdText || null, anonymize }),
       });
+      if (!response.ok) {
+        setAgentResult({ error: await responseError(response, 'The evaluation failed. Please try again.') }); setAgentStep('result');
+        return;
+      }
       const data = await response.json();
       setAgentResult(data); setAgentStep('result');
     } catch { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); }
@@ -396,6 +408,10 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), job_description: jdText, role: null, experience_required: null, level: null, anonymize }),
       });
+      if (!response.ok) {
+        setAgentResult({ error: await responseError(response, 'The analysis failed. Please try again.') }); setAgentStep('result');
+        return;
+      }
       const data = await response.json();
       setAgentResult(data); setAgentStep('result');
     } catch { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); }

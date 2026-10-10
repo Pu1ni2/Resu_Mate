@@ -124,3 +124,18 @@ export async function candidateFetch(url, options = {}) {
   if (resp.status === 401 && sent === getCandidateToken()) handleCandidateUnauthorized();
   return resp;
 }
+
+/* The server's own message from a failed reply, for the person to read: the
+ * text in `detail`, else the shared error shape's message. A failed reply's
+ * `error` is an object, and pages that showed it as is crashed. */
+export async function responseError(resp, fallback) {
+  try {
+    const body = await resp.json();
+    if (typeof body?.detail === 'string' && body.detail) return body.detail;
+    if (typeof body?.error?.message === 'string' && body.error.message) return body.error.message;
+    if (typeof body?.error === 'string' && body.error) return body.error;
+  } catch {
+    // Not JSON: the fallback says what failed.
+  }
+  return fallback;
+}

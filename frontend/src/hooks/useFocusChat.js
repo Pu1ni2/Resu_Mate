@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { authFetch } from '../services/authFetch';
+import { authFetch, responseError } from '../services/authFetch';
 
 export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, scanContact, anonymize, getCandidatePayload, speakText }) {
   const [chatInput, setChatInput] = useState('');
@@ -48,6 +48,11 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
           anonymize,
         }),
       });
+      if (!response.ok) {
+        const message = await responseError(response, 'Sorry, I could not generate a response.');
+        setMessages(prev => [...prev, { role: 'assistant', content: `**Error:** ${message}` }]);
+        return;
+      }
       const data = await response.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'Sorry, I could not generate a response.' }]);
       if (data.suggestions?.length) setSuggestions(data.suggestions);

@@ -16,7 +16,7 @@ import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
 import { clearCandidateSession } from '../services/session';
-import { API_BASE, candidateFetch } from '../services/authFetch';
+import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -169,13 +169,16 @@ export default function CandidateDashboard() {
         body: JSON.stringify({ message: m, mode })
       });
       if (resp.status === 401) return; // signed out; the sign-in page says why
-      const data = await resp.json();
+      // The server's message, not the exception text it used to send as the
+      // advisor's answer.
+      const data = resp.ok ? await resp.json() : { reply: await responseError(resp, "Sorry, I couldn't answer that just now. Please try again.") };
       setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: data.reply || 'No response.' }] }));
       if (data.suggestions?.length > 0) setDynamicSuggestions(data.suggestions);
     } catch {
       setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: 'Sorry, could not connect. Please try again.' }] }));
+    } finally {
+      setAdvisorTyping(false);
     }
-    setAdvisorTyping(false);
   };
 
   const handleLogout = () => {

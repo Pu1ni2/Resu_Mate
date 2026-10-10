@@ -4,7 +4,7 @@ import useVoice from '../../hooks/useVoice';
 import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
-import { API_BASE, authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { averageScore, isScore, shownScore } from '../../services/scores';
 
 const SESSION_KEY = 'jarvis_session_v3';
@@ -1018,7 +1018,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           body: JSON.stringify({ candidate_id: params.candidate_id, github_url: githubUrl || undefined }),
         });
         if (handle401(res)) return;
-        if (!res.ok) throw new Error(`GitHub ${res.status}`);
+        if (!res.ok) throw new Error(await responseError(res, `GitHub ${res.status}`));
         const d = await res.json();
 
         if (d.error) {
@@ -1072,7 +1072,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           }),
         });
         if (handle401(res)) return;
-        if (!res.ok) throw new Error(`Eval ${res.status}`);
+        if (!res.ok) throw new Error(await responseError(res, `Eval ${res.status}`));
         const d = await res.json();
         if (d.error) throw new Error(d.error);
 
@@ -1104,7 +1104,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           body: JSON.stringify({ candidate_id: params.candidate_id }),
         });
         if (handle401(res)) return;
-        if (!res.ok) throw new Error(`Scan ${res.status}`);
+        if (!res.ok) throw new Error(await responseError(res, `Scan ${res.status}`));
         const d = await res.json();
 
         if (d.error) {
@@ -1344,7 +1344,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           method: 'GET', headers: hdrs,
         });
         if (handle401(res)) return;
-        if (!res.ok) throw new Error(`Calendly ${res.status}`);
+        if (!res.ok) throw new Error(await responseError(res, `Calendly ${res.status}`));
         const d = await res.json();
 
         if (d.error) {
