@@ -76,6 +76,9 @@ class CreateRoomRequest(BaseModel):
     # with the token's email — never trust a body field for identity.
     candidate_email: str = Field(default="", max_length=320)
     candidate_name: str = Field(default="", max_length=200)
+    # Accepted from older pages and IGNORED: the room is set up from the saved
+    # interview. Taken from here, the candidate decided their own role, number
+    # of questions, focus areas and résumé checks.
     interview_config: dict = Field(default_factory=dict)
     # The candidate confirmed they understand how the interview works.
     consent: bool = False
@@ -157,16 +160,22 @@ async def create_room(
 
     room_name = f"interview-{hashlib.md5(f'{candidate_email}-{time.time()}'.encode()).hexdigest()[:12]}"
 
-    resume_intel = req.interview_config.get("resume_intelligence")
-    verification_targets = []
-    if resume_intel and isinstance(resume_intel, dict):
-        verification_targets = resume_intel.get("verification_targets", [])
+    # The interview as the manager set it up, and the questions and résumé
+    # checks saved with it (create-interview), never the request's copy.
+    saved = interview.room_config if isinstance(interview.room_config, dict) else {}
+    resume_intel = saved.get("resume_intelligence") if isinstance(saved.get("resume_intelligence"), dict) else None
 
     config = {
-        **req.interview_config,
+        "interview_id": interview.id,
+        "role": interview.role or "General",
+        "level": interview.level or "Mid-Level",
+        "num_questions": interview.num_questions or 5,
+        "focus_areas": interview.focus_areas or [],
+        "questions": interview.questions or [],
+        "resume_intelligence": resume_intel,
+        "verification_targets": (resume_intel or {}).get("verification_targets") or [],
         "candidate_name": candidate_name,
         "candidate_email": candidate_email,
-        "verification_targets": verification_targets,
         "created_at": time.time(),
     }
 
@@ -183,7 +192,7 @@ async def create_room(
     room_configs[room_name] = config
 
     token = create_livekit_token(room_name, candidate_name)
-    print(f"🏠 LiveKit room created: {room_name} ({len(verification_targets)} verification targets)")
+    print(f"🏠 LiveKit room created: {room_name} ({len(config['verification_targets'])} verification targets)")
 
     return {
         "room_name": room_name,
