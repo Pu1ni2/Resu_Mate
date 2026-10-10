@@ -83,9 +83,19 @@ def build_system_prompt(config):
         for t in targets[:4]:
             verification_section += f"\n- Probe '{t.get('skill', '')}': {t.get('question_angle', '')}"
 
+    # The questions made for this candidate and role when the interview was
+    # created, when there are some; otherwise the interviewer writes its own.
+    questions = [q for q in (config.get("questions") or []) if isinstance(q, str) and q.strip()]
+    questions_section = ""
+    if questions:
+        num_qs = len(questions)
+        questions_section = "\n\nQUESTIONS (ask these, in this order, in your own words):"
+        for i, q in enumerate(questions, 1):
+            questions_section += f"\n{i}. {q}"
+
     return f"""You are Alex, a senior technical interviewer conducting a live video interview.
 CONTEXT: Role: {role}, Level: {level}, Candidate: {candidate}, Questions: {num_qs}, Focus: {focus}
-RULES: Keep responses SHORT. Ask ONE question at a time. Acknowledge answers briefly. Ask exactly {num_qs} questions. Start easy, increase difficulty. Cover {focus}. Stay in character as human interviewer Alex.{verification_section}
+RULES: Keep responses SHORT. Ask ONE question at a time. Acknowledge answers briefly. Ask exactly {num_qs} questions. Start easy, increase difficulty. Cover {focus}. Stay in character as human interviewer Alex.{verification_section}{questions_section}
 STRUCTURE: 1. IMMEDIATELY greet: "Hi {candidate}! I'm Alex, interviewing you for {role}. Let's start easy." 2. Ask questions one at a time. 3. After all questions: "Thank you {candidate}, we'll share results shortly."
 VOICE: Conversational, medium pace, friendly but professional. No emojis or markdown."""
 
