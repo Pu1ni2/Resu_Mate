@@ -44,8 +44,9 @@ const httpError = (status, detail) => {
   return err;
 };
 
-/** Fill the form, then apply any overrides. `null` clears a field. */
-function fill(overrides = {}) {
+/** Fill the form and tick the agreement, then apply any overrides. `null`
+ * clears a field; `agree: false` leaves the agreement unticked. */
+function fill({ agree = true, ...overrides } = {}) {
   const values = {
     'full name': 'Jane Smith',
     email: 'jane@co.com',
@@ -58,6 +59,7 @@ function fill(overrides = {}) {
     const field = screen.getByLabelText(new RegExp(`^${label.replace(/[()]/g, '\\$&')}$`, 'i'));
     fireEvent.change(field, { target: { value: value ?? '' } });
   }
+  if (agree) fireEvent.click(screen.getByLabelText(/^i agree to the terms/i));
 }
 
 const submit = () => fireEvent.click(screen.getByRole('button', { name: /^create account$/i }));
@@ -153,6 +155,7 @@ describe('creating the account', () => {
       password: 'hunter2hunter2',
       // undefined rather than '', so the backend treats it as absent.
       company: undefined,
+      accept_terms: true,
     });
   });
 

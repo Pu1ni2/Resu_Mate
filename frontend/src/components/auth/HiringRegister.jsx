@@ -25,6 +25,7 @@ export default function HiringRegister() {
 
   const [form, setForm] = useState({ name: '', email: '', company: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,6 +50,10 @@ export default function HiringRegister() {
       setError('Passwords do not match');
       return;
     }
+    if (!agreed) {
+      setError('Please agree to the Terms and the Privacy Policy');
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.post('/auth/register', {
@@ -56,6 +61,8 @@ export default function HiringRegister() {
         email: form.email.trim(),
         password: form.password,
         company: form.company.trim() || undefined,
+        // The server won't make an account without it, and records when.
+        accept_terms: true,
       });
       const { access_token, refresh_token, user } = res.data;
       loginHiringManager(access_token, refresh_token, user);
@@ -195,7 +202,7 @@ export default function HiringRegister() {
           </div>
 
           {/* Confirm Password */}
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <label htmlFor="reg-confirm" style={labelStyle}>Confirm Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-muted)' }} />
@@ -212,6 +219,23 @@ export default function HiringRegister() {
                 style={inputStyle}
               />
             </div>
+          </div>
+
+          {/* Agreement. The pages open in a new tab, so the form keeps what was typed. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '20px', fontSize: '13px', color: 'var(--color-ink-muted)' }}>
+            <input
+              type="checkbox"
+              id="reg-terms"
+              checked={agreed}
+              onChange={e => setAgreed(e.target.checked)}
+              style={{ marginTop: '2px', accentColor: '#F59E0B' }}
+            />
+            <label htmlFor="reg-terms">
+              I agree to the{' '}
+              <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#F59E0B' }}>Terms</Link>
+              {' '}and{' '}
+              <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#F59E0B' }}>Privacy Policy</Link>.
+            </label>
           </div>
 
           <button
