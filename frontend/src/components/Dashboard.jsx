@@ -18,6 +18,7 @@ const JarvisAgent = lazy(() => import('./pipeline/JarvisAgent'));
 const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { averageScore, isScore } from '../services/scores';
+import { pressable } from './ui/pressable';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -559,7 +560,7 @@ export default function Dashboard() {
         <nav className="sidebar-nav">
           <div className="sidebar-section">
             <div className="sidebar-section-title">Navigation</div>
-            <div className="sidebar-link" onClick={() => navigate('/')}>
+            <div className="sidebar-link" {...pressable(() => navigate('/'), { role: 'link' })}>
               <Home size={18} /><span>Home</span>
             </div>
             {[
@@ -578,7 +579,8 @@ export default function Dashboard() {
               <div
                 key={item.id}
                 className={`sidebar-link ${tab === item.id ? 'active' : ''}`}
-                onClick={() => item.route ? navigate(item.route) : setTab(item.id)}
+                {...pressable(() => item.route ? navigate(item.route) : setTab(item.id), { role: item.route ? 'link' : 'button' })}
+                aria-current={tab === item.id ? 'page' : undefined}
               >
                 {item.icon}<span>{item.label}</span>
               </div>
@@ -693,7 +695,8 @@ export default function Dashboard() {
               <span className="toggle-label">
                 {anonymize ? <EyeOff size={16} /> : <Eye size={16} />} Anonymize
               </span>
-              <div className={`toggle ${anonymize ? 'active' : ''}`} onClick={() => setAnonymize(!anonymize)}>
+              <div className={`toggle ${anonymize ? 'active' : ''}`} {...pressable(() => setAnonymize(!anonymize), { role: 'switch', label: 'Anonymize candidates' })}
+                aria-checked={anonymize}>
                 <div className="toggle-knob" />
               </div>
             </div>
@@ -729,7 +732,7 @@ export default function Dashboard() {
                 <div className="card-body">
                   <div
                     className={`upload-zone ${dragActive ? 'active' : ''}`}
-                    onClick={() => fileRef.current?.click()}
+                    {...pressable(() => fileRef.current?.click())}
                     onDragOver={e => { e.preventDefault(); setDragActive(true); }}
                     onDragLeave={() => setDragActive(false)}
                     onDrop={e => { e.preventDefault(); setDragActive(false); handleUpload(e.dataTransfer.files); }}
@@ -836,7 +839,7 @@ export default function Dashboard() {
                   )}
 
                   <div className="candidates-slider">
-                    <button className="slider-btn slider-btn-left" onClick={() => scrollSlider(-1)}>
+                    <button className="slider-btn slider-btn-left" onClick={() => scrollSlider(-1)} aria-label="Scroll candidates left">
                       <ChevronLeft size={20} />
                     </button>
                     <div className="slider-track" ref={sliderRef}>
@@ -846,6 +849,13 @@ export default function Dashboard() {
                           className={`candidate-card glass-card ${selectedIds.includes(c.id) ? 'selected' : ''} ${!c.is_resume ? 'not-resume' : ''}`}
                           onClick={() => toggleSelection(c.id)}
                         >
+                          {/* The mouse clicks the card. The keyboard and screen readers get a real
+                              checkbox, so the card's details are still read out after it. */}
+                          <input type="checkbox" className="sr-only candidate-select"
+                            checked={selectedIds.includes(c.id)}
+                            onChange={() => toggleSelection(c.id)}
+                            onClick={e => e.stopPropagation()}
+                            aria-label={`Select ${getDisplayName(c, i)}`} />
                           {!c.is_resume && (
                             <div className="not-resume-banner">
                               <AlertCircle size={14} /> Not a Resume
@@ -858,7 +868,7 @@ export default function Dashboard() {
                             {selectedIds.includes(c.id) && (
                               <div className="selected-check"><Check size={14} /></div>
                             )}
-                            <button className="delete-btn" onClick={e => { e.stopPropagation(); deleteCandidate(c.id); }}>
+                            <button className="delete-btn" onClick={e => { e.stopPropagation(); deleteCandidate(c.id); }} aria-label={`Delete ${getDisplayName(c, i)}`}>
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -894,7 +904,7 @@ export default function Dashboard() {
                         </div>
                       ))}
                     </div>
-                    <button className="slider-btn slider-btn-right" onClick={() => scrollSlider(1)}>
+                    <button className="slider-btn slider-btn-right" onClick={() => scrollSlider(1)} aria-label="Scroll candidates right">
                       <ChevronRight size={20} />
                     </button>
                   </div>
@@ -1228,6 +1238,7 @@ export default function Dashboard() {
                       <input
                         type="text"
                         className="input chat-input"
+                        aria-label="Message the AI assistant"
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => {
@@ -1239,6 +1250,7 @@ export default function Dashboard() {
                       />
                       
                       <button
+                        aria-label="Send"
                         onClick={() => handleSend()}
                         disabled={!input.trim() || isTyping}
                         className="btn btn-primary send-btn"

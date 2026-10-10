@@ -133,6 +133,10 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .delete-btn { position: absolute; top: 0; right: 0; background: none; border: none; color: var(--text3); cursor: pointer; padding: 4px; opacity: 0; transition: opacity 0.2s; }
 .candidate-card:hover .delete-btn { opacity: 1; }
 .delete-btn:hover { color: var(--error); }
+/* The card's checkbox is hidden, so the card shows where the keyboard is, and
+   Delete shows up when the keyboard reaches the card, not only on hover. */
+.candidate-card:has(.candidate-select:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.candidate-card:focus-within .delete-btn { opacity: 1; }
 .candidate-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
 .candidate-role { font-size: 14px; color: var(--text2); margin-bottom: 14px; }
 .candidate-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
