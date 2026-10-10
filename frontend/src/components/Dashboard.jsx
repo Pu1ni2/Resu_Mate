@@ -13,7 +13,7 @@ import {
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
   Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch
 } from 'lucide-react';
-import { API_BASE, authFetch } from '../services/authFetch';
+import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { toast } from '../services/notify';
 import { averageScore, isScore } from '../services/scores';
 
@@ -231,6 +231,35 @@ export default function Dashboard() {
   // already showing "Deleting…" before anything was confirmed.
   const [confirmingClearAll, setConfirmingClearAll] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
+  // Deleting the account: asked with the password, as the server requires.
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [accountPassword, setAccountPassword] = useState('');
+  const [accountError, setAccountError] = useState('');
+  const [accountBusy, setAccountBusy] = useState(false);
+
+  const deleteAccount = async () => {
+    setAccountError('');
+    setAccountBusy(true);
+    try {
+      const resp = await authFetch(`${API_BASE}/api/auth/delete-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: accountPassword }),
+      });
+      if (!resp.ok) {
+        setAccountError(await responseError(resp, 'Could not delete the account. Please try again.'));
+        return;
+      }
+      setDeletingAccount(false);
+      logoutHiringManager();
+      toast('Your account and all its data are deleted.', 'success');
+      navigate('/');
+    } catch {
+      setAccountError('Could not reach the server. Please try again.');
+    } finally {
+      setAccountBusy(false);
+    }
+  };
   // Nothing left to delete, as when the list empties while the question is
   // open: drop the question. Kept, it came back by itself with the next upload.
   useEffect(() => {
@@ -605,6 +634,40 @@ export default function Dashboard() {
               >
                 Sign Out
               </button>
+              <button
+                type="button"
+                onClick={() => { setAccountPassword(''); setAccountError(''); setDeletingAccount(true); }}
+                style={{
+                  width: '100%', marginTop: 6, padding: '4px 0', background: 'none', border: 'none',
+                  color: 'var(--color-ink-subtle)', fontSize: 11, cursor: 'pointer',
+                }}
+              >
+                Delete account
+              </button>
+              <ConfirmDialog
+                open={deletingAccount}
+                title="Delete your account?"
+                confirmLabel="Delete account"
+                busy={accountBusy}
+                onConfirm={deleteAccount}
+                onCancel={() => setDeletingAccount(false)}
+              >
+                <p style={{ marginBottom: 12 }}>
+                  This deletes your account and everything in it: candidates, interviews and reports,
+                  searches and chats. It can't be undone.
+                </p>
+                <label htmlFor="delete-account-password" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Your password</label>
+                <input
+                  id="delete-account-password"
+                  type="password"
+                  autoComplete="current-password"
+                  className="input"
+                  value={accountPassword}
+                  onChange={e => setAccountPassword(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+                {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 13, marginTop: 8 }}>{accountError}</p>}
+              </ConfirmDialog>
             </div>
           )}
         </div>
