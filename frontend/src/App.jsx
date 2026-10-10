@@ -12,6 +12,7 @@ import ResetPassword from './components/auth/ResetPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { wakeServer } from './services/wake';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
+import RequestDeletion from './components/RequestDeletion';
 // Lazy: an unlisted comparison page must not cost the product bundle anything.
 const StyleLab = lazy(() => import('./components/landing/StyleLab'));
 // Lazy: a page of its own, only loaded by managers who open it.
@@ -63,6 +64,7 @@ export default function App() {
       {/* Legal — public */}
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/privacy/delete" element={<RequestDeletion />} />
 
       {/* Hiring manager auth pages — public */}
       <Route path="/hiring/login" element={<HiringLogin />} />

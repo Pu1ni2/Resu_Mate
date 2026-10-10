@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { API_BASE } from '../services/authFetch';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, KeyRound } from 'lucide-react';
@@ -155,6 +155,10 @@ export default function CandidateLogin() {
                 <Shield size={14} />
                 <span>Your email must be registered by a hiring manager to access the portal.</span>
               </div>
+              {/* For people never invited, who can't sign in to delete their data. */}
+              <p style={{ marginTop: '12px', fontSize: '12px', color: '#94A3B8', textAlign: 'center' }}>
+                Not invited, but we hold your data? <Link to="/privacy/delete" style={{ color: '#93C5FD' }}>Ask us to delete it</Link>.
+              </p>
             </>
           ) : (
             <>

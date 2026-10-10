@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 /**
@@ -34,7 +34,7 @@ const PRIVACY_SECTIONS = [
   ['Contact', 'For privacy requests, contact [TODO: privacy@yourdomain]. '],
 ];
 
-function LegalPage({ title, sections }) {
+function LegalPage({ title, sections, children }) {
   const navigate = useNavigate();
   return (
     <div style={{ minHeight: '100vh', background: '#0B0B12', color: '#E4E4E7', padding: '40px 24px' }}>
@@ -65,6 +65,7 @@ function LegalPage({ title, sections }) {
             <p style={{ fontSize: 14, lineHeight: 1.7, color: '#A1A1AA' }}>{body}</p>
           </section>
         ))}
+        {children}
       </div>
     </div>
   );
@@ -75,5 +76,16 @@ export function TermsPage() {
 }
 
 export function PrivacyPage() {
-  return <LegalPage title="Privacy Policy" sections={PRIVACY_SECTIONS} />;
+  return (
+    <LegalPage title="Privacy Policy" sections={PRIVACY_SECTIONS}>
+      {/* Not part of the placeholder text: the way to have data deleted. */}
+      <section style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: '#F1F5F9' }}>Deleting your data</h2>
+        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#A1A1AA' }}>
+          Anyone can have everything we hold about their email address deleted, whether or not they were
+          invited to an interview: <Link to="/privacy/delete" style={{ color: '#FCD34D' }}>request deletion</Link>.
+        </p>
+      </section>
+    </LegalPage>
+  );
 }
