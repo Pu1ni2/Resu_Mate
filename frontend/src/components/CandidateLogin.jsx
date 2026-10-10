@@ -3,15 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { API_BASE } from '../services/authFetch';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, KeyRound } from 'lucide-react';
-
-const Logo = ({ size = 32 }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <defs><linearGradient id="lg-cl" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#3B82F6"/><stop offset="100%" stopColor="#2563EB"/></linearGradient></defs>
-    <rect width="32" height="32" rx="8" fill="url(#lg-cl)"/>
-    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#fff" strokeWidth="1.5" fill="none"/>
-    <circle cx="16" cy="16" r="3" fill="#fff"/>
-  </svg>
-);
+import Logo from './ui/Logo';
 
 export default function CandidateLogin() {
   const navigate = useNavigate();
@@ -105,7 +97,7 @@ export default function CandidateLogin() {
         <button className="cl-back" onClick={() => step === 2 ? setStep(1) : navigate('/')}>
           <ArrowLeft size={18} /> {step === 2 ? 'Back' : 'Back'}
         </button>
-        <div className="cl-nav-logo"><Logo size={28} /> ResuMate AI</div>
+        <div className="cl-nav-logo"><Logo size={28} tone="candidate" /> ResuMate AI</div>
       </nav>
 
       <div className="cl-container">

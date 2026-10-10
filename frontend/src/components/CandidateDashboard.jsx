@@ -16,19 +16,11 @@ import { toast } from '../services/notify';
 import { clearCandidateSession } from '../services/session';
 import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
 import { pressable } from './ui/pressable';
+import Logo from './ui/Logo';
 
 // Loaded when the interview starts: the video room brings LiveKit with it.
 const InterviewRoom = lazy(() => import('./InterviewRoom'));
 const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterviewRoom'));
-
-const Logo = ({ size = 32 }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <defs><linearGradient id="lg-cd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#3B82F6"/><stop offset="100%" stopColor="#2563EB"/></linearGradient></defs>
-    <rect width="32" height="32" rx="8" fill="url(#lg-cd)"/>
-    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#fff" strokeWidth="1.5" fill="none"/>
-    <circle cx="16" cy="16" r="3" fill="#fff"/>
-  </svg>
-);
 
 // Candidate-portal calls go through candidateFetch, with the session token
 // minted at OTP login. The server derives the candidate's identity from this
@@ -331,7 +323,7 @@ export default function CandidateDashboard() {
       {/* ═══ SIDEBAR ═══ */}
       <aside className="cd-sidebar">
         <div className="cd-sidebar-header">
-          <div className="cd-sidebar-logo"><Logo size={24} /> ResuMate</div>
+          <div className="cd-sidebar-logo"><Logo size={24} tone="candidate" /> ResuMate</div>
         </div>
         <nav className="cd-sidebar-nav">
           <div className="cd-nav-section-title">Dashboard</div>

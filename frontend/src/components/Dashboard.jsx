@@ -19,15 +19,7 @@ const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { averageScore, isScore } from '../services/scores';
 import { pressable } from './ui/pressable';
-
-const Logo = ({ size = 32 }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <defs><linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#F59E0B"/><stop offset="100%" stopColor="#D97706"/></linearGradient></defs>
-    <rect width="32" height="32" rx="8" fill="url(#lg2)"/>
-    <path d="M16 8L22 12V20L16 24L10 20V12L16 8Z" stroke="#000" strokeWidth="1.5" fill="none"/>
-    <circle cx="16" cy="16" r="3" fill="#000"/>
-  </svg>
-);
+import Logo from './ui/Logo';
 
 const AIAvatar = () => (
   <div className="avatar-sm" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))' }}>
@@ -551,7 +543,7 @@ export default function Dashboard() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <button className="sidebar-logo" onClick={() => navigate('/')}>
-            <Logo /> ResuMate
+            <Logo tone="hiring" /> ResuMate
           </button>
         </div>
         <nav className="sidebar-nav">
