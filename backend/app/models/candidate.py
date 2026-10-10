@@ -99,6 +99,10 @@ class Interview(Base):
     transcript = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+    # When the candidate confirmed they understood how the interview works
+    # (recorded, scored by AI, and in a video interview, watched for staying
+    # in view) before it started.
+    consented_at = Column(DateTime, nullable=True)
 
     # Relationships
     candidate = relationship("Candidate", back_populates="interviews")

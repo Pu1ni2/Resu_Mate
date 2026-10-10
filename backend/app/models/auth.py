@@ -13,6 +13,10 @@ class HiringManager(Base):
     password_hash = Column(String(256), nullable=False)
     company = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True)
+    # When they agreed to the Terms and the Privacy Policy, and which version
+    # (app/api/auth.py TERMS_VERSION). Empty for accounts made before.
+    terms_accepted_at = Column(DateTime, nullable=True)
+    terms_version = Column(String(40), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
