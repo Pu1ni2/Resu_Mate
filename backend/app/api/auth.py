@@ -29,11 +29,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # ── Request / Response schemas ────────────────────────────────────────────────
 
+# The Terms and Privacy Policy a manager agrees to at sign-up. Change it when
+# their text (frontend/src/components/LegalPage.jsx) changes.
+TERMS_VERSION = "2026-10-09"
+
+
 class RegisterRequest(BaseModel):
     name: str
     email: str
     password: str
     company: Optional[str] = None
+    # Agreement to the Terms and the Privacy Policy, which sign-up needs.
+    accept_terms: bool = False
 
 class LoginRequest(BaseModel):
     email: str
@@ -56,6 +63,9 @@ class VerifyOTPRequest(BaseModel):
 @limiter.limit("5/minute")
 async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Create a new hiring manager account."""
+    if not req.accept_terms:
+        raise HTTPException(status_code=400, detail="Please agree to the Terms and the Privacy Policy to sign up.")
+
     result = await db.execute(select(HiringManager).where(HiringManager.email == req.email.lower().strip()))
     existing = result.scalar_one_or_none()
     if existing:
@@ -69,6 +79,8 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
         email=req.email.lower().strip(),
         password_hash=get_password_hash(req.password),
         company=req.company,
+        terms_accepted_at=datetime.utcnow(),
+        terms_version=TERMS_VERSION,
     )
     db.add(manager)
     await db.commit()

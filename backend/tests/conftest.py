@@ -103,7 +103,7 @@ def client():
 def register(client, email, password="pw12345678", name="Mgr"):
     """Register a hiring manager, return (token, user_dict)."""
     r = client.post("/api/auth/register", json={
-        "name": name, "email": email, "password": password,
+        "name": name, "email": email, "password": password, "accept_terms": True,
     })
     assert r.status_code in (200, 201), r.text
     data = r.json()
