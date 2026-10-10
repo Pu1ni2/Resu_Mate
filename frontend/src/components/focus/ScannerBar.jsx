@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Github, Globe, Mail, ExternalLink, Brain, ChevronDown, Loader, Zap } from 'lucide-react';
 import Markdown from '../ui/Markdown';
+import { pressable } from '../ui/pressable';
 
 export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanContact, scanRunning, scanDone, onRescan }) {
   const [expanded, setExpanded] = useState(false);
@@ -13,7 +14,8 @@ export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanCo
 
   return (
     <div className="scanner-bar">
-      <div className="scanner-bar-main" onClick={() => scanDone && setExpanded(!expanded)}>
+      <div className="scanner-bar-main"
+        {...(scanDone ? { ...pressable(() => setExpanded(!expanded)), 'aria-expanded': expanded } : {})}>
         <div className="scanner-bar-left">
           {scanRunning ? (
             <Loader size={14} className="spin" style={{ color: 'var(--success)' }} />

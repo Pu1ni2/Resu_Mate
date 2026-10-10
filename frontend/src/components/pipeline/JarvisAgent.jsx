@@ -6,6 +6,7 @@ import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { averageScore, isScore, shownScore } from '../../services/scores';
+import { pressable } from '../ui/pressable';
 
 const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
@@ -1590,6 +1591,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               {/* Close */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
                 <button
+                  aria-label="Close"
                   onClick={() => setExpandedCard(null)}
                   style={{ background: 'none', border: 'none', color: '#52525B', cursor: 'pointer', padding: 4 }}
                   onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
@@ -2376,7 +2378,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           </div>
                         )}
                         <div style={{ marginTop: 8, fontSize: 10, color: '#3F3F46', cursor: 'pointer' }}
-                          onClick={() => setExpandedCard(msg)}>
+                          {...pressable(() => setExpandedCard(msg))}>
                           Tap ↗ for full report
                         </div>
                       </div>
@@ -2641,6 +2643,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             {/* Send button */}
             {textInput.trim() && !isProcessing && (
               <button
+                aria-label="Send message"
                 onClick={handleSendClick}
                 style={{
                   width: 40, height: 40, borderRadius: '50%', flexShrink: 0,

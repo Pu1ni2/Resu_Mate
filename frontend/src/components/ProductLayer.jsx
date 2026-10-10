@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TOAST_EVENT, NOTIFY_EVENT } from '../services/notify';
+import { pressable } from './ui/pressable';
 import {
   X, ChevronRight, ChevronLeft, Bell, Sun, Moon, Keyboard,
   Upload, MessageSquare, Users, Cpu, Video, Check, AlertCircle, Info, ArrowRight
@@ -190,7 +191,7 @@ export default function ProductLayer({ children }) {
             {t.type === 'error' && <AlertCircle size={16} />}
             {t.type === 'info' && <Info size={16} />}
             <span>{t.message}</span>
-            <button className="pl-toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}><X size={12} /></button>
+            <button className="pl-toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} aria-label="Dismiss"><X size={12} /></button>
           </div>
         ))}
       </div>
@@ -227,7 +228,7 @@ export default function ProductLayer({ children }) {
             <h3><Bell size={16} /> Notifications</h3>
             <div className="pl-panel-actions">
               {unreadCount > 0 && <button className="pl-link" onClick={markAllRead}>Mark all read</button>}
-              <button className="pl-close" onClick={() => setShowNotifPanel(false)}><X size={16} /></button>
+              <button className="pl-close" onClick={() => setShowNotifPanel(false)} aria-label="Close notifications"><X size={16} /></button>
             </div>
           </div>
           <div className="pl-panel-body">
@@ -255,7 +256,7 @@ export default function ProductLayer({ children }) {
           <div className="pl-modal" onClick={e => e.stopPropagation()}>
             <div className="pl-modal-header">
               <h3><Keyboard size={18} /> Keyboard Shortcuts</h3>
-              <button className="pl-close" onClick={() => setShowShortcuts(false)}><X size={16} /></button>
+              <button className="pl-close" onClick={() => setShowShortcuts(false)} aria-label="Close shortcuts"><X size={16} /></button>
             </div>
             <div className="pl-shortcuts-grid">
               <div className="pl-shortcut-section">
@@ -291,7 +292,9 @@ export default function ProductLayer({ children }) {
             {/* Progress dots */}
             <div className="pl-onboarding-dots">
               {onboardingSteps.map((_, i) => (
-                <div key={i} className={`pl-dot ${i === onboardingStep ? 'active' : ''} ${i < onboardingStep ? 'done' : ''}`} onClick={() => setOnboardingStep(i)} />
+                <div key={i} className={`pl-dot ${i === onboardingStep ? 'active' : ''} ${i < onboardingStep ? 'done' : ''}`}
+                  {...pressable(() => setOnboardingStep(i), { label: `Step ${i + 1} of ${onboardingSteps.length}` })}
+                  aria-current={i === onboardingStep ? 'step' : undefined} />
               ))}
             </div>
 

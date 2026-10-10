@@ -1,5 +1,6 @@
 import React from 'react';
 import Markdown from '../ui/Markdown';
+import { pressable } from '../ui/pressable';
 import {
   UserCheck, FileText, Target, Briefcase, Award,
   ChevronRight, Loader, AlertCircle, MessageSquare
@@ -26,12 +27,12 @@ export default function HiringAgentPanel({
 
       {agentStep === 'choose' && (
         <div className="agent-choose">
-          <div className="agent-option glass-card" onClick={() => setAgentStep('jd')}>
+          <div className="agent-option glass-card" {...pressable(() => setAgentStep('jd'))}>
             <div className="agent-option-icon"><FileText size={24} /></div>
             <div><h4>Paste Job Description</h4><p>I'll extract the role, requirements, and evaluate the candidate against it</p></div>
             <ChevronRight size={18} />
           </div>
-          <div className="agent-option glass-card" onClick={() => setAgentStep('quick')}>
+          <div className="agent-option glass-card" {...pressable(() => setAgentStep('quick'))}>
             <div className="agent-option-icon"><Target size={24} /></div>
             <div><h4>Quick Setup</h4><p>Select role, experience, and level — I'll do the rest</p></div>
             <ChevronRight size={18} />
@@ -41,8 +42,8 @@ export default function HiringAgentPanel({
 
       {agentStep === 'jd' && (
         <div className="agent-jd">
-          <label className="agent-label">Paste the full Job Description:</label>
-          <textarea className="agent-textarea input" value={jdText} onChange={e => setJdText(e.target.value)} rows={10} placeholder="Paste the complete job description here..." />
+          <label className="agent-label" htmlFor="agent-jd">Paste the full Job Description:</label>
+          <textarea id="agent-jd" className="agent-textarea input" value={jdText} onChange={e => setJdText(e.target.value)} rows={10} placeholder="Paste the complete job description here..." />
           <div className="agent-actions">
             <button className="btn btn-ghost" onClick={() => setAgentStep('choose')}>← Back</button>
             <button className="btn btn-primary" onClick={onRunJDAnalysis} disabled={!jdText.trim() || agentLoading}>
@@ -62,7 +63,7 @@ export default function HiringAgentPanel({
               ))}
               <button className={`agent-chip ${selectedRole === 'other' ? 'active' : ''}`} onClick={() => setSelectedRole('other')}>Other...</button>
             </div>
-            {selectedRole === 'other' && <input type="text" className="input agent-input" value={customRole} onChange={e => setCustomRole(e.target.value)} placeholder="Enter the role title..." />}
+            {selectedRole === 'other' && <input type="text" aria-label="Role title" className="input agent-input" value={customRole} onChange={e => setCustomRole(e.target.value)} placeholder="Enter the role title..." />}
           </div>
           <div className="agent-section">
             <label className="agent-label"><Briefcase size={14} /> Required experience:</label>
