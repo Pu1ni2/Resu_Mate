@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Loader, Check, Clipboard } from 'lucide-react';
-import { API_BASE, authFetch } from '../../services/authFetch';
+import { API_BASE, authFetch, responseError } from '../../services/authFetch';
+import { toast } from '../../services/notify';
 
 export default function EmailComposer({ focusCandidate, agentResult, anonymize, getCandidatePayload }) {
   const [emailTo, setEmailTo] = useState('');
@@ -35,12 +36,19 @@ export default function EmailComposer({ focusCandidate, agentResult, anonymize, 
           anonymize,
         }),
       });
+      // A failure says so. It used to fill in a generic email quietly, which
+      // read as the draft that had been asked for.
+      if (!response.ok) {
+        toast(await responseError(response, 'Could not draft the email. Please try again.'), 'error');
+        setEmailType(''); // back to the choice, not an empty draft
+        return;
+      }
       const data = await response.json();
       setEmailSubject(data.subject || '');
       setEmailBody(data.body || '');
     } catch {
-      setEmailSubject('Regarding Your Application');
-      setEmailBody('Hi,\n\nThank you for your interest.\n\nBest regards');
+      toast('Could not reach the server to draft the email. Please try again.', 'error');
+      setEmailType('');
     } finally {
       setEmailDrafting(false);
     }
