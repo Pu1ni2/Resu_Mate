@@ -94,17 +94,52 @@ elsewhere (Neon, Supabase) through `DATABASE_URL`.
 
 ## Required env vars (backend)
 
+`render.yaml` declares every one of these; set the secret ones in the dashboard.
+`backend/.env.example` describes each.
+
 | Var | Notes |
 |-----|-------|
 | `PYTHON_VERSION` | `3.12.8` — see above |
 | `DATABASE_URL` | Postgres connection string (Internal URL on Render) |
 | `SECRET_KEY` | strong random; backend refuses to boot in prod with the default |
-| `AGENT_SHARED_SECRET` | must match the interview worker's value |
-| `OPENAI_API_KEY` | required for all agents + realtime interview |
+| `DEBUG` | `false` in production |
+| `FRONTEND_URL` | the frontend's address: invitation and password-reset links point there |
 | `CORS_ORIGINS` | frontend origin(s) |
-| `REALTIME_MODEL` | default `gpt-realtime-2` |
-| `REALTIME_VOICE` | default `marin` |
-| `TAVILY_API_KEY`, `GITHUB_TOKEN`, `LIVEKIT_*`, `SIMLI_*`, `SENDGRID_API_KEY` | feature-specific |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | required for the agents; the chat model, default `gpt-4o` |
+| `REALTIME_MODEL`, `REALTIME_VOICE` | voice interviews; defaults `gpt-realtime-2`, `marin` |
+| `SENDGRID_API_KEY`, `FROM_EMAIL` | email (see below) |
+| `TAVILY_API_KEY`, `GITHUB_TOKEN` | web search; GitHub lookups and sourcing |
+| `SOURCER_MODEL`, `SOURCER_MAX_*`, `SOURCER_PRICE_*` | the candidate sourcer (optional) |
+| `CALENDLY_TOKEN` | scheduling links (optional) |
+| `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `AGENT_SHARED_SECRET` | avatar interviews (see below); `false` on the free plan |
+
+## Email
+
+Sign-in codes, interview invitations, password resets and deletion codes are
+sent with SendGrid. Set `SENDGRID_API_KEY`, and `FROM_EMAIL` to a sender
+SendGrid has verified (Settings → Sender Authentication), or it refuses to
+send. Without email, managers get the candidate sign-in link to pass on; with
+`DEBUG=true` (local only) the codes appear in the app.
+
+## Avatar interviews (needs a paid worker)
+
+Interviews run voice-only (OpenAI Realtime, in the browser) unless avatar
+interviews are switched on. A video interview with the Simli avatar needs the
+interview worker (`backend/interview_agent.py`) running all the time, which
+Render's free plan can't do. To switch them on:
+
+1. Run the worker: uncomment the worker block at the end of `render.yaml`
+   (`plan: starter`, a paid plan), or deploy it on Fly.io with
+   `backend/fly.toml` and `backend/Dockerfile.agent`.
+2. Give the worker `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`,
+   `OPENAI_API_KEY`, `SIMLI_API_KEY`, `SIMLI_FACE_ID`, `BACKEND_URL` (the API's
+   address) and `AGENT_SHARED_SECRET`.
+3. On the backend set the same `LIVEKIT_*` and `AGENT_SHARED_SECRET`, and
+   `AVATAR_INTERVIEWS=true`.
+
+Without all of these the app offers voice interviews only, and an interview
+made as an avatar one runs voice-only rather than waiting for an interviewer
+that never joins.
 
 ### Object storage for original resume PDFs (optional)
 
@@ -132,15 +167,28 @@ removes the object too.
   `backend/tests/test_data_isolation.py`.
 - **GDPR**: candidates can erase their own data via
   `POST /api/chat/candidate/delete-my-data` (authenticated with their candidate
-  session token). Sensitive actions are recorded in the `audit_log` table.
+  session token). Anyone else, such as someone a manager uploaded or a sourcing
+  run found, can ask at `/privacy/delete`: `POST /api/privacy/erasure-code`
+  emails a code and `POST /api/privacy/erase` takes it; both answer the same
+  whether or not anything is held. A manager deletes their account and all its
+  data with `POST /api/auth/delete-account` and their password. Sensitive
+  actions are recorded in the `audit_log` table.
+- **Consent**: sign-up records when the manager agreed to the Terms and which
+  version (`hiring_managers.terms_accepted_at`, `terms_version`); an interview
+  records when the candidate agreed to how it works (`interviews.consented_at`).
 - **Retention**: `python cleanup_stale.py --days 180 --apply` deletes
   candidates/interviews untouched for N days. Dry-run by default. Run via cron
   if you want automatic retention.
 
 ## CI
 
-`.github/workflows/ci.yml` runs the backend pytest suite (Python 3.12) and the
-frontend build + vitest on every push/PR to `main`.
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+
+- **backend**: `pytest -q` on Python 3.12;
+- **migrations**: a Postgres 16 database built from empty with
+  `alembic upgrade head`, `alembic check` against the models, the app's startup
+  check, then `alembic downgrade base` and up again;
+- **frontend**: `npm ci`, lint, build and the tests on Node 24.
 
 ## Verify a deploy
 
@@ -148,5 +196,9 @@ frontend build + vitest on every push/PR to `main`.
 curl https://resumate-api-74dm.onrender.com/health
 ```
 
-Expect `"status": "healthy"` and `"llm": true`. Free-tier services cold-start
-(30–60s) after 15 min idle — the first request may be slow.
+Expect `{"status": "ok", "database": "ok"}`. It answers 503 when the database
+can't be reached, and Render's health check (`healthCheckPath: /health`) uses it.
+`/monitoring` needs the `X-Agent-Token` header (`AGENT_SHARED_SECRET`).
+
+Free services sleep after 15 idle minutes and take up to a minute to start;
+the frontend asks `/health` as it loads and tells people while it wakes.
