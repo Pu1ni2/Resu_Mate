@@ -140,3 +140,17 @@ def test_with_a_worker_a_voice_interview_stays_voice(client, worker):
     assert _create(client, tok, cid, "c6@x.com", "conversational")["interview_config"]["mode"] == "conversational"
     r = client.post("/api/livekit/create-room", headers=_cand("c6@x.com"), json={"candidate_email": "c6@x.com"})
     assert r.status_code == 409, r.text
+
+
+def test_with_a_worker_a_room_opens_without_a_name_in_the_request(client, worker, monkeypatch):
+    """create_room took the candidate's name from interview.candidate when the
+    request had none, and loading it lazily crashed the request."""
+    from app.api import livekit_routes
+    for key in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"):
+        monkeypatch.setattr(livekit_routes, key, f"test-{key.lower()}-long-enough-for-hs256")
+    tok, _ = register(client, "m7@co.com")
+    cid, mid = _own_candidate(client, tok, "c7@x.com")
+    _run(_interview(mid, cid, "c7@x.com", mode="avatar"))
+    r = client.post("/api/livekit/create-room", headers=_cand("c7@x.com"), json={"candidate_email": "c7@x.com"})
+    assert r.status_code == 200, r.text
+    assert r.json()["token"]
