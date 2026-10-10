@@ -36,6 +36,9 @@ class Candidate(Base):
     badges = Column(JSON, default=list)
     embedded_links = Column(JSON, default=dict)
     enriched_data = Column(JSON, default=dict)  # GitHub, LinkedIn, portfolio data from agents
+    # The AI analysis of the résumé failed, so role, level and years are
+    # unknown. It used to save "Professional / Entry / 0 years" instead.
+    analysis_failed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -57,6 +60,7 @@ class Candidate(Base):
             "predicted_role": self.predicted_role,
             "experience_level": self.experience_level,
             "total_experience_years": self.total_experience_years,
+            "analysis_failed": bool(self.analysis_failed),
             "location": self.location,
             "summary": self.summary,
             "skills": self.skills or [],

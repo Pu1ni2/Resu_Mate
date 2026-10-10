@@ -88,6 +88,7 @@ async def lifespan(app: FastAPI):
                     "text": row.full_text or row.raw_text or "",
                     "raw_text": row.raw_text or "",
                     "is_resume": row.is_resume,
+                    "analysis_failed": bool(row.analysis_failed),
                 }
                 if row.file_hash:
                     resume_rag.uploaded_file_hashes.setdefault(mkey, set()).add(row.file_hash)

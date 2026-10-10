@@ -73,6 +73,7 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
             badges=data.get("badges", []),
             embedded_links=data.get("embedded_links", {}),
             enriched_data=data.get("enriched_data", {}),
+            analysis_failed=bool(data.get("analysis_failed")),
         )
         session.add(candidate)
         await session.commit()
