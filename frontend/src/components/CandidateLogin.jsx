@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { API_BASE } from '../services/authFetch';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, KeyRound } from 'lucide-react';
@@ -15,6 +15,8 @@ const Logo = ({ size = 32 }) => (
 
 export default function CandidateLogin() {
   const navigate = useNavigate();
+  // Sent here because their sign-in expired (App.jsx).
+  const expired = !!useLocation().state?.expired;
   const { setCandidateSession } = useApp();
 
   const [step, setStep] = useState(1); // 1 = email, 2 = OTP
@@ -22,6 +24,12 @@ export default function CandidateLogin() {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Its saved copy is already gone (candidateFetch); forget it here too, so
+  // the dashboard doesn't come back with it.
+  useEffect(() => {
+    if (expired) setCandidateSession(null);
+  }, [expired, setCandidateSession]);
 
   // Step 1: Send OTP
   const handleSendOTP = async () => {
@@ -108,6 +116,13 @@ export default function CandidateLogin() {
               <div className="cl-icon"><Mail size={32} /></div>
               <h1 className="cl-title">Candidate Portal</h1>
               <p className="cl-subtitle">Enter the email associated with your application to receive an access code.</p>
+
+              {expired && (
+                <div role="status" className="cl-info" style={{ marginTop: 0, marginBottom: '16px', color: '#93C5FD' }}>
+                  <Shield size={14} />
+                  <span>Your sign-in has expired. Please sign in again.</span>
+                </div>
+              )}
 
               <div className="cl-form">
                 <div className="cl-input-wrap">

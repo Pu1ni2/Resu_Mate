@@ -8,7 +8,9 @@
  * Returns the Response untouched, so existing `resp.ok` / `resp.json()` call
  * sites keep working and this can be swapped in one file at a time.
  */
-import { getToken, getCandidateToken, getRefreshToken, handleUnauthorized, saveAccessToken } from './session';
+import {
+  getToken, getCandidateToken, getRefreshToken, handleUnauthorized, handleCandidateUnauthorized, saveAccessToken,
+} from './session';
 
 export const API_BASE = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
@@ -109,4 +111,16 @@ export function candidateAuthHeaders(token, extra = {}) {
   const headers = { ...extra };
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
+}
+
+/* The candidate portal's fetch: their token on the request, never a manager's,
+ * and a 401 read as an expired sign-in. Their session is cleared and App.jsx
+ * sends them to sign in again. Before, the calls just failed: an upload said
+ * "Upload failed", the advisor said it couldn't connect, a report never came. */
+export async function candidateFetch(url, options = {}) {
+  const sent = getCandidateToken();
+  const resp = await fetch(url, { ...options, headers: candidateAuthHeaders(sent, options.headers || {}) });
+  // Only for the sign-in that made the request: a newer one is left alone.
+  if (resp.status === 401 && sent === getCandidateToken()) handleCandidateUnauthorized();
+  return resp;
 }

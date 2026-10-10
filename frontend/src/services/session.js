@@ -107,6 +107,17 @@ export function clearCandidateSession() {
   }
 }
 
+/* The candidate's sign-in has expired: clear their session and let App.jsx
+ * send them to sign in again. The manager's session is left alone. */
+export function handleCandidateUnauthorized() {
+  clearCandidateSession();
+  try {
+    window.dispatchEvent(new CustomEvent('resumate:candidate-unauthorized'));
+  } catch {
+    window.location.href = '/candidate/login';
+  }
+}
+
 /* True for requests where a 401 is the expected answer and must not log the
  * user out — signing in with a wrong password is a 401, and treating it as an
  * expiry would fire a redirect from the page they are already on. */

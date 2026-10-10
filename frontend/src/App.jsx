@@ -29,10 +29,25 @@ function UnauthorizedHandler() {
   return null;
 }
 
+/* The candidate's sign-in expired (services/authFetch.js candidateFetch): back
+ * to the portal's sign-in, which says why. A manager's session is untouched.
+ * The sign-in page forgets the stale session: forgetting it here as well set
+ * off the dashboard's own redirect, which lost the reason. */
+function CandidateUnauthorizedHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onExpired = () => navigate('/candidate/login', { replace: true, state: { expired: true } });
+    window.addEventListener('resumate:candidate-unauthorized', onExpired);
+    return () => window.removeEventListener('resumate:candidate-unauthorized', onExpired);
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   return (
     <>
     <UnauthorizedHandler />
+    <CandidateUnauthorizedHandler />
     <Routes>
       <Route path="/" element={<Landing />} />
 
