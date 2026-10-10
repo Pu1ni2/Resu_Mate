@@ -18,7 +18,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 
 # ── import Base + every model so Alembic can see them ───────────────────────
 from app.core.database import Base  # noqa: F401
-from app.models.candidate import Candidate, Interview, Evaluation, CandidateAccess  # noqa: F401
+from app.models.candidate import Candidate, Interview, CandidateAccess  # noqa: F401
 from app.models.auth import HiringManager, OTPCode  # noqa: F401
 from app.models.state import ChatHistory, AdvisorSession  # noqa: F401
 from app.models.sourcing import SourcingRun, SourcedProfile  # noqa: F401

@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.models.candidate import Candidate, Interview, Evaluation, CandidateAccess, AuditLog
+from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
 from app.services.scores import is_number, average_score
 
 
@@ -93,7 +93,7 @@ async def max_candidate_id(session: AsyncSession) -> int:
 async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     """Delete a hiring manager's account and everything it holds.
 
-    Their candidates (with their interviews, evaluations and portal grants),
+    Their candidates (with their interviews and portal grants),
     any interview or grant they filed elsewhere, sourcing runs and the
     profiles found, chat histories, the audit records of their account, and
     the account. Returns the stored-file keys of the candidates' original
@@ -103,7 +103,7 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     from app.models.sourcing import SourcedProfile, SourcingRun
     from app.models.state import ChatHistory
     files = await stored_file_keys(session, Candidate.manager_id == manager_id)
-    for model in (Interview, Evaluation, CandidateAccess):
+    for model in (Interview, CandidateAccess):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await delete_candidates(session, Candidate.manager_id == manager_id)
     for model in (SourcedProfile, SourcingRun, ChatHistory, AuditLog):
@@ -122,8 +122,8 @@ async def stored_file_keys(session: AsyncSession, *where) -> list:
 
 
 async def delete_candidates(session: AsyncSession, *where) -> None:
-    """Delete the candidates matching `where`, their interviews, evaluations and
-    portal grants first.
+    """Delete the candidates matching `where`, their interviews and portal
+    grants first.
 
     Neither foreign key to candidates has ON DELETE CASCADE, and the ORM cascade
     on Candidate.interviews covers only deletes made through the session, not a
@@ -146,7 +146,7 @@ async def delete_candidates(session: AsyncSession, *where) -> None:
             or_(model.manager_id == Candidate.manager_id, model.manager_id.is_(None)),
         ).correlate(model).exists()
 
-    for model in (Interview, Evaluation, CandidateAccess):
+    for model in (Interview, CandidateAccess):
         await session.execute(delete(model).where(filed_under_them(model)))
     await session.execute(delete(Candidate).where(*where))
 

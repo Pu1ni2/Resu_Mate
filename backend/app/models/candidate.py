@@ -44,7 +44,6 @@ class Candidate(Base):
 
     # Relationships
     interviews = relationship("Interview", back_populates="candidate", cascade="all, delete-orphan")
-    evaluations = relationship("Evaluation", back_populates="candidate", cascade="all, delete-orphan")
 
     def to_dict(self):
         """Convert to dict for API responses (matches current frontend expectations)"""
@@ -131,23 +130,6 @@ class Interview(Base):
             "mode": self.mode or "avatar",
             "duration": self.duration,
         }
-
-
-class Evaluation(Base):
-    __tablename__ = "evaluations"
-
-    id = Column(Integer, primary_key=True, index=True)
-    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
-    role = Column(String(200))
-    level = Column(String(50))
-    job_description = Column(Text)
-    report = Column(Text)
-    score = Column(Integer)
-    recommendation = Column(String(50))
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    candidate = relationship("Candidate", back_populates="evaluations")
 
 
 class CandidateAccess(Base):
