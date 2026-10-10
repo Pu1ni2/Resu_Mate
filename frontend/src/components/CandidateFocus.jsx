@@ -172,6 +172,7 @@ export default function CandidateFocus() {
   };
 
   // ─── Auto-generate role suggestions ───
+  // Again after Start Over, which clears them.
   useEffect(() => {
     if (focusCandidate && activeTool === 'agent' && suggestedRoles.length === 0) {
       const role = focusCandidate.predicted_role || '';
@@ -187,7 +188,7 @@ export default function CandidateFocus() {
       if (skills.some(s => /react|node|full.?stack/i.test(s))) roles.add('Full Stack Developer');
       setSuggestedRoles([...roles].slice(0, 3));
     }
-  }, [focusCandidate, activeTool]);
+  }, [focusCandidate, activeTool, suggestedRoles.length]);
 
   useEffect(() => {
     if (agentResult && agentResultRef.current) {
