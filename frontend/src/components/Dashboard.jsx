@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { API_BASE, authFetch } from '../services/authFetch';
 import { toast } from '../services/notify';
+import { averageScore, isScore } from '../services/scores';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -69,12 +70,12 @@ function InterviewAnalytics() {
   );
 
   const total = data.length;
+  // Each interview's average of its scored answers; unscored ones count for
+  // nothing rather than 0.
   const scores = data.map(d => {
     const r = typeof d.report === 'object' ? d.report : {};
-    const s = r.scores || d.scores || [];
-    if (s.length === 0) return 0;
-    return s.reduce((a, x) => a + ((x?.score || 0)), 0) / s.length;
-  }).filter(s => s > 0);
+    return averageScore(r.scores || d.scores || []);
+  }).filter(isScore);
   const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
   const highPerformers = scores.filter(s => s >= 7).length;
   const lowPerformers = scores.filter(s => s < 4).length;
@@ -183,8 +184,8 @@ function InterviewAnalytics() {
           <div className="clean-card">
             {data.slice(0, 6).map((d, i) => {
               const r = typeof d.report === 'object' ? d.report : {};
-              const s = r.scores || d.scores || [];
-              const avg = s.length > 0 ? (s.reduce((a, x) => a + (x?.score || 0), 0) / s.length).toFixed(1) : '—';
+              const average = averageScore(r.scores || d.scores || []);
+              const avg = isScore(average) ? average.toFixed(1) : '—';
               const scoreColor = avg >= 7 ? 'var(--success)' : avg >= 4 ? 'var(--warning)' : 'var(--error)';
               return (
                 <div

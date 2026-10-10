@@ -5,6 +5,7 @@ import Card from '../ui/Card';
 import Markdown from '../ui/Markdown';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
+import { averageScore, isScore, scoreOf } from '../../services/scores';
 
 /* Both of these hand-rolled the same thing Badge already does: solid text on a
  * ~12% wash of the same hue with a ~30% border. They built the tints by
@@ -26,6 +27,8 @@ function labelForScore(score) {
 }
 
 function CredibilityBadge({ score }) {
+  // An analysis that couldn't be completed has no score. It used to read 50.
+  if (!isScore(score)) return <Badge tone="neutral" className="font-bold">Not scored</Badge>;
   const tone = toneForScore(score);
   return (
     <Badge tone={tone} className="gap-1.5 font-bold">
@@ -124,8 +127,8 @@ function CredibilitySection({ candidateId, candidateEmail }) {
       </h3>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <CredibilityBadge score={c.credibility_score || 0} />
-        <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>Confidence: {c.confidence_in_assessment || 'Medium'}</span>
+        <CredibilityBadge score={c.credibility_score} />
+        <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>Confidence: {c.confidence_in_assessment || '—'}</span>
       </div>
 
       {/* Skills Comparison */}
@@ -255,7 +258,9 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
   if (!report) return <p style={{ color: 'var(--color-ink-muted)', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
   const r = report;
-  const avgScore = r.avgScore || (r.scores?.length > 0 ? (r.scores.reduce((a, s) => a + (s?.score || 0), 0) / r.scores.length).toFixed(1) : '—');
+  // Only the scored answers count; with none there is no average.
+  const average = isScore(r.avgScore) ? r.avgScore : averageScore(r.scores);
+  const avgScore = isScore(average) ? average.toFixed(1) : '—';
   const eyeContact = r.eyeContact || 0;
   const violations = r.violations || 0;
   const timerVal = r.timer || 0;
@@ -332,19 +337,23 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       {scores.length > 0 && (
         <Card style={{ padding: '20px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px' }}>Score Breakdown</h3>
-          {scores.map((s, i) => (
+          {scores.map((s, i) => {
+            const score = scoreOf(s);
+            return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
               <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-ink-muted)', width: '28px' }}>Q{i + 1}</span>
               {/* The track was #E2E8F0, slate-200, so every score bar was drawn
                   on a bright white rail against a dark card. */}
               <div style={{ flex: 1, maxWidth: '180px', height: '6px', background: 'var(--color-data-track)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${(s?.score || 0) * 10}%`, height: '100%', borderRadius: '3px', transition: 'width 0.5s',
-                  background: (s?.score || 0) >= 7 ? 'var(--color-positive)' : (s?.score || 0) >= 4 ? 'var(--color-caution)' : 'var(--color-critical)' }} />
+                <div style={{ width: `${(score || 0) * 10}%`, height: '100%', borderRadius: '3px', transition: 'width 0.5s',
+                  background: score >= 7 ? 'var(--color-positive)' : score >= 4 ? 'var(--color-caution)' : 'var(--color-critical)' }} />
               </div>
-              <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{s?.score || 0}/10</span>
+              {/* An answer that couldn't be scored says so, not 0/10. */}
+              <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{score === null ? '—' : `${score}/10`}</span>
               {s?.feedback && <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)', flex: 1 }}>{s.feedback}</span>}
             </div>
-          ))}
+            );
+          })}
         </Card>
       )}
 
