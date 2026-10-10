@@ -146,3 +146,26 @@ def test_a_reset_link_is_not_a_sign_in(client, mailbox):
     _forgot(client, "fp8@co.com")
     token = _token_in(mailbox[0]["html"])
     assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+
+# ── the sessions from before ──────────────────────────────────────────────────
+
+def _refresh(client, token):
+    return client.post("/api/auth/refresh", json={"refresh_token": token}).status_code
+
+
+def test_a_new_password_ends_the_sessions_from_before(client, mailbox):
+    register(client, "fp9@co.com")
+    old = client.post("/api/auth/login", json={"email": "fp9@co.com", "password": "pw12345678"}).json()["refresh_token"]
+    assert _refresh(client, old) == 200
+    _forgot(client, "fp9@co.com")
+    assert _reset(client, _token_in(mailbox[0]["html"])).status_code == 200
+    assert _refresh(client, old) == 401
+    new = client.post("/api/auth/login", json={"email": "fp9@co.com", "password": "brand-new-pass"}).json()["refresh_token"]
+    assert _refresh(client, new) == 200
+
+
+def test_a_session_from_before_this_check_lasts_until_it_expires(client):
+    _, m = register(client, "fp10@co.com")
+    from app.services.auth import create_refresh_token
+    assert _refresh(client, create_refresh_token({"sub": str(m["id"])})) == 200
