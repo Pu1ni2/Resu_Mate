@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowRight, Upload, Video, UserCheck, Bot, Search, Mail, Cpu, Shield, BarChart2, Globe
+  ArrowRight, Upload, Video, UserCheck, Bot, Search, Mail, Cpu, Shield, BarChart2, Globe, ScanSearch, Sparkles
 } from 'lucide-react';
 import Button from './ui/Button';
 import { cn } from './ui/cn';
@@ -67,10 +67,13 @@ export default function Landing() {
     { name: 'Technical Agent', desc: 'Orchestrates the entire interview pipeline — splits into two specialized sub-agents that work in sequence.', icon: <Cpu size={20} />, tools: ['LiveKit', 'Simli Avatar', 'OpenAI Realtime', 'Whisper'], hasSubAgents: true },
     { name: 'Research Agent', desc: 'Searches the web for candidate info, fact-checks resume claims, provides real-time data during AI chat.', icon: <Globe size={20} />, tools: ['Tavily Search', 'Fact Check', 'Citation'] },
     { name: 'Advisor Agent', desc: 'Candidate-facing career coach with 3 modes — Resume Coach, Interview Prep, and Career Advisor. Personalized AI guidance.', icon: <Bot size={20} />, tools: ['Resume Coach', 'Interview Prep', 'Career Advisor'] },
+    // The two the page left out, so its count is the product's.
+    { name: 'Sourcer Agent', desc: 'Finds people beyond your uploads, on GitHub and the public web, and writes a judgement on every one it reads instead of keyword-filtering first.', icon: <ScanSearch size={20} />, tools: ['GitHub API', 'Tavily Search', 'Criteria Scoring'] },
+    { name: 'Jarvis', desc: 'A conversational copilot over the other agents: screen, evaluate, interview and report by voice or text, in one conversation.', icon: <Sparkles size={20} />, tools: ['Voice', 'All agents', 'Interview Setup'] },
   ];
 
   const features = [
-    { icon: <Bot size={22} />, title: '5 AI Agents', desc: 'Custom agent framework with Plan → Execute → Reflect → Output pipeline. Real agents, not just prompts.' },
+    { icon: <Bot size={22} />, title: '7 AI Agents', desc: 'Custom agent framework with Plan → Execute → Reflect → Output pipeline. Real agents, not just prompts.' },
     { icon: <Search size={22} />, title: 'Scanner Agent', desc: 'Extracts links from PDFs, launches headless browser to scrape GitHub profiles, searches LinkedIn via Tavily.' },
     { icon: <Video size={22} />, title: 'Live AI Interview', desc: 'Camera + mic. AI asks questions via voice, candidate answers live. Real-time scoring with evaluation report.' },
     { icon: <Shield size={22} />, title: 'RAG — No Hallucinations', desc: 'ChromaDB vector store ensures AI only uses facts from actual resumes. Never makes things up.' },
