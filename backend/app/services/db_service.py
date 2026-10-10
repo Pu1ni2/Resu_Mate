@@ -90,6 +90,29 @@ async def max_candidate_id(session: AsyncSession) -> int:
     return (await session.execute(select(func.max(Candidate.id)))).scalar() or 0
 
 
+async def delete_manager(session: AsyncSession, manager_id: int) -> list:
+    """Delete a hiring manager's account and everything it holds.
+
+    Their candidates (with their interviews, evaluations and portal grants),
+    any interview or grant they filed elsewhere, sourcing runs and the
+    profiles found, chat histories, the audit records of their account, and
+    the account. Returns the stored-file keys of the candidates' original
+    files, to remove from object storage once this has committed. Commits.
+    """
+    from app.models.auth import HiringManager
+    from app.models.sourcing import SourcedProfile, SourcingRun
+    from app.models.state import ChatHistory
+    files = await stored_file_keys(session, Candidate.manager_id == manager_id)
+    for model in (Interview, Evaluation, CandidateAccess):
+        await session.execute(delete(model).where(model.manager_id == manager_id))
+    await delete_candidates(session, Candidate.manager_id == manager_id)
+    for model in (SourcedProfile, SourcingRun, ChatHistory, AuditLog):
+        await session.execute(delete(model).where(model.manager_id == manager_id))
+    await session.execute(delete(HiringManager).where(HiringManager.id == manager_id))
+    await session.commit()
+    return files
+
+
 async def stored_file_keys(session: AsyncSession, *where) -> list:
     """Object-storage keys of the original files of the candidates matching `where`."""
     rows = await session.execute(

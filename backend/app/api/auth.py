@@ -53,6 +53,9 @@ class LoginRequest(BaseModel):
 class RefreshRequest(BaseModel):
     refresh_token: str
 
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(..., max_length=200)
+
 class ForgotPasswordRequest(BaseModel):
     email: str = Field(..., max_length=320)
 
@@ -219,6 +222,32 @@ async def reset_password(request: Request, req: ResetPasswordRequest, db: AsyncS
     manager.password_hash = get_password_hash(req.password)
     await db.commit()
     return {"message": "Password changed. You can sign in with it now."}
+
+
+@router.post("/delete-account")
+@limiter.limit("5/hour")
+async def delete_account(
+    request: Request, req: DeleteAccountRequest,
+    current_user: HiringManager = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """A manager deletes their account and all its data, with their password.
+
+    There was no way to: Delete All removed the candidates but kept the
+    account, its sourcing runs, chat histories and audit records.
+    """
+    if not verify_password(req.password, current_user.password_hash):
+        raise HTTPException(status_code=403, detail="That password isn't right.")
+    manager_id = current_user.id
+    files = await db_service.delete_manager(db, manager_id)
+    # Then what lives outside the database: the in-memory store and ChromaDB,
+    # and the original files.
+    from app.services.resume_rag import resume_rag
+    from app.services.storage_service import storage_service
+    import asyncio
+    resume_rag.clear_all(manager_id=manager_id)
+    for key in files:
+        await asyncio.to_thread(storage_service.delete, key)
+    return {"status": "deleted"}
 
 
 @router.get("/me")
