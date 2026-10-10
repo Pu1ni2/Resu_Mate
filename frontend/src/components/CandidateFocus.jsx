@@ -227,11 +227,9 @@ export default function CandidateFocus() {
       }
       const data = await resp.json();
 
-      const allLogs = data.logs || [];
-      for (let i = 0; i < allLogs.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        setScanLogs(prev => [...prev, allLogs[i]]);
-      }
+      // As they happened, all at once: they arrive with the reply, and were
+      // replayed 400 ms apart as if live.
+      setScanLogs(data.logs || []);
 
       const scannedProfiles = data.profiles || null;
       const scannedSummary = data.ai_summary || '';
@@ -240,10 +238,6 @@ export default function CandidateFocus() {
       setScanProfiles(scannedProfiles);
       setScanSummary(scannedSummary);
       setScanContact(scannedContact);
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setScanLogs(prev => [...prev, { step: 'feeding', msg: 'Feeding data into AI Chat...', status: 'success' }]);
-      await new Promise(resolve => setTimeout(resolve, 600));
 
       const name = anonymize ? 'this candidate' : (c?.name || 'this candidate');
       let intro = `**AI Chat Supercharged!** I now have data from multiple sources:\n\n`;
@@ -494,7 +488,7 @@ export default function CandidateFocus() {
 
                       <div className="pc-footer">
                         <span className="pc-verified">
-                          {c.is_resume === false ? '⚠ Not a resume' : '✓ Verified resume'}
+                          {c.is_resume === false ? '⚠ Not a resume' : ''}
                         </span>
                         <button className="pc-btn" style={{ '--g': gradient }}>
                           Open Focus

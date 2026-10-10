@@ -5,8 +5,8 @@ import Markdown from '../ui/Markdown';
 export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanContact, scanRunning, scanDone, onRescan }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Calculate progress from logs
-  const progress = scanRunning ? Math.min(90, (scanLogs.length / 8) * 100) : scanDone ? 100 : 0;
+  // No percentage: the steps come back together with the result, so a bar
+  // worked out from them was never real progress.
   const lastLog = scanLogs[scanLogs.length - 1];
 
   if (!scanRunning && !scanDone) return null;
@@ -21,7 +21,7 @@ export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanCo
             <Zap size={14} style={{ color: 'var(--accent)' }} />
           )}
           <span className="scanner-bar-status">
-            {scanRunning ? (lastLog?.msg || 'Scanning...') : 'Scan complete'}
+            {scanRunning ? "Scanning the résumé's links and profiles…" : (lastLog?.status === 'error' ? lastLog.msg : 'Scan complete')}
           </span>
         </div>
 
@@ -38,13 +38,6 @@ export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanCo
           )}
         </div>
       </div>
-
-      {/* Progress bar */}
-      {scanRunning && (
-        <div className="scanner-bar-progress">
-          <div className="scanner-bar-progress-fill" style={{ width: `${progress}%` }} />
-        </div>
-      )}
 
       {/* Expanded detail */}
       {expanded && scanDone && (
