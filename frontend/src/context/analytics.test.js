@@ -108,7 +108,8 @@ describe('computeAnalytics', () => {
 
   it('averages experience across the pool', () => {
     expect(computeAnalytics(pool).avgExperience).toBe('4.0');
-    expect(computeAnalytics([{ skills: [] }]).avgExperience).toBe('0.0');
+    // Unknown years are left out, not counted as 0.
+    expect(computeAnalytics([{ skills: [] }]).avgExperience).toBe('—');
   });
 
   it('ranks roles and levels by frequency', () => {
@@ -120,7 +121,7 @@ describe('computeAnalytics', () => {
   it('labels missing role and level rather than dropping the candidate', () => {
     const a = computeAnalytics([{ skills: ['X'] }]);
     expect(a.roleDistribution).toEqual([{ name: 'Unknown', count: 1 }]);
-    expect(a.levelDistribution).toEqual([{ name: 'Entry', count: 1 }]);
+    expect(a.levelDistribution).toEqual([{ name: 'Unknown', count: 1 }]);
     expect(a.total).toBe(1);
   });
 

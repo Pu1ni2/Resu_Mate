@@ -403,7 +403,10 @@ export default function CandidateDashboard() {
                       <div className="cd-resume-file-icon"><FileText size={24} /></div>
                       <div className="cd-resume-card-info">
                         <h3>{c.name || 'Your Resume'}</h3>
-                        <p>{[c.predicted_role, c.experience_level, c.total_experience_years ? `${c.total_experience_years}y exp` : null].filter(Boolean).join(' · ')}</p>
+                        {/* Re-uploading replaces it, so that is the retry. */}
+                        <p>{c.analysis_failed
+                          ? "We couldn't analyse your résumé. Upload it again to retry."
+                          : [c.predicted_role, c.experience_level, c.total_experience_years ? `${c.total_experience_years}y exp` : null].filter(Boolean).join(' · ')}</p>
                       </div>
                       <div className="cd-resume-check"><Check size={18} /></div>
                     </div>

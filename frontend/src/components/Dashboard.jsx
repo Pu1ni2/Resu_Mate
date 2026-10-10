@@ -796,7 +796,11 @@ export default function Dashboard() {
                             </button>
                           </div>
                           <h3 className="candidate-name">{getDisplayName(c, i)}</h3>
-                          <p className="candidate-role">{c.predicted_role || 'Processing...'}</p>
+                          {/* The analysis failed: say so, rather than "Processing..." forever.
+                              The same file again is refused as a duplicate, so delete it first. */}
+                          <p className="candidate-role">
+                            {c.analysis_failed ? "Couldn't analyse this résumé. Delete it and upload it again." : (c.predicted_role || 'Processing...')}
+                          </p>
                           
                           <div className="candidate-badges">
                             {c.badges?.slice(0, 3).map((b, j) => (
@@ -805,8 +809,8 @@ export default function Dashboard() {
                           </div>
 
                           <div className="candidate-stats">
-                            <span><Briefcase size={12} /> {c.total_experience_years || 0}y</span>
-                            <span><Award size={12} /> {c.experience_level || 'N/A'}</span>
+                            <span><Briefcase size={12} /> {c.total_experience_years != null ? `${c.total_experience_years}y` : '—'}</span>
+                            <span><Award size={12} /> {c.experience_level || '—'}</span>
                           </div>
 
                           {c.location && (
@@ -907,7 +911,7 @@ export default function Dashboard() {
                   <div className="clean-stat-grid">
                     {[
                       { label: 'Candidates', value: analytics.total, sub: 'selected', icon: <Users size={18} /> },
-                      { label: 'Avg Experience', value: `${analytics.avgExperience}y`, sub: 'years average', icon: <Briefcase size={18} /> },
+                      { label: 'Avg Experience', value: analytics.avgExperience === '—' ? '—' : `${analytics.avgExperience}y`, sub: 'years average', icon: <Briefcase size={18} /> },
                       { label: 'Unique Skills', value: analytics.totalSkills, sub: 'across pool', icon: <Sparkles size={18} /> }
                     ].map((stat, i) => (
                       <div key={i} className="clean-stat-card">

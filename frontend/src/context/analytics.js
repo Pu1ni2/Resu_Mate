@@ -46,6 +46,14 @@ export function computeSkillStats(selected) {
   };
 }
 
+/* The average of the known years, or '—' when none is known. A résumé the
+ * analysis couldn't read has no years, and counting it as 0 pulled the
+ * average down. */
+function averageYears(selected) {
+  const years = selected.map(c => c.total_experience_years).filter(y => typeof y === 'number' && Number.isFinite(y));
+  return years.length ? (years.reduce((a, b) => a + b, 0) / years.length).toFixed(1) : '—';
+}
+
 function distribution(selected, pick, fallback) {
   const map = new Map();
   selected.forEach(c => {
@@ -78,11 +86,10 @@ export function computeAnalytics(candidates) {
 
   return {
     total,
-    avgExperience: (
-      selected.reduce((s, c) => s + (c.total_experience_years || 0), 0) / total
-    ).toFixed(1),
+    avgExperience: averageYears(selected),
     ...skills,
     roleDistribution: distribution(selected, c => c.predicted_role, 'Unknown'),
-    levelDistribution: distribution(selected, c => c.experience_level, 'Entry'),
+    // Unknown, as for the role: a résumé with no level found isn't "Entry".
+    levelDistribution: distribution(selected, c => c.experience_level, 'Unknown'),
   };
 }

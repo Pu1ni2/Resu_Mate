@@ -447,7 +447,9 @@ export default function CandidateFocus() {
                         </div>
                         <div className="pc-info">
                           <h3 className="pc-name">{name}</h3>
-                          <p className="pc-role">{c.predicted_role || 'Processing...'}</p>
+                          <p className="pc-role">
+                            {c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || 'Processing...')}
+                          </p>
                           <div className="pc-meta">
                             {c.total_experience_years != null && <span>{c.total_experience_years}y exp</span>}
                             {c.experience_level && <span>{c.experience_level}</span>}
