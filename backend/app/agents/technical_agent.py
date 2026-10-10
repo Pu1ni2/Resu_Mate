@@ -9,6 +9,7 @@ Multi-step agent for the interview system:
 """
 import re
 import json
+from datetime import date
 from typing import Dict, List, Any
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.openai_tool import openai_tool
@@ -132,7 +133,7 @@ Return ONLY valid JSON:
         trends = ""
         if tavily_tool.client:
             self.log("research", f"Researching current trends for {role}...")
-            search = await tavily_tool.call({"query": f"{role} interview questions 2024 trends", "max_results": 2})
+            search = await tavily_tool.call({"query": f"{role} interview questions {date.today().year} trends", "max_results": 2})
             trends = search.get("answer", "")
             self.log("research_done", "Market research complete", "success")
 
@@ -285,7 +286,7 @@ ANALYZE and return ONLY valid JSON:
         trends = ""
         if tavily_tool.client:
             self.log("research", f"Researching current trends for {role}...")
-            search = await tavily_tool.call({"query": f"{role} interview questions 2024 trends", "max_results": 2})
+            search = await tavily_tool.call({"query": f"{role} interview questions {date.today().year} trends", "max_results": 2})
             trends = search.get("answer", "")
             self.log("research_done", "Market research complete", "success")
 

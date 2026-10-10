@@ -5,6 +5,7 @@ import json
 import hashlib
 import re
 import threading
+from datetime import date
 from typing import List, Dict, Optional, Set, Tuple
 from pathlib import Path
 
@@ -405,7 +406,7 @@ RESUME:
 EXPERIENCE CALCULATION - IMPORTANT:
 1. List EACH job with start and end dates
 2. Calculate months for EACH job separately
-3. If "Present" or "Current", use January 2025 as end
+3. If "Present" or "Current", use {date.today():%B %Y} as end (today)
 4. Be CONSERVATIVE - if unsure, estimate lower
 5. Most people have 0-15 years. 20+ is rare.
 

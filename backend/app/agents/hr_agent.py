@@ -9,6 +9,7 @@ Multi-step agent that:
 5. Generates report with recommendation
 """
 import json
+from datetime import date
 from typing import Dict, List, Any
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.openai_tool import openai_tool
@@ -54,7 +55,7 @@ class HRAgent(BaseAgent):
         # Step 1: Research market data
         steps.append(AgentStep(
             action="research_market", tool="tavily",
-            params={"query": f"{role} {candidate.get('location', '')} salary requirements 2024"},
+            params={"query": f"{role} {candidate.get('location', '')} salary requirements {date.today().year}"},
             reason="Research market salary and requirements for this role"
         ))
 
