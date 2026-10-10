@@ -64,10 +64,10 @@ function renderMarkdown(text) {
       i++; continue;
     }
     // List items
-    if (/^[\-\*]\s/.test(line) || /^\d+\.\s/.test(line)) {
+    if (/^[-*]\s/.test(line) || /^\d+\.\s/.test(line)) {
       const items = [];
-      while (i < lines.length && (/^[\-\*]\s/.test(lines[i]) || /^\d+\.\s/.test(lines[i]))) {
-        items.push(lines[i].replace(/^[\-\*\d\.]+\s*/, ''));
+      while (i < lines.length && (/^[-*]\s/.test(lines[i]) || /^\d+\.\s/.test(lines[i]))) {
+        items.push(lines[i].replace(/^[-*\d.]+\s*/, ''));
         i++;
       }
       elements.push(
@@ -125,7 +125,7 @@ function stripMarkdown(text) {
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '')
-    .replace(/^[\-\*]\s/gm, '• ')
+    .replace(/^[-*]\s/gm, '• ')
     .trim();
 }
 
@@ -513,7 +513,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       return;
     }
     autoListenEnabledRef.current = true;
-    handleSendMessageRef.current?.(text); // eslint-disable-line
+    handleSendMessageRef.current?.(text);
   }, [queueAutoListen]);
 
   // TTS finished — auto-start listening (conversational loop)
@@ -701,7 +701,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
 
       if (action && !awaiting_confirmation) {
-        await executeAction(action, action_params || {}); // eslint-disable-line no-use-before-define
+        await executeAction(action, action_params || {});
       }
 
     } catch (err) {
