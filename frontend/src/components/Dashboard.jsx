@@ -1,12 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
-import PipelineWizard from './pipeline/PipelineWizard';
 import ATSResultsView from './pipeline/ATSResultsView';
 import InterviewReportView from './shared/InterviewReportView';
-import JarvisAgent from './pipeline/JarvisAgent';
 import { 
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
@@ -14,6 +12,10 @@ import {
   Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
+
+// Loaded when opened: Jarvis alone is a large part of the app.
+const JarvisAgent = lazy(() => import('./pipeline/JarvisAgent'));
+const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { averageScore, isScore } from '../services/scores';
 
@@ -809,6 +811,7 @@ export default function Dashboard() {
                   </div>
 
                   {showPipeline && (
+                    <Suspense fallback={null}>
                     <JarvisAgent
                       candidatesSummary={candidates
                         .filter(c => c.is_resume !== false)
@@ -829,6 +832,7 @@ export default function Dashboard() {
                         setPipelineResult(result);
                       }}
                     />
+                    </Suspense>
                   )}
 
                   <div className="candidates-slider">
@@ -942,10 +946,12 @@ export default function Dashboard() {
                     </button>
                   </div>
                 ) : (
-                  <PipelineWizard
-                    candidateCount={candidates.filter(c => c.is_resume !== false).length}
-                    onComplete={data => setPipelineResult(data)}
-                  />
+                  <Suspense fallback={null}>
+                    <PipelineWizard
+                      candidateCount={candidates.filter(c => c.is_resume !== false).length}
+                      onComplete={data => setPipelineResult(data)}
+                    />
+                  </Suspense>
                 )
               ) : (
                 <ATSResultsView

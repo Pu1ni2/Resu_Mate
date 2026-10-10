@@ -1,10 +1,8 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Loader } from 'lucide-react';
 import Landing from './components/Landing';
-import Dashboard from './components/Dashboard';
 import CandidateLogin from './components/CandidateLogin';
-import CandidateDashboard from './components/CandidateDashboard';
-import CandidateFocus from './components/CandidateFocus';
 import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ForgotPassword from './components/auth/ForgotPassword';
@@ -17,6 +15,21 @@ import RequestDeletion from './components/RequestDeletion';
 const StyleLab = lazy(() => import('./components/landing/StyleLab'));
 // Lazy: a page of its own, only loaded by managers who open it.
 const SourcerPage = lazy(() => import('./components/sourcer/SourcerPage'));
+// Lazy: the dashboards are most of the app, and the landing page downloaded
+// all of them, Jarvis and the interview rooms included.
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const CandidateDashboard = lazy(() => import('./components/CandidateDashboard'));
+const CandidateFocus = lazy(() => import('./components/CandidateFocus'));
+
+/* While a page's code loads: a quiet spinner, announced once. */
+function PageLoading() {
+  return (
+    <div role="status" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-ink-muted)' }}>
+      <Loader size={22} className="spin" aria-hidden="true" />
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
 
 function UnauthorizedHandler() {
   const navigate = useNavigate();
@@ -55,6 +68,7 @@ export default function App() {
     <>
     <UnauthorizedHandler />
     <CandidateUnauthorizedHandler />
+    <Suspense fallback={<PageLoading />}>
     <Routes>
       <Route path="/" element={<Landing />} />
 
@@ -89,6 +103,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
     </>
   );
 }

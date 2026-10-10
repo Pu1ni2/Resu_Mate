@@ -57,10 +57,16 @@ function renderDashboard(session = SESSION) {
   );
 }
 
-async function sitTheInterview(finish) {
+// The room loads when the interview starts, so wait for it (on the real clock).
+async function enterTheRoom(finish) {
   fireEvent.click(screen.getByText('Interview'));
   fireEvent.click(screen.getByRole('button', { name: /start voice interview|enter interview room/i }));
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: finish })); });
+  return screen.findByRole('button', { name: finish });
+}
+
+async function sitTheInterview(finish) {
+  const done = await enterTheRoom(finish);
+  await act(async () => { fireEvent.click(done); });
 }
 
 beforeEach(() => {
@@ -86,19 +92,21 @@ describe("the candidate's report after an interview", () => {
   });
 
   it('says it is preparing, and keeps asking until the report is ready', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout'] });
     reportAnswers = [null, null, REPORT];
     renderDashboard();
-    await sitTheInterview('finish voice');
+    const done = await enterTheRoom('finish voice');
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    await act(async () => { fireEvent.click(done); });
     expect(screen.getByText('Preparing your report…')).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
     expect(screen.getByText(/Score: 7.5\/10/)).toBeTruthy();
   });
 
   it('offers Refresh when the report still is not ready', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout'] });
     renderDashboard();
-    await sitTheInterview('finish voice');
+    const done = await enterTheRoom('finish voice');
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    await act(async () => { fireEvent.click(done); });
     await act(async () => { await vi.advanceTimersByTimeAsync(20 * 4000); });
     expect(screen.getByText(/still being prepared/i)).toBeTruthy();
     reportAnswers = [REPORT];

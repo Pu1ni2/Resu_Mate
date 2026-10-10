@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
@@ -11,12 +11,14 @@ import {
   Code, Star, TrendingUp, Target,
   Mic, Volume2, Trash2
 } from 'lucide-react';
-import InterviewRoom from './InterviewRoom';
-import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
 import { clearCandidateSession } from '../services/session';
 import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
+
+// Loaded when the interview starts: the video room brings LiveKit with it.
+const InterviewRoom = lazy(() => import('./InterviewRoom'));
+const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterviewRoom'));
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -290,25 +292,30 @@ export default function CandidateDashboard() {
     // LiveKit + Simli flow.
     const mode = (candidateSession.interview_config?.mode || 'avatar').toLowerCase();
     const interviewId = candidateSession.interview_config?.interview_id;
+    const loadingRoom = <div className="cd-loading"><Loader size={24} className="spin" /></div>;
     if (mode === 'conversational') {
       return (
-        <ConversationalInterviewRoom
-          interviewId={interviewId}
+        <Suspense fallback={loadingRoom}>
+          <ConversationalInterviewRoom
+            interviewId={interviewId}
+            candidateName={candidateSession.name || 'Candidate'}
+            candidateEmail={candidateSession.email}
+            onComplete={handleInterviewComplete}
+            onExit={() => setShowInterviewRoom(false)}
+          />
+        </Suspense>
+      );
+    }
+    return (
+      <Suspense fallback={loadingRoom}>
+        <InterviewRoom
+          config={candidateSession.interview_config}
           candidateName={candidateSession.name || 'Candidate'}
           candidateEmail={candidateSession.email}
           onComplete={handleInterviewComplete}
           onExit={() => setShowInterviewRoom(false)}
         />
-      );
-    }
-    return (
-      <InterviewRoom
-        config={candidateSession.interview_config}
-        candidateName={candidateSession.name || 'Candidate'}
-        candidateEmail={candidateSession.email}
-        onComplete={handleInterviewComplete}
-        onExit={() => setShowInterviewRoom(false)}
-      />
+      </Suspense>
     );
   }
 
