@@ -50,8 +50,16 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const containerRef = useRef(null);
   const violationCountRef = useRef(0);
   const roomRef = useRef(null);
+  // What endInterview reports, as of now. It is also called from addViolation,
+  // a callback made once, so reading state there gave the values from the
+  // first render: an interview ended for violations reported 0 time and 0%
+  // face in view.
+  const latestRef = useRef({ eyeContact: 0, timer: 0, lookAwayCount: 0, onComplete, onExit });
+  useEffect(() => {
+    latestRef.current = { eyeContact, timer, lookAwayCount, onComplete, onExit };
+  });
 
-  const formatTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  const formatTime =(s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   // ═══ LOAD FACE-API ═══
   useEffect(() => {
@@ -287,16 +295,17 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     // used to make one up ("Full transcript and scoring available", score 0),
     // then ask the manager-only results endpoint, which refuses a candidate's
     // token, so the made-up one was what the candidate saw.
+    const latest = latestRef.current;
     const proctoring = {
       violations: violationCountRef.current,
-      eyeContact,
-      timer,
+      eyeContact: latest.eyeContact,
+      timer: latest.timer,
       terminated,
-      lookAwayCount,
+      lookAwayCount: latest.lookAwayCount,
     };
 
-    if (onComplete) onComplete(proctoring);
-    else if (onExit) onExit();
+    if (latest.onComplete) latest.onComplete(proctoring);
+    else if (latest.onExit) latest.onExit();
   };
 
   // ═══ TOGGLE MIC ═══
@@ -395,7 +404,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '600', background: faceDetected ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: faceDetected ? '#22C55E' : '#EF4444' }}>
-                {faceDetected ? <Eye size={12} /> : <EyeOff size={12} />} {faceDetected ? `${eyeContact}%` : 'No face'}
+                {faceDetected ? <Eye size={12} /> : <EyeOff size={12} />} {faceDetected ? `In view ${eyeContact}%` : 'No face'}
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: violations > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)', color: violations > 0 ? '#F87171' : '#71717A' }}>
                 <Shield size={11} /> {violations}/{MAX_VIOLATIONS}
