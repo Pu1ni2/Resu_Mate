@@ -116,7 +116,7 @@ export default function ProductLayer({ children }) {
   // this they were reachable only through useProduct(), which nothing called —
   // so the container rendered an empty list and the bell an empty panel.
   useEffect(() => {
-    const onToast = e => addToast(e.detail?.message || '', e.detail?.type || 'info');
+    const onToast = e => addToast(e.detail?.message || '', e.detail?.type || 'info', e.detail?.duration || 4000);
     const onNotify = e => addNotification(
       e.detail?.title || '', e.detail?.body || '', e.detail?.type || 'info',
     );

@@ -30,8 +30,9 @@ function dispatch(name, detail) {
   }
 }
 
-export function toast(message, type = 'info') {
-  dispatch(TOAST_EVENT, { message, type });
+/* `duration` in ms, for a toast that must outlast the usual few seconds. */
+export function toast(message, type = 'info', { duration } = {}) {
+  dispatch(TOAST_EVENT, { message, type, duration });
 }
 
 export function notify(title, body, type = 'info') {
