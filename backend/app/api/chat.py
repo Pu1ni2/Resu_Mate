@@ -5,6 +5,7 @@ Same endpoint URLs as before — frontend doesn't need to change.
 import os
 import re
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header, Request
@@ -29,6 +30,16 @@ from app.tools.openai_tool import openai_tool
 from app.tools.voice_tool import voice_tool
 from app.tools.github_tool import github_tool
 from app.tools.tavily_tool import tavily_tool
+
+logger = logging.getLogger("resumate.chat")
+
+
+def _failed(what: str, message: str) -> HTTPException:
+    """Log what went wrong, and answer with a plain message and a real error
+    status. These endpoints answered 200 with the exception's own text, which
+    the pages showed as if it were the answer."""
+    logger.exception("%s failed", what)
+    return HTTPException(status_code=502, detail=message)
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -199,8 +210,10 @@ async def send_message(request: Request, req: ChatRequest, user=Depends(get_curr
         response = await resume_rag.chat(req.message, req.candidate_ids, history, req.anonymize, manager_id=user.id)
         _remember_chat(user.id, req.conversation_id, req.message, response.get("response", ""))
         return response
-    except Exception as e:
-        return {"response": f"Error: {str(e)}", "suggestions": []}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("chat send", "The assistant couldn't answer just now. Please try again.")
 
 @router.get("/intro")
 @limiter.limit("30/minute")
@@ -228,8 +241,10 @@ async def speech_to_text(request: Request, audio: UploadFile = File(...), user=D
         audio_data = await audio.read()
         text = await voice_tool.speech_to_text(audio_data, audio.filename or "audio.webm")
         return {"text": text}
-    except Exception as e:
-        return {"error": str(e), "text": ""}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("speech to text", "Couldn't turn the recording into text. Please try again.")
 
 @router.post("/text-to-speech")
 @limiter.limit("30/minute")
@@ -243,11 +258,8 @@ async def text_to_speech(request: Request, req: dict, user=Depends(get_current_u
         return StreamingResponse(io.BytesIO(audio_bytes), media_type="audio/mpeg")
     except HTTPException:
         raise
-    except Exception as e:
-        import traceback
-        print(f"[TTS] 500 error: {type(e).__name__}: {e}")
-        traceback.print_exc()
-        raise HTTPException(500, f"TTS failed: {type(e).__name__}: {e}")
+    except Exception:
+        raise _failed("text to speech", "Couldn't read that out. Please try again.")
 
 # ═══════ FOCUS CHAT → Research Agent + LLM ═══════
 
@@ -364,9 +376,10 @@ Respond helpfully with **bold** for key points."""
             pass
 
         return {"response": ai_response, "suggestions": suggestions}
-    except Exception as e:
-        print(f"Focus chat error: {e}")
-        return {"response": f"**Error:** {str(e)}", "suggestions": []}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("focus chat", "The assistant couldn't answer just now. Please try again.")
 
 # ═══════ WEB SEARCH → Research Agent ═══════
 
@@ -430,8 +443,10 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
             ats_score=ats_score,
         )
         return {"report": result.get("report", "Evaluation failed."), "ats_score": ats_score}
-    except Exception as e:
-        return {"error": str(e)}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("hiring agent", "The evaluation couldn't be completed. Please try again.")
 
 # ═══════ EMAIL → HR Agent ═══════
 
@@ -442,12 +457,15 @@ async def draft_email(request: Request, req: EmailDraftRequest, user=Depends(get
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
-            return {"subject": "", "body": "Candidate not found."}
+            # Not the email's body, which is where this used to land.
+            raise HTTPException(status_code=404, detail="Candidate not found")
 
         result = await hr_agent.draft_email(candidate, req.email_type, req.evaluation_report, req.anonymize)
         return result
-    except Exception as e:
-        return {"subject": "Error", "body": str(e)}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("email draft", "Couldn't draft the email. Please try again.")
 
 # ═══════ GITHUB → Data Agent tools ═══════
 
@@ -517,8 +535,10 @@ async def github_analyze(request: Request, req: GitHubRequest, user=Depends(get_
             profile["ai_analysis"] = analysis
 
         return {"profile": profile}
-    except Exception as e:
-        return {"error": str(e)}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("github analysis", "Couldn't analyse the GitHub profile. Please try again.")
 
 # ═══════ SCANNER → Data Agent ═══════
 
@@ -554,9 +574,10 @@ async def scan_resume(request: Request, req: ScanRequest, user=Depends(get_curre
             "ai_summary": output.get("ai_summary", ""),
             "contact": output.get("contact", {})
         }
-    except Exception as e:
-        print(f"Scanner error: {e}")
-        return {"error": str(e), "logs": [], "profiles": {}}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("profile scan", "Couldn't scan this candidate's profiles. Please try again.")
 
 # ═══════ CALENDLY ═══════
 
@@ -593,8 +614,10 @@ async def get_calendly_link(user=Depends(get_current_user)):
                 event_types.append({"name": "Schedule a Meeting", "duration": 30, "scheduling_url": scheduling_url, "description": ""})
 
             return {"scheduling_url": scheduling_url, "event_types": event_types, "user_name": user_data.get("name", ""), "error": None}
-    except Exception as e:
-        return {"error": str(e), "event_types": [], "scheduling_url": ""}
+    except HTTPException:
+        raise
+    except Exception:
+        raise _failed("calendly link", "Couldn't reach Calendly. Please try again.")
 
 # ═══════ INTERVIEW → Technical Agent ═══════
 
@@ -746,9 +769,8 @@ RULES:
                 elif part.startswith('{'): content = part; break
         result = json.loads(content)
         return {"ranking": result, "total_candidates": len(candidates_data)}
-    except Exception as e:
-        print(f"⚠️ Automate ranking error: {e}")
-        raise HTTPException(500, f"Ranking failed: {str(e)}")
+    except Exception:
+        raise _failed("automate ranking", "The ranking couldn't be completed. Please try again.")
 
 @router.post("/score-answer")
 @limiter.limit("30/minute")

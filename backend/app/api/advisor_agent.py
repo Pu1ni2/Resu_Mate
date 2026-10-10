@@ -10,6 +10,7 @@ Add to your existing backend: from app.agents.advisor_agent import advisor_route
 Then: app.include_router(advisor_router, prefix="/api")
 """
 import asyncio
+import logging
 import os
 import json
 from fastapi import APIRouter, UploadFile, File, Form, Depends, Request, HTTPException
@@ -22,6 +23,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services import state_service
 from app.services.auth import get_current_candidate
+
+logger = logging.getLogger("resumate.advisor")
 
 
 # Candidate resume uploads go through the same 5 MB ceiling as the manager-side
@@ -304,8 +307,13 @@ async def advisor_chat(
 
         suggestions = get_suggestions(req.mode, len(history), reply)
         return {"reply": reply, "mode": req.mode, "suggestions": suggestions}
-    except Exception as e:
-        return {"reply": f"Sorry, I encountered an error: {str(e)}", "mode": req.mode, "suggestions": ["Try again", "Ask something else"]}
+    except HTTPException:
+        raise
+    except Exception:
+        # Logged, and a real error: the reply used to be the exception's own
+        # text, shown to the candidate as the advisor's answer.
+        logger.exception("advisor chat failed")
+        raise HTTPException(status_code=502, detail="Sorry, I couldn't answer that just now. Please try again.")
 
 
 def get_suggestions(mode: str, history_len: int, last_reply: str = "") -> List[str]:
