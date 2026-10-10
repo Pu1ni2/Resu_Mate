@@ -100,6 +100,8 @@ export default function CandidateFocus() {
   // ─── Web Search state ───
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  // Why a search didn't happen (not set up, failed), apart from "no results".
+  const [searchError, setSearchError] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState([]);
 
@@ -319,6 +321,7 @@ export default function CandidateFocus() {
     const q = query || searchQuery.trim();
     if (!q || searchLoading) return;
     setSearchLoading(true);
+    setSearchError('');
     setSearchHistory(prev => [q, ...prev.filter(h => h !== q)].slice(0, 10));
     try {
       const response = await authFetch(`${API_BASE}/api/chat/web-search`, {
@@ -326,10 +329,18 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, candidate_id: focusCandidate?.id, candidate_name: anonymize ? null : focusCandidate?.name }),
       });
+      if (!response.ok) {
+        setSearchResults([]);
+        setSearchError(await responseError(response, 'The web search failed. Please try again.'));
+        return;
+      }
       const data = await response.json();
       setSearchResults(data.results || []);
+      if (data.error) setSearchError(data.error);
     } catch {
-      setSearchResults([{ title: 'Search Error', snippet: 'Could not perform web search.', url: '' }]);
+      // An error, not a result card counted as "Found 1 result".
+      setSearchResults([]);
+      setSearchError('Could not reach the server to search. Please try again.');
     } finally {
       setSearchLoading(false);
     }
@@ -639,7 +650,7 @@ export default function CandidateFocus() {
           {activeTool === 'websearch' && (
             <WebSearchPanel
               searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-              searchResults={searchResults} searchLoading={searchLoading}
+              searchResults={searchResults} searchLoading={searchLoading} searchError={searchError}
               searchHistory={searchHistory} onSearch={handleWebSearch}
               getSearchSuggestions={getSearchSuggestions}
             />

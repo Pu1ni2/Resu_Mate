@@ -981,8 +981,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           }),
         });
         if (handle401(res)) return;
-        if (!res.ok) throw new Error(`Search ${res.status}`);
+        if (!res.ok) throw new Error(await responseError(res, `Search ${res.status}`));
         const d = await res.json();
+        // Not set up or failed: say so, not "no useful results".
+        if (d.error) {
+          directSay(`I couldn't search the web: ${d.error}`);
+          setStatus('DONE');
+          return;
+        }
         const results = d.results || [];
         const artifact = buildResearchArtifact(params.query, results);
         const snippet = artifact.summary || 'No useful results came back.';

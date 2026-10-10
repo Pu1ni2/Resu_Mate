@@ -1,8 +1,8 @@
 import React from 'react';
-import { Search, X, Loader, ExternalLink } from 'lucide-react';
+import { Search, X, Loader, ExternalLink, AlertCircle } from 'lucide-react';
 
 export default function WebSearchPanel({
-  searchQuery, setSearchQuery, searchResults, searchLoading,
+  searchQuery, setSearchQuery, searchResults, searchLoading, searchError = '',
   searchHistory, onSearch, getSearchSuggestions,
 }) {
   return (
@@ -38,6 +38,11 @@ export default function WebSearchPanel({
       )}
 
       {searchLoading && <div className="focus-search-loading"><Loader size={24} className="spin" /><p>Searching the web...</p></div>}
+
+      {/* A search that didn't happen says why: it used to look like "nothing online". */}
+      {searchError && !searchLoading && (
+        <div className="tool-error glass-card" role="alert"><AlertCircle size={20} /><p>{searchError}</p></div>
+      )}
 
       {searchResults.length > 0 && !searchLoading && (
         <div className="focus-search-results">
