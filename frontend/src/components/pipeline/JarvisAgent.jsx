@@ -5,6 +5,7 @@ import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch } from '../../services/authFetch';
+import { averageScore, isScore, shownScore } from '../../services/scores';
 
 const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
@@ -264,7 +265,7 @@ function buildEvaluationArtifact(report, role) {
 
 function buildResumeIntelArtifact(intel) {
   return {
-    confidence: intel?.resume_confidence_score || 0,
+    confidence: isScore(intel?.resume_confidence_score) ? intel.resume_confidence_score : null,
     gaps: (intel?.gaps || []).map(g => g.detail).filter(Boolean).slice(0, 3),
     redFlags: (intel?.red_flags || []).slice(0, 3),
     verificationTargets: (intel?.verification_targets || []).map(t => t.skill || t.claim).filter(Boolean).slice(0, 4),
@@ -291,9 +292,8 @@ function buildInterviewArtifact(config = {}, candidateEmail = '') {
 
 function buildInterviewReportArtifact(report = {}, candidateEmail = '') {
   const scores = Array.isArray(report.scores) ? report.scores : [];
-  const avgScore = report.avgScore || (scores.length
-    ? Number((scores.reduce((sum, item) => sum + (item?.score || 0), 0) / scores.length).toFixed(1))
-    : null);
+  // Only the scored answers count; an unscored one is not a 0.
+  const avgScore = isScore(report.avgScore) ? report.avgScore : averageScore(scores);
   return {
     candidateEmail,
     avgScore,
@@ -307,7 +307,7 @@ function buildInterviewReportArtifact(report = {}, candidateEmail = '') {
 function buildCredibilityArtifact(credibility = {}, candidateEmail = '') {
   return {
     candidateEmail,
-    credibilityScore: credibility.credibility_score || 0,
+    credibilityScore: isScore(credibility.credibility_score) ? credibility.credibility_score : null,
     recommendation: credibility.hiring_recommendation || '',
     keyInsights: (credibility.key_insights || []).slice(0, 3),
     details: credibility,
@@ -1173,7 +1173,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[RESUME_INTEL_RESULT] ${params.candidate_name || 'Candidate'}: confidence ${artifact.confidence}. Gaps: ${(artifact.gaps || []).join('; ') || 'none called out'}. Red flags: ${(artifact.redFlags || []).join('; ') || 'none'}. Verification targets: ${(artifact.verificationTargets || []).join(', ') || 'none'}.`
+          `[RESUME_INTEL_RESULT] ${params.candidate_name || 'Candidate'}: confidence ${artifact.confidence ?? 'not scored (the analysis could not be completed)'}. Gaps: ${(artifact.gaps || []).join('; ') || 'none called out'}. Red flags: ${(artifact.redFlags || []).join('; ') || 'none'}. Verification targets: ${(artifact.verificationTargets || []).join(', ') || 'none'}.`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1295,7 +1295,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[CREDIBILITY_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.credibilityScore} out of 100 for credibility. Recommendation: ${artifact.recommendation || 'not provided'}. Key insights: ${(artifact.keyInsights || []).join('; ') || 'none'}.`
+          `[CREDIBILITY_RESULT] ${params.candidate_name || 'Candidate'} ${artifact.credibilityScore === null ? 'could not be scored for credibility (the analysis could not be completed)' : `scored ${artifact.credibilityScore} out of 100 for credibility`}. Recommendation: ${artifact.recommendation || 'not provided'}. Key insights: ${(artifact.keyInsights || []).join('; ') || 'none'}.`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1755,8 +1755,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   <>
                     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(139,92,246,0.55)', marginBottom: 6 }}>RESUME INTELLIGENCE</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 6 }}>{ri.candidateName || 'Candidate'}</div>
-                    <div style={{ fontSize: 30, fontWeight: 900, color: intel.resume_confidence_score >= 70 ? '#4ADE80' : intel.resume_confidence_score >= 50 ? '#F59E0B' : '#F87171', marginBottom: 18 }}>
-                      {intel.resume_confidence_score || 0}
+                    <div style={{ fontSize: 30, fontWeight: 900, color: !isScore(intel.resume_confidence_score) ? '#71717A' : intel.resume_confidence_score >= 70 ? '#4ADE80' : intel.resume_confidence_score >= 50 ? '#F59E0B' : '#F87171', marginBottom: 18 }}>
+                      {shownScore(intel.resume_confidence_score)}
                       <span style={{ fontSize: 13, color: '#52525B', marginLeft: 6 }}>resume confidence</span>
                     </div>
                     {gaps.length > 0 && (
@@ -1838,7 +1838,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>ATTACHED RESUME INTELLIGENCE</div>
                         <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.7, marginBottom: 8 }}>
-                          Confidence: {intel.resume_confidence_score || 0}. Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
+                          Confidence: {shownScore(intel.resume_confidence_score)}. Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
                         </div>
                         {(intel.verification_targets || []).slice(0, 4).map((target, i) => (
                           <div key={i} style={{ fontSize: 12, color: '#71717A', lineHeight: 1.6, padding: '3px 0' }}>
@@ -1863,7 +1863,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{rp.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{rp.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
-                      {[['Avg Score', report.avgScore ?? (scores.length ? Number((scores.reduce((sum, item) => sum + (item?.score || 0), 0) / scores.length).toFixed(1)) : 'N/A')], ['Eye Contact', `${report.eyeContact || 0}%`], ['Violations', report.violations || 0], ['Questions', scores.length]].map(([label, value]) => (
+                      {[['Avg Score', shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores))], ['Eye Contact', `${report.eyeContact || 0}%`], ['Violations', report.violations || 0], ['Questions', scores.length]].map(([label, value]) => (
                         <div key={label}>
                           <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
@@ -1926,7 +1926,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{cr.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{cr.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
-                      {[['Credibility', `${credibility.credibility_score || 0}/100`], ['Recommendation', credibility.hiring_recommendation || 'N/A'], ['Confidence', credibility.confidence_in_assessment || 'N/A']].map(([label, value]) => (
+                      {[['Credibility', isScore(credibility.credibility_score) ? `${credibility.credibility_score}/100` : 'Not scored'], ['Recommendation', credibility.hiring_recommendation || 'N/A'], ['Confidence', credibility.confidence_in_assessment || 'N/A']].map(([label, value]) => (
                         <div key={label}>
                           <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
@@ -2408,7 +2408,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const gaps = intel.gaps || [];
                   const targets = intel.verification_targets || [];
                   const redFlags = intel.red_flags || [];
-                  const confidence = intel.resume_confidence_score || 0;
+                  const confidence = shownScore(intel.resume_confidence_score);
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '12px 16px' }}>
@@ -2422,7 +2422,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           {[{ label: 'CONFIDENCE', val: confidence }, { label: 'GAPS', val: gaps.length }, { label: 'TARGETS', val: targets.length }, { label: 'RED FLAGS', val: redFlags.length }].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: label === 'CONFIDENCE' ? (confidence >= 70 ? '#4ADE80' : confidence >= 50 ? '#FCD34D' : '#F87171') : '#E4E4E7' }}>{val}</div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: label === 'CONFIDENCE' ? (!isScore(confidence) ? '#71717A' : confidence >= 70 ? '#4ADE80' : confidence >= 50 ? '#FCD34D' : '#F87171') : '#E4E4E7' }}>{val}</div>
                             </div>
                           ))}
                         </div>
@@ -2476,7 +2476,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const rp = msg.reportData;
                   const report = rp.report || {};
                   const scores = Array.isArray(report.scores) ? report.scores : [];
-                  const avgScore = report.avgScore ?? (scores.length ? Number((scores.reduce((sum, item) => sum + (item?.score || 0), 0) / scores.length).toFixed(1)) : 'N/A');
+                  const avgScore = shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores));
                   const summary = stripMarkdown(report.report || '');
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
@@ -2517,7 +2517,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{cr.candidateName}</div>
                         <div style={{ display: 'flex', gap: 18, marginBottom: insights.length > 0 ? 8 : 0, flexWrap: 'wrap' }}>
-                          {[{ label: 'SCORE', val: `${credibility.credibility_score || 0}/100` }, { label: 'RECOMMENDATION', val: credibility.hiring_recommendation || 'N/A' }].map(({ label, val }) => (
+                          {[{ label: 'SCORE', val: isScore(credibility.credibility_score) ? `${credibility.credibility_score}/100` : 'Not scored' }, { label: 'RECOMMENDATION', val: credibility.hiring_recommendation || 'N/A' }].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 12, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Target, AlertTriangle, CheckCircle, Shield, Loader, ChevronRight } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
+import { isScore } from '../../services/scores';
 
 export default function ResumeIntelPanel({ focusCandidate }) {
   const [intel, setIntel] = useState(null);
@@ -56,14 +57,33 @@ export default function ResumeIntelPanel({ focusCandidate }) {
     );
   }
 
+  // The AI step failed: say so, and offer it again. This used to show a
+  // confidence of 70 for a résumé nobody had looked at.
+  if (intel.analysis_failed) {
+    return (
+      <div style={{ padding: '20px', maxWidth: '540px' }}>
+        <div className="glass-card" role="status" style={{ padding: '32px', textAlign: 'center' }}>
+          <AlertTriangle size={28} style={{ color: '#F59E0B', marginBottom: '10px' }} />
+          <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>
+            The analysis couldn't be completed, so there is no confidence score.
+          </p>
+          <button className="btn btn-primary" onClick={analyze} style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', padding: '10px 24px' }}>
+            <Target size={15} /> <span>Try again</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const confidence = intel.resume_confidence_score;
   const severityColor = (s) => s === 'high' ? '#EF4444' : s === 'medium' ? '#F59E0B' : '#94A3B8';
 
   return (
     <div style={{ padding: '20px', maxWidth: '600px' }}>
       {/* Confidence Score */}
       <div className="glass-card" style={{ padding: '20px', marginBottom: '12px', textAlign: 'center' }}>
-        <div style={{ fontSize: '36px', fontWeight: '800', fontFamily: 'monospace', color: (intel.resume_confidence_score || 0) >= 70 ? '#22C55E' : (intel.resume_confidence_score || 0) >= 50 ? '#F59E0B' : '#EF4444' }}>
-          {intel.resume_confidence_score || 0}
+        <div style={{ fontSize: '36px', fontWeight: '800', fontFamily: 'monospace', color: !isScore(confidence) ? 'var(--text3)' : confidence >= 70 ? '#22C55E' : confidence >= 50 ? '#F59E0B' : '#EF4444' }}>
+          {isScore(confidence) ? confidence : '—'}
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>Resume Confidence Score</div>
       </div>
