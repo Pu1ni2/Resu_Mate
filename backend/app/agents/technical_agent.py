@@ -13,6 +13,10 @@ from typing import Dict, List, Any
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
+from app.services.scores import describe_average, is_number, score_of
+
+# What an answer that couldn't be scored says, instead of a made-up 5/10.
+UNSCORED = "This answer couldn't be scored."
 
 
 class TechnicalAgent(BaseAgent):
@@ -93,7 +97,11 @@ Return ONLY valid JSON:
                     elif part.startswith('{'): content = part; break
             return json.loads(content)
         except Exception as e:
-            return {"gaps": [], "verification_targets": [], "red_flags": [], "strong_points": [], "resume_confidence_score": 70}
+            # No made-up verdict: this used to say 70/100 confidence for a
+            # résumé nobody had looked at.
+            print(f"[WARN] resume gap analysis failed: {e}")
+            return {"gaps": [], "verification_targets": [], "red_flags": [], "strong_points": [],
+                    "resume_confidence_score": None, "analysis_failed": True}
 
     async def generate_smart_questions(self, role: str, level: str, num_questions: int = 8,
                                         focus_areas: list = None, candidate_name: str = "Candidate",
@@ -187,9 +195,8 @@ Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
         # Extract interview data
         report_text = interview_report.get("report", "")
         scores = interview_report.get("scores", [])
-        avg_score = interview_report.get("avgScore", 0)
-        if not avg_score and scores:
-            avg_score = sum(s.get("score", 0) for s in scores if isinstance(s, dict)) / max(len(scores), 1)
+        avg_score = interview_report.get("avgScore")
+        average_text = f"{avg_score:.1f}/10" if is_number(avg_score) else describe_average(scores)
 
         prompt = f"""Cross-reference this candidate's RESUME CLAIMS against their INTERVIEW PERFORMANCE.
 
@@ -200,8 +207,8 @@ RESUME CLAIMS:
 - Work History: {', '.join(f"{w.get('title','')} at {w.get('company','')}" for w in work_exp[:4])}
 
 INTERVIEW PERFORMANCE:
-- Average Score: {avg_score:.1f}/10
-- Per-Question Scores: {json.dumps([s.get('score', 0) if isinstance(s, dict) else 0 for s in scores])}
+- Average Score: {average_text}
+- Per-Question Scores: {json.dumps([score_of(s) for s in scores])}
 - Per-Question Feedback: {json.dumps([s.get('feedback', '') if isinstance(s, dict) else '' for s in scores[:8]])}
 - AI Report Excerpt: {report_text[:1500]}
 
@@ -238,14 +245,18 @@ ANALYZE and return ONLY valid JSON:
                     elif part.startswith('{'): content = part; break
             return json.loads(content)
         except Exception as e:
+            # No made-up verdict: this used to say 50/100, a level match and
+            # "Consider" when nothing had been assessed.
+            print(f"[WARN] credibility analysis failed: {e}")
             return {
-                "credibility_score": 50,
+                "credibility_score": None,
+                "analysis_failed": True,
                 "verdict": "Unable to assess",
                 "resume_vs_interview": {"confirmed_skills": [], "unverified_skills": [], "overrated_skills": [], "hidden_strengths": []},
-                "level_assessment": {"resume_claims": level, "interview_suggests": "Unknown", "match": True, "explanation": "Analysis unavailable"},
-                "key_insights": ["Credibility analysis could not be completed"],
-                "hiring_recommendation": "Consider",
-                "confidence_in_assessment": "Low"
+                "level_assessment": {"resume_claims": level, "interview_suggests": None, "match": None, "explanation": "Analysis unavailable"},
+                "key_insights": ["The credibility analysis could not be completed. Try again."],
+                "hiring_recommendation": None,
+                "confidence_in_assessment": None,
             }
 
     # ═══════ QUESTION GENERATION (Legacy) ═══════
@@ -332,14 +343,20 @@ Return EXACTLY:
 SCORE: [1-10]
 FEEDBACK: [one sentence]"""
 
-        content = await openai_tool.structured_call(prompt, "You are a fair interview evaluator. Score objectively.")
+        # An answer that can't be scored has no score. It used to get 5/10,
+        # and a failed request ended the interview's scoring with an error.
+        try:
+            content = await openai_tool.structured_call(prompt, "You are a fair interview evaluator. Score objectively.")
+        except Exception as e:
+            print(f"[WARN] answer scoring failed: {e}")
+            return {"score": None, "feedback": UNSCORED}
 
-        score = 5
-        feedback = "Answer noted."
-        score_match = re.search(r'SCORE:\s*(\d+)', content)
+        score = None
+        feedback = UNSCORED
+        score_match = re.search(r'SCORE:\s*(\d+)', content or '')
         if score_match:
             score = min(10, max(1, int(score_match.group(1))))
-        feedback_match = re.search(r'FEEDBACK:\s*(.+)', content)
+        feedback_match = re.search(r'FEEDBACK:\s*(.+)', content or '')
         if feedback_match:
             feedback = feedback_match.group(1).strip()
 
@@ -359,14 +376,13 @@ FEEDBACK: [one sentence]"""
             fb = s.get('feedback', '') if isinstance(s, dict) else ''
             qa_pairs += f"\nQ{i+1}: {q}\nAnswer: {a or '(no answer)'}\nScore: {score_val}/10 — {fb}\n"
 
-        avg = sum(s.get('score', 0) if isinstance(s, dict) else 0 for s in scores) / max(len(scores), 1)
 
         prompt = f"""Generate an interview evaluation report:
 
 Candidate: {candidate_name}
 Role: {role}
 Duration: {duration // 60}min {duration % 60}sec
-Average Score: {avg:.1f}/10
+Average Score: {describe_average(scores)}
 
 Questions & Answers:
 {qa_pairs}
