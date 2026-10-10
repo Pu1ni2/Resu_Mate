@@ -14,6 +14,10 @@ interviews_data.json
 interview_results.json
 agent_memory.json
 uploads/*.pdf
+# Database backups (backend/scripts/backup_db.py) hold candidates' personal
+# data. The repository is public: they must never be committed.
+backups/
+*.dump
 
 # Node
 node_modules/

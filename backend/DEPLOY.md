@@ -45,22 +45,52 @@ Symptom of a CORS lockout: browser console shows
 `No 'Access-Control-Allow-Origin' header is present` and the preflight OPTIONS
 returns 400.
 
-## Database
+## Database: back it up, because the free one expires
 
-Render **free Postgres expires after 90 days** and is deleted. When it's gone:
+Render deletes a **free Postgres database 30 days after it is created**. It
+emails a warning first, but nothing in the app can stop it. So back it up, and
+restore into a new database when it goes.
 
-1. Create a new Postgres (New + → PostgreSQL), same region as the backend.
-2. Wire its **Internal** connection string into the backend's `DATABASE_URL`
-   (the Blueprint does this via `fromDatabase` automatically; a manual service
-   needs it pasted into the dashboard).
-3. Migrations run automatically via the build command
-   (`pip install -r requirements.txt && alembic upgrade head`). On a manual
-   service, set that same Build Command in the dashboard.
-4. The DB is empty — re-register the hiring-manager account at
-   `/hiring/register`.
+### Every three weeks or so: back up
 
-To avoid recurrence: upgrade to Render Starter Postgres ($7/mo) or move to a
-free-tier Neon/Supabase Postgres and swap `DATABASE_URL`.
+From your own machine, with the PostgreSQL 16 client tools (`pg_dump`,
+`pg_restore`) installed:
+
+1. Render → `resumate-db` → **Connect** → copy the **External Database URL**.
+2. From the repository root:
+
+   ```
+   DATABASE_URL='<External Database URL>' python backend/scripts/backup_db.py backup
+   ```
+
+   This writes `backups/resumate-YYYY-MM-DD.dump` (`--out` picks another path;
+   `--pg-bin` points at the tools if they aren't on the PATH).
+
+A backup holds candidates' personal data. Keep it private: `backups/` and
+`*.dump` are git-ignored, so never force-add one, and never upload one as a CI
+artifact. The repository is public.
+
+### When the database expires (or before): restore
+
+1. Create a new Postgres (New + → PostgreSQL) in the same region as the backend.
+2. Restore the latest backup into it, with its **External** URL:
+
+   ```
+   DATABASE_URL='<new External Database URL>' python backend/scripts/backup_db.py restore backups/resumate-YYYY-MM-DD.dump
+   ```
+
+   It asks before replacing anything (`--yes` skips the question). The backup
+   carries the migration version, so the next deploy's `alembic upgrade head`
+   carries on from there.
+3. Point the backend's `DATABASE_URL` at the new database's **Internal** URL
+   and redeploy. The Blueprint does this through `fromDatabase` when the new
+   database is also named `resumate-db`; a manual service needs it pasted in.
+
+Without a backup the new database starts empty: the build command's
+`alembic upgrade head` creates the tables, and everyone signs up again.
+
+To stop the expiry altogether, use a paid Render Postgres, or a free Postgres
+elsewhere (Neon, Supabase) through `DATABASE_URL`.
 
 ## Required env vars (backend)
 
