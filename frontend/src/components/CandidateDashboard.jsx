@@ -15,8 +15,8 @@ import InterviewRoom from './InterviewRoom';
 import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
-import { clearCandidateSession, getCandidateToken } from '../services/session';
-import { API_BASE, candidateAuthHeaders as withCandidateToken } from '../services/authFetch';
+import { clearCandidateSession } from '../services/session';
+import { API_BASE, candidateFetch } from '../services/authFetch';
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -27,15 +27,11 @@ const Logo = ({ size = 32 }) => (
   </svg>
 );
 
-// Candidate-portal calls authenticate with the candidate session token minted at
-// OTP login. The server derives the candidate's identity from this token, so any
-// email in a request body is ignored — that is what stops one candidate reading
-// another's resume or report.
-function candidateAuthHeaders(extra = {}) {
-  // session.js reads storage safely; authFetch adds nothing when there is no
-  // token, never an empty "Bearer ".
-  return withCandidateToken(getCandidateToken(), extra);
-}
+// Candidate-portal calls go through candidateFetch, with the session token
+// minted at OTP login. The server derives the candidate's identity from this
+// token, so any email in a request body is ignored — that is what stops one
+// candidate reading another's resume or report. A 401 there means the sign-in
+// expired, and App.jsx sends them to sign in again.
 
 // Advisor replies are built from the candidate's resume, so they are rendered
 // through the sanitising Markdown component.
@@ -88,6 +84,32 @@ export default function CandidateDashboard() {
     }
   }, [candidateSession, navigate, setCandidateSession]);
 
+  // The saved session can be a day old: check the sign-in, which sends an
+  // expired one back to sign in (candidateFetch), and refresh the interview,
+  // which the manager may have set up or changed since.
+  useEffect(() => {
+    if (!candidateSession?.email) return;
+    (async () => {
+      try {
+        const resp = await candidateFetch(`${API_BASE}/api/chat/candidate/me`);
+        if (!resp.ok) return;
+        const me = await resp.json();
+        if (!me?.access || !aliveRef.current) return;
+        setCandidateSession(prev => {
+          if (!prev) return prev;
+          const updated = {
+            ...prev, name: me.name || prev.name, has_interview: me.has_interview,
+            interview_config: me.interview_config, interview_completed: me.interview_completed,
+          };
+          try { localStorage.setItem('resumate_candidate', JSON.stringify(updated)); } catch { /* storage unavailable */ }
+          return updated;
+        });
+      } catch { /* offline: keep the saved session */ }
+    })();
+    // Once per signed-in candidate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidateSession?.email]);
+
   // Advisor chat
   const [advisorMode, setAdvisorMode] = useState('general');
   const [advisorChatMap, setAdvisorChatMap] = useState({
@@ -114,11 +136,11 @@ export default function CandidateDashboard() {
       form.append('file', file);
       // The server takes the email from the session token, not this field.
       form.append('email', candidateSession?.email || '');
-      const resp = await fetch(`${API_BASE}/api/advisor/upload-resume`, {
+      const resp = await candidateFetch(`${API_BASE}/api/advisor/upload-resume`, {
         method: 'POST',
-        headers: candidateAuthHeaders(),
         body: form,
       });
+      if (resp.status === 401) return; // signed out; the sign-in page says why
       const data = await resp.json();
       if (data.success) {
         setAdvisorCandidates([data.data]);
@@ -141,11 +163,12 @@ export default function CandidateDashboard() {
     setDynamicSuggestions([]);
     setAdvisorTyping(true);
     try {
-      const resp = await fetch(`${API_BASE}/api/advisor/chat`, {
+      const resp = await candidateFetch(`${API_BASE}/api/advisor/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...candidateAuthHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: m, mode })
       });
+      if (resp.status === 401) return; // signed out; the sign-in page says why
       const data = await resp.json();
       setAdvisorChatMap(prev => ({ ...prev, [mode]: [...(prev[mode] || []), { role: 'assistant', content: data.reply || 'No response.' }] }));
       if (data.suggestions?.length > 0) setDynamicSuggestions(data.suggestions);
@@ -169,10 +192,11 @@ export default function CandidateDashboard() {
     // Runs from the confirm dialog, not window.confirm.
     setErasing(true);
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/candidate/delete-my-data`, {
+      const resp = await candidateFetch(`${API_BASE}/api/chat/candidate/delete-my-data`, {
         method: 'POST',
-        headers: candidateAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
       });
+      if (resp.status === 401) return; // signed out; the sign-in page says why
       if (!resp.ok) {
         toast('Could not delete your data. Please try again or contact the hiring team.', 'error');
         return;
@@ -191,7 +215,7 @@ export default function CandidateDashboard() {
   // (404), or when it can't be reached.
   const fetchMyReport = async () => {
     try {
-      const resp = await fetch(`${API_BASE}/api/chat/candidate/my-report`, { headers: candidateAuthHeaders() });
+      const resp = await candidateFetch(`${API_BASE}/api/chat/candidate/my-report`);
       if (!resp.ok) return null;
       return (await resp.json()).interview_report || null;
     } catch {
@@ -244,9 +268,9 @@ export default function CandidateDashboard() {
     // What the avatar room measured (violations, face reading, time). The
     // server keeps only those numbers from this, and writes the report itself.
     try {
-      await fetch(`${API_BASE}/api/chat/save-interview-result`, {
+      await candidateFetch(`${API_BASE}/api/chat/save-interview-result`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...candidateAuthHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: measured })
       });
     } catch { /* offline: the report request below shows it */ }
