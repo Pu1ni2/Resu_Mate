@@ -27,11 +27,6 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 # ── Request models ────────────────────────────────────────────────────────────
 
-class ParseJDRequest(BaseModel):
-    jd_text: str
-    role: str = ""
-
-
 class PipelineRunRequest(BaseModel):
     role: str
     jd_text: Optional[str] = None
@@ -66,14 +61,6 @@ class SendInvitesRequest(BaseModel):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
-
-@router.post("/parse-jd")
-@limiter.limit("20/minute")
-async def parse_jd(request: Request, req: ParseJDRequest, user=Depends(get_current_user)):
-    """Parse a job description into structured requirements."""
-    requirements = await ats_service.parse_jd(req.jd_text, req.role)
-    return {"requirements": requirements}
-
 
 @router.post("/run")
 @limiter.limit("10/hour")

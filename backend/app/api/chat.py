@@ -94,19 +94,6 @@ class ScanRequest(BaseModel):
     anonymize: bool = False
     candidate_data: Optional[dict] = None
 
-class GenerateQuestionsRequest(BaseModel):
-    role: str = Field(default="General", max_length=120)
-    level: str = Field(default="Mid-Level", max_length=60)
-    num_questions: int = Field(default=8, ge=1, le=25)
-    focus_areas: list = Field(default_factory=list, max_length=20)
-    candidate_name: str = Field(default="Candidate", max_length=200)
-
-class ScoreAnswerRequest(BaseModel):
-    question: str
-    answer: str
-    role: str = "General"
-    candidate_name: str = "Candidate"
-
 class InterviewReportRequest(BaseModel):
     candidate_name: str = Field(..., max_length=200)
     candidate_email: str = Field(..., max_length=320)
@@ -624,14 +611,6 @@ async def get_calendly_link(user=Depends(get_current_user)):
     except Exception:
         raise _failed("calendly link", "Couldn't reach Calendly. Please try again.")
 
-# ═══════ INTERVIEW → Technical Agent ═══════
-
-@router.post("/generate-interview-questions")
-@limiter.limit("10/minute")
-async def generate_interview_questions(request: Request, req: GenerateQuestionsRequest, user=Depends(get_current_user)):
-    questions = await technical_agent.generate_questions(req.role, req.level, req.num_questions, req.focus_areas, req.candidate_name)
-    return {"questions": questions}
-
 # ═══════ RESUME INTELLIGENCE ═══════
 
 class ResumeIntelRequest(BaseModel):
@@ -650,21 +629,6 @@ async def resume_intelligence(request: Request, req: ResumeIntelRequest, user=De
         raise HTTPException(404, "Candidate not found")
     intel = await technical_agent.analyze_resume_gaps(candidate)
     return {"intelligence": intel, "candidate_id": req.candidate_id}
-
-@router.post("/smart-questions")
-@limiter.limit("10/minute")
-async def smart_questions(request: Request, req: GenerateQuestionsRequest, user=Depends(get_current_user)):
-    """Generate interview questions informed by resume gap analysis."""
-    candidate_data = None
-    # Try to find candidate by name within THIS manager's candidates only
-    for c in resume_rag.get_all_candidates(manager_id=user.id):
-        if c.get("name", "").lower() == (req.candidate_name or "").lower():
-            candidate_data = c
-            break
-    result = await technical_agent.generate_smart_questions(
-        req.role, req.level, req.num_questions, req.focus_areas, req.candidate_name, candidate_data
-    )
-    return result
 
 @router.post("/credibility-analysis")
 @limiter.limit("10/minute")
@@ -776,11 +740,6 @@ RULES:
         return {"ranking": result, "total_candidates": len(candidates_data)}
     except Exception:
         raise _failed("automate ranking", "The ranking couldn't be completed. Please try again.")
-
-@router.post("/score-answer")
-@limiter.limit("30/minute")
-async def score_answer(request: Request, req: ScoreAnswerRequest, user=Depends(get_current_user)):
-    return await technical_agent.score_answer(req.question, req.answer, req.role, req.candidate_name)
 
 @router.post("/interview-report")
 @limiter.limit("10/minute")

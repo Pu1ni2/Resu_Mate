@@ -16,10 +16,6 @@ from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
 from app.services.scores import describe_average, is_number, score_of
 
-# What an answer that couldn't be scored says, instead of a made-up 5/10.
-UNSCORED = "This answer couldn't be scored."
-
-
 def clean_questions(questions) -> List[str]:
     """The model's questions as plain text: no numbering or bullets, no blanks."""
     out = []
@@ -270,109 +266,6 @@ ANALYZE and return ONLY valid JSON:
                 "hiring_recommendation": None,
                 "confidence_in_assessment": None,
             }
-
-    # ═══════ QUESTION GENERATION (Legacy) ═══════
-
-    async def generate_questions(self, role: str, level: str, num_questions: int = 8,
-                                  focus_areas: list = None, candidate_name: str = "Candidate") -> List[str]:
-        """Generate interview questions with planning and reflection"""
-        context = {"role": role, "level": level, "num_questions": num_questions,
-                   "focus_areas": focus_areas or [], "candidate_name": candidate_name}
-
-        self.logs = []
-        self.log("start", f"Generating {num_questions} questions for {level} {role}")
-
-        # Step 1: Research current trends
-        trends = ""
-        if tavily_tool.client:
-            self.log("research", f"Researching current trends for {role}...")
-            search = await tavily_tool.call({"query": f"{role} interview questions {date.today().year} trends", "max_results": 2})
-            trends = search.get("answer", "")
-            self.log("research_done", "Market research complete", "success")
-
-        # Step 2: Generate questions
-        focus_str = f"\nFocus areas: {', '.join(focus_areas)}" if focus_areas else ""
-        trends_str = f"\nCurrent trends: {trends[:300]}" if trends else ""
-
-        prompt = f"""Generate exactly {num_questions} interview questions for a {level} {role} position.
-{focus_str}{trends_str}
-
-RULES:
-- Mix: 40% technical, 30% behavioral, 30% situational
-- Start easy, increase difficulty gradually
-- Include 1-2 teamwork/collaboration questions
-- Include 1 question about handling challenges
-- Make questions specific to {role}, not generic
-- Questions should be conversational
-
-Return ONLY questions, one per line, no numbering."""
-
-        self.log("generate", "Generating questions via AI...")
-        content = await openai_tool.structured_call(prompt, "You are an expert interviewer. Generate clear, professional questions.")
-        questions = [q.strip() for q in content.strip().split('\n') if q.strip() and len(q.strip()) > 10][:num_questions]
-
-        # Step 3: Reflect on quality
-        self.log("reflect", "Checking question quality...")
-        reflect_prompt = f"""Review these {level} {role} interview questions:
-{chr(10).join(f'{i+1}. {q}' for i, q in enumerate(questions))}
-
-Are they: appropriate for {level} level? Covering technical + behavioral? Not too generic?
-Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
-
-        try:
-            reflect_resp = await openai_tool.structured_call(reflect_prompt, "You are a quality checker. Return ONLY JSON.")
-            reflection = json.loads(reflect_resp.strip().replace('```json', '').replace('```', ''))
-            self.log("reflect_done", f"Quality: {reflection.get('quality', 'ok')}", "success")
-        except:
-            pass
-
-        self.log("complete", f"Generated {len(questions)} questions", "success")
-        return questions
-
-    # ═══════ ANSWER SCORING ═══════
-
-    async def score_answer(self, question: str, answer: str, role: str = "General",
-                           candidate_name: str = "Candidate") -> Dict:
-        """Score an interview answer 1-10 with feedback"""
-        if not answer or len(answer.strip()) < 5:
-            return {"score": 1, "feedback": "No substantial answer provided."}
-
-        prompt = f"""Score this interview answer on a scale of 1-10.
-
-Role: {role}
-Question: "{question}"
-Answer: "{answer}"
-
-Scoring rubric:
-- Relevance to question (0-3 points)
-- Depth and detail (0-3 points)
-- Communication clarity (0-2 points)
-- Confidence and professionalism (0-2 points)
-
-Empty/noise = 1, Short but relevant = 4-6, Detailed and impressive = 7-10.
-
-Return EXACTLY:
-SCORE: [1-10]
-FEEDBACK: [one sentence]"""
-
-        # An answer that can't be scored has no score. It used to get 5/10,
-        # and a failed request ended the interview's scoring with an error.
-        try:
-            content = await openai_tool.structured_call(prompt, "You are a fair interview evaluator. Score objectively.")
-        except Exception as e:
-            print(f"[WARN] answer scoring failed: {e}")
-            return {"score": None, "feedback": UNSCORED}
-
-        score = None
-        feedback = UNSCORED
-        score_match = re.search(r'SCORE:\s*(\d+)', content or '')
-        if score_match:
-            score = min(10, max(1, int(score_match.group(1))))
-        feedback_match = re.search(r'FEEDBACK:\s*(.+)', content or '')
-        if feedback_match:
-            feedback = feedback_match.group(1).strip()
-
-        return {"score": score, "feedback": feedback}
 
     # ═══════ REPORT GENERATION ═══════
 

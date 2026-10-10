@@ -7,8 +7,6 @@ interview-trend searches asked for 2024.
 import asyncio
 from datetime import date
 
-import pytest
-
 
 def _run(coro):
     return asyncio.get_event_loop().run_until_complete(coro)
@@ -36,8 +34,7 @@ def test_the_salary_search_is_for_this_year():
     assert "2024" not in query
 
 
-@pytest.mark.parametrize("ask", ["smart", "plain"])
-def test_the_interview_trends_search_is_for_this_year(monkeypatch, ask):
+def test_the_interview_trends_search_is_for_this_year(monkeypatch):
     from app.agents.technical_agent import technical_agent
     from app.tools.openai_tool import openai_tool
     from app.tools.tavily_tool import tavily_tool
@@ -52,8 +49,5 @@ def test_the_interview_trends_search_is_for_this_year(monkeypatch, ask):
     monkeypatch.setattr(tavily_tool, "client", object())
     monkeypatch.setattr(tavily_tool, "call", call)
     monkeypatch.setattr(openai_tool, "structured_call", structured_call)
-    if ask == "smart":
-        _run(technical_agent.generate_smart_questions("Data Engineer", "Mid-Level", 2))
-    else:
-        _run(technical_agent.generate_questions("Data Engineer", "Mid-Level", 2))
+    _run(technical_agent.generate_smart_questions("Data Engineer", "Mid-Level", 2))
     assert queries == [f"Data Engineer interview questions {date.today().year} trends"]

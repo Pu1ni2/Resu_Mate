@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from app.agents.technical_agent import UNSCORED, technical_agent
+from app.agents.technical_agent import technical_agent
 from app.services.scores import average_score, describe_average, score_of
 from app.tools.openai_tool import openai_tool
 
@@ -68,18 +68,6 @@ def test_a_failed_credibility_analysis_has_no_score_or_recommendation(model):
     assert result["analysis_failed"] is True
 
 
-def test_an_answer_the_model_could_not_score_has_no_score(model):
-    model["reply"] = RuntimeError("model unavailable")
-    assert _run(technical_agent.score_answer("Q?", "A long enough answer.")) == {"score": None, "feedback": UNSCORED}
-    model["reply"] = "I'd rather not say."
-    assert _run(technical_agent.score_answer("Q?", "A long enough answer."))["score"] is None
-
-
-def test_a_scored_answer_keeps_its_score(model):
-    model["reply"] = "SCORE: 8\nFEEDBACK: Clear and specific."
-    assert _run(technical_agent.score_answer("Q?", "A long enough answer.")) == {"score": 8, "feedback": "Clear and specific."}
-
-
 # ── what the model is told ────────────────────────────────────────────────────
 
 def test_credibility_is_judged_on_the_scored_answers_only(model):
@@ -98,5 +86,5 @@ def test_an_interview_with_nothing_scored_is_described_so(model):
 def test_a_report_with_an_unscored_answer_still_writes(model):
     model["reply"] = "## Report"
     _run(technical_agent.generate_report("Ada", "ada@x.com", "Engineer", ["Q1", "Q2"], ["A1", "A2"],
-                                         [{"score": 9, "feedback": "good"}, {"score": None, "feedback": UNSCORED}]))
+                                         [{"score": 9, "feedback": "good"}, {"score": None, "feedback": "This answer couldn't be scored."}]))
     assert "Average Score: 9.0/10" in model["prompts"][0]

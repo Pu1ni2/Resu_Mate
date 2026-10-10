@@ -103,14 +103,14 @@ def test_sign_in_counts_per_address_on_the_real_routes(client, limits):
 # interview session. Nineteen of them had no limit at all.
 SPENDING = {
     "app.api.chat": ["get_intro", "speech_to_text", "text_to_speech", "focus_chat", "draft_email",
-                     "scan_resume", "resume_intelligence", "smart_questions", "credibility_analysis",
-                     "automate_ranking", "score_answer", "interview_report", "export_report_pdf",
+                     "scan_resume", "resume_intelligence", "credibility_analysis",
+                     "automate_ranking", "interview_report", "export_report_pdf",
                      "send_message", "web_search", "hiring_agent", "github_analyze",
-                     "generate_interview_questions", "create_interview"],
+                     "create_interview"],
     "app.api.jarvis": ["jarvis_chat"],
     "app.api.realtime": ["create_realtime_session", "checkpoint", "finalize"],
     "app.api.livekit_routes": ["create_room", "join_room"],
-    "app.api.pipeline": ["parse_jd", "run_pipeline", "batch_action"],
+    "app.api.pipeline": ["run_pipeline", "batch_action"],
     "app.api.advisor_agent": ["advisor_chat", "candidate_upload_resume"],
     "app.api.sourcer": ["start_run", "draft_outreach"],
     "app.api.candidates": ["upload_resume"],
