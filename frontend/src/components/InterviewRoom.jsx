@@ -202,9 +202,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         throw new Error('Failed to create LiveKit room. Check backend LiveKit credentials.');
       }
 
-      console.log('🏠 Room created:', roomData.room_name);
-      console.log('🔗 LiveKit URL:', roomData.livekit_url);
-
       // 3. Connect to LiveKit room
       const { Room, RoomEvent, Track } = await import('livekit-client');
       const room = new Room();
@@ -212,13 +209,11 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
       // Listen for agent joining (Simli avatar track)
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-        console.log('📹 Track subscribed:', track.kind, 'from', participant.identity);
         if (track.kind === Track.Kind.Video && participant.identity !== candidateName) {
           // This is the avatar's video track
           if (avatarVideoRef.current) {
             track.attach(avatarVideoRef.current);
             setAgentJoined(true);
-            console.log('🎭 Avatar video attached!');
           }
         }
         if (track.kind === Track.Kind.Audio && participant.identity !== candidateName) {
@@ -226,29 +221,21 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
           const audioEl = document.createElement('audio');
           audioEl.autoplay = true;
           track.attach(audioEl);
-          console.log('🔊 Avatar audio attached!');
         }
       });
 
       room.on(RoomEvent.ParticipantConnected, (participant) => {
-        console.log('👤 Participant joined:', participant.identity);
         if (participant.identity.includes('agent') || participant.identity.includes('simli')) {
           setAgentJoined(true);
         }
       });
 
-      room.on(RoomEvent.Disconnected, () => {
-        console.log('📴 Disconnected from room');
-      });
-
       // Connect
       await room.connect(roomData.livekit_url, roomData.token);
-      console.log('✅ Connected to LiveKit room');
 
       // Publish local camera + mic
       await room.localParticipant.setCameraEnabled(true);
       await room.localParticipant.setMicrophoneEnabled(true);
-      console.log('📷 Camera + mic published');
 
       // Enter fullscreen + go live
       await enterFullscreen();

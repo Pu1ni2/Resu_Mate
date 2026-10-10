@@ -530,11 +530,8 @@ export default function Dashboard() {
       await audio.play();
       
     } catch (err) {
-      if (err.name === 'AbortError') {
-        console.log('Speech request cancelled');
-      } else {
-        console.error('TTS error:', err);
-      }
+      // A cancelled request is the manager stopping playback, not an error.
+      if (err.name !== 'AbortError') console.error('TTS error:', err);
       setLoadingMsgIndex(null);
       setSpeakingMsgIndex(null);
     }
