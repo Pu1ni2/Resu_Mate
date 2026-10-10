@@ -107,4 +107,11 @@ describe('reaching the controls from a keyboard', () => {
     // "Jarvis is thinking…", so it cannot serve as the accessible name.
     expect(screen.getByLabelText('Message Jarvis')).toBeTruthy();
   });
+
+  it('the send button is labelled, not just an icon', () => {
+    renderJarvis();
+    // It shows once there is something to send.
+    fireEvent.change(screen.getByLabelText('Message Jarvis'), { target: { value: 'Rank them' } });
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeTruthy();
+  });
 });
