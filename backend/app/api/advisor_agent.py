@@ -143,7 +143,9 @@ async def candidate_upload_resume(
         metadata.update(json.loads(analysis.choices[0].message.content))
     except Exception as e:
         print(f"Analysis failed: {e}")
-        metadata.update({"predicted_role": "Professional", "experience_level": "Mid", "skills": [], "summary": "Resume uploaded."})
+        # Unknown, and marked so, rather than "Professional" at "Mid" level.
+        metadata.update({"predicted_role": None, "experience_level": None, "total_experience_years": None,
+                         "skills": [], "summary": "", "analysis_failed": True})
 
     # Persist to DB
     await state_service.update_advisor_session(db, email, resume_text=text[:8000], resume_metadata=metadata)

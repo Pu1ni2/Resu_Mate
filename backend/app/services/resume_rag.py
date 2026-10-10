@@ -469,11 +469,14 @@ BADGES (pick 2-3):
             
         except Exception as e:
             print(f"Error analyzing resume: {e}")
+            # Unknown, and marked so. This used to say "Professional",
+            # "Entry" and 0 years, which the cards showed as fact.
             return {
+                "analysis_failed": True,
                 "summary": f"{name}'s resume",
-                "total_experience_years": 0,
-                "predicted_role": "Professional",
-                "experience_level": "Entry",
+                "total_experience_years": None,
+                "predicted_role": None,
+                "experience_level": None,
                 "location": None,
                 "skills": [],
                 "education": [],
