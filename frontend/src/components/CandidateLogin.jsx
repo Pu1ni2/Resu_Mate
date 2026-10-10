@@ -130,6 +130,7 @@ export default function CandidateLogin() {
                   <input
                     type="email"
                     className="cl-input"
+                    aria-label="Email address"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
                     onKeyDown={e => { if (e.key === 'Enter') handleSendOTP(); }}
@@ -174,6 +175,7 @@ export default function CandidateLogin() {
                   <input
                     type="text"
                     className="cl-input"
+                    aria-label="Access code"
                     value={otp}
                     onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
                     onKeyDown={e => { if (e.key === 'Enter') handleVerifyOTP(); }}

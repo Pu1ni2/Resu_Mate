@@ -11,13 +11,13 @@ export default function WebSearchPanel({
         <div className="focus-search-input-wrap">
           <Search size={18} className="focus-search-icon" />
           <input
-            type="text" className="input focus-search-input"
+            type="text" className="input focus-search-input" aria-label="Search the web"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') onSearch(); }}
             placeholder="Search the web..."
           />
-          {searchQuery && <button className="focus-search-clear" onClick={() => setSearchQuery('')}><X size={14} /></button>}
+          {searchQuery && <button className="focus-search-clear" onClick={() => setSearchQuery('')} aria-label="Clear search"><X size={14} /></button>}
         </div>
         <button onClick={() => onSearch()} disabled={!searchQuery.trim() || searchLoading} className="btn btn-primary">
           {searchLoading ? <Loader size={18} className="spin" /> : <Search size={18} />}<span>Search</span>

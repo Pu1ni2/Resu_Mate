@@ -67,6 +67,7 @@ export default function ChatPanel({
         <input
           type="text"
           className="input chat-input"
+          aria-label={`Ask about ${displayName}`}
           value={chatInput}
           onChange={e => setChatInput(e.target.value)}
           onKeyDown={e => {
@@ -76,7 +77,7 @@ export default function ChatPanel({
           placeholder={!scanDone ? 'Scanning...' : isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : `Ask about ${displayName}...`}
           disabled={isTyping || isRecording || isTranscribing || !scanDone}
         />
-        <button onClick={() => onSend()} disabled={!chatInput.trim() || isTyping || !scanDone} className="btn btn-primary send-btn">
+        <button onClick={() => onSend()} disabled={!chatInput.trim() || isTyping || !scanDone} className="btn btn-primary send-btn" aria-label="Send">
           <Send size={18} />
         </button>
       </div>

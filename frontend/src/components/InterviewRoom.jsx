@@ -463,7 +463,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
           {/* Bottom controls */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '16px 24px', background: '#111118', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <button onClick={toggleMic} style={{ width: '52px', height: '52px', borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: muted ? '#EF4444' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+            <button onClick={toggleMic} aria-label="Mute microphone" aria-pressed={muted} style={{ width: '52px', height: '52px', borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: muted ? '#EF4444' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
               {muted ? <MicOff size={22} /> : <Mic size={22} />}
             </button>
             <button onClick={() => endInterview(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '30px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>

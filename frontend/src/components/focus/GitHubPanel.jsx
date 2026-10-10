@@ -10,7 +10,7 @@ export default function GitHubPanel({
       <div className="gh-search-bar glass-card">
         <Github size={18} />
         <input
-          type="text" className="input gh-search-input"
+          type="text" className="input gh-search-input" aria-label="GitHub username"
           value={ghUsername} onChange={e => setGhUsername(e.target.value)}
           placeholder="Enter GitHub username..."
           onKeyDown={e => { if (e.key === 'Enter' && ghUsername.trim()) onFetchGitHub(ghUsername.trim()); }}

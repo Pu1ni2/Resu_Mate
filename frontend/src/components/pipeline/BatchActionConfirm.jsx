@@ -128,7 +128,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        <button onClick={onClose} style={styles.closeBtn}><X size={16} /></button>
+        <button onClick={onClose} style={styles.closeBtn} aria-label="Close"><X size={16} /></button>
 
         <h3 style={styles.title}>
           <Zap size={18} style={{ color: 'var(--color-accent)' }} />
@@ -188,14 +188,14 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         {/* Interview config */}
         <div style={styles.configRow}>
           <div style={styles.configField}>
-            <label style={styles.label}>Level</label>
-            <select value={level} onChange={e => setLevel(e.target.value)} style={styles.select}>
+            <label style={styles.label} htmlFor="batch-level">Level</label>
+            <select id="batch-level" value={level} onChange={e => setLevel(e.target.value)} style={styles.select}>
               {['Entry-Level', 'Mid-Level', 'Senior', 'Lead'].map(l => <option key={l}>{l}</option>)}
             </select>
           </div>
           <div style={styles.configField}>
-            <label style={styles.label}>Questions</label>
-            <select value={numQuestions} onChange={e => setNumQuestions(+e.target.value)} style={styles.select}>
+            <label style={styles.label} htmlFor="batch-questions">Questions</label>
+            <select id="batch-questions" value={numQuestions} onChange={e => setNumQuestions(+e.target.value)} style={styles.select}>
               {[5, 8, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>

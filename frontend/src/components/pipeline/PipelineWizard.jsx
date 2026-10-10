@@ -85,24 +85,24 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
         </div>
 
         <div style={styles.formGroup}>
-          <label style={styles.label}>Role you&apos;re hiring for *</label>
-          <input style={styles.input} placeholder="e.g. Senior Backend Engineer"
+          <label style={styles.label} htmlFor="wizard-role">Role you&apos;re hiring for *</label>
+          <input id="wizard-role" style={styles.input} placeholder="e.g. Senior Backend Engineer"
             value={formData.role} onChange={e => setFormData(f => ({ ...f, role: e.target.value }))} />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Job Description <span style={{ color: 'var(--color-ink-subtle)' }}>(optional — paste for better ATS scoring)</span></label>
-          <textarea style={{ ...styles.input, height: 120, resize: 'vertical' }}
+          <label style={styles.label} htmlFor="wizard-jd">Job Description <span style={{ color: 'var(--color-ink-subtle)' }}>(optional — paste for better ATS scoring)</span></label>
+          <textarea id="wizard-jd" style={{ ...styles.input, height: 120, resize: 'vertical' }}
             placeholder="Paste your JD here..."
             value={formData.jdText} onChange={e => setFormData(f => ({ ...f, jdText: e.target.value }))} />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Must-have skills <span style={{ color: 'var(--color-ink-subtle)' }}>(comma-separated, optional)</span></label>
-          <input style={styles.input} placeholder="e.g. Python, React, AWS"
+          <label style={styles.label} htmlFor="wizard-skills">Must-have skills <span style={{ color: 'var(--color-ink-subtle)' }}>(comma-separated, optional)</span></label>
+          <input id="wizard-skills" style={styles.input} placeholder="e.g. Python, React, AWS"
             value={formData.skills} onChange={e => setFormData(f => ({ ...f, skills: e.target.value }))} />
         </div>
         <div style={styles.formGroup}>
-          <label style={styles.label}>Minimum experience (years) <span style={{ color: 'var(--color-ink-subtle)' }}>(0 to skip)</span></label>
-          <input style={{ ...styles.input, width: 120 }} type="number" min="0" placeholder="0"
+          <label style={styles.label} htmlFor="wizard-min-exp">Minimum experience (years) <span style={{ color: 'var(--color-ink-subtle)' }}>(0 to skip)</span></label>
+          <input id="wizard-min-exp" style={{ ...styles.input, width: 120 }} type="number" min="0" placeholder="0"
             value={formData.minExp} onChange={e => setFormData(f => ({ ...f, minExp: e.target.value }))} />
         </div>
 

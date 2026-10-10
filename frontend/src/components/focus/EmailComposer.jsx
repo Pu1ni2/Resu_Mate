@@ -103,23 +103,23 @@ export default function EmailComposer({ focusCandidate, agentResult, anonymize, 
         {emailType && !emailDrafting && (
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>To</label>
-              <input type="email" className="input" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="candidate@email.com" style={{ padding: '10px 14px' }} />
+              <label htmlFor="email-to" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>To</label>
+              <input id="email-to" type="email" className="input" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="candidate@email.com" style={{ padding: '10px 14px' }} />
             </div>
             {!showCcBcc && <button style={{ fontSize: '12px', color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '0' }} onClick={() => setShowCcBcc(true)}>+ Cc / Bcc</button>}
             {showCcBcc && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Cc</label><input type="text" className="input" value={emailCc} onChange={e => setEmailCc(e.target.value)} style={{ padding: '10px 14px' }} /></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Bcc</label><input type="text" className="input" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} style={{ padding: '10px 14px' }} /></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label htmlFor="email-cc" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Cc</label><input id="email-cc" type="text" className="input" value={emailCc} onChange={e => setEmailCc(e.target.value)} style={{ padding: '10px 14px' }} /></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label htmlFor="email-bcc" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Bcc</label><input id="email-bcc" type="text" className="input" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} style={{ padding: '10px 14px' }} /></div>
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Subject</label>
-              <input type="text" className="input" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} style={{ padding: '10px 14px' }} />
+              <label htmlFor="email-subject" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Subject</label>
+              <input id="email-subject" type="text" className="input" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} style={{ padding: '10px 14px' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Body</label>
-              <textarea className="input" value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={12} style={{ padding: '12px 14px', resize: 'vertical', lineHeight: '1.6' }} />
+              <label htmlFor="email-body" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Body</label>
+              <textarea id="email-body" className="input" value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={12} style={{ padding: '12px 14px', resize: 'vertical', lineHeight: '1.6' }} />
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '4px' }}>
               <button className="btn btn-ghost btn-sm" onClick={() => { setEmailType(''); setEmailBody(''); setEmailSubject(''); }}>New Draft</button>
