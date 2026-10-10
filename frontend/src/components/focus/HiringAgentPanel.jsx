@@ -93,12 +93,11 @@ export default function HiringAgentPanel({
         <div className="agent-loading">
           <Loader size={36} className="spin" />
           <h3>Evaluating candidate...</h3>
-          <div className="agent-loading-steps">
-            <p className="agent-step-item active">Analyzing resume data...</p>
-            <p className="agent-step-item">Searching online presence...</p>
-            <p className="agent-step-item">Matching against requirements...</p>
-            <p className="agent-step-item">Generating fit report...</p>
-          </div>
+          {/* Not a list of steps: the server reports none until it finishes,
+              and four fixed "steps" with the first lit never moved. */}
+          <p className="agent-step-item" role="status">
+            Reading the résumé and comparing it with the role. This can take up to a minute.
+          </p>
         </div>
       )}
 
