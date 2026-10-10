@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 # Fills in only what the environment doesn't already set. override=True let a
 # .env file overwrite real environment variables: a stray .env would beat the
@@ -97,8 +98,11 @@ async def _authorized_interview(db: AsyncSession, actor: Actor, candidate_email:
     if not email:
         raise HTTPException(status_code=400, detail="candidate_email is required")
 
+    # With its candidate: create_room reads interview.candidate for the name
+    # when the request has none, and loading it lazily crashed the request.
     result = await db.execute(
         select(Interview)
+        .options(selectinload(Interview.candidate))
         .where(Interview.candidate_email == email)
         .order_by(Interview.created_at.desc())
     )

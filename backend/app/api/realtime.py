@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.core.rate_limit import limiter
 
 from app.core.config import settings
@@ -132,7 +133,11 @@ async def _authorized_interview(db: AsyncSession, actor: Actor, interview_id: in
     matched on manager_id. Mismatches 404 rather than 403 so the response does
     not confirm that an interview with that id exists elsewhere.
     """
-    result = await db.execute(select(Interview).where(Interview.id == interview_id))
+    # With its candidate: reading interview.candidate later would load it
+    # lazily, which an async session can't do, and the request crashed.
+    result = await db.execute(
+        select(Interview).options(selectinload(Interview.candidate)).where(Interview.id == interview_id)
+    )
     interview = result.scalar_one_or_none()
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
