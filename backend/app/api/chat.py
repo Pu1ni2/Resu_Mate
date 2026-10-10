@@ -298,6 +298,11 @@ async def focus_chat(request: Request, req: FocusChatRequest, user=Depends(get_c
             search_result = await research_agent.search_for_chat(req.message, candidate_name)
             web_context = search_result.get("web_context", "")
             web_sources = search_result.get("sources", [])
+            # Tell the model the search didn't happen, so it says so instead
+            # of answering as though it had looked.
+            if search_result.get("unavailable"):
+                web_context = (f" (No web search was done: {search_result['unavailable']} "
+                               "If the question needs the web, say you couldn't search.)")
 
         # Build scan data context
         scan_context = ""

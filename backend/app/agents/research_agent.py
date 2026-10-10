@@ -7,10 +7,30 @@ Handles:
 3. Candidate research and fact-checking
 """
 import json
-from typing import Dict, List, Any
+import logging
+from typing import Dict, List, Any, Optional
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
+
+logger = logging.getLogger("resumate.research")
+
+
+def search_problem(result: Dict) -> Optional[str]:
+    """What to tell the person when the search itself didn't happen, or None.
+
+    A search that isn't set up, or failed, came back as an empty list, which
+    read as "there is nothing about this person online".
+    """
+    error = (result or {}).get("error")
+    if not error:
+        return None
+    if "not configured" in error:
+        return "Web search isn't set up on this server."
+    if "timeout" in error:
+        return "The web search timed out. Please try again."
+    logger.warning("web search failed: %s", error)
+    return "The web search failed. Please try again."
 
 
 class ResearchAgent(BaseAgent):
@@ -57,6 +77,10 @@ class ResearchAgent(BaseAgent):
 
         self.log("search", f"Searching: {search_query[:60]}...")
         result = await tavily_tool.call({"query": search_query, "max_results": 5})
+        problem = search_problem(result)
+        if problem:
+            self.log("search_failed", problem, "warning")
+            return {"web_context": "", "sources": [], "unavailable": problem}
 
         web_context = ""
         sources = []
@@ -74,6 +98,9 @@ class ResearchAgent(BaseAgent):
     async def standalone_search(self, query: str, candidate_id: int = None, candidate_name: str = None) -> Dict:
         """Standalone web search endpoint"""
         result = await tavily_tool.call({"query": query, "max_results": 5, "search_depth": "basic"})
+        problem = search_problem(result)
+        if problem:
+            return {"results": [], "error": problem}
 
         results = []
         if result.get("answer"):
