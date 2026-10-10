@@ -13,6 +13,7 @@ import {
   Phone, PhoneOff
 } from 'lucide-react';
 import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
+import InterviewConsent from './shared/InterviewConsent';
 
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
@@ -20,6 +21,7 @@ const MAX_VIOLATIONS = 3;
 
 export default function InterviewRoom({ config, candidateName, candidateEmail, onComplete, onExit }) {
   const [phase, setPhase] = useState('setup'); // setup | connecting | live | ended
+  const [consented, setConsented] = useState(false);
   const [timer, setTimer] = useState(0);
 
   // LiveKit state
@@ -177,10 +179,16 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         body: JSON.stringify({
           candidate_email: candidateEmail,
           candidate_name: candidateName,
-          interview_config: config || {}
+          interview_config: config || {},
+          consent: true,
         })
       });
-      const roomData = await roomResp.json();
+      const roomData = await roomResp.json().catch(() => ({}));
+      // The server's reason, such as a finished interview: every refusal
+      // read as missing LiveKit credentials.
+      if (!roomResp.ok) {
+        throw new Error(typeof roomData.detail === 'string' ? roomData.detail : `The interview room could not be created (${roomResp.status}).`);
+      }
 
       if (!roomData.token || !roomData.livekit_url) {
         throw new Error('Failed to create LiveKit room. Check backend LiveKit credentials.');
@@ -334,6 +342,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
               ))}
             </div>
 
+            <InterviewConsent video checked={consented} onChange={setConsented} />
+
             {setupError && (
               <div
                 role="alert"
@@ -357,7 +367,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button onClick={onExit} style={{ padding: '14px 24px', background: 'none', color: '#71717A', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={() => { setSetupError(null); startInterview(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={() => { setSetupError(null); startInterview(); }} disabled={!consented} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: consented ? 'pointer' : 'not-allowed', opacity: consented ? 1 : 0.5, fontFamily: 'inherit' }}>
                 <Phone size={18} /> {setupError ? 'Try again' : 'Join Interview'}
               </button>
             </div>

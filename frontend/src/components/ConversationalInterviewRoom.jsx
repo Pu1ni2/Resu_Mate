@@ -16,6 +16,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, PhoneOff, Loader, AlertCircle } from 'lucide-react';
 import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
+import InterviewConsent from './shared/InterviewConsent';
 
 const OPENAI_REALTIME_URL = 'https://api.openai.com/v1/realtime';
 
@@ -31,6 +32,7 @@ export default function ConversationalInterviewRoom({
   onExit,
 }) {
   const [phase, setPhase] = useState('setup'); // setup | connecting | live | ended
+  const [consented, setConsented] = useState(false);
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState(null);
   const [turns, setTurns] = useState([]); // [{role, text, ts}]
@@ -259,6 +261,7 @@ export default function ConversationalInterviewRoom({
         body: JSON.stringify({
           interview_id: interviewId,
           candidate_email: candidateEmail,
+          consent: true,
         }),
       });
       if (!tokenResp.ok) {
@@ -437,12 +440,15 @@ export default function ConversationalInterviewRoom({
               </div>
             </div>
           )}
+          <InterviewConsent checked={consented} onChange={setConsented} />
           <button
             onClick={start}
+            disabled={!consented}
             className="btn btn-primary"
             style={{
               padding: '14px 32px', borderRadius: 8, fontSize: 15, fontWeight: 600,
-              background: '#22C55E', color: '#0B0B12', border: 'none', cursor: 'pointer',
+              background: '#22C55E', color: '#0B0B12', border: 'none',
+              cursor: consented ? 'pointer' : 'not-allowed', opacity: consented ? 1 : 0.5,
               display: 'inline-flex', alignItems: 'center', gap: 8,
             }}
           >
