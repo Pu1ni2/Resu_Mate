@@ -19,14 +19,14 @@ def test_login_wrong_password_rejected(client):
 def test_duplicate_email_rejected(client):
     register(client, "dup@co.com")
     r = client.post("/api/auth/register", json={
-        "name": "X", "email": "dup@co.com", "password": "pw12345678",
+        "name": "X", "email": "dup@co.com", "password": "pw12345678", "accept_terms": True,
     })
     assert r.status_code == 400
 
 
 def test_short_password_rejected(client):
     r = client.post("/api/auth/register", json={
-        "name": "X", "email": "short@co.com", "password": "abc",
+        "name": "X", "email": "short@co.com", "password": "abc", "accept_terms": True,
     })
     assert r.status_code == 400
 
