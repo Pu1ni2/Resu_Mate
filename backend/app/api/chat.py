@@ -24,7 +24,7 @@ from app.services import db_service
 from app.services import interview_modes
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
-from app.agents.technical_agent import technical_agent
+from app.agents.technical_agent import clean_questions, technical_agent
 from app.agents.research_agent import research_agent
 from app.tools.openai_tool import openai_tool
 from app.tools.voice_tool import voice_tool
@@ -942,13 +942,26 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
     if interview is None:
         raise HTTPException(500, "Could not save the interview. Please try again.")
 
-    # Generate resume intelligence for smart interview questions
+    # Questions for this candidate and role, and what in the résumé to check,
+    # kept on the interview. The analysis used to be made and thrown away: the
+    # voice interview reads interview.questions and room_config, both empty, so
+    # every voice interview asked the same five generic questions.
     resume_intel = None
     try:
-        resume_intel = await technical_agent.analyze_resume_gaps(candidate)
-        print(f"[OK] Resume intelligence generated: {len(resume_intel.get('verification_targets', []))} targets")
+        generated = await technical_agent.generate_smart_questions(
+            interview.role, interview.level, req.num_questions, req.focus_areas or [],
+            req.candidate_name or candidate.get("name") or "the candidate", candidate,
+        )
+        resume_intel = generated.get("resume_intelligence")
+        questions = clean_questions(generated.get("questions"))[:req.num_questions]
+        if questions:
+            interview.questions = questions
+        if isinstance(resume_intel, dict) and not resume_intel.get("analysis_failed"):
+            interview.room_config = {**(interview.room_config or {}), "resume_intelligence": resume_intel}
+        await db.commit()
     except Exception as e:
-        print(f"[WARN] Resume intel failed: {e}")
+        # The interview stands: the voice interview falls back to its own questions.
+        logger.warning("interview questions could not be generated: %s", e)
 
     config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",

@@ -19,6 +19,17 @@ from app.services.scores import describe_average, is_number, score_of
 UNSCORED = "This answer couldn't be scored."
 
 
+def clean_questions(questions) -> List[str]:
+    """The model's questions as plain text: no numbering or bullets, no blanks."""
+    out = []
+    for q in questions or []:
+        if isinstance(q, str):
+            q = re.sub(r"^\s*(?:\d+[.)]|[-*•])\s*", "", q).strip()
+            if q:
+                out.append(q)
+    return out
+
+
 class TechnicalAgent(BaseAgent):
     def __init__(self):
         super().__init__(
