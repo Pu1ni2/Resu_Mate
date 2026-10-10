@@ -28,6 +28,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.candidate import CandidateAccess, Interview
 from app.services import db_service
+from app.services.consent import require_consent
 from app.services.auth import Actor, get_current_actor
 
 logger = logging.getLogger("resumate.realtime")
@@ -57,6 +58,8 @@ ALLOWED_VOICES = {
 class RealtimeSessionRequest(BaseModel):
     interview_id: int = Field(..., description="Interview row id created beforehand")
     candidate_email: str = Field(..., max_length=320)
+    # The candidate confirmed they understand how the interview works.
+    consent: bool = False
 
 
 class RealtimeSessionResponse(BaseModel):
@@ -195,6 +198,7 @@ async def create_realtime_session(
     # It now takes either, and the ownership check lives in one place.
     interview = await _authorized_interview(db, actor, req.interview_id)
     _refuse_if_completed(interview)
+    require_consent(interview, req.consent)
     email = (interview.candidate_email or "").strip().lower()
 
     # Resolve the candidate's display name (falls back to access table or email local part).

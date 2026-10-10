@@ -151,6 +151,7 @@ def test_with_a_worker_a_room_opens_without_a_name_in_the_request(client, worker
     tok, _ = register(client, "m7@co.com")
     cid, mid = _own_candidate(client, tok, "c7@x.com")
     _run(_interview(mid, cid, "c7@x.com", mode="avatar"))
-    r = client.post("/api/livekit/create-room", headers=_cand("c7@x.com"), json={"candidate_email": "c7@x.com"})
+    r = client.post("/api/livekit/create-room", headers=_cand("c7@x.com"),
+                    json={"candidate_email": "c7@x.com", "consent": True})
     assert r.status_code == 200, r.text
     assert r.json()["token"]

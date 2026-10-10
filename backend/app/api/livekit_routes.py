@@ -26,6 +26,7 @@ from app.core.rate_limit import limiter
 from app.models.candidate import Interview
 from app.services.auth import Actor, get_current_actor, verify_agent_token
 from app.services import interview_modes
+from app.services.consent import require_consent
 
 router = APIRouter(prefix="/api/livekit", tags=["livekit"])
 
@@ -76,6 +77,8 @@ class CreateRoomRequest(BaseModel):
     candidate_email: str = Field(default="", max_length=320)
     candidate_name: str = Field(default="", max_length=200)
     interview_config: dict = Field(default_factory=dict)
+    # The candidate confirmed they understand how the interview works.
+    consent: bool = False
 
 
 class JoinRoomRequest(BaseModel):
@@ -144,6 +147,7 @@ async def create_room(
         detail = ("This interview runs voice-only." if interview_modes.avatar_available()
                   else "Avatar interviews aren't set up on this server, so this interview runs voice-only.")
         raise HTTPException(status_code=409, detail=detail)
+    require_consent(interview, req.consent)
     candidate_email = (interview.candidate_email or "").strip().lower()
     candidate_name = (
         req.candidate_name
