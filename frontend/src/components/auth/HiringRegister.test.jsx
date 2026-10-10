@@ -190,3 +190,24 @@ describe('creating the account', () => {
     expect(alert.textContent).toMatch(/too many attempts/i);
   });
 });
+
+describe('the agreement', () => {
+  it('is needed to sign up', async () => {
+    const post = vi.spyOn(api, 'post');
+    setup();
+    fill({ agree: false });
+    submit();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/agree to the terms and the privacy policy/i);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('links to the Terms and the Privacy Policy, in a new tab so the form keeps its text', () => {
+    setup();
+    const terms = screen.getByRole('link', { name: 'Terms' });
+    const privacy = screen.getByRole('link', { name: 'Privacy Policy' });
+    expect([terms.getAttribute('href'), privacy.getAttribute('href')]).toEqual(['/terms', '/privacy']);
+    expect([terms.target, privacy.target]).toEqual(['_blank', '_blank']);
+  });
+});
