@@ -10,6 +10,7 @@ import HiringRegister from './components/auth/HiringRegister';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { wakeServer } from './services/wake';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
 // Lazy: an unlisted comparison page must not cost the product bundle anything.
 const StyleLab = lazy(() => import('./components/landing/StyleLab'));
@@ -46,6 +47,9 @@ function CandidateUnauthorizedHandler() {
 }
 
 export default function App() {
+  // Wake the backend now, and say so if it is slow to start (services/wake.js).
+  useEffect(() => { wakeServer(); }, []);
+
   return (
     <>
     <UnauthorizedHandler />
