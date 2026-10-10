@@ -421,7 +421,7 @@ export default function Dashboard() {
       data = await response.json();
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      throw new Error('Invalid response from server');
+      throw new Error('Invalid response from server', { cause: parseError });
     }
 
     if (data.error) {

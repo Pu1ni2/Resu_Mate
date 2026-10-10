@@ -248,7 +248,8 @@ export default function ConversationalInterviewRoom({
         throw new Error(
           err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
             ? 'Microphone permission denied'
-            : `Microphone unavailable: ${err?.message || 'unknown error'}`
+            : `Microphone unavailable: ${err?.message || 'unknown error'}`,
+          { cause: err },
         );
       }
       micStreamRef.current = micStream;
