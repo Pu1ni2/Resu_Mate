@@ -297,22 +297,6 @@ export default function Dashboard() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  useEffect(() => {
-    if (pendingAutoSpeak && messages.length > 0 && !isTyping) {
-      const lastMsg = messages[messages.length - 1];
-      if (lastMsg.role === 'assistant') {
-        speakText(lastMsg.content, messages.length - 1);
-        setPendingAutoSpeak(false);
-      }
-    }
-  }, [messages, isTyping, pendingAutoSpeak]);
-
-  useEffect(() => {
-    return () => {
-      stopSpeaking();
-    };
-  }, []);
-
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
       try {
@@ -528,6 +512,23 @@ export default function Dashboard() {
       setSpeakingMsgIndex(null);
     }
   }, [speakingMsgIndex, stopSpeaking]);
+
+  // Below speakText and stopSpeaking, so these can list them.
+  useEffect(() => {
+    if (pendingAutoSpeak && messages.length > 0 && !isTyping) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.role === 'assistant') {
+        speakText(lastMsg.content, messages.length - 1);
+        setPendingAutoSpeak(false);
+      }
+    }
+  }, [messages, isTyping, pendingAutoSpeak, speakText]);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, [stopSpeaking]);
 
   const handleClearChat = () => {
     stopSpeaking();

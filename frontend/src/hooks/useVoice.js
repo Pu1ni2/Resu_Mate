@@ -208,7 +208,7 @@ export default function useVoice({
       setSpeakingMsgIndex(null);
       // Don't call onSpeakingDone on abort — user interrupted intentionally
     }
-  }, [speakingMsgIndex, stopSpeaking, apiBase, onSpeakingDone, onTranscribeFail]);
+  }, [speakingMsgIndex, stopSpeaking, startBargeInDetection, stopBargeInDetection, apiBase, onSpeakingDone, onTranscribeFail]);
 
   // ── STT ───────────────────────────────────────────────────────────────────────
   const transcribeAudio = useCallback(async (audioBlob) => {

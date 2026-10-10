@@ -22,6 +22,9 @@ import Logo from './ui/Logo';
 const InterviewRoom = lazy(() => import('./InterviewRoom'));
 const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterviewRoom'));
 
+// One empty list, so an effect that watches the messages doesn't re-run on every render.
+const NO_MESSAGES = [];
+
 // Candidate-portal calls go through candidateFetch, with the session token
 // minted at OTP login. The server derives the candidate's identity from this
 // token, so any email in a request body is ignored — that is what stops one
@@ -113,7 +116,7 @@ export default function CandidateDashboard() {
   const [advisorTyping, setAdvisorTyping] = useState(false);
   const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
 
-  const advisorMessages = advisorChatMap[advisorMode] || [];
+  const advisorMessages = advisorChatMap[advisorMode] || NO_MESSAGES;
   const modeSuggestions = {
     general: ['Review my resume', 'Help me prepare for interviews', 'What career advice do you have?'],
     resume_coach: ['What are the weak spots in my resume?', 'How can I make it ATS-friendly?', 'Suggest better bullet points'],

@@ -21,10 +21,9 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   // What the server did: { mode, inviteSent, inviteError, portalLink }.
   const [created, setCreated] = useState(null);
 
+  // The address the scan found, unless one has been typed already.
   useEffect(() => {
-    if (scanContact?.email && !interviewEmail) {
-      setInterviewEmail(scanContact.email);
-    }
+    if (scanContact?.email) setInterviewEmail(current => current || scanContact.email);
   }, [scanContact]);
 
   const createInterview = async () => {
