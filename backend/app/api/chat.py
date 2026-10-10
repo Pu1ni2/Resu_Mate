@@ -1240,33 +1240,33 @@ async def export_report_pdf(request: Request, email: str, user=Depends(get_curre
     Auth + ownership required — previously this was public and any email could
     be guessed to download a candidate's full report (resume + interview).
     """
-    from fpdf import FPDF
+    from app.services.pdf_safe import ReportPDF, ascii_filename
+    from app.services.resume_rag import primary_email
+    from app.services.scores import score_of
     import re as re_mod
 
     email = email.strip().lower()
     interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
 
-    # Find candidate data within THIS manager's drawer only.
-    candidate = None
-    for c in resume_rag.get_all_candidates(manager_id=user.id):
-        emb_email = (c.get('embedded_links', {}) or {}).get('email', '') or ''
-        if email in (c.get('text', '') or '').lower() or email == emb_email.lower():
-            candidate = c
-            break
+    # Find candidate data within THIS manager's drawer only, by the résumé's
+    # own address. "The address appears in the text" picked john@x.com's
+    # résumé for hn@x.com, or whoever named this person as a reference.
+    candidate = next(
+        (c for c in resume_rag.get_all_candidates(manager_id=user.id) if primary_email(c) == email), None
+    )
 
     if not interview and not candidate:
         raise HTTPException(404, "No data found for this email")
 
-    # Parse interview report
-    report_data = {}
-    if interview and interview.report:
-        try:
-            report_data = json.loads(interview.report) if isinstance(interview.report, str) else interview.report
-        except:
-            report_data = {"report": interview.report}
+    # The report as the candidate and the manager's screens read it: its
+    # text, the scores (from the column, where they are saved), their
+    # average or None, and the duration.
+    report_data = db_service.candidate_report(interview) if interview else {}
 
     # Build PDF
-    pdf = FPDF()
+    # Text it can't draw is replaced: an em dash in the AI's report or a
+    # name in another script crashed the export.
+    pdf = ReportPDF()
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
 
@@ -1346,18 +1346,24 @@ async def export_report_pdf(request: Request, email: str, user=Depends(get_curre
         pdf.set_font("Helvetica", "", 10)
         pdf.cell(0, 6, f"Role: {interview.role or 'General'}  |  Level: {interview.level or 'Mid-Level'}  |  Status: Completed", new_x="LMARGIN", new_y="NEXT")
 
-        scores = report_data.get("scores", [])
-        avg = report_data.get("avgScore", 0)
-        if not avg and scores:
-            avg = sum(s.get("score", 0) for s in scores if isinstance(s, dict)) / max(len(scores), 1)
+        scores = report_data.get("scores") or []
+        avg = report_data.get("avgScore")
+        # "—" when nothing was scored: this printed 0.0/10.
+        avg_text = f"{avg:.1f}/10" if isinstance(avg, (int, float)) else "—"
 
-        dur = report_data.get("timer", interview.duration or 0)
-        eye = report_data.get("eyeContact", 0)
-        viol = report_data.get("violations", 0)
+        dur = int(report_data.get("timer") or 0)
+        stats_parts = [f"Avg Score: {avg_text}"]
+        # The room's face tracking says whether a face was in view, not where
+        # anyone was looking. Only an avatar interview measures it.
+        if report_data.get("eyeContact") is not None:
+            stats_parts.append(f"Face in view: {report_data['eyeContact']}%")
+        if report_data.get("violations") is not None:
+            stats_parts.append(f"Violations: {report_data['violations']}")
+        stats_parts.append(f"Duration: {dur // 60}m {dur % 60}s")
 
         pdf.ln(2)
         pdf.set_font("Helvetica", "B", 10)
-        stats = f"Avg Score: {avg:.1f}/10  |  Eye Contact: {eye}%  |  Violations: {viol}  |  Duration: {dur // 60}m {dur % 60}s"
+        stats = "  |  ".join(stats_parts)
         pdf.cell(0, 6, stats, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(3)
 
@@ -1366,11 +1372,12 @@ async def export_report_pdf(request: Request, email: str, user=Depends(get_curre
             pdf.set_font("Helvetica", "B", 10)
             pdf.cell(0, 6, "Score Breakdown:", new_x="LMARGIN", new_y="NEXT")
             for i, s in enumerate(scores):
-                if isinstance(s, dict):
-                    sc = s.get("score", 0)
-                    fb = s.get("feedback", "")
-                    pdf.set_font("Helvetica", "", 9)
-                    pdf.cell(0, 5, f"  Q{i+1}: {sc}/10 - {fb}", new_x="LMARGIN", new_y="NEXT")
+                sc = score_of(s)
+                fb = s.get("feedback", "") if isinstance(s, dict) else ""
+                pdf.set_font("Helvetica", "", 9)
+                # multi_cell: long feedback ran off the page in a cell.
+                pdf.multi_cell(0, 5, f"  Q{i+1}: {f'{sc}/10' if sc is not None else '—'} - {fb}".rstrip(" -"),
+                               new_x="LMARGIN", new_y="NEXT")
             pdf.ln(3)
 
         # Report text
@@ -1387,7 +1394,9 @@ async def export_report_pdf(request: Request, email: str, user=Depends(get_curre
 
     # Return PDF
     pdf_bytes = pdf.output()
-    name = (candidate or {}).get("name", email).replace(" ", "-")
+    # ASCII only: a header can't carry another script, and a name like 李
+    # made the download fail.
+    name = ascii_filename((candidate or {}).get("name") or email.split("@")[0], fallback="candidate")
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
