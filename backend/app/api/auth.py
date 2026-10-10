@@ -1,14 +1,16 @@
 """Auth API — register, login, refresh, OTP for candidates"""
+import hmac
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Request
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.rate_limit import limiter
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.auth import HiringManager, OTPCode
 from app.models.candidate import CandidateAccess
@@ -20,7 +22,9 @@ from app.services.auth import (
     create_access_token,
     create_refresh_token,
     create_candidate_token,
+    create_reset_token,
     decode_token,
+    password_fingerprint,
     get_current_user,
 )
 
@@ -48,6 +52,13 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., max_length=320)
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., max_length=2000)
+    password: str = Field(..., max_length=200)
 
 class SendOTPRequest(BaseModel):
     email: str
@@ -139,6 +150,61 @@ async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db))
 
     access_token = create_access_token({"sub": str(manager.id)})
     return {"access_token": access_token, "token_type": "bearer", "expires_in": 1800}
+
+
+# The same answer for every address, so it doesn't tell who has an account.
+FORGOT_PASSWORD_ANSWER = "If there's an account for that address, we've emailed it a link to reset the password."
+RESET_LINK_INVALID = "This reset link has expired or was already used. Ask for a new one."
+
+
+@router.post("/forgot-password")
+@limiter.limit("5/hour")
+async def forgot_password(
+    request: Request, req: ForgotPasswordRequest, background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """Email a manager a link to choose a new password.
+
+    There was no way back into an account with a forgotten password. The
+    answer is the same whether or not the address has an account, and the
+    email goes out after the response, so neither the words nor the time
+    taken tell.
+    """
+    email = req.email.lower().strip()
+    manager = (await db.execute(select(HiringManager).where(HiringManager.email == email))).scalar_one_or_none()
+    answer = {"message": FORGOT_PASSWORD_ANSWER}
+    if manager and manager.is_active:
+        from app.services.email_service import email_service
+        link = f"{settings.frontend_url.rstrip('/')}/hiring/reset?token={create_reset_token(manager)}"
+        background.add_task(email_service.send_password_reset, manager.email, link)
+        if settings.debug and not email_service.configured:
+            # Local development without email, as send-otp's debug_code.
+            answer["debug_reset_link"] = link
+    return answer
+
+
+@router.post("/reset-password")
+@limiter.limit("10/hour")
+async def reset_password(request: Request, req: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Set a new password with the link from forgot-password. A link works once."""
+    try:
+        payload = decode_token(req.token)
+    except HTTPException:
+        raise HTTPException(status_code=400, detail=RESET_LINK_INVALID)
+    subject = str(payload.get("sub") or "")
+    if payload.get("type") != "reset" or not subject.isdigit():
+        raise HTTPException(status_code=400, detail=RESET_LINK_INVALID)
+    manager = (await db.execute(select(HiringManager).where(HiringManager.id == int(subject)))).scalar_one_or_none()
+    # The fingerprint no longer matches once the password has changed.
+    if not manager or not manager.is_active or not hmac.compare_digest(
+        str(payload.get("fp") or ""), password_fingerprint(manager.password_hash)
+    ):
+        raise HTTPException(status_code=400, detail=RESET_LINK_INVALID)
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    manager.password_hash = get_password_hash(req.password)
+    await db.commit()
+    return {"message": "Password changed. You can sign in with it now."}
 
 
 @router.get("/me")

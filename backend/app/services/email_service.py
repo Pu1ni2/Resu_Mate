@@ -85,6 +85,23 @@ class EmailService:
         """
         return await self.send(to_email, f"Interview Invitation: {role}", body)
 
+    async def send_password_reset(self, to_email: str, reset_url: str) -> bool:
+        link = html.escape(reset_url)
+        body = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Reset your ResuMate password</h2>
+          <p>Someone asked to reset the password for this address. If it was you, choose a new one:</p>
+          <p>
+            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
+              Choose a new password
+            </a>
+          </p>
+          <p style="color:#6B7280;">The link works once, for 30 minutes. If you didn't ask, ignore this email: your password stays as it is.</p>
+          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
+        </div>
+        """
+        return await self.send(to_email, "Reset your ResuMate password", body)
+
     async def send_email_draft(self, to_email: str, subject: str, body: str, login_url: str = "") -> bool:
         """A plain-text email the manager reviewed, sent as written.
 

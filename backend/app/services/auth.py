@@ -54,6 +54,31 @@ def create_candidate_token(email: str) -> str:
     }
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
+# ── Password reset ────────────────────────────────────────────────────────────
+
+RESET_TOKEN_MINUTES = 30
+
+
+def password_fingerprint(password_hash: str) -> str:
+    """A short keyed digest of the stored password hash.
+
+    A reset link carries it, so the link stops working once the password
+    changes, including through that same link: it works once.
+    """
+    return hmac.new(settings.secret_key.encode(), (password_hash or "").encode(), hashlib.sha256).hexdigest()[:16]
+
+
+def create_reset_token(manager: HiringManager) -> str:
+    """The token in a password-reset link: 30 minutes, for this password only."""
+    to_encode = {
+        "sub": str(manager.id),
+        "type": "reset",
+        "fp": password_fingerprint(manager.password_hash),
+        "exp": datetime.utcnow() + timedelta(minutes=RESET_TOKEN_MINUTES),
+    }
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT. Raises 401 on any error."""
     try:
