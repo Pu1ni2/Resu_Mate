@@ -12,8 +12,6 @@ import { wakeServer } from './services/wake';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
 import RequestDeletion from './components/RequestDeletion';
 import NotFound from './components/NotFound';
-// Lazy: an unlisted comparison page must not cost the product bundle anything.
-const StyleLab = lazy(() => import('./components/landing/StyleLab'));
 // Lazy: a page of its own, only loaded by managers who open it.
 const SourcerPage = lazy(() => import('./components/sourcer/SourcerPage'));
 // Lazy: the dashboards are most of the app, and the landing page downloaded
@@ -72,9 +70,6 @@ export default function App() {
     <Suspense fallback={<PageLoading />}>
     <Routes>
       <Route path="/" element={<Landing />} />
-
-      {/* Unlisted: side-by-side look comparison. Delete with StyleLab.jsx. */}
-      <Route path="/styles" element={<Suspense fallback={null}><StyleLab /></Suspense>} />
 
       {/* Legal — public */}
       <Route path="/terms" element={<TermsPage />} />
