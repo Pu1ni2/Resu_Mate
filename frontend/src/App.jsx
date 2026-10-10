@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import Landing from './components/Landing';
 import CandidateLogin from './components/CandidateLogin';
@@ -11,6 +11,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { wakeServer } from './services/wake';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
 import RequestDeletion from './components/RequestDeletion';
+import NotFound from './components/NotFound';
 // Lazy: an unlisted comparison page must not cost the product bundle anything.
 const StyleLab = lazy(() => import('./components/landing/StyleLab'));
 // Lazy: a page of its own, only loaded by managers who open it.
@@ -101,7 +102,7 @@ export default function App() {
       {/* Legacy route */}
       <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
     </Suspense>
     </>
