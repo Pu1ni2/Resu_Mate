@@ -14,7 +14,7 @@ from fpdf import FPDF
 # curly quotes, the ellipsis, bullets, accented letters, €) is drawn as it is.
 _STAND_INS = {
     "✓": "+", "✔": "+", "✗": "x", "✘": "x", "→": "->", "←": "<-",
-    "≥": ">=", "≤": "<=", " ": " ", "​": "",
+    "≥": ">=", "≤": "<=", "\u00a0": " ", "\u200b": "",
 }
 
 
