@@ -70,7 +70,7 @@ export default function ProductLayer({ children }) {
   const onboardingSteps = [
     {
       title: 'Welcome to ResuMate AI!',
-      desc: 'Your AI-powered hiring platform with 4 specialized agents. Let me show you around.',
+      desc: 'Your AI-powered hiring platform with 5 specialized agents. Let me show you around.',
       icon: <Cpu size={28} />,
       image: '🚀'
     },

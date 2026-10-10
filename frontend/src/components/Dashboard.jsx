@@ -1044,7 +1044,7 @@ export default function Dashboard() {
                         <div>
                           <div className="chat-ai-name">ResuMate AI</div>
                           <div className="chat-ai-status">
-                            {selectedCandidates.filter(c => c.is_resume !== false).length} candidates • GPT-5.2
+                            {selectedCandidates.filter(c => c.is_resume !== false).length} candidates
                             {anonymize && ' • 🔒 Anonymized'}
                           </div>
                         </div>

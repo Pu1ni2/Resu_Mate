@@ -92,7 +92,11 @@ export default function ProductMock({ className, framed = true }) {
               Screening <span className="text-ink-faint">·</span> Python Developer
             </span>
           </div>
-          <ChevronDown size={14} className="ml-auto shrink-0 text-ink-faint" />
+          {/* The names and numbers are illustrations, and the panel says so. */}
+          <span className="ml-auto shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted">
+            Example data
+          </span>
+          <ChevronDown size={14} className="shrink-0 text-ink-faint" />
         </div>
 
         <RankedSummary screened={12} strongFits={4} elapsedMs={8200} />

@@ -63,7 +63,7 @@ export default function Landing() {
 
   const agents = [
     { name: 'Data Agent', desc: 'Scans resumes, scrapes GitHub & LinkedIn with browser automation, enriches candidate profiles from multiple sources.', icon: <Search size={20} />, tools: ['PDF Extract', 'Playwright', 'GitHub API', 'Tavily'] },
-    { name: 'HR Agent', desc: 'Evaluates candidates against job requirements, drafts personalized emails, provides hiring recommendations with bias checks.', icon: <UserCheck size={20} />, tools: ['GPT-4o', 'Salary Research', 'Email Drafting'] },
+    { name: 'HR Agent', desc: 'Evaluates candidates against job requirements, drafts personalized emails, provides hiring recommendations with bias checks.', icon: <UserCheck size={20} />, tools: ['OpenAI', 'Salary Research', 'Email Drafting'] },
     { name: 'Technical Agent', desc: 'Orchestrates the entire interview pipeline — splits into two specialized sub-agents that work in sequence.', icon: <Cpu size={20} />, tools: ['LiveKit', 'Simli Avatar', 'OpenAI Realtime', 'Whisper'], hasSubAgents: true },
     { name: 'Research Agent', desc: 'Searches the web for candidate info, fact-checks resume claims, provides real-time data during AI chat.', icon: <Globe size={20} />, tools: ['Tavily Search', 'Fact Check', 'Citation'] },
     { name: 'Advisor Agent', desc: 'Candidate-facing career coach with 3 modes — Resume Coach, Interview Prep, and Career Advisor. Personalized AI guidance.', icon: <Bot size={20} />, tools: ['Resume Coach', 'Interview Prep', 'Career Advisor'] },
@@ -238,7 +238,7 @@ export default function Landing() {
                       </div>
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-accent-hover)' }}>Scoring Agent</div>
-                        <div style={{ fontSize: '10px', color: 'var(--color-ink-subtle)' }}>GPT-4o evaluation + per-question feedback</div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-ink-subtle)' }}>AI evaluation + per-question feedback</div>
                       </div>
                     </div>
                   </div>
