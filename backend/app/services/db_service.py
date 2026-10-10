@@ -6,6 +6,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, Evaluation, CandidateAccess, AuditLog
+from app.services.scores import is_number, average_score
 
 
 # ═══════ AUDIT LOG ═══════
@@ -213,10 +214,6 @@ def report_dict(raw) -> dict:
     return parsed if isinstance(parsed, dict) else {"report": raw}
 
 
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
-
-
 def candidate_report(interview: Interview) -> dict:
     """A finished interview as the candidate's report screen reads it.
 
@@ -233,11 +230,9 @@ def candidate_report(interview: Interview) -> dict:
     """
     report = report_dict(interview.report)
     scores = interview.scores or report.get("scores") or []
-    numbers = [s.get("score") if isinstance(s, dict) else s for s in scores]
-    numbers = [n for n in numbers if _is_number(n)]
     average = report.get("avgScore")
-    if not _is_number(average):
-        average = round(sum(numbers) / len(numbers), 1) if numbers else None
+    if not is_number(average):
+        average = average_score(scores)
     seconds = interview.duration or report.get("timer") or report.get("duration") or 0
     text = report.get("report")
     return {
