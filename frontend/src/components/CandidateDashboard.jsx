@@ -60,7 +60,7 @@ export default function CandidateDashboard() {
         const session = JSON.parse(stored);
         if (session.interview_completed && session.interview_report) return session.interview_report;
       }
-    } catch {}
+    } catch { /* an unreadable saved session: no report yet */ }
     return null;
   });
   // While waiting for the server to finish writing the report.
@@ -74,7 +74,7 @@ export default function CandidateDashboard() {
       try {
         const stored = localStorage.getItem('resumate_candidate');
         if (stored) { setCandidateSession(JSON.parse(stored)); return; }
-      } catch {}
+      } catch { /* unreadable: sign in again */ }
       navigate('/candidate/login');
     }
   }, [candidateSession, navigate, setCandidateSession]);

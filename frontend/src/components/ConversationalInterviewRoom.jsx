@@ -80,8 +80,8 @@ export default function ConversationalInterviewRoom({
       micStreamRef.current.getTracks().forEach((t) => t.stop());
       micStreamRef.current = null;
     }
-    if (dcRef.current) { try { dcRef.current.close(); } catch (_) {} dcRef.current = null; }
-    if (pcRef.current) { try { pcRef.current.close(); } catch (_) {} pcRef.current = null; }
+    if (dcRef.current) { try { dcRef.current.close(); } catch { /* already closed */ } dcRef.current = null; }
+    if (pcRef.current) { try { pcRef.current.close(); } catch { /* already closed */ } pcRef.current = null; }
     analyserRef.current = null;
   }, []);
 

@@ -58,11 +58,11 @@ export default function useVoice({
     }
     silenceTimerRef.current = 0;
     if (analyserRef.current) {
-      try { analyserRef.current.disconnect(); } catch (_) {}
+      try { analyserRef.current.disconnect(); } catch { /* already disconnected */ }
       analyserRef.current = null;
     }
     if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch (_) {}
+      try { audioContextRef.current.close(); } catch { /* already closed */ }
       audioContextRef.current = null;
     }
   }, []);
@@ -75,15 +75,15 @@ export default function useVoice({
     }
     bargeSustainedRef.current = 0;
     if (bargeAnalyserRef.current) {
-      try { bargeAnalyserRef.current.disconnect(); } catch (_) {}
+      try { bargeAnalyserRef.current.disconnect(); } catch { /* already disconnected */ }
       bargeAnalyserRef.current = null;
     }
     if (bargeCtxRef.current) {
-      try { bargeCtxRef.current.close(); } catch (_) {}
+      try { bargeCtxRef.current.close(); } catch { /* already closed */ }
       bargeCtxRef.current = null;
     }
     if (bargeStreamRef.current) {
-      try { bargeStreamRef.current.getTracks().forEach(t => t.stop()); } catch (_) {}
+      try { bargeStreamRef.current.getTracks().forEach(t => t.stop()); } catch { /* already stopped */ }
       bargeStreamRef.current = null;
     }
   }, []);
@@ -360,7 +360,7 @@ export default function useVoice({
       stopSilenceDetection();
       stopSpeaking();
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (_) {}
+        try { mediaRecorderRef.current.stop(); } catch { /* already stopped */ }
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

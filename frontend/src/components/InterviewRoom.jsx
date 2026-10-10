@@ -102,7 +102,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     try {
       const el = containerRef.current || document.documentElement;
       await (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-    } catch {}
+    } catch { /* refused or unsupported: the interview carries on in the window */ }
   };
 
   useEffect(() => {
@@ -165,7 +165,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
             if (contact < 0.2) setLookAwayCount(prev => prev + 1);
           } else { setFaceDetected(false); }
         }
-      } catch {}
+      } catch { /* a frame that couldn't be read: the next check is 600 ms away */ }
     };
     faceDetectionRef.current = setInterval(detect, 600);
     return () => { if (faceDetectionRef.current) clearInterval(faceDetectionRef.current); };
@@ -270,10 +270,10 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const endInterview = async (terminated = false) => {
     // Stop everything
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
-    if (roomRef.current) { try { roomRef.current.disconnect(); } catch {} }
+    if (roomRef.current) { try { roomRef.current.disconnect(); } catch { /* already disconnected */ } }
     if (faceDetectionRef.current) clearInterval(faceDetectionRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
-    try { if (document.fullscreenElement) document.exitFullscreen(); } catch {}
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch { /* already left fullscreen */ }
 
     setPhase('ended');
 
@@ -307,7 +307,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   // Cleanup
   useEffect(() => () => {
     if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
-    if (roomRef.current) try { roomRef.current.disconnect(); } catch {}
+    if (roomRef.current) try { roomRef.current.disconnect(); } catch { /* already disconnected */ }
     if (faceDetectionRef.current) clearInterval(faceDetectionRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);

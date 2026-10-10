@@ -471,7 +471,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   useEffect(() => {
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({ signature: candidateSignature, messages, context, status }));
-    } catch {}
+    } catch { /* storage full or blocked: the conversation just isn't kept */ }
   }, [candidateSignature, messages, context, status]);
 
   // ── Append message ────────────────────────────────────────────────────────
@@ -1468,7 +1468,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     voiceRef.current?.stopRecording();
 
     // Clear persisted session
-    try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* storage blocked: nothing was kept */ }
 
     // Reset all state
     setMessages([]);

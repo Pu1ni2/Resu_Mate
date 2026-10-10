@@ -178,7 +178,7 @@ export const AppProvider = ({ children }) => {
     // Remove from state
     setCandidates(prev => {
       const updated = prev.filter(c => c.id !== id);
-      try { localStorage.setItem('resumate_candidates', JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem('resumate_candidates', JSON.stringify(updated)); } catch { /* storage full or blocked: the list just isn't cached */ }
       return updated;
     });
     setSelectedIds(prev => prev.filter(x => x !== id));
