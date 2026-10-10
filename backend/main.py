@@ -200,6 +200,7 @@ from app.api.pipeline import router as pipeline_router
 from app.api.jarvis import router as jarvis_router
 from app.api.realtime import router as realtime_router
 from app.api.sourcer import router as sourcer_router
+from app.api.privacy import router as privacy_router
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
@@ -210,6 +211,7 @@ app.include_router(pipeline_router, prefix="/api")
 app.include_router(jarvis_router, prefix="/api")
 app.include_router(realtime_router, prefix="/api")
 app.include_router(sourcer_router, prefix="/api")
+app.include_router(privacy_router, prefix="/api")
 
 print("[OK] All routers registered (auth, chat, candidates, livekit, advisor, pipeline, jarvis, realtime, sourcer)")
 

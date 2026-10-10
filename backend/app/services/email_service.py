@@ -85,6 +85,20 @@ class EmailService:
         """
         return await self.send(to_email, f"Interview Invitation: {role}", body)
 
+    async def send_erasure_code(self, to_email: str, code: str) -> bool:
+        safe_code = html.escape(code)
+        body = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Confirm deleting your data</h2>
+          <p>Someone asked ResuMate to delete the data it holds about this address. If it was you, enter this code on the deletion page:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1E40AF; padding: 16px; background: #EFF6FF; border-radius: 8px; text-align: center;">
+            {safe_code}
+          </div>
+          <p style="color: #6B7280; margin-top: 16px;">It works for 15 minutes. If you didn't ask, ignore this email: nothing is deleted without the code.</p>
+        </div>
+        """
+        return await self.send(to_email, "Confirm deleting your ResuMate data", body)
+
     async def send_password_reset(self, to_email: str, reset_url: str) -> bool:
         link = html.escape(reset_url)
         body = f"""
