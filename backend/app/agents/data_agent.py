@@ -82,10 +82,15 @@ class DataAgent(BaseAgent):
         
         if step.action == "extract_pdf":
             return await self._use_pdf(step.params, context)
+        # Each finding is kept on this run's context for the summary.
         elif step.action == "find_github":
-            return await self._find_github(step.params, context)
+            found = await self._find_github(step.params, context)
+            context["found_github"] = (found or {}).get("github")
+            return found
         elif step.action == "find_linkedin":
-            return await self._find_linkedin(step.params, context)
+            found = await self._find_linkedin(step.params, context)
+            context["found_linkedin"] = (found or {}).get("linkedin")
+            return found
         elif step.action == "summarize":
             return await self._summarize(context)
         else:
@@ -277,27 +282,23 @@ class DataAgent(BaseAgent):
         return {"linkedin": li_profile}
 
     async def _summarize(self, context: Dict) -> Dict:
-        """Generate AI summary of all findings"""
-        from app.agents.base_agent import memory_store
+        """An AI summary of what this run found, and nothing else.
+
+        It read "GitHub" and "LinkedIn" from the agent's memory of earlier
+        runs, which can be another candidate's, and from log lines, so a
+        progress message was summarised as if it were the profile.
+        """
         name = context.get("name", "Candidate")
-
-        # Collect from persistent memory
-        gh_info = ""
-        li_info = ""
-        for mem in memory_store.get(self.name)[-10:]:
-            result = mem.get("result_summary", "") or ""
-            action = mem.get("action", "") or ""
-            if "github" in action.lower() and result:
-                gh_info = result
-            if "linkedin" in action.lower() and result:
-                li_info = result
-
-        # Also check step results directly from current run logs
-        for log_entry in self.logs:
-            if "github" in log_entry.msg.lower() and "✓" in log_entry.msg:
-                gh_info = gh_info or log_entry.msg
-            if "linkedin" in log_entry.msg.lower() and ("✓" in log_entry.msg or log_entry.status == "success"):
-                li_info = li_info or log_entry.msg
+        gh = context.get("found_github") or {}
+        li = context.get("found_linkedin") or {}
+        if not gh and not li:
+            # Nothing found: no call, and nothing for the model to make up.
+            return {"ai_summary": ""}
+        gh_info = (
+            f"@{gh.get('username', '')} ({gh.get('name') or 'no name'}): {gh.get('public_repos', 0)} public repos, "
+            f"{gh.get('followers', 0)} followers. {gh.get('bio') or ''}"
+        ) if gh else ""
+        li_info = f"{li.get('name') or ''}: {li.get('headline') or 'no headline'}. {(li.get('about') or '')[:300]}" if li else ""
 
         prompt = f"""Summarize what we found about {name}:
 GitHub: {gh_info or 'Not found'}
