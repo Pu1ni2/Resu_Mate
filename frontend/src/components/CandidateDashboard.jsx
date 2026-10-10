@@ -15,6 +15,7 @@ import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
 import { clearCandidateSession } from '../services/session';
 import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
+import { pressable } from './ui/pressable';
 
 // Loaded when the interview starts: the video room brings LiveKit with it.
 const InterviewRoom = lazy(() => import('./InterviewRoom'));
@@ -343,7 +344,8 @@ export default function CandidateDashboard() {
               label: interviewCompleted ? 'Interview Report' : 'Interview'
             }] : [])
           ].map(item => (
-            <div key={item.id} className={`cd-nav-link ${tab === item.id ? 'active' : ''}`} onClick={() => setTab(item.id)}>
+            <div key={item.id} className={`cd-nav-link ${tab === item.id ? 'active' : ''}`} {...pressable(() => setTab(item.id))}
+              aria-current={tab === item.id ? 'page' : undefined}>
               {item.icon}<span>{item.label}</span>
               {item.id === 'interview' && hasInterview && !interviewCompleted && <span className="cd-nav-badge cd-badge-new">New</span>}
               {item.id === 'interview' && interviewCompleted && <span className="cd-nav-badge cd-badge-done">Done</span>}
@@ -380,7 +382,7 @@ export default function CandidateDashboard() {
         <header className="cd-header">
           <span className="cd-welcome">Welcome, {candidateSession.name || 'Candidate'}</span>
           {hasInterview && (
-            <div className="cd-header-alert" onClick={() => setTab('interview')}>
+            <div className="cd-header-alert" {...pressable(() => setTab('interview'))}>
               <Camera size={14} /> Interview Ready
             </div>
           )}
@@ -393,7 +395,7 @@ export default function CandidateDashboard() {
             <div className="cd-tab-content">
               {!c ? (
                 <div className="cd-upload-hero">
-                  <div className="cd-upload-zone" onClick={() => document.getElementById('cd-file').click()}
+                  <div className="cd-upload-zone" {...pressable(() => document.getElementById('cd-file').click())}
                     onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
                     onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
                     onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); handleUpload(e.dataTransfer.files); }}
@@ -456,14 +458,14 @@ export default function CandidateDashboard() {
 
                   {/* Quick actions */}
                   <div className="cd-quick-actions">
-                    <div className="cd-quick-action" onClick={() => setTab('analysis')}>
+                    <div className="cd-quick-action" {...pressable(() => setTab('analysis'))}>
                       <BarChart2 size={20} /><span>View Analysis</span><ChevronRight size={16} />
                     </div>
-                    <div className="cd-quick-action" onClick={() => setTab('chat')}>
+                    <div className="cd-quick-action" {...pressable(() => setTab('chat'))}>
                       <MessageSquare size={20} /><span>Ask AI Advisor</span><ChevronRight size={16} />
                     </div>
                     {hasInterview && (
-                      <div className="cd-quick-action cd-quick-action-highlight" onClick={() => setTab('interview')}>
+                      <div className="cd-quick-action cd-quick-action-highlight" {...pressable(() => setTab('interview'))}>
                         <Camera size={20} /><span>Take Interview</span><ChevronRight size={16} />
                       </div>
                     )}
@@ -661,8 +663,9 @@ export default function CandidateDashboard() {
                     placeholder={advisorMode === 'resume_coach' ? 'Ask about your resume...' : advisorMode === 'interview_prep' ? 'Ask about interviews...' : advisorMode === 'career_advisor' ? 'Ask about your career...' : 'Ask me anything...'}
                     disabled={advisorTyping}
                     className="cd-chat-input"
+                    aria-label="Message the advisor"
                   />
-                  <button className="cd-chat-send" onClick={() => handleAdvisorSend()} disabled={!input.trim() || advisorTyping}>
+                  <button className="cd-chat-send" onClick={() => handleAdvisorSend()} disabled={!input.trim() || advisorTyping} aria-label="Send">
                     <Send size={18} />
                   </button>
                 </div>
