@@ -322,7 +322,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
         {[
           { val: avgScore, label: 'Avg Score' },
-          { val: `${eyeContact}%`, label: 'Eye Contact' },
+          { val: `${eyeContact}%`, label: 'Face in view' },
           { val: violations, label: 'Violations', color: violations > 0 ? 'var(--color-critical)' : 'var(--color-positive)' },
           { val: `${mins}:${secs}`, label: 'Duration' },
         ].map((s, i) => (

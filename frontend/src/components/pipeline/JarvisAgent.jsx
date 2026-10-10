@@ -1266,7 +1266,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.avgScore ?? 'N/A'} on average. Eye contact ${artifact.eyeContact} percent. Violations ${artifact.violations}. ${artifact.summary || ''}`
+          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.avgScore ?? 'N/A'} on average. Face in view ${artifact.eyeContact} percent of the time. Violations ${artifact.violations}. ${artifact.summary || ''}`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1869,7 +1869,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{rp.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{rp.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
-                      {[['Avg Score', shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores))], ['Eye Contact', `${report.eyeContact || 0}%`], ['Violations', report.violations || 0], ['Questions', scores.length]].map(([label, value]) => (
+                      {[['Avg Score', shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores))], ['Face in view', `${report.eyeContact || 0}%`], ['Violations', report.violations || 0], ['Questions', scores.length]].map(([label, value]) => (
                         <div key={label}>
                           <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
@@ -2493,7 +2493,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{rp.candidateName}</div>
                         <div style={{ display: 'flex', gap: 18, marginBottom: summary ? 8 : 0, flexWrap: 'wrap' }}>
-                          {[{ label: 'AVG', val: avgScore }, { label: 'EYE CONTACT', val: `${report.eyeContact || 0}%` }, { label: 'VIOLATIONS', val: report.violations || 0 }].map(({ label, val }) => (
+                          {[{ label: 'AVG', val: avgScore }, { label: 'FACE IN VIEW', val: `${report.eyeContact || 0}%` }, { label: 'VIOLATIONS', val: report.violations || 0 }].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 12, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>

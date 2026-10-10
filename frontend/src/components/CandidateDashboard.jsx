@@ -676,7 +676,7 @@ export default function CandidateDashboard() {
                       <div className="cd-interview-done-info">
                         <h3>Interview Completed</h3>
                         <p>
-                          Score: {interviewReport.avgScore ?? '—'}/10 · Eye Contact: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
+                          Score: {interviewReport.avgScore ?? '—'}/10 · Face in view: {interviewReport.eyeContact || 0}% · Violations: {interviewReport.violations || 0} · {Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
                         </p>
                       </div>
                       <button className="cd-report-toggle" onClick={() => setShowFullReport(prev => !prev)}>
