@@ -69,7 +69,10 @@ export default function ChatPanel({
           className="input chat-input"
           value={chatInput}
           onChange={e => setChatInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); }
+            if (e.key === 'Escape') setChatInput('');
+          }}
           placeholder={!scanDone ? 'Scanning...' : isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : `Ask about ${displayName}...`}
           disabled={isTyping || isRecording || isTranscribing || !scanDone}
         />

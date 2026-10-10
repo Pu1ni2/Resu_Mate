@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   User, ArrowLeft, Briefcase, Award, MapPin,
@@ -447,7 +447,7 @@ export default function CandidateFocus() {
           <div className="focus-empty">
             <div className="focus-empty-icon"><User size={48} /></div>
             <h3>No candidates uploaded yet</h3>
-            <p>Go to the Upload tab to add resumes first.</p>
+            <p>Add résumés on the <Link to="/hiring">Upload tab</Link> first.</p>
           </div>
         ) : (
           <div className="focus-candidates-grid">

@@ -1354,7 +1354,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const d = await res.json();
 
         if (d.error) {
-          directSay(`Calendly isn't connected yet — ${d.error}. You can set it up in your account settings.`);
+          directSay(`I can't share a scheduling link: Calendly isn't connected on this server (${d.error}).`);
           setStatus('DONE');
           return;
         }

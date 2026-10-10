@@ -972,7 +972,10 @@ export default function Dashboard() {
                 <div className="clean-empty">
                   <BarChart2 size={32} strokeWidth={1.5} />
                   <h3>No candidates selected</h3>
-                  <p>Select candidates in Upload tab to see analytics</p>
+                  <p>Select candidates on the Upload tab to see analytics.</p>
+                  <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setTab('upload')}>
+                    Go to Upload
+                  </button>
                 </div>
               ) : (
                 <>
@@ -1101,7 +1104,10 @@ export default function Dashboard() {
                     <Bot size={40} />
                   </div>
                   <h3>Select candidates to chat</h3>
-                  <p>Go to Upload tab and select candidates</p>
+                  <p>Select candidates on the Upload tab to chat about them.</p>
+                  <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setTab('upload')}>
+                    Go to Upload
+                  </button>
                 </div>
               ) : (
                 <div className="chat-container">
@@ -1224,7 +1230,10 @@ export default function Dashboard() {
                         className="input chat-input"
                         value={input}
                         onChange={e => setInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }}}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                          if (e.key === 'Escape') setInput('');
+                        }}
                         placeholder={isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : "Type or use 🎤 for voice..."}
                         disabled={isTyping || isRecording || isTranscribing}
                       />

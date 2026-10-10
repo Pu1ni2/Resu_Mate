@@ -267,7 +267,7 @@ export default function ProductLayer({ children }) {
               </div>
               <div className="pl-shortcut-section">
                 <h4>Chat</h4>
-                <div className="pl-shortcut"><span>Send message</span><kbd>Ctrl</kbd> + <kbd>↵</kbd></div>
+                <div className="pl-shortcut"><span>Send message</span><kbd>↵</kbd></div>
                 <div className="pl-shortcut"><span>Clear input</span><kbd>Esc</kbd></div>
               </div>
             </div>
