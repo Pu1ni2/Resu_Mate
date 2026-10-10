@@ -61,6 +61,17 @@ describe('toasts', () => {
     expect(screen.queryByText('Transient')).toBeNull();
   });
 
+  it('keeps a toast for its own duration when it has one', () => {
+    // The server's wake-up notice must outlast the usual few seconds.
+    vi.useFakeTimers();
+    renderLayer();
+    act(() => toast('Starting the server', 'info', { duration: 60000 }));
+    act(() => vi.advanceTimersByTime(30000));
+    expect(screen.getByText('Starting the server')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(31000));
+    expect(screen.queryByText('Starting the server')).toBeNull();
+  });
+
   it('shows several at once rather than replacing the last', () => {
     renderLayer();
     act(() => { toast('First'); toast('Second'); });
