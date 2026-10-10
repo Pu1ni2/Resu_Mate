@@ -98,7 +98,7 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
     await db.refresh(manager)
 
     access_token = create_access_token({"sub": str(manager.id)})
-    refresh_token = create_refresh_token({"sub": str(manager.id)})
+    refresh_token = _session_token(manager)
 
     return {
         "access_token": access_token,
@@ -106,6 +106,12 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
         "token_type": "bearer",
         "user": manager.to_dict(),
     }
+
+
+def _session_token(manager: HiringManager) -> str:
+    """The 30-day refresh token, tied to the current password: changing the
+    password ends the sessions from before (see refresh)."""
+    return create_refresh_token({"sub": str(manager.id), "fp": password_fingerprint(manager.password_hash)})
 
 
 @router.post("/login")
@@ -122,7 +128,7 @@ async def login(request: Request, req: LoginRequest, db: AsyncSession = Depends(
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
     access_token = create_access_token({"sub": str(manager.id)})
-    refresh_token = create_refresh_token({"sub": str(manager.id)})
+    refresh_token = _session_token(manager)
 
     return {
         "access_token": access_token,
@@ -147,6 +153,14 @@ async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db))
 
     if not manager or not manager.is_active:
         raise HTTPException(status_code=401, detail="User not found")
+
+    # A password reset left every older session signed in for up to 30 days,
+    # including one belonging to whoever the reset was meant to lock out.
+    # Tokens made before this check have no fingerprint; they last until
+    # they expire.
+    fp = payload.get("fp")
+    if fp is not None and not hmac.compare_digest(str(fp), password_fingerprint(manager.password_hash)):
+        raise HTTPException(status_code=401, detail="Your password was changed. Please sign in again.")
 
     access_token = create_access_token({"sub": str(manager.id)})
     return {"access_token": access_token, "token_type": "bearer", "expires_in": 1800}
