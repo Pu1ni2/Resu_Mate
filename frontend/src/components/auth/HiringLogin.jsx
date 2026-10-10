@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import api, { messageForApiError } from '../../services/api';
 
 export default function HiringLogin() {
   const navigate = useNavigate();
+  // Back from choosing a new password (ResetPassword).
+  const passwordChanged = !!useLocation().state?.passwordChanged;
   const { loginHiringManager } = useApp();
 
   const [email, setEmail] = useState('');
@@ -67,6 +69,16 @@ export default function HiringLogin() {
             Sign in to your ResuMate dashboard
           </p>
         </div>
+
+        {passwordChanged && !error && (
+          <div role="status" style={{
+            background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+            borderRadius: '8px', padding: '10px 14px',
+            color: 'var(--color-ink)', fontSize: '13px', marginBottom: '20px',
+          }}>
+            Password changed. Sign in with the new one.
+          </div>
+        )}
 
         {error && (
           <div role="alert" style={{
@@ -150,6 +162,11 @@ export default function HiringLogin() {
               >
                 {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
               </button>
+            </div>
+            <div style={{ textAlign: 'right', marginTop: '8px' }}>
+              <Link to="/hiring/forgot" style={{ color: '#F59E0B', textDecoration: 'none', fontSize: '13px' }}>
+                Forgot password?
+              </Link>
             </div>
           </div>
 

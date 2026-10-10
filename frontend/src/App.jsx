@@ -7,6 +7,8 @@ import CandidateDashboard from './components/CandidateDashboard';
 import CandidateFocus from './components/CandidateFocus';
 import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
 // Lazy: an unlisted comparison page must not cost the product bundle anything.
@@ -61,6 +63,8 @@ export default function App() {
       {/* Hiring manager auth pages — public */}
       <Route path="/hiring/login" element={<HiringLogin />} />
       <Route path="/hiring/register" element={<HiringRegister />} />
+      <Route path="/hiring/forgot" element={<ForgotPassword />} />
+      <Route path="/hiring/reset" element={<ResetPassword />} />
 
       {/* Hiring manager dashboard — protected */}
       <Route path="/hiring/focus" element={<ProtectedRoute><CandidateFocus /></ProtectedRoute>} />
