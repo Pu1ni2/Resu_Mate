@@ -1155,70 +1155,11 @@ async def candidate_delete_my_data(
     if not email:
         raise HTTPException(400, "Token has no email subject")
 
-    from sqlalchemy import delete as sql_delete, func
-    from app.models.candidate import Interview, CandidateAccess, Candidate
-
-    # Their own résumés: those whose own address is theirs, in any case,
-    # wherever it came from (the email column, the PDF's mailto: link or the
-    # text). Matching the email column exactly missed the rest. A résumé an
-    # invitation merely points at is someone's profile the manager linked to
-    # this address, so it is unlinked (the grant goes below), not deleted. Read
-    # before the grants are deleted, since the grants point at some of them.
-    in_memory = resume_rag.candidates_with_email(email)
-    cand_rows = await db_service.resumes_of(db, email, ids=[c["id"] for c in in_memory])
-
-    # Database first: if it fails, nothing is half-erased. Memory went first, so
-    # a failed commit left the résumé in the database, and the startup warm-up
-    # put it back in the portal after the next restart.
-    # Delete DB rows: interviews, access grants, candidates (by email), and
-    # everything else held under this address: the career advisor's session
-    # (their uploaded resume and chats), sign-in codes, and anything a sourcing
-    # run kept about them. Erasure that leaves those behind is not erasure.
-    from app.models.auth import OTPCode
-    from app.models.sourcing import SourcedProfile
-    from app.models.state import AdvisorSession
-    await db.execute(sql_delete(Interview).where(Interview.candidate_email == email))
-    await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email == email))
-    # Their résumé rows with any interview still attached under another address.
-    await db_service.delete_candidates(db, Candidate.id.in_([row.id for row in cand_rows]))
-    await db.execute(sql_delete(AdvisorSession).where(AdvisorSession.email == email))
-    await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
-    # In any case: a sourcing run keeps the address as it found it.
-    await db.execute(sql_delete(SourcedProfile).where(func.lower(SourcedProfile.email) == email))
-    await db.commit()
-
-    # Then the in-memory store + ChromaDB + object storage, scoped to the row's
-    # owning manager so we hit the right drawer.
-    for row in cand_rows:
-        try:
-            resume_rag.delete_candidate(row.id, manager_id=row.manager_id)
-        except Exception as exc:
-            print(f"[WARN] in-memory delete failed for candidate {row.id}: {exc}")
-        # Object storage (no-op if S3 unconfigured).
-        try:
-            from app.services.storage_service import storage_service
-            if getattr(row, "file_object_key", None):
-                storage_service.delete(row.file_object_key)
-        except Exception as exc:
-            print(f"[WARN] object-store delete failed: {exc}")
-    # And any in-memory copy kept under an id the database doesn't share.
-    for cand in in_memory:
-        try:
-            resume_rag.delete_candidate(cand["id"], manager_id=cand.get("manager_id"))
-        except Exception as exc:
-            print(f"[WARN] in-memory delete failed for candidate {cand['id']}: {exc}")
-
-    try:
-        from app.api.advisor_agent import _session_cache
-        _session_cache.pop(email, None)
-    except Exception as exc:
-        print(f"[WARN] advisor cache clear failed: {exc}")
-
-    await db_service.log_event(
-        db, action="candidate.delete", actor="candidate", target_email=email,
-        detail=f"candidate-initiated erasure of {len(cand_rows)} record(s)",
-    )
-    return {"status": "deleted", "email": email, "records_removed": len(cand_rows)}
+    # The same erasure as a deletion request from someone never invited
+    # (app/services/erasure.py).
+    from app.services.erasure import erase_person
+    removed = await erase_person(db, email, actor="candidate")
+    return {"status": "deleted", "email": email, "records_removed": removed}
 
 @router.get("/get-interview-results/{email}")
 async def get_interview_results(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
