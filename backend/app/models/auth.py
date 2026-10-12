@@ -40,4 +40,6 @@ class OTPCode(Base):
     code = Column(String(255), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
+    # Wrong guesses at it; MAX_WRONG of them use it up (services/codes.py).
+    wrong_guesses = Column(Integer, default=0, server_default="0", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

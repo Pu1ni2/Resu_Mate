@@ -15,13 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.services.codes import issue_code, redeem_code
+# One answer for any refused code, a used-up one too: "tried too many times"
+# would say a code exists, so that data is held about the address.
+from app.services.codes import WRONG_CODE, issue_code, redeem_code
 from app.services.erasure import erase_person, holds_data
 
 router = APIRouter(prefix="/privacy", tags=["privacy"])
 
 CODE_SENT = "If we hold any data about that address, we've emailed it a code to confirm the deletion."
-WRONG_CODE = "That code is wrong or has expired. Ask for a new one."
 
 
 class ErasureCodeRequest(BaseModel):
