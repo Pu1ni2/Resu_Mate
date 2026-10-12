@@ -113,7 +113,10 @@ def test_five_wrong_guesses_use_the_code_up(client, no_email):
     _run(_uploaded_and_sourced(_manager_id(client, tok)))
     code = _ask(client)["debug_code"]
     for guess in ("111111", "222222", "333333", "444444", "555555"):
-        assert _erase(client, guess).status_code == 400
+        r = _erase(client, guess)
+        # The same answer, the last too: "tried too many times" would say a
+        # code exists, so that data is held about the address.
+        assert (r.status_code, r.json()["detail"]) == (400, WRONG_CODE)
     assert _erase(client, code).status_code == 400
     assert _count(Candidate) == 1
 
