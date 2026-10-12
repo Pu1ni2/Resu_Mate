@@ -7,7 +7,7 @@ the codes.
 import pytest
 from fastapi import HTTPException
 
-from app.api import auth as auth_api
+from app.services import codes as code_service
 from app.core.config import settings
 from app.services.auth import verify_agent_token
 
@@ -47,12 +47,12 @@ def test_sign_in_codes_come_from_secrets(monkeypatch):
         calls.append(n)
         return 42
 
-    monkeypatch.setattr(auth_api.secrets, "randbelow", fake_randbelow)
-    assert auth_api._generate_otp() == "000042"  # always six digits, zero-padded
+    monkeypatch.setattr(code_service.secrets, "randbelow", fake_randbelow)
+    assert code_service._new_code() == "000042"  # always six digits, zero-padded
     assert calls == [10**6]
 
 
 def test_sign_in_codes_are_six_digits():
-    codes = {auth_api._generate_otp() for _ in range(200)}
+    codes = {code_service._new_code() for _ in range(200)}
     assert all(len(c) == 6 and c.isdigit() for c in codes)
     assert len(codes) > 150  # not stuck on a handful of values

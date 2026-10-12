@@ -1,7 +1,6 @@
 """Auth API — register, login, refresh, OTP for candidates"""
 import hmac
-import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Request
@@ -12,10 +11,11 @@ from app.core.rate_limit import limiter
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.auth import HiringManager, OTPCode
+from app.models.auth import HiringManager
 from app.models.candidate import CandidateAccess
 from app.services import db_service
 from app.services import interview_modes
+from app.services.codes import CODE_USED_UP, WRONG_CODE, Outcome, issue_code, redeem_code
 from app.services.auth import (
     verify_password,
     get_password_hash,
@@ -258,12 +258,6 @@ async def get_me(current_user: HiringManager = Depends(get_current_user)):
 
 # ── Candidate OTP Auth ────────────────────────────────────────────────────────
 
-def _generate_otp() -> str:
-    # secrets, not random: random's Mersenne Twister can be predicted from its
-    # past output, and these codes are what stands between a guess and a login.
-    return f"{secrets.randbelow(10**6):06d}"
-
-
 @router.post("/candidate/send-otp")
 @limiter.limit("3/minute")
 async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
@@ -278,21 +272,8 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
     if not access:
         raise HTTPException(status_code=404, detail="No interview access found for this email. Please check with your hiring manager.")
 
-    # Invalidate any previous unused OTPs for this email
-    old_otps = await db.execute(
-        select(OTPCode).where(OTPCode.email == email, OTPCode.used == False)
-    )
-    for otp in old_otps.scalars().all():
-        otp.used = True
-
-    code = _generate_otp()
-    otp_record = OTPCode(
-        email=email,
-        code=get_password_hash(code),  # store bcrypt hash, never the plaintext OTP
-        expires_at=datetime.utcnow() + timedelta(minutes=15),
-    )
-    db.add(otp_record)
-    await db.commit()
+    # Stored hashed, and the address's earlier codes stop working.
+    code = await issue_code(db, email)
 
     # Send email. In dev we expose the OTP code in the response so the candidate
     # portal works without SendGrid configured. In production a delivery failure
@@ -321,34 +302,15 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
 async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     """Verify OTP and return a candidate session token + profile data."""
     email = req.email.lower().strip()
-    submitted = (req.code or "").strip()
-    now = datetime.utcnow()
 
-    # Find all valid, unused, non-expired OTPs for this email; bcrypt-compare each.
-    # We cannot SQL-match on the code since it is now stored as a bcrypt hash.
-    result = await db.execute(
-        select(OTPCode).where(
-            OTPCode.email == email,
-            OTPCode.used == False,
-            OTPCode.expires_at > now,
-        ).order_by(OTPCode.created_at.desc())
-    )
-    candidates = result.scalars().all()
-    otp_record = None
-    for rec in candidates:
-        try:
-            if verify_password(submitted, rec.code):
-                otp_record = rec
-                break
-        except Exception:
-            continue
-
-    if not otp_record:
-        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-
-    # Mark OTP as used
-    otp_record.used = True
-    await db.commit()
+    # Five wrong guesses use the code up; there was no limit, so a code could be
+    # found by guessing from enough addresses. Saying so here gives nothing
+    # away: send-otp already says which addresses have access.
+    outcome = await redeem_code(db, email, req.code)
+    if outcome is Outcome.USED_UP:
+        raise HTTPException(status_code=400, detail=CODE_USED_UP)
+    if not outcome:
+        raise HTTPException(status_code=400, detail=WRONG_CODE)
 
     # Grant, interview and profile all from one manager, and the profile only if
     # it really is this person's (see db_service.candidate_view).
