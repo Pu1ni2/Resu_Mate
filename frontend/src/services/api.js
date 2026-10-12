@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import { getToken, handleUnauthorized } from './session';
-import { API_BASE, refreshSession } from './authFetch';
+import { API_BASE, refreshSession, tooManyAttempts } from './authFetch';
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
@@ -51,9 +51,7 @@ api.interceptors.response.use(
  * Lives here rather than in each page because two copies of this would drift.
  */
 export function messageForApiError(err, fallback) {
-  if (err?.response?.status === 429) {
-    return 'Too many attempts. Please wait a minute and try again.';
-  }
+  if (err?.response?.status === 429) return tooManyAttempts(err.response.data?.error);
   const detail = err?.response?.data?.detail;
   if (typeof detail === 'string' && detail) return detail;
   // A request that never reached the server has no response at all.

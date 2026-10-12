@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { API_BASE } from '../services/authFetch';
+import { API_BASE, responseError } from '../services/authFetch';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, KeyRound } from 'lucide-react';
 import Logo from './ui/Logo';
 
@@ -38,9 +38,8 @@ export default function CandidateLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmed }),
       });
-      const data = await resp.json();
       if (!resp.ok) {
-        setError(data.detail || 'No access found for this email. Please contact your hiring manager.');
+        setError(await responseError(resp, 'No access found for this email. Please contact your hiring manager.'));
         return;
       }
       setResent(step === 2);
@@ -63,12 +62,11 @@ export default function CandidateLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: otp.trim() }),
       });
-      const data = await resp.json();
       if (!resp.ok) {
-        setError(data.detail || 'Invalid or expired code. Please try again.');
+        setError(await responseError(resp, 'Invalid or expired code. Please try again.'));
         return;
       }
-      const { candidate_data, access_token } = data;
+      const { candidate_data, access_token } = await resp.json();
       if (access_token) {
         localStorage.setItem('resumate_candidate_token', access_token);
       }

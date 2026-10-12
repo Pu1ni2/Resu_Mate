@@ -125,17 +125,29 @@ export async function candidateFetch(url, options = {}) {
   return resp;
 }
 
+/* What a rate-limited reply (429) means to the person, with how long to wait
+ * when the server's reply says ("5 per 1 minute", "3 per 1 hour"). That reply
+ * has no `detail`, so a page fell through to its own fallback: the candidate
+ * sign-in said the code was wrong. One copy, for api.js's messageForApiError too. */
+const WAIT = { minute: 'a minute', hour: 'an hour', day: 'a day' };
+export function tooManyAttempts(serverText) {
+  const unit = typeof serverText === 'string' ? /per \d+ (minute|hour|day)/.exec(serverText)?.[1] : null;
+  return `Too many attempts. Please wait ${WAIT[unit] || 'a while'} and try again.`;
+}
+
 /* The server's own message from a failed reply, for the person to read: the
  * text in `detail`, else the shared error shape's message. A failed reply's
  * `error` is an object, and pages that showed it as is crashed. */
 export async function responseError(resp, fallback) {
+  let body = null;
   try {
-    const body = await resp.json();
-    if (typeof body?.detail === 'string' && body.detail) return body.detail;
-    if (typeof body?.error?.message === 'string' && body.error.message) return body.error.message;
-    if (typeof body?.error === 'string' && body.error) return body.error;
+    body = await resp.json();
   } catch {
     // Not JSON: the fallback says what failed.
   }
+  if (resp?.status === 429) return tooManyAttempts(body?.error);
+  if (typeof body?.detail === 'string' && body.detail) return body.detail;
+  if (typeof body?.error?.message === 'string' && body.error.message) return body.error.message;
+  if (typeof body?.error === 'string' && body.error) return body.error;
   return fallback;
 }
