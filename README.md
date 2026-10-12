@@ -160,11 +160,12 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 - **PDF report export**
 
 ### Candidate Portal
+- **Sign-in** with a code emailed to them: it lasts 15 minutes, and five wrong tries use it up
 - **Résumé upload** with a replace flow
 - **AI Advisor** with three modes: Résumé Coach, Interview Prep, Career Advisor
 - **The interview**: a voice conversation with an AI interviewer, or a video interview with an avatar
   where the server runs it (see below)
-- **Interview report**: scores, time and proctoring
+- **Interview report**: scores and time, and proctoring for a video interview
 
 ### Interview System
 - **Voice interviews** (the default): OpenAI Realtime, speech to speech, in the browser
@@ -254,7 +255,7 @@ AI Advisor → Résumé Coach | Interview Prep | Career Advisor
      ↓
 The interview → told what happens, agree, then voice (or avatar video) with the AI interviewer
      ↓
-Report → scores, time, proctoring
+Report → scores, time (and proctoring, for video)
 ```
 
 ---
