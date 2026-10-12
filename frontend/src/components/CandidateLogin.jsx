@@ -16,6 +16,8 @@ export default function CandidateLogin() {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // A new code went out from the code step; the one before stopped working.
+  const [resent, setResent] = useState(false);
 
   // Its saved copy is already gone (candidateFetch); forget it here too, so
   // the dashboard doesn't come back with it.
@@ -41,6 +43,7 @@ export default function CandidateLogin() {
         setError(data.detail || 'No access found for this email. Please contact your hiring manager.');
         return;
       }
+      setResent(step === 2);
       setStep(2);
     } catch {
       setError('Could not connect to server. Please try again.');
@@ -169,7 +172,7 @@ export default function CandidateLogin() {
                     className="cl-input"
                     aria-label="Access code"
                     value={otp}
-                    onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+                    onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); setResent(false); }}
                     onKeyDown={e => { if (e.key === 'Enter') handleVerifyOTP(); }}
                     placeholder="6-digit code"
                     maxLength={6}
@@ -184,6 +187,12 @@ export default function CandidateLogin() {
                     <span>{error}</span>
                   </div>
                 )}
+                {resent && !error && (
+                  <div role="status" className="cl-info" style={{ marginTop: 0, color: '#93C5FD' }}>
+                    <Shield size={14} />
+                    <span>We sent a new code. The one before no longer works.</span>
+                  </div>
+                )}
 
                 <button className="cl-submit" onClick={handleVerifyOTP} disabled={otp.length < 6 || loading}>
                   {loading ? <Loader size={18} className="spin" /> : <ArrowRight size={18} />}
@@ -192,7 +201,16 @@ export default function CandidateLogin() {
 
                 <button
                   className="cl-demo-btn"
-                  onClick={() => { setStep(1); setOtp(''); setError(''); }}
+                  onClick={() => { setOtp(''); handleSendOTP(); }}
+                  disabled={loading}
+                  style={{ marginTop: '8px' }}
+                >
+                  <span>Send a new code</span>
+                </button>
+
+                <button
+                  className="cl-demo-btn"
+                  onClick={() => { setStep(1); setOtp(''); setError(''); setResent(false); }}
                   style={{ marginTop: '8px' }}
                 >
                   <span>Use a different email</span>
@@ -201,7 +219,7 @@ export default function CandidateLogin() {
 
               <div className="cl-info">
                 <Shield size={14} />
-                <span>Didn't receive a code? Check your spam folder or go back to resend.</span>
+                <span>Didn't receive a code? Check your spam folder, or send a new one.</span>
               </div>
             </>
           )}
