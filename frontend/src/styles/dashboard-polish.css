@@ -289,7 +289,6 @@ kbd {
   .sidebar { width: 220px; }
   .main { margin-left: 220px; }
   .focus-candidates-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .l-features-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ─── Candidate Dashboard mobile ─── */
@@ -354,7 +353,7 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
    ═══════════════════════════════════════ */
 @media print {
   .sidebar, .cd-sidebar, .main-header, .cd-header, .chat-input-area, .focus-tabs,
-  .scanner-fullscreen, .cursor-glow, .l-nav, .btn { display: none !important; }
+  .scanner-fullscreen, .cursor-glow, .btn { display: none !important; }
   .main, .cd-main { margin-left: 0 !important; }
   .glass-card { border: 1px solid #ccc; background: #fff; color: #000; }
   body { background: #fff; color: #000; }

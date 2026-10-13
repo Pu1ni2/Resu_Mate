@@ -1,26 +1,22 @@
 import React, { useId } from 'react';
 
-/* ResuMate's mark, drawn once. Each part of the app keeps its own colours: the
- * landing page follows the theme, the hiring side is amber and the candidate
- * portal is blue.
- *
- * The theme colours are tokens, not literals, so re-theming the page re-themes
- * the mark. The glyph is --color-ink-inverse, ink on an accent fill, so it stays
- * right if the page background ever moves independently.
+/* ResuMate's mark, drawn once, for the product's pages. Each part of the app
+ * keeps its own colours: the hiring side is amber and the candidate portal is
+ * blue. (The homepage draws Studio's own mark, in styles/studio.css.)
  *
  * Colours are set through `style` rather than the stopColor, stroke and fill
- * attributes: a CSS variable in the XML attribute form is not honoured across
- * engines, but the inline style form is a plain CSS property and is.
+ * attributes, so a CSS variable would work there too: in the XML attribute
+ * form it is not honoured across engines, but the inline style form is a
+ * plain CSS property and is.
  *
  * It always sits next to the name, so screen readers skip it.
  */
 const TONES = {
-  theme: { from: 'var(--color-accent-hover)', to: 'var(--color-accent)', mark: 'var(--color-ink-inverse)' },
   hiring: { from: '#F59E0B', to: '#D97706', mark: '#000' },
   candidate: { from: '#3B82F6', to: '#2563EB', mark: '#fff' },
 };
 
-export default function Logo({ size = 32, tone = 'theme' }) {
+export default function Logo({ size = 32, tone = 'hiring' }) {
   // Its own gradient id, so two marks on one page don't share one.
   const gradient = `logo${useId().replace(/:/g, '')}`;
   const { from, to, mark } = TONES[tone];

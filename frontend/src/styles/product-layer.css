@@ -60,16 +60,6 @@
 [data-theme="light"] .scanner-terminal { background: #0a0a0a; color: #22c55e; } /* keep terminal dark always */
 [data-theme="light"] .matrix-canvas { opacity: 0.3; }
 [data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
-[data-theme="light"] .l-nav-scrolled { background: rgba(250,251,252,0.9); }
-[data-theme="light"] .l-grid-pattern { background-image: linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px); }
-[data-theme="light"] .l-grid-fade { background: linear-gradient(180deg,transparent 0%,var(--bg) 85%); }
-[data-theme="light"] .l-hero-title { color: var(--text); }
-[data-theme="light"] .l-float-badge { background: var(--bg-elevated); box-shadow: var(--shadow-md); }
-[data-theme="light"] .l-tech-pill { background: var(--bg2); border-color: var(--surface-border); color: var(--text2); }
-[data-theme="light"] .l-agent-detail { background: var(--bg-elevated); box-shadow: var(--shadow-sm); }
-[data-theme="light"] .l-step-card { background: var(--bg-elevated); box-shadow: var(--shadow-sm); }
-[data-theme="light"] .l-feature-card { background: var(--bg-elevated); box-shadow: var(--shadow-sm); }
-[data-theme="light"] .l-step-num { color: var(--bg3); }
 
 /* ═══ CANDIDATE FOCUS PAGE — light theme ═══ */
 
