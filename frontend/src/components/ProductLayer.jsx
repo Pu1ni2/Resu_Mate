@@ -189,8 +189,12 @@ export default function ProductLayer({ children }) {
     <ProductContext.Provider value={contextValue}>
       {children}
 
-      {/* ═══ TOAST CONTAINER ═══ */}
-      <div className="pl-toast-container" role="status" aria-live="polite">
+      {/* ═══ TOAST CONTAINER ═══
+          Top right, except on the public pages: there the top right holds the
+          menu's way in ("Sign in"), which the free server's wake-up notice
+          covered for up to a minute. The bottom right is free there, as the
+          toolbar is hidden. */}
+      <div className={`pl-toast-container${isPublicPage ? ' top-auto bottom-4' : ''}`} role="status" aria-live="polite">
         {toasts.map(t => (
           <div key={t.id} className={`pl-toast pl-toast-${t.type}`}>
             {t.type === 'success' && <Check size={16} />}
