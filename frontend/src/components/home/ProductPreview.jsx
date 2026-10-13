@@ -44,7 +44,8 @@ export default function ProductPreview({ sectionRef, tabRefs, state, dispatch, o
                   onClick={() => dispatch({ type: 'show', tab: tab.id })}
                   onKeyDown={event => onKeyDown(event, i)}
                 >
-                  <span className="num">{tab.number}</span><span className="tab-title">{tab.title}</span><span className="tab-arrow" aria-hidden="true">↗</span>
+                  {/* The number is for the eye: a tab list already says "1 of 4". */}
+                  <span className="num" aria-hidden="true">{tab.number}</span><span className="tab-title">{tab.title}</span><span className="tab-arrow" aria-hidden="true">↗</span>
                 </button>
               );
             })}
