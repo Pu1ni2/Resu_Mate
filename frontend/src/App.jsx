@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import { Loader } from 'lucide-react';
-import Landing from './components/Landing';
+import Home from './components/home/Home';
 import CandidateLogin from './components/CandidateLogin';
 import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
@@ -87,7 +87,7 @@ export default function App() {
     <CandidateUnauthorizedHandler />
     <Suspense fallback={<PageLoading />}>
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<Home />} />
 
       {/* Legal — public */}
       <Route path="/terms" element={<TermsPage />} />
