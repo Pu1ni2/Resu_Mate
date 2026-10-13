@@ -647,7 +647,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .scanner-bar-progress{height:3px;background:var(--bg3);overflow:hidden}
 .scanner-bar-progress-fill{height:100%;background:linear-gradient(90deg,#22c55e,#F59E0B);transition:width .4s ease;border-radius:0 2px 2px 0}
 .scanner-bar-expandable{padding:16px 24px;border-top:1px solid var(--glass-border);background:rgba(0,0,0,0.2)}
-.scanner-bar-logs{max-height:200px;overflow-y:auto;margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px}
+.scanner-bar-logs{max-height:200px;overflow-y:auto;margin-bottom:12px;font-family:var(--font-mono);font-size:12px}
 .scanner-bar-profiles{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 .scanner-bar-status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px}
 
