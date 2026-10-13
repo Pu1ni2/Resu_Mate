@@ -6,21 +6,11 @@
     <meta name="description" content="ResuMate AI - Multi-Agent Hiring Platform with AI-powered resume analysis, candidate profiling, and live interviews">
     <meta name="theme-color" content="#09090B">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
 
-    <!-- DM Sans stays: the product still resolves --font-sans to it. Dropping it
-         while the token still names it would silently fall the whole app back to
-         system sans. The product font is a separate decision. -->
-    <!-- Fraunces rides along in the same request rather than a second
-         round-trip. It is the landing page's display face and nothing else:
-         the wordmark, the hero, and the section headings. A variable serif
-         reserved for identity while a grotesk carries every word of content is
-         what stops a page reading as a template - the restraint is the effect,
-         so it is scoped to .editorial and capped at those three uses. -->
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- DM Sans, JetBrains Mono and Instrument Serif ship with the app
+         (src/main.jsx), so no page asks a font site for them. -->
 
     <!-- Satoshi: body and UI on the landing page. It was the display face too
          until Fraunces took that job; one grotesk across all content still
