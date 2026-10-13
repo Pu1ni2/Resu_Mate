@@ -1,5 +1,5 @@
-import React, { useEffect, Suspense, lazy } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, Suspense, lazy } from 'react';
+import { Routes, Route, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import Landing from './components/Landing';
 import CandidateLogin from './components/CandidateLogin';
@@ -59,12 +59,30 @@ function CandidateUnauthorizedHandler() {
   return null;
 }
 
+/* A link to another page opens it at the top. The router keeps the window's
+ * scroll position, so "Terms" in the homepage's footer opened near the end of
+ * the terms. Back and forward are left to the browser, which returns you to
+ * where you were, and so is a change within the same page. Instant, because
+ * the old stylesheets make the whole page scroll smoothly. */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  const shown = useRef(pathname);
+  useEffect(() => {
+    if (shown.current === pathname) return;
+    shown.current = pathname;
+    if (navigationType !== 'POP') window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname, navigationType]);
+  return null;
+}
+
 export default function App() {
   // Wake the backend now, and say so if it is slow to start (services/wake.js).
   useEffect(() => { wakeServer(); }, []);
 
   return (
     <>
+    <ScrollToTop />
     <UnauthorizedHandler />
     <CandidateUnauthorizedHandler />
     <Suspense fallback={<PageLoading />}>

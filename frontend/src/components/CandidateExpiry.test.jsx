@@ -35,6 +35,8 @@ function openDashboard() {
 beforeEach(() => {
   localStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
+  // The redirect to sign-in opens that page at the top; jsdom can't scroll.
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 });
 
 afterEach(() => {
