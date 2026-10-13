@@ -8,7 +8,8 @@ import ProductLayer from './ProductLayer';
 
 /* The homepage and the legal pages get no product chrome. The keyboard
  * shortcuts used to work there too: "t" flipped the dashboard's saved theme for
- * a visitor who never sees it, and "n" and "?" opened product panels. */
+ * a visitor who never sees it, and "n" and "?" opened product panels. Notices
+ * still show there, at the bottom: at the top they covered "Sign in". */
 
 function renderAt(path) {
   return render(
@@ -51,14 +52,21 @@ describe('on the public pages', () => {
     expect(screen.queryByRole('button', { name: 'Close shortcuts' })).toBeNull();
   });
 
-  it('notices still show', () => {
+  it('notices still show, at the bottom', () => {
     renderAt('/');
     act(() => { toast('Starting the server.'); });
-    expect(screen.getByRole('status').textContent).toContain('Starting the server.');
+    const notices = screen.getByRole('status');
+    expect(notices.textContent).toContain('Starting the server.');
+    expect(notices.className.split(/\s+/)).toEqual(expect.arrayContaining(['top-auto', 'bottom-4']));
   });
 });
 
 describe('on the product pages', () => {
+  it('notices stay at the top, clear of the toolbar', () => {
+    renderAt('/hiring');
+    expect(screen.getByRole('status').className).toBe('pl-toast-container');
+  });
+
   it('"t" still switches the theme', () => {
     renderAt('/hiring');
     press('t');
