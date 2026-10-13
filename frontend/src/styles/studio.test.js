@@ -136,3 +136,30 @@ describe('the Studio stylesheet', () => {
     expect(sizes.filter(({ size }) => size < 11)).toEqual([]);
   });
 });
+
+/* Every page is near-black until the app's code has run, so index.html paints
+ * the homepage cream meanwhile; otherwise it blinked dark on each visit. */
+describe('the homepage before the app starts', () => {
+  const html = fs.readFileSync(path.join(frontend, 'index.html'), 'utf8');
+
+  it('is marked by index.html, and no other page is', () => {
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const mark = (pathname) => {
+      const attributes = {};
+      const page = { documentElement: { setAttribute: (name, value) => { attributes[name] = value; } } };
+      new Function('location', 'document', script)({ pathname }, page);
+      return attributes['data-boot'];
+    };
+    expect(mark('/')).toBe('home');
+    expect(mark('/hiring/login')).toBeUndefined();
+    expect(mark('/terms')).toBeUndefined();
+  });
+
+  it("is painted the homepage's own cream while nothing is drawn yet", () => {
+    const boot = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+    expect(boot).toContain('html[data-boot="home"]:has(#root:empty)');
+    expect(boot).toContain(`background: ${rule('.studio')['--paper']}`);
+    // :empty fails on so much as a space, and the cream would never show.
+    expect(html).toContain('<div id="root"></div>');
+  });
+});
