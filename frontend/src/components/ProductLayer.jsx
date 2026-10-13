@@ -21,6 +21,10 @@ import {
 const ProductContext = createContext(null);
 export const useProduct = () => useContext(ProductContext);
 
+// The homepage and the legal pages. They get no product chrome: no toolbar,
+// no keyboard shortcuts, no panels. Notices still show.
+const PUBLIC_PATHS = ['/', '/terms', '/privacy', '/privacy/delete'];
+
 export default function ProductLayer({ children }) {
   const location = useLocation();
 
@@ -51,8 +55,7 @@ export default function ProductLayer({ children }) {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
   }, []);
 
-  // Public marketing and legal pages get no product chrome.
-  const isPublicPage = ['/', '/terms', '/privacy'].includes(location.pathname);
+  const isPublicPage = PUBLIC_PATHS.includes(location.pathname);
 
   // ═══ ONBOARDING ═══
   useEffect(() => {
@@ -136,7 +139,10 @@ export default function ProductLayer({ children }) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   // ═══ KEYBOARD SHORTCUTS ═══
+  // Off on the public pages: there "t" would flip the dashboard's saved theme
+  // for a visitor who never sees it, and "n" and "?" open product panels.
   useEffect(() => {
+    if (isPublicPage) return undefined;
     const handleKeyDown = (e) => {
       // Don't trigger when typing anywhere editable. Covers <input>, <textarea>,
       // <select>, AND contenteditable elements (e.g. rich-text composers). Without
@@ -170,7 +176,7 @@ export default function ProductLayer({ children }) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleTheme]);
+  }, [toggleTheme, isPublicPage]);
 
   // ═══ CONTEXT VALUE ═══
   const contextValue = {
@@ -197,10 +203,10 @@ export default function ProductLayer({ children }) {
       </div>
 
       {/* ═══ FLOATING TOOLBAR (bottom-right) ═══
-          Product chrome, so it is hidden on the public pages. On the landing
-          page the theme toggle does nothing (the landing scope sets its own
-          tokens unconditionally), there is nothing to be notified about, and a
-          keyboard-shortcuts modal on a marketing page is noise. */}
+          Product chrome, so it is hidden on the public pages, with the panels
+          below. The homepage sets its own colours, so the theme toggle would do
+          nothing there; there is nothing to be notified about; and a
+          keyboard-shortcuts modal on the homepage is noise. */}
       {!isPublicPage && (
       <div className="pl-toolbar">
         {/* Theme toggle */}
@@ -222,7 +228,7 @@ export default function ProductLayer({ children }) {
       )}
 
       {/* ═══ NOTIFICATION PANEL ═══ */}
-      {showNotifPanel && (
+      {!isPublicPage && showNotifPanel && (
         <div className="pl-panel pl-notif-panel">
           <div className="pl-panel-header">
             <h3><Bell size={16} /> Notifications</h3>
@@ -251,7 +257,7 @@ export default function ProductLayer({ children }) {
       )}
 
       {/* ═══ KEYBOARD SHORTCUTS ═══ */}
-      {showShortcuts && (
+      {!isPublicPage && showShortcuts && (
         <div className="pl-overlay" onClick={() => setShowShortcuts(false)}>
           <div className="pl-modal" onClick={e => e.stopPropagation()}>
             <div className="pl-modal-header">
@@ -277,7 +283,7 @@ export default function ProductLayer({ children }) {
       )}
 
       {/* ═══ ONBOARDING ═══ */}
-      {showOnboarding && (
+      {!isPublicPage && showOnboarding && (
         <div className="pl-overlay pl-onboarding-overlay">
           <div className="pl-onboarding">
             <button className="pl-onboarding-skip" onClick={completeOnboarding}>Skip</button>
