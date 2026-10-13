@@ -26,9 +26,27 @@ const FONTS = [
   { pkg: '@fontsource/instrument-serif', files: ['400', '400-italic'], family: 'Instrument Serif' },
 ];
 
+const stylesheets = fs.readdirSync(path.join(frontend, 'src/styles')).filter(f => f.endsWith('.css'));
+const GENERIC = ['inherit', 'initial', 'unset', 'monospace', 'sans-serif', 'serif', 'system-ui', 'ui-monospace'];
+
 describe('the fonts', () => {
-  it('come from the app, not from Google', () => {
-    expect(read('index.html')).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  it('come from the app, not from a font site', () => {
+    expect(read('index.html')).not.toMatch(/<link[^>]+href="https?:\/\//);
+    for (const sheet of stylesheets) {
+      expect(read(`src/styles/${sheet}`)).not.toMatch(/@import\s+(url\()?\s*['"]?https?:|url\(\s*['"]?https?:[^)]*\.(woff2?|ttf|otf)/);
+    }
+  });
+
+  it('are the ones every font list in the stylesheets asks for first', () => {
+    // A family the app doesn't ship falls back without a word, as Satoshi,
+    // Fraunces and DM Mono did.
+    const bundled = new Set(FONTS.map(({ pkg, files }) => familiesIn(`node_modules/${pkg}/${files[0]}.css`)[0]));
+    const lists = stylesheets.flatMap(sheet => [
+      ...read(`src/styles/${sheet}`).matchAll(/(?:font-family|--font-[a-z]+|--sans|--serif)\s*:\s*([^;}]+)/g),
+    ].map(m => ({ sheet, first: m[1].split(',')[0].trim().replace(/^['"]|['"]$/g, '') })));
+    expect(lists.length).toBeGreaterThan(20);
+    const unshipped = lists.filter(({ first }) => !first.startsWith('var(') && !GENERIC.includes(first) && !bundled.has(first));
+    expect(unshipped).toEqual([]);
   });
 
   it('are imported in every weight the pages use', () => {
