@@ -24,7 +24,6 @@
 
 /* ─── Legacy stylesheets — being deleted progressively ─── */
 @import './design-system.css' layer(legacy);
-@import './landing.css' layer(legacy);
 @import './global.css' layer(legacy);
 @import './dashboard-polish.css' layer(legacy);
 @import './candidate-theme.css' layer(legacy);
