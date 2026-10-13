@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-import ProductMock from './landing/ProductMock';
+import Home from './home/Home';
 import InterviewReportView from './shared/InterviewReportView';
 import ScannerBar from './focus/ScannerBar';
 import HiringAgentPanel from './focus/HiringAgentPanel';
@@ -42,9 +42,11 @@ afterEach(() => {
 });
 
 describe('what the pages claim', () => {
-  it('the hero panel says its figures are an example', () => {
-    render(<ProductMock />);
-    expect(screen.getByText('Example data')).toBeTruthy();
+  it('the homepage says its candidates are made up', () => {
+    render(<MemoryRouter><Home /></MemoryRouter>);
+    expect(screen.getByText('FICTIONAL PROFILE · DEMO ONLY')).toBeTruthy();
+    expect(screen.getByText('Interactive preview')).toBeTruthy();
+    expect(screen.getByText('An illustrative preview with fictional candidates. No résumés are uploaded and no interviews are started.')).toBeTruthy();
   });
 
   it('face tracking is called what it measures', () => {
