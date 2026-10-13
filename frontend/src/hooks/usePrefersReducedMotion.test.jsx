@@ -3,9 +3,9 @@ import { render, screen, cleanup, act } from '@testing-library/react';
 
 import usePrefersReducedMotion from './usePrefersReducedMotion';
 
-/* The stylesheet's prefers-reduced-motion rule collapses CSS animations, but SVG
- * SMIL is not CSS and keeps looping regardless. This hook is how the landing
- * page's five infinite <animate> elements get stopped, so it needs to be right
+/* The stylesheet's prefers-reduced-motion rule collapses CSS animations, but
+ * script can't see it. This hook is how the homepage knows to scroll without
+ * gliding and to show its motion switch overruled, so it needs to be right
  * about a media query that jsdom does not implement by default.
  */
 

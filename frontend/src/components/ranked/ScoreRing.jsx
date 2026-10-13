@@ -3,10 +3,10 @@ import { cn } from '../ui/cn';
 
 /* ScoreRing — a 0-100 fit score as a filled arc.
  *
- * Extracted so the landing mock and the three in-app ranked surfaces render
- * the identical mark. They previously each built their own, which is how the
- * app ended up with two different ring sizes and two different colour maps for
- * the same four verdicts.
+ * Extracted so the in-app ranked surfaces render the identical mark. They
+ * previously each built their own, which is how the app ended up with two
+ * different ring sizes and two different colour maps for the same four
+ * verdicts.
  *
  * A conic sweep with a punched-out centre, rather than an SVG circle: no
  * viewBox maths, and the track and fill stay pixel-aligned at any size.
