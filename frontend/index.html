@@ -16,6 +16,12 @@
          until Fraunces took that job; one grotesk across all content still
          means weight carries the hierarchy below the headings. Fontshare. -->
     <link href="https://api.fontshare.com/v2/css?f%5B%5D=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+    <!-- Every page is near-black until the app's code has run, and the homepage
+         is cream, so it blinked dark on each visit. While the page is still
+         empty, the homepage is painted cream instead; once the app draws it,
+         studio.css takes over and the other pages are untouched. -->
+    <script>if (location.pathname === '/') document.documentElement.setAttribute('data-boot', 'home');</script>
+    <style>html[data-boot="home"]:has(#root:empty), html[data-boot="home"]:has(#root:empty) body { background: #f6f3eb; }</style>
     <title>ResuMate AI | Multi-Agent Hiring Platform</title>
 </head>
 <body>
