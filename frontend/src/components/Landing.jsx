@@ -75,7 +75,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <button
             type="button"
-            className="flex items-center gap-2 font-display text-[19px] font-bold tracking-[-0.02em] text-ink"
+            className="flex items-center gap-2 border-0 bg-transparent p-0 font-display text-[19px] font-bold tracking-[-0.02em] text-ink"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <Logo size={26} />
@@ -309,13 +309,13 @@ export default function Landing() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/hiring')}
-                className="inline-flex items-center gap-2 rounded-[10px] bg-ink-inverse px-6 py-3.5 text-[14px] font-bold text-accent transition-opacity duration-[120ms] hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded-[10px] border-0 bg-ink-inverse px-6 py-3.5 text-[14px] font-bold text-accent transition-opacity duration-[120ms] hover:opacity-90"
               >
                 Open dashboard <ArrowRight size={16} />
               </button>
               <button
                 onClick={() => navigate('/candidate/login')}
-                className="inline-flex items-center rounded-[10px] border-2 border-ink-inverse/25 px-6 py-3.5 text-[14px] font-bold text-ink-inverse transition-colors duration-[120ms] hover:border-ink-inverse/50"
+                className="inline-flex items-center rounded-[10px] border-2 border-ink-inverse/25 bg-transparent px-6 py-3.5 text-[14px] font-bold text-ink-inverse transition-colors duration-[120ms] hover:border-ink-inverse/50"
               >
                 Candidate portal
               </button>
