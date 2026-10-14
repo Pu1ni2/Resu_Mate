@@ -31,9 +31,9 @@ voice or text.
 
 ## Platform Preview
 
-### Landing Page & Agent Showcase
+### Homepage
 <p align="center">
-  <img src="screenshots/gifs/landing-home.gif" alt="Landing Page & Agent Showcase" width="800" />
+  <img src="screenshots/homepage.png" alt="The ResuMate homepage: the headline “See the person. Find the fit.” beside a sample candidate's résumé" width="800" />
 </p>
 
 ---
