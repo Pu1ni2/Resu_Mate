@@ -1,15 +1,19 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Link } from 'react-router-dom';
 
 import { toast } from '../services/notify';
 import ProductLayer from './ProductLayer';
 
-/* The homepage and the legal pages get no product chrome. The keyboard
- * shortcuts used to work there too: "t" flipped the dashboard's saved theme for
- * a visitor who never sees it, and "n" and "?" opened product panels. Notices
- * still show there, at the bottom: at the top they covered "Sign in". */
+/* The homepage, the legal pages and the sign-in pages get no product chrome.
+ * The keyboard shortcuts used to work there too: "t" flipped the dashboard's
+ * saved theme for a visitor who never sees it, and "n" and "?" opened product
+ * panels. Notices still show there, at the bottom: at the top they covered
+ * "Sign in". And the first-time walkthrough opened over the sign-in form. */
+
+const SIGN_IN = ['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login'];
+const WALKTHROUGH = 'Welcome to ResuMate AI!';
 
 function renderAt(path) {
   return render(
@@ -28,10 +32,11 @@ beforeEach(() => {
 
 afterEach(() => {
   document.documentElement.removeAttribute('data-theme');
+  vi.useRealTimers();
 });
 
 describe('on the public pages', () => {
-  it.each(['/', '/terms', '/privacy', '/privacy/delete'])('%s shows no product toolbar', path => {
+  it.each(['/', '/terms', '/privacy', '/privacy/delete', ...SIGN_IN])('%s shows no product toolbar', path => {
     renderAt(path);
     expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
@@ -52,16 +57,32 @@ describe('on the public pages', () => {
     expect(screen.queryByRole('button', { name: 'Close shortcuts' })).toBeNull();
   });
 
-  it('notices still show, at the bottom', () => {
-    renderAt('/');
+  it.each(['/', '/hiring/login'])('notices still show on %s, at the bottom', path => {
+    renderAt(path);
     act(() => { toast('Starting the server.'); });
     const notices = screen.getByRole('status');
     expect(notices.textContent).toContain('Starting the server.');
     expect(notices.className.split(/\s+/)).toEqual(expect.arrayContaining(['top-auto', 'bottom-4']));
   });
+
+  it.each(SIGN_IN.filter(path => path.startsWith('/hiring')))('%s opens no walkthrough for a first-time visitor', path => {
+    localStorage.removeItem('resumate_onboarded');
+    vi.useFakeTimers();
+    renderAt(path);
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(screen.queryByText(WALKTHROUGH)).toBeNull();
+  });
 });
 
 describe('on the product pages', () => {
+  it('the walkthrough still opens for a first-time visitor to the dashboard', () => {
+    localStorage.removeItem('resumate_onboarded');
+    vi.useFakeTimers();
+    renderAt('/hiring');
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(screen.getByText(WALKTHROUGH)).toBeTruthy();
+  });
+
   it('notices stay at the top, clear of the toolbar', () => {
     renderAt('/hiring');
     expect(screen.getByRole('status').className).toBe('pl-toast-container');
