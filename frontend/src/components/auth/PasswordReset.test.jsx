@@ -80,6 +80,11 @@ describe('asking for a link', () => {
     expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('/hiring/login');
   });
 
+  it('leads back to sign in, named without its arrow', () => {
+    at('/hiring/forgot');
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('/hiring/login');
+  });
+
   it('wants an address that looks like one before sending', () => {
     const post = vi.spyOn(api, 'post');
     at('/hiring/forgot');
