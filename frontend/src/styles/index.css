@@ -37,6 +37,8 @@
 /* ─── Studio: the homepage's design. Every rule is scoped to .studio, so
    it sits above the legacy stylesheets without touching any other page ─── */
 @import './studio.css' layer(components);
+/* The sign-in pages' design, scoped to .studio-auth in the same way. */
+@import './studio-auth.css' layer(components);
 
 /* Project tokens. Unlayered on purpose: @theme is a Tailwind at-rule, not
    ordinary CSS, and the :root/[data-theme] variables it emits need to sit

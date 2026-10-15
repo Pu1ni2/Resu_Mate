@@ -1,0 +1,356 @@
+/* ═══════════════════════════════════════════════════════════
+   STUDIO SIGN-IN: the sign-in pages' design
+
+   Ported from design-preview/studio-auth.css: the same rules, written out to
+   read, so the two can be compared. Every rule is scoped to .studio-auth, the
+   class on the sign-in pages' outermost element, so none of it reaches another
+   page, and index.css loads it in the components layer, above the legacy
+   stylesheets. Its own class rather than the homepage's .studio: the two
+   designs use eyebrow, issue and journey for different things.
+
+   What differs from the design file:
+   - Class names the legacy stylesheets already style are renamed: btn and
+     btn-primary become cta and cta-primary (the legacy amber buttons), and the
+     role switch marks the current page with aria-current, not .active.
+   - Nothing is smaller than 11px; the design had a few labels at 8-10px.
+   - The preview's own parts are left out: its toolbar, its pop-ups, and the
+     line saying it is a preview.
+   - The keyframes are prefixed studio-auth-: their names are global.
+   - The reset below undoes what the legacy stylesheets give plain elements and
+     form fields: grey paragraphs, blue links, amber selection and focus
+     rings, buttons and fields faded while disabled.
+   - A heading that receives focus when the screen changes shows no ring.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Studio's paper, ink and rust, as the sign-in design has them. */
+.studio-auth {
+  --paper: #f6f3eb; --card: #fffef9; --ink: #2b3029; --rust: #bf4a32; --muted: #62695a;
+  --line: #d7d8cc; --sage: #e9ebdf; --forest: #30382f;
+  --serif: 'Instrument Serif', Georgia, serif; --sans: 'DM Sans', Arial, sans-serif;
+  color-scheme: light;
+  background: var(--paper); color: var(--ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+}
+
+/* ── the page around it, while it is open ── */
+html:has(.studio-auth) { background: #f6f3eb; color-scheme: light; scrollbar-color: #adb39e #f6f3eb; }
+html:has(.studio-auth) body { background: #f6f3eb; }
+html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
+
+/* ── what the legacy stylesheets give plain elements, undone ── */
+.studio-auth * { box-sizing: border-box; }
+.studio-auth :where(h1, h2, h3, h4, h5, h6, p) { margin: 0; font: inherit; color: inherit; letter-spacing: inherit; }
+.studio-auth a { color: inherit; text-decoration: underline; transition: none; }
+.studio-auth :where(button, input, select) { font: inherit; color: inherit; }
+.studio-auth button { margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.studio-auth :where(button, input):disabled { opacity: 1; cursor: not-allowed; }
+.studio-auth :where(a, button, [tabindex]) { border-radius: 0; }
+.studio-auth :where(a, button, input, select) { -webkit-tap-highlight-color: transparent; }
+.studio-auth button:focus-visible, .studio-auth a:focus-visible, .studio-auth input:focus-visible, .studio-auth select:focus-visible { outline: 2px solid var(--rust); outline-offset: 4px; }
+/* The heading that takes focus when the screen changes, for screen readers. */
+.studio-auth [tabindex="-1"]:focus { outline: none; }
+.studio-auth ::selection { background: #e7b99e; color: #2b3029; }
+.studio-auth [hidden] { display: none !important; }
+.studio-auth .skip-link { position: absolute; left: 20px; top: -80px; background: var(--card); padding: 14px; z-index: 20; }
+.studio-auth .skip-link:focus { top: 12px; }
+
+/* ── the frame ── */
+.studio-auth .site-wrap { max-width: 1320px; width: calc(100% - 112px); margin: 0 auto; }
+.studio-auth .site-header { height: 96px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.studio-auth .brand { display: flex; align-items: center; font-size: 25px; font-weight: 600; letter-spacing: -1.2px; text-decoration: none; }
+.studio-auth .brand-mark { width: 29px; height: 30px; margin-right: 11px; position: relative; display: block; flex: none; }
+.studio-auth .brand-mark::before, .studio-auth .brand-mark::after { content: ''; position: absolute; top: 1px; left: 5px; width: 8px; height: 28px; background: var(--rust); transform: rotate(28deg); border-radius: 1px; }
+.studio-auth .brand-mark::after { left: 18px; transform: rotate(-28deg); }
+.studio-auth .brand-dot { color: var(--rust); }
+.studio-auth .back-home { font-size: 12px; text-decoration: none; display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.studio-auth .back-home:hover { color: var(--rust); }
+.studio-auth .back-home span { font-size: 21px; }
+.studio-auth .auth-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; padding: 42px 0 32px; min-height: 690px; }
+
+/* ── the story on the left ── */
+.studio-auth .story-column { padding: 20px 36px 8px 0; min-width: 0; align-self: start; position: sticky; top: 30px; }
+.studio-auth .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .15em; }
+.studio-auth .issue { color: var(--rust); display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.studio-auth .issue::before { content: ''; height: 1px; width: 26px; background: currentColor; flex: none; }
+.studio-auth .story-column h1 { font: clamp(57px, 5.4vw, 79px)/.99 var(--serif); letter-spacing: -1.8px; margin: 24px 0 21px; }
+.studio-auth .story-column h1 em { color: var(--rust); font-weight: 400; }
+.studio-auth .story-copy { color: var(--muted); font-size: 14px; line-height: 1.85; max-width: 360px; }
+.studio-auth .art-caption { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); margin: 30px 0 0; padding-top: 17px; border-top: 1px dashed #cbd1bf; max-width: 550px; }
+.studio-auth .art-caption > span { font-size: 17px; color: var(--rust); }
+
+/* The journey under the story: each small illustration has a job. */
+.studio-auth .journey-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.studio-auth .journey { margin-top: 39px; max-width: 550px; padding-top: 21px; border-top: 1px solid var(--line); }
+.studio-auth .journey-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 23px; }
+.studio-auth .journey-heading h2 { font: 500 11px/1.5 var(--sans); letter-spacing: .14em; color: var(--muted); }
+.studio-auth .journey-heading > span { font: italic 17px/1.2 var(--serif); color: #7b806d; }
+.studio-auth .journey-flow { position: relative; isolation: isolate; }
+.studio-auth .journey-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
+.studio-auth .journey-step { min-width: 0; text-align: center; position: relative; }
+.studio-auth .journey-illustration { width: 104px; height: 106px; margin: 0 auto 13px; position: relative; isolation: isolate; }
+.studio-auth .journey-illustration::before { content: ''; position: absolute; inset: 11px 9px 8px; border-radius: 50%; background: #e7ebdc; box-shadow: inset -6px -5px 12px #c4cdb128, inset 4px 3px 12px #fffef958; }
+.studio-auth .journey-step:nth-child(2) .journey-illustration::before { background: #f1e4d6; box-shadow: inset -6px -5px 12px #d9b69426, inset 4px 3px 12px #fffef95c; }
+.studio-auth .journey-illustration::after { content: ''; position: absolute; bottom: 0; left: 22px; width: 62px; height: 7px; border-radius: 50%; background: #74805d1c; filter: blur(5px); z-index: -1; }
+.studio-auth .journey-illustration > svg { width: 100%; height: 100%; position: relative; display: block; }
+.studio-auth .journey-thread { position: absolute; inset: 0 0 auto; width: 100%; height: 120px; z-index: -1; overflow: visible; fill: none; stroke: var(--rust); stroke-width: 1.4; stroke-linecap: round; opacity: .65; }
+.studio-auth .journey-thread-vertical { display: none; fill: none; stroke: var(--rust); stroke-width: 1.3; stroke-linecap: round; opacity: .6; }
+.studio-auth .journey-number { display: block; color: var(--rust); font-size: 11px; letter-spacing: .08em; font-weight: 500; margin-bottom: 9px; }
+.studio-auth .journey-step h3 { font: 25px/1.05 var(--serif); letter-spacing: -.3px; max-width: 158px; margin: 0 auto 10px; text-wrap: balance; }
+.studio-auth .journey-step p { font-size: 12px; line-height: 1.8; color: var(--muted); max-width: 155px; margin: 0 auto; text-wrap: pretty; }
+
+/* ── the form on the right ── */
+.studio-auth .form-column { border-left: 1px solid var(--line); padding: 20px 0 20px 56px; display: flex; align-items: center; justify-content: center; min-width: 0; }
+.studio-auth .form-card { width: 100%; max-width: 410px; margin: auto; }
+.studio-auth .role-nav { display: flex; gap: 4px; border: 1px solid var(--line); padding: 4px; border-radius: 4px; background: #efefe4; margin-bottom: 35px; }
+.studio-auth .role-nav > a { text-decoration: none; flex: 1; text-align: center; font-size: 12px; min-height: 40px; padding: 10px 8px; border-radius: 2px; color: var(--muted); font-weight: 500; white-space: nowrap; transition: background .18s, color .18s; }
+.studio-auth .role-nav > a[aria-current="page"] { background: var(--forest); color: var(--card); box-shadow: 0 2px 4px #1f312416; }
+.studio-auth .role-nav > a:hover:not([aria-current="page"]) { color: var(--ink); background: #e5e8d9; }
+.studio-auth .form-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); font-weight: 600; margin-bottom: 12px; }
+.studio-auth .form-title { font: 49px/1.04 var(--serif); letter-spacing: -1px; margin: 0 0 12px; }
+.studio-auth .form-title em { color: var(--rust); font-weight: 400; }
+.studio-auth .form-intro { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 26px; overflow-wrap: anywhere; }
+.studio-auth .form-intro strong { font-weight: 500; color: var(--ink); }
+.studio-auth .form-fields { display: grid; gap: 18px; }
+.studio-auth .auth-form:has(.form-links) .form-fields { gap: 17px; }
+
+/* Fields */
+.studio-auth .field-group { min-width: 0; margin-bottom: 18px; }
+.studio-auth .form-fields .field-group, .studio-auth .field-row .field-group { margin-bottom: 0; }
+.studio-auth .field-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 7px; }
+.studio-auth .optional { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+.studio-auth .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-bottom: 18px; }
+.studio-auth .form-fields > .field-row { margin-bottom: 0; }
+.studio-auth .form-fields .field-row > .field-group { min-width: 0; }
+.studio-auth .field-wrap { position: relative; display: flex; align-items: center; }
+.studio-auth .field-input { width: 100%; height: 49px; padding: 12px 14px; background: var(--card); border: 1px solid #c8cdbb; border-radius: 3px; font-size: 14px; transition: border-color .18s, box-shadow .18s; min-width: 0; }
+.studio-auth .field-input::placeholder { color: #878d7d; }
+.studio-auth .field-input:hover { border-color: #9ba58e; }
+.studio-auth .field-input:focus { outline: 0; border-color: var(--forest); box-shadow: 0 0 0 3px #596d3f16; }
+.studio-auth .field-input[aria-invalid="true"] { border-color: #af3d31; background: #fffaf4; }
+.studio-auth .field-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px #af3d3114; }
+.studio-auth .field-input:disabled { background: #eeeee5; color: #7b8271; border-color: #d3d7c9; }
+.studio-auth .field-wrap:has(.password-toggle) .field-input { padding-right: 65px; }
+.studio-auth .password-toggle { position: absolute; right: 1px; top: 1px; height: 47px; min-width: 58px; padding: 0 12px; font-size: 11px; color: var(--muted); }
+.studio-auth .password-toggle:hover { color: var(--rust); }
+.studio-auth .form-fields .field-row .field-input { padding-left: 11px; padding-right: 54px; font-size: 12px; }
+.studio-auth .form-fields .field-row .password-toggle { min-width: 48px; padding: 0 9px; font-size: 11px; }
+.studio-auth .form-fields .field-row .field-label { font-size: 11px; }
+.studio-auth .field-help { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 7px; }
+.studio-auth .field-error { color: #a63f30; font-size: 11px; line-height: 1.6; margin-top: 6px; }
+.studio-auth .field-error:empty { display: none; }
+.studio-auth .code-input { font-size: 26px; text-align: center; letter-spacing: .42em; height: 60px; padding-left: 22px; font-weight: 500; }
+
+/* Links, notes and the agreement */
+.studio-auth .form-links { display: flex; justify-content: flex-end; align-items: center; font-size: 12px; margin: 10px 0 23px; gap: 15px; }
+.studio-auth .form-fields > .form-links { margin: 0; }
+.studio-auth .text-link { color: var(--rust); text-decoration: none; font-size: inherit; border-bottom: 1px solid #bf4a325c; padding: 1px 0; font-weight: 500; }
+.studio-auth .text-link:hover { border-color: var(--rust); color: #9d3b28; }
+.studio-auth .form-foot { font-size: 12px; line-height: 1.9; text-align: center; color: var(--muted); margin-top: 22px; }
+.studio-auth .form-foot .text-link { margin-left: 4px; white-space: nowrap; }
+.studio-auth .form-note { font-size: 11px; line-height: 1.75; color: var(--muted); margin-top: 20px; }
+.studio-auth .form-fields > .form-note { margin: 0 0 2px; }
+.studio-auth .form-note .text-link { font-weight: 400; }
+.studio-auth .consent { display: flex; align-items: flex-start; gap: 10px; font-size: 11px; line-height: 1.85; color: var(--muted); margin: 19px 0 21px; }
+.studio-auth .form-fields > .consent-group { margin: 0; }
+.studio-auth .form-fields .consent { margin: 0; }
+.studio-auth .consent-input { width: 15px; height: 15px; flex: none; accent-color: var(--forest); margin: 3px 0 0; cursor: pointer; }
+.studio-auth .consent a { font-size: 11px; padding: 0; color: var(--ink); text-decoration: underline; text-decoration-color: #9ba58c; text-underline-offset: 3px; }
+.studio-auth .form-assurance { display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid var(--line); padding-top: 19px; margin-top: 29px; font-size: 11px; color: var(--muted); }
+.studio-auth .form-assurance svg { width: 15px; height: 17px; fill: none; stroke: #7f8c70; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* Buttons */
+.studio-auth .cta { min-height: 49px; padding: 13px 18px; display: inline-flex; align-items: center; justify-content: center; gap: 13px; text-decoration: none; font-size: 13px; font-weight: 500; border: 1px solid var(--forest); border-radius: 3px; transition: background .18s, border-color .18s, transform .18s; cursor: pointer; line-height: 1.5; }
+.studio-auth .cta-primary { color: var(--card); background: var(--forest); }
+.studio-auth .cta-primary:hover:not(:disabled) { background: #444f3c; border-color: #444f3c; transform: translateY(-1px); }
+.studio-auth .cta:disabled { background: #dfe3d5; border-color: #c5cdb8; color: #59654d; cursor: wait; }
+.studio-auth .cta > span[aria-hidden] { font-size: 20px; line-height: 1; }
+.studio-auth .full-width { width: 100%; }
+.studio-auth .form-fields ~ .full-width { margin-top: 22px; }
+.studio-auth .form-fields + .cta { margin-top: 23px; }
+.studio-auth .auth-form:has(.form-links) > .cta { margin-top: 22px; }
+.studio-auth .resend-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 15px; font-size: 12px; margin-top: 22px; }
+.studio-auth .resend-actions button { min-height: 40px; }
+.studio-auth .loading-spinner { width: 16px; height: 16px; border: 1.5px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: studio-auth-spin .8s linear infinite; flex: none; }
+.studio-auth .loading-spinner:empty { display: inline-block; }
+@keyframes studio-auth-spin { to { transform: rotate(360deg); } }
+
+/* Notices and the finished screen */
+.studio-auth .notice { display: flex; gap: 10px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 3px; margin: 0 0 22px; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.studio-auth .form-fields > .notice { margin: 0; }
+.studio-auth .notice-error { background: #faeee5; border-color: #dfb5a4; color: #98432f; }
+.studio-auth .notice-success { background: #e9edde; border-color: #c8d3b6; color: #4b603b; }
+.studio-auth .notice-info { background: #edf0e4; border-color: #d0d8c3; color: #526446; }
+.studio-auth .notice-icon { flex: none; width: 17px; height: 17px; text-align: center; line-height: 17px; border: 1px solid currentColor; border-radius: 50%; font-size: 11px; margin-top: 2px; }
+.studio-auth .notice-body { min-width: 0; }
+.studio-auth .notice-body p + p { margin-top: 5px; }
+.studio-auth .notice-body strong { font-weight: 600; }
+.studio-auth .success-mark { height: 57px; width: 57px; display: grid; place-items: center; border: 1px solid #b8c6a6; color: #526a3c; background: #e4ead6; border-radius: 50%; font: 30px var(--serif); margin: 0 0 22px; }
+.studio-auth .success-title { font: 42px/1.08 var(--serif); letter-spacing: -.6px; margin-bottom: 14px; }
+.studio-auth .success-copy { color: var(--muted); font-size: 13px; line-height: 1.8; margin-bottom: 25px; overflow-wrap: anywhere; }
+
+/* ── the footer ── */
+.studio-auth .site-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); padding: 22px 0; color: var(--muted); font-size: 11px; }
+.studio-auth .site-footer > div { display: flex; align-items: center; gap: 23px; }
+.studio-auth .site-footer a { color: inherit; font-size: 11px; padding: 8px 0; min-height: 40px; display: inline-flex; align-items: center; text-decoration: none; }
+.studio-auth .site-footer a:hover { color: var(--rust); }
+.studio-auth .site-footer > div > span { border-left: 1px solid var(--line); padding-left: 23px; }
+
+/* ── wider screens ── */
+@media (min-width: 1500px) {
+  .studio-auth .auth-layout { min-height: 760px; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+  .studio-auth .story-column h1 { font-size: 86px; }
+  .studio-auth .story-column { padding-right: 60px; }
+  .studio-auth .form-column { padding-left: 70px; }
+  .studio-auth .form-card { max-width: 435px; }
+  .studio-auth .form-title { font-size: 54px; }
+  .studio-auth .journey { margin-top: 43px; }
+  .studio-auth .journey-heading { margin-bottom: 28px; }
+  .studio-auth .journey-illustration { width: 116px; height: 118px; margin-bottom: 17px; }
+  .studio-auth .journey-step h3 { font-size: 27px; }
+  .studio-auth .journey-thread { height: 136px; }
+  .studio-auth .journey-step p { font-size: 13px; max-width: 164px; }
+  .studio-auth .journey-number { font-size: 11px; }
+}
+
+/* ── smaller screens ── */
+@media (max-width: 1150px) {
+  .studio-auth .site-wrap { width: calc(100% - 72px); }
+  .studio-auth .auth-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding-top: 34px; min-height: 680px; }
+  .studio-auth .story-column { padding-right: 28px; }
+  .studio-auth .story-column h1 { font-size: 62px; letter-spacing: -1.4px; }
+  .studio-auth .story-copy { font-size: 13px; max-width: 310px; }
+  .studio-auth .form-column { padding-left: 35px; }
+  .studio-auth .form-title { font-size: 45px; }
+  .studio-auth .art-caption { font-size: 11px; max-width: 550px; }
+  .studio-auth .site-footer { font-size: 11px; }
+  .studio-auth .site-footer > div { gap: 18px; }
+  .studio-auth .site-footer > div > span { padding-left: 18px; }
+  .studio-auth .journey-steps { gap: 12px; }
+  .studio-auth .journey-illustration { width: 92px; height: 96px; }
+  .studio-auth .journey-step h3 { font-size: 23px; }
+  .studio-auth .journey-step p { font-size: 11px; line-height: 1.8; }
+  .studio-auth .journey-thread { height: 110px; }
+  .studio-auth .journey-heading > span { font-size: 15px; }
+}
+@media (max-width: 950px) and (min-width: 701px) {
+  .studio-auth .journey { margin-top: 27px; padding-top: 18px; }
+  .studio-auth .journey-heading { margin-bottom: 15px; }
+  .studio-auth .journey-heading > span { display: none; }
+  .studio-auth .journey-steps { grid-template-columns: 1fr; gap: 18px; }
+  .studio-auth .journey-step { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 13px; text-align: left; align-items: center; }
+  .studio-auth .journey-illustration { width: 78px; height: 88px; margin: 0; }
+  .studio-auth .journey-step h3 { font-size: 25px; margin: 0 0 6px; max-width: none; text-wrap: initial; }
+  .studio-auth .journey-step p { font-size: 12px; margin: 0; max-width: 250px; line-height: 1.65; }
+  .studio-auth .journey-number { font-size: 11px; margin-bottom: 5px; }
+  .studio-auth .journey-thread { display: none; }
+  .studio-auth .journey-thread-vertical { display: block; position: absolute; top: 0; left: 3px; width: 78px; height: 100%; z-index: -1; }
+}
+@media (max-width: 900px) {
+  .studio-auth .site-wrap { width: calc(100% - 48px); }
+  .studio-auth .site-header { height: 82px; }
+  .studio-auth .story-column h1 { font-size: 53px; }
+  .studio-auth .story-column { padding-right: 24px; }
+  .studio-auth .form-column { padding-left: 27px; }
+  .studio-auth .form-title { font-size: 42px; }
+  .studio-auth .story-copy { font-size: 12px; }
+  .studio-auth .issue { font-size: 11px; letter-spacing: .12em; gap: 8px; }
+  .studio-auth .issue::before { width: 18px; }
+  .studio-auth .art-caption { font-size: 11px; align-items: flex-start; gap: 7px; }
+  .studio-auth .form-card { max-width: 390px; }
+  .studio-auth .role-nav { margin-bottom: 28px; }
+  .studio-auth .role-nav > a { font-size: 11px; }
+  .studio-auth .form-intro { font-size: 12px; }
+  .studio-auth .site-footer { gap: 15px; }
+  .studio-auth .site-footer > div > span { display: none; }
+  .studio-auth .form-fields > .field-row { grid-template-columns: 1fr; gap: 18px; }
+  .studio-auth .form-fields .field-row .field-input { font-size: 16px; padding-left: 14px; padding-right: 65px; }
+  .studio-auth .form-fields .field-row .field-label, .studio-auth .form-fields .field-row .field-help { font-size: 12px; }
+  .studio-auth .form-fields .field-row .password-toggle { font-size: 11px; min-width: 58px; }
+}
+@media (max-width: 950px) and (min-width: 701px) {
+  /* After the 900px rules, as in the design: the journey's own spacing wins. */
+  .studio-auth .art-caption { margin-top: 23px; padding-top: 15px; }
+}
+@media (max-width: 700px) {
+  .studio-auth .site-wrap { width: calc(100% - 40px); max-width: 530px; }
+  .studio-auth .site-header { height: 77px; }
+  .studio-auth .brand { font-size: 24px; }
+  .studio-auth .brand-mark { width: 26px; height: 28px; margin-right: 9px; }
+  .studio-auth .brand-mark::before, .studio-auth .brand-mark::after { height: 26px; width: 7px; }
+  .studio-auth .brand-mark::after { left: 17px; }
+  .studio-auth .back-home { font-size: 11px; gap: 7px; }
+  .studio-auth .back-home span { font-size: 18px; }
+  .studio-auth .site-header .back-home { max-width: 150px; line-height: 1.5; }
+  .studio-auth .auth-layout { display: block; padding: 23px 0 20px; min-height: 0; }
+  .studio-auth .story-column { position: static; padding: 0; margin-bottom: 24px; }
+  .studio-auth .story-column .issue { font-size: 11px; }
+  .studio-auth .story-column h1 { font-size: 46px; margin: 16px 0 12px; letter-spacing: -1.1px; }
+  .studio-auth .story-copy { font-size: 12px; max-width: 370px; line-height: 1.8; }
+  .studio-auth .art-caption { display: none; }
+  .studio-auth .form-column { border: 0; border-top: 1px solid var(--line); padding: 22px 0 0; display: block; }
+  .studio-auth .form-card { max-width: none; }
+  .studio-auth .role-nav { margin-bottom: 29px; }
+  .studio-auth .role-nav > a { font-size: 12px; min-height: 42px; padding: 11px 8px; }
+  .studio-auth .form-title { font-size: 43px; }
+  .studio-auth .form-intro { font-size: 13px; margin-bottom: 23px; }
+  .studio-auth .field-input { font-size: 16px; height: 50px; }
+  .studio-auth .password-toggle { height: 48px; }
+  .studio-auth .field-label { font-size: 12px; }
+  .studio-auth .field-help, .studio-auth .field-error { font-size: 12px; }
+  .studio-auth .field-row { gap: 12px; }
+  .studio-auth .form-assurance { margin-top: 24px; padding-top: 17px; }
+  .studio-auth .site-footer { padding: 15px 0 18px; font-size: 11px; gap: 10px; }
+  .studio-auth .site-footer > div { gap: 17px; }
+  .studio-auth .site-footer a { font-size: 11px; }
+  .studio-auth .code-input { font-size: 26px; height: 60px; }
+  .studio-auth .success-title { font-size: 39px; }
+  .studio-auth .notice { font-size: 12px; }
+  .studio-auth .form-note { font-size: 12px; }
+  .studio-auth .form-note .text-link { white-space: normal; }
+  .studio-auth .consent, .studio-auth .consent a { font-size: 12px; }
+  .studio-auth .form-foot { font-size: 13px; }
+  .studio-auth .form-links { font-size: 13px; }
+  .studio-auth .resend-actions { font-size: 12px; }
+  .studio-auth .cta { font-size: 13px; }
+  .studio-auth .journey { margin-top: 22px; padding-top: 16px; max-width: none; }
+  .studio-auth .journey-heading { margin-bottom: 14px; }
+  .studio-auth .journey-heading h2 { font-size: 11px; }
+  .studio-auth .journey-heading > span { font-size: 15px; }
+  .studio-auth .journey-steps { gap: 14px; }
+  .studio-auth .journey-illustration, .studio-auth .journey-thread, .studio-auth .journey-thread-vertical { display: none; }
+  .studio-auth .journey-step { text-align: left; padding-right: 9px; }
+  .studio-auth .journey-step + .journey-step { border-left: 1px solid var(--line); padding-left: 14px; }
+  .studio-auth .journey-step h3 { font-size: 20px; line-height: 1.1; margin: 0; max-width: none; text-wrap: initial; }
+  .studio-auth .journey-number { font-size: 11px; margin-bottom: 8px; }
+  .studio-auth .journey-step p { display: none; }
+}
+@media (max-width: 380px) {
+  .studio-auth .site-wrap { width: calc(100% - 32px); }
+  .studio-auth .site-header { gap: 12px; }
+  .studio-auth .brand { font-size: 22px; }
+  .studio-auth .back-home { font-size: 11px; gap: 4px; }
+  .studio-auth .site-header .back-home { max-width: 130px; }
+  .studio-auth .story-column h1 { font-size: 42px; }
+  .studio-auth .form-title { font-size: 40px; }
+  .studio-auth .field-row { grid-template-columns: 1fr; gap: 18px; }
+  .studio-auth .form-foot { font-size: 12px; }
+  .studio-auth .site-footer { align-items: flex-start; flex-direction: column; gap: 1px; }
+  .studio-auth .site-footer a { min-height: 34px; }
+  .studio-auth .form-assurance { font-size: 11px; }
+  .studio-auth .resend-actions { gap: 9px; }
+  .studio-auth .role-nav > a { font-size: 12px; }
+  .studio-auth .journey-steps { gap: 9px; }
+  .studio-auth .journey-step { padding-right: 0; }
+  .studio-auth .journey-step + .journey-step { padding-left: 10px; }
+  .studio-auth .journey-step h3 { font-size: 18px; }
+  .studio-auth .journey-heading > span { font-size: 14px; }
+  .studio-auth .journey-heading h2 { font-size: 11px; letter-spacing: .1em; }
+}
+@media (min-width: 901px) and (max-height: 950px) {
+  .studio-auth .auth-layout { padding-top: 27px; padding-bottom: 25px; min-height: 650px; }
+  .studio-auth .story-column { padding-top: 8px; }
+  .studio-auth .story-column h1 { font-size: 65px; margin: 19px 0 17px; }
+  .studio-auth .form-column { padding-top: 8px; padding-bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-auth *, .studio-auth *::before, .studio-auth *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
