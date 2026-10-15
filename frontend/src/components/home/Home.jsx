@@ -1,6 +1,7 @@
-import React, { useEffect, useReducer, useRef, useState } from 'react';
+import React, { useReducer, useRef, useState } from 'react';
 
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
+import useStudioPage from '../../hooks/useStudioPage';
 import { getToken } from '../../services/session';
 import { homeReducer, initialState } from './homeModel';
 import HomeNav from './HomeNav';
@@ -15,7 +16,6 @@ import HomeFooter from './HomeFooter';
  * further down always show the same one (homeModel.js). */
 
 const TITLE = 'ResuMate — See the person. Find the fit.';
-const PAPER = '#f6f3eb';
 
 export default function Home() {
   const [state, dispatch] = useReducer(homeReducer, initialState);
@@ -29,16 +29,7 @@ export default function Home() {
   const forManager = path => (getToken() ? '/hiring' : path);
 
   // The design's tab title, and a cream browser bar on phones, while it is open.
-  useEffect(() => {
-    const bar = document.querySelector('meta[name="theme-color"]');
-    const before = { title: document.title, bar: bar?.getAttribute('content') };
-    document.title = TITLE;
-    bar?.setAttribute('content', PAPER);
-    return () => {
-      document.title = before.title;
-      if (bar && before.bar) bar.setAttribute('content', before.bar);
-    };
-  }, []);
+  useStudioPage(TITLE);
 
   // Open a preview tab with the keyboard on it.
   const openTab = (tab) => {
