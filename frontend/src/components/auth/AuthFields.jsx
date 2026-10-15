@@ -66,10 +66,11 @@ export function CodeField({ onCode, ...field }) {
 }
 
 /* The form's main button. While the request is out it says what is happening,
- * and can't be pressed twice. */
-export function SubmitButton({ busy, busyLabel, children }) {
+ * and can't be pressed twice. `disabled` shuts it otherwise, as on a reset
+ * page opened without its link. */
+export function SubmitButton({ busy, busyLabel, disabled = false, children }) {
   return (
-    <button className="cta cta-primary full-width" type="submit" disabled={busy}>
+    <button className="cta cta-primary full-width" type="submit" disabled={busy || disabled}>
       {busy && <span className="loading-spinner" aria-hidden="true" />}
       <span>{busy ? busyLabel : children}</span>
       {!busy && <span aria-hidden="true">→</span>}

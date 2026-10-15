@@ -117,7 +117,7 @@ describe('choosing a new password', () => {
     at('/hiring/reset?token=tok-1');
     type(/^new password$/i, 'brand-new-pass');
     type(/^confirm new password$/i, 'brand-new-pass');
-    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
     expect(await screen.findByText('Password changed. Sign in with the new one.')).toBeTruthy();
     expect(post).toHaveBeenCalledWith('/auth/reset-password', { token: 'tok-1', password: 'brand-new-pass' });
   });
@@ -127,11 +127,11 @@ describe('choosing a new password', () => {
     at('/hiring/reset?token=tok-1');
     type(/^new password$/i, 'brand-new-pass');
     type(/^confirm new password$/i, 'brand-new-pazz');
-    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/do not match/i);
     type(/^new password$/i, 'short');
     type(/^confirm new password$/i, 'short');
-    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/at least 8 characters/i));
     expect(post).not.toHaveBeenCalled();
   });
@@ -141,14 +141,17 @@ describe('choosing a new password', () => {
     at('/hiring/reset?token=old');
     type(/^new password$/i, 'brand-new-pass');
     type(/^confirm new password$/i, 'brand-new-pass');
-    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/expired or was already used/);
-    expect(screen.getByRole('link', { name: 'Ask for a new one' }).getAttribute('href')).toBe('/hiring/forgot');
+    expect(screen.getByRole('link', { name: 'Request a new one' }).getAttribute('href')).toBe('/hiring/forgot');
   });
 
   it('needs the link from the email', () => {
     at('/hiring/reset');
-    expect(screen.getByRole('alert').textContent).toMatch(/needs the link from the reset email/i);
-    expect(screen.queryByLabelText(/^new password$/i)).toBeNull();
+    expect(screen.getByRole('status').textContent).toMatch(/needs the link from your reset email/i);
+    expect(screen.getByRole('link', { name: 'Request a reset link' }).getAttribute('href')).toBe('/hiring/forgot');
+    // The form shows, shut: there is nothing to change without the link.
+    expect(screen.getByLabelText(/^new password$/i).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Save new password' }).disabled).toBe(true);
   });
 });
