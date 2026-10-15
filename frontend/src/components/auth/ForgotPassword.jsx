@@ -74,7 +74,7 @@ export default function ForgotPassword() {
         </div>
         <SubmitButton busy={loading} busyLabel={form.busy}>{form.submit}</SubmitButton>
       </form>
-      <p className="form-foot"><Link className="text-link" to="/hiring/login">← Back to sign in</Link></p>
+      <p className="form-foot"><Link className="text-link" to="/hiring/login"><span aria-hidden="true">←</span> Back to sign in</Link></p>
     </AuthLayout>
   );
 }
