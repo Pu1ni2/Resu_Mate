@@ -67,6 +67,40 @@ describe('asking for a link', () => {
     expect(screen.queryByText(/development/i)).toBeNull();
   });
 
+  it('turns into "Check your inbox.", with the keyboard on it and a way back', async () => {
+    vi.spyOn(api, 'post').mockResolvedValue({ data: { message: ANSWER } });
+    at('/hiring/forgot');
+    type(/^email address$/i, 'jane@co.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }));
+    const title = await screen.findByRole('heading', { name: 'Check your inbox.' });
+    expect(document.activeElement).toBe(title);
+    expect(screen.getByRole('status').textContent).toContain('The link works once, for 30 minutes.');
+    expect(screen.queryByLabelText(/^email address$/i)).toBeNull();
+    // The way back is the panel's button; the footer's links are the legal pages.
+    expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('/hiring/login');
+  });
+
+  it('wants an address that looks like one before sending', () => {
+    const post = vi.spyOn(api, 'post');
+    at('/hiring/forgot');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }));
+    expect(screen.getByRole('alert').textContent).toMatch('Please enter your email address.');
+    expect(document.activeElement).toBe(screen.getByLabelText(/^email address$/i));
+    type(/^email address$/i, 'jane@co');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }));
+    expect(screen.getByRole('alert').textContent).toMatch('Enter a valid email address, such as you@example.com.');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("says it couldn't request the link when the server fails without a reason", async () => {
+    vi.spyOn(api, 'post').mockRejectedValue(refused(500));
+    at('/hiring/forgot');
+    type(/^email address$/i, 'jane@co.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch('We couldn’t request a reset link. Please try again.');
+    expect(screen.getByLabelText(/^email address$/i)).toBeTruthy();
+  });
+
   it('shows the link itself when a development server has no email', async () => {
     vi.spyOn(api, 'post').mockResolvedValue({ data: { message: ANSWER, debug_reset_link: 'http://localhost:5173/hiring/reset?token=t' } });
     at('/hiring/forgot');
