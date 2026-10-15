@@ -98,6 +98,46 @@ describe('the form can actually be filled', () => {
   });
 });
 
+describe('before anything is sent', () => {
+  it('names each missing field, points at them, and puts the keyboard on the first', () => {
+    const post = vi.spyOn(api, 'post');
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    expect(screen.getByRole('alert').textContent).toMatch('Please check the highlighted fields before continuing.');
+    const email = screen.getByLabelText(/^email address$/i);
+    const password = screen.getByLabelText(/^password$/i);
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(password.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Please enter your email address.')).toBeTruthy();
+    expect(screen.getByText('Please enter your password.')).toBeTruthy();
+    expect(document.activeElement).toBe(email);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('says what is wrong with an email that is not one', () => {
+    const post = vi.spyOn(api, 'post');
+    setup();
+    fireEvent.change(screen.getByLabelText(/^email address$/i), { target: { value: 'jane@co' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'hunter2hunter2' } });
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    expect(screen.getByRole('alert').textContent).toMatch('Enter a valid email address, such as you@example.com.');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('clears what it said about a field once you change it', () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+    const email = screen.getByLabelText(/^email address$/i);
+    fireEvent.change(email, { target: { value: 'j' } });
+    expect(email.hasAttribute('aria-invalid')).toBe(false);
+    expect(screen.queryByText('Please enter your email address.')).toBeNull();
+    // The password's problem is still there, and now the only one.
+    expect(screen.getByRole('alert').textContent).toMatch('Please enter your password.');
+  });
+});
+
 describe('signing in', () => {
   it('posts the credentials and lands on the dashboard', async () => {
     const post = vi.spyOn(api, 'post').mockResolvedValue(ok);
