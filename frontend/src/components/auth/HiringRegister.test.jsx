@@ -116,6 +116,55 @@ describe('what it checks before sending anything', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it('names all five problems on an empty form, each on its field', () => {
+    const post = vi.spyOn(api, 'post');
+    setup();
+    submit();
+
+    expect(screen.getByRole('alert').textContent).toMatch('Please check the highlighted fields before continuing.');
+    for (const [label, message] of [
+      [/^full name$/i, 'Please enter your full name.'],
+      [/^email address$/i, 'Please enter your email address.'],
+      [/^password$/i, 'Please enter your password.'],
+      [/^confirm password$/i, 'Please confirm your password.'],
+      [/^i agree to the terms/i, 'Please agree to the Terms and Privacy Policy to continue.'],
+    ]) {
+      const field = screen.getByLabelText(label);
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      const described = field.getAttribute('aria-describedby').split(' ').map(id => document.getElementById(id).textContent);
+      expect(described).toContain(message);
+    }
+    expect(screen.getByLabelText(/^company optional$/i).hasAttribute('aria-invalid')).toBe(false);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('says what is wrong with an email that is not one', async () => {
+    const post = vi.spyOn(api, 'post');
+    setup();
+    fill({ 'email address': 'jane@co' });
+    submit();
+
+    expect((await screen.findByRole('alert')).textContent).toMatch('Enter a valid email address, such as you@example.com.');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('tells you the password rule before you are wrong about it', () => {
+    setup();
+    const password = screen.getByLabelText(/^password$/i);
+    expect(document.getElementById(password.getAttribute('aria-describedby')).textContent).toBe('Use at least 8 characters.');
+  });
+
+  it('clears what it said about the agreement once you tick it', () => {
+    setup();
+    fill({ agree: false });
+    submit();
+    const box = screen.getByLabelText(/^i agree to the terms/i);
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    fireEvent.click(box);
+    expect(box.hasAttribute('aria-invalid')).toBe(false);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('rejects a short password before contacting the server', async () => {
     const post = vi.spyOn(api, 'post');
     setup();
