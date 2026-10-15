@@ -49,7 +49,7 @@ describe("a candidate's expired sign-in", () => {
     server({ ok: false, status: 401, json: async () => ({ detail: 'Token expired' }) });
     openDashboard();
     expect(await screen.findByText('Your sign-in has expired. Please sign in again.')).toBeTruthy();
-    expect(screen.getByText('Candidate Portal')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Your next chapter.' })).toBeTruthy();
     expect(localStorage.getItem('resumate_candidate_token')).toBeNull();
   });
 });

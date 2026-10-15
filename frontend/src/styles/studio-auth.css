@@ -148,6 +148,10 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .text-link:hover { border-color: var(--rust); color: #9d3b28; }
 .studio-auth .form-foot { font-size: 12px; line-height: 1.9; text-align: center; color: var(--muted); margin-top: 22px; }
 .studio-auth .form-foot .text-link { margin-left: 4px; white-space: nowrap; }
+/* "← Use a different email" is a button (it changes the step and goes nowhere)
+   where the design drew a link: as tall as the link, so its underline sits
+   under the words. */
+.studio-auth .form-foot button.text-link { line-height: normal; }
 .studio-auth .form-note { font-size: 11px; line-height: 1.75; color: var(--muted); margin-top: 20px; }
 .studio-auth .form-fields > .form-note { margin: 0 0 2px; }
 .studio-auth .form-note .text-link { font-weight: 400; }

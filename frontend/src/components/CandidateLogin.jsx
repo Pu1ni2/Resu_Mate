@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+
 import { useApp } from '../context/AppContext';
 import { API_BASE, responseError } from '../services/authFetch';
-import { Mail, ArrowRight, ArrowLeft, AlertCircle, Loader, Shield, KeyRound } from 'lucide-react';
-import Logo from './ui/Logo';
+import AuthLayout, { FormHeading } from './auth/AuthLayout';
+import { Field, CodeField, SubmitButton } from './auth/AuthFields';
+import AuthNotice from './auth/AuthNotice';
+import { SCREENS } from './auth/authStories';
+import { emailError, codeError } from './auth/authChecks';
 
 export default function CandidateLogin() {
   const navigate = useNavigate();
@@ -11,11 +15,12 @@ export default function CandidateLogin() {
   const expired = !!useLocation().state?.expired;
   const { setCandidateSession } = useApp();
 
-  const [step, setStep] = useState(1); // 1 = email, 2 = OTP
+  const [step, setStep] = useState(1); // 1 = email, 2 = the code
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [fieldError, setFieldError] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   // A new code went out from the code step; the one before stopped working.
   const [resent, setResent] = useState(false);
 
@@ -25,21 +30,20 @@ export default function CandidateLogin() {
     if (expired) setCandidateSession(null);
   }, [expired, setCandidateSession]);
 
-  // Step 1: Send OTP
-  const handleSendOTP = async () => {
-    if (!email.trim()) return;
-    const trimmed = email.trim().toLowerCase();
+  const address = email.trim().toLowerCase();
 
+  // Step 1, and "Send a new code" on step 2.
+  const sendCode = async () => {
     setLoading(true);
     setError('');
     try {
       const resp = await fetch(`${API_BASE}/api/auth/candidate/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: address }),
       });
       if (!resp.ok) {
-        setError(await responseError(resp, 'No access found for this email. Please contact your hiring manager.'));
+        setError(await responseError(resp, 'No access was found for this email. Contact your hiring manager.'));
         return;
       }
       setResent(step === 2);
@@ -51,19 +55,18 @@ export default function CandidateLogin() {
     }
   };
 
-  // Step 2: Verify OTP
-  const handleVerifyOTP = async () => {
-    if (!otp.trim() || otp.length < 6) return;
+  // Step 2.
+  const verifyCode = async () => {
     setLoading(true);
     setError('');
     try {
       const resp = await fetch(`${API_BASE}/api/auth/candidate/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), code: otp.trim() }),
+        body: JSON.stringify({ email: address, code: otp }),
       });
       if (!resp.ok) {
-        setError(await responseError(resp, 'Invalid or expired code. Please try again.'));
+        setError(await responseError(resp, 'This code is invalid or expired. Try again or request a new code.'));
         return;
       }
       const { candidate_data, access_token } = await resp.json();
@@ -90,139 +93,84 @@ export default function CandidateLogin() {
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const found = step === 1 ? emailError(email) : codeError(otp);
+    setFieldError(found);
+    if (found) {
+      setError('');
+      document.getElementById(step === 1 ? 'candidate-email' : 'candidate-code')?.focus();
+      return;
+    }
+    if (step === 1) sendCode();
+    else verifyCode();
+  };
+
+  const differentEmail = () => {
+    setStep(1);
+    setOtp('');
+    setFieldError('');
+    setError('');
+    setResent(false);
+  };
+
+  const problem = error || fieldError;
+  const screen = step === 1 ? 'candidate' : 'code';
+  const { form } = SCREENS[screen];
+
   return (
-    <div className="candidate-login-page">
-      <div className="cl-bg-gradient" />
-
-      <nav className="cl-nav">
-        <button className="cl-back" onClick={() => step === 2 ? setStep(1) : navigate('/')}>
-          <ArrowLeft size={18} /> {step === 2 ? 'Back' : 'Back'}
-        </button>
-        <div className="cl-nav-logo"><Logo size={28} tone="candidate" /> ResuMate AI</div>
-      </nav>
-
-      <div className="cl-container">
-        <div className="cl-card">
-
-          {step === 1 ? (
-            <>
-              <div className="cl-icon"><Mail size={32} /></div>
-              <h1 className="cl-title">Candidate Portal</h1>
-              <p className="cl-subtitle">Enter the email associated with your application to receive an access code.</p>
-
-              {expired && (
-                <div role="status" className="cl-info" style={{ marginTop: 0, marginBottom: '16px', color: '#93C5FD' }}>
-                  <Shield size={14} />
-                  <span>Your sign-in has expired. Please sign in again.</span>
-                </div>
-              )}
-
-              <div className="cl-form">
-                <div className="cl-input-wrap">
-                  <Mail size={18} className="cl-input-icon" />
-                  <input
-                    type="email"
-                    className="cl-input"
-                    aria-label="Email address"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setError(''); }}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSendOTP(); }}
-                    placeholder="Enter your email address"
-                    disabled={loading}
-                  />
-                </div>
-
-                {error && (
-                  <div className="cl-error">
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <button className="cl-submit" onClick={handleSendOTP} disabled={!email.trim() || loading}>
-                  {loading ? <Loader size={18} className="spin" /> : <ArrowRight size={18} />}
-                  <span>{loading ? 'Sending code...' : 'Send Access Code'}</span>
-                </button>
-              </div>
-
-              <div className="cl-info">
-                <Shield size={14} />
-                <span>Your email must be registered by a hiring manager to access the portal.</span>
-              </div>
-              {/* For people never invited, who can't sign in to delete their data. */}
-              <p style={{ marginTop: '12px', fontSize: '12px', color: '#94A3B8', textAlign: 'center' }}>
-                Not invited, but we hold your data? <Link to="/privacy/delete" style={{ color: '#93C5FD' }}>Ask us to delete it</Link>.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="cl-icon"><KeyRound size={32} /></div>
-              <h1 className="cl-title">Enter Access Code</h1>
-              <p className="cl-subtitle">
-                We sent a 6-digit code to <strong>{email}</strong>. It expires in 15 minutes.
-              </p>
-
-              <div className="cl-form">
-                <div className="cl-input-wrap">
-                  <KeyRound size={18} className="cl-input-icon" />
-                  <input
-                    type="text"
-                    className="cl-input"
-                    aria-label="Access code"
-                    value={otp}
-                    onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); setResent(false); }}
-                    onKeyDown={e => { if (e.key === 'Enter') handleVerifyOTP(); }}
-                    placeholder="6-digit code"
-                    maxLength={6}
-                    disabled={loading}
-                    style={{ letterSpacing: '6px', fontSize: '20px', textAlign: 'center' }}
-                  />
-                </div>
-
-                {error && (
-                  <div className="cl-error">
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                  </div>
-                )}
-                {resent && !error && (
-                  <div role="status" className="cl-info" style={{ marginTop: 0, color: '#93C5FD' }}>
-                    <Shield size={14} />
-                    <span>We sent a new code. The one before no longer works.</span>
-                  </div>
-                )}
-
-                <button className="cl-submit" onClick={handleVerifyOTP} disabled={otp.length < 6 || loading}>
-                  {loading ? <Loader size={18} className="spin" /> : <ArrowRight size={18} />}
-                  <span>{loading ? 'Verifying...' : 'Verify Code'}</span>
-                </button>
-
-                <button
-                  className="cl-demo-btn"
-                  onClick={() => { setOtp(''); handleSendOTP(); }}
-                  disabled={loading}
-                  style={{ marginTop: '8px' }}
-                >
-                  <span>Send a new code</span>
-                </button>
-
-                <button
-                  className="cl-demo-btn"
-                  onClick={() => { setStep(1); setOtp(''); setError(''); setResent(false); }}
-                  style={{ marginTop: '8px' }}
-                >
-                  <span>Use a different email</span>
-                </button>
-              </div>
-
-              <div className="cl-info">
-                <Shield size={14} />
-                <span>Didn't receive a code? Check your spam folder, or send a new one.</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+    <AuthLayout screen={screen}>
+      {step === 1 ? (
+        <>
+          <FormHeading screen="candidate" focusKey={step} />
+          {expired && !problem && <AuthNotice>Your sign-in has expired. Please sign in again.</AuthNotice>}
+          {problem && <AuthNotice kind="error">{problem}</AuthNotice>}
+          <form className="auth-form" noValidate aria-busy={loading} onSubmit={handleSubmit}>
+            <div className="form-fields">
+              <Field
+                id="candidate-email" name="email" label="Email address" type="email" autoComplete="email"
+                autoCapitalize="none" spellCheck={false} placeholder="you@example.com"
+                value={email} onChange={(e) => { setEmail(e.target.value); setFieldError(''); setError(''); }}
+                error={fieldError} disabled={loading}
+              />
+              <p className="form-note">Your hiring manager needs to have registered this email before you can access the portal.</p>
+            </div>
+            <SubmitButton busy={loading} busyLabel={form.busy}>{form.submit}</SubmitButton>
+          </form>
+          {/* For people never invited, who can't sign in to delete their data. */}
+          <p className="form-foot">Need your data removed? <Link className="text-link" to="/privacy/delete">Request deletion</Link></p>
+        </>
+      ) : (
+        <>
+          <FormHeading
+            screen="code"
+            focusKey={step}
+            intro={<>{form.intro} We sent it to <strong>{address}</strong>.</>}
+          />
+          {resent && !problem && <AuthNotice kind="success">We sent a new code. The one before no longer works.</AuthNotice>}
+          {problem && <AuthNotice kind="error">{problem}</AuthNotice>}
+          <form className="auth-form" noValidate aria-busy={loading} onSubmit={handleSubmit}>
+            <div className="form-fields">
+              <CodeField
+                id="candidate-code" name="code" label="Access code" placeholder="000000"
+                help="Enter all 6 digits. Codes expire after 15 minutes."
+                value={otp} onCode={(code) => { setOtp(code); setFieldError(''); setError(''); setResent(false); }}
+                error={fieldError} disabled={loading}
+              />
+            </div>
+            <SubmitButton busy={loading} busyLabel={form.busy}>{form.submit}</SubmitButton>
+            <div className="resend-actions">
+              <span>Need another code?</span>
+              <button type="button" className="text-link" onClick={() => { setOtp(''); sendCode(); }} disabled={loading}>
+                Send a new code
+              </button>
+            </div>
+          </form>
+          <p className="form-foot">
+            <button type="button" className="text-link" onClick={differentEmail}><span aria-hidden="true">←</span> Use a different email</button>
+          </p>
+        </>
+      )}
+    </AuthLayout>
   );
 }

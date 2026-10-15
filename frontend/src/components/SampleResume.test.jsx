@@ -36,7 +36,7 @@ describe('the candidate sign-in page', () => {
 
   it('asks the server for a code for every address', async () => {
     portal(<CandidateLogin />);
-    fireEvent.change(screen.getByPlaceholderText('Enter your email address'), { target: { value: 'dana@x.com' } });
+    fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'dana@x.com' } });
     fireEvent.click(screen.getByRole('button', { name: /send access code/i }));
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     const [url, options] = globalThis.fetch.mock.calls[0];
