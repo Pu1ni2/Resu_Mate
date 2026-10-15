@@ -14,8 +14,11 @@ const WRONG = 'We couldn’t sign you in. Check your email and password, then tr
 
 export default function HiringLogin() {
   const navigate = useNavigate();
-  // Back from choosing a new password (ResetPassword).
-  const passwordChanged = !!useLocation().state?.passwordChanged;
+  const { state } = useLocation();
+  // Back from choosing a new password (ResetPassword), or signed out by the
+  // server (App.jsx's UnauthorizedHandler).
+  const passwordChanged = !!state?.passwordChanged;
+  const expired = !!state?.expired;
   const { loginHiringManager } = useApp();
 
   const [email, setEmail] = useState('');
@@ -61,6 +64,7 @@ export default function HiringLogin() {
     <AuthLayout screen="login">
       <FormHeading screen="login" />
       {passwordChanged && !problem && <AuthNotice kind="success">Password changed. Sign in with the new one.</AuthNotice>}
+      {expired && !problem && <AuthNotice>Your sign-in has expired. Please sign in again.</AuthNotice>}
       {problem && <AuthNotice kind="error">{problem}</AuthNotice>}
       <form className="auth-form" noValidate aria-busy={loading} onSubmit={handleSubmit}>
         <div className="form-fields">

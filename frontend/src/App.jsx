@@ -36,8 +36,8 @@ function UnauthorizedHandler() {
     const onUnauth = () => {
       // services/api.js dispatches this when a 401 reaches the interceptor.
       // We do a soft navigation so React state (e.g. an in-progress Jarvis
-      // session) survives the redirect.
-      navigate('/hiring/login', { replace: true });
+      // session) survives the redirect. The sign-in page says why.
+      navigate('/hiring/login', { replace: true, state: { expired: true } });
     };
     window.addEventListener('resumate:unauthorized', onUnauth);
     return () => window.removeEventListener('resumate:unauthorized', onUnauth);
