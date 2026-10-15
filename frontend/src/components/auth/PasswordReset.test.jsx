@@ -136,6 +136,26 @@ describe('choosing a new password', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it('names both missing passwords, with the keyboard on the first', () => {
+    const post = vi.spyOn(api, 'post');
+    at('/hiring/reset?token=tok-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
+    expect(screen.getByRole('alert').textContent).toMatch('Please check the highlighted fields before continuing.');
+    expect(screen.getByText('Please enter your password.')).toBeTruthy();
+    expect(screen.getByText('Please confirm your password.')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText(/^new password$/i));
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("says it couldn't change the password when the server fails without a reason", async () => {
+    vi.spyOn(api, 'post').mockRejectedValue(refused(500));
+    at('/hiring/reset?token=tok-1');
+    type(/^new password$/i, 'brand-new-pass');
+    type(/^confirm new password$/i, 'brand-new-pass');
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch('We couldn’t change your password. Please try again.');
+  });
+
   it("shows the server's reason for a used or expired link", async () => {
     vi.spyOn(api, 'post').mockRejectedValue(refused(400, 'This reset link has expired or was already used. Ask for a new one.'));
     at('/hiring/reset?token=old');

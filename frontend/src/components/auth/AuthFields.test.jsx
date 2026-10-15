@@ -83,6 +83,11 @@ describe('the main button', () => {
     const button = screen.getByRole('button', { name: 'Signing in…' });
     expect(button.disabled).toBe(true);
   });
+
+  it('can be shut without a request out, keeping its words', () => {
+    render(<SubmitButton busy={false} busyLabel="Saving your password…" disabled>Save new password</SubmitButton>);
+    expect(screen.getByRole('button', { name: 'Save new password' }).disabled).toBe(true);
+  });
 });
 
 describe('a notice', () => {
