@@ -59,19 +59,19 @@ describe('asking for a link', () => {
   it("sends the address and shows the server's answer", async () => {
     const post = vi.spyOn(api, 'post').mockResolvedValue({ data: { message: ANSWER } });
     at('/hiring/forgot');
-    type(/^email$/i, ' jane@co.com ');
-    fireEvent.click(screen.getByRole('button', { name: 'Email me a link' }));
+    type(/^email address$/i, ' jane@co.com ');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }));
     expect((await screen.findByRole('status')).textContent).toContain(ANSWER);
     expect(post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'jane@co.com' });
-    expect(screen.queryByRole('button', { name: 'Email me a link' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Email me a reset link' })).toBeNull();
     expect(screen.queryByText(/development/i)).toBeNull();
   });
 
   it('shows the link itself when a development server has no email', async () => {
     vi.spyOn(api, 'post').mockResolvedValue({ data: { message: ANSWER, debug_reset_link: 'http://localhost:5173/hiring/reset?token=t' } });
     at('/hiring/forgot');
-    type(/^email$/i, 'jane@co.com');
-    fireEvent.click(screen.getByRole('button', { name: 'Email me a link' }));
+    type(/^email address$/i, 'jane@co.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }));
     const link = await screen.findByRole('link', { name: /open the reset link/i });
     expect(link.getAttribute('href')).toBe('http://localhost:5173/hiring/reset?token=t');
   });

@@ -108,3 +108,21 @@ export function FormHeading({ screen, intro, focusKey }) {
     </>
   );
 }
+
+/* What replaces a form once it has done its job, such as "Check your inbox.".
+ * Its title takes the keyboard, since the form the user was in has gone; the
+ * words are announced. */
+export function SuccessPanel({ screen, title, children, action }) {
+  const { form } = SCREENS[screen];
+  const heading = useRef(null);
+  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
+  return (
+    <div className="success-panel">
+      <span className="success-mark" aria-hidden="true">✓</span>
+      <p className="form-eyebrow">{form.eyebrow}</p>
+      <h2 className="form-title success-title" ref={heading} tabIndex={-1}>{title}</h2>
+      <div className="success-copy" role="status">{children}</div>
+      {action}
+    </div>
+  );
+}
