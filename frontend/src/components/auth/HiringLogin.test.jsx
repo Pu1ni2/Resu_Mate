@@ -52,7 +52,7 @@ const httpError = (status, detail) => {
 };
 
 const fill = () => {
-  fireEvent.change(screen.getByLabelText(/^email$/i), { target: { value: 'jane@co.com' } });
+  fireEvent.change(screen.getByLabelText(/^email address$/i), { target: { value: 'jane@co.com' } });
   fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'hunter2hunter2' } });
 };
 
@@ -75,13 +75,13 @@ describe('the form can actually be filled', () => {
     setup();
     // getByLabelText only resolves through htmlFor/id, so this passing IS the
     // proof the pairing is real. Both labels were unassociated before.
-    expect(screen.getByLabelText(/^email$/i)).toBeTruthy();
+    expect(screen.getByLabelText(/^email address$/i)).toBeTruthy();
     expect(screen.getByLabelText(/^password$/i)).toBeTruthy();
   });
 
   it('tells the browser what to autofill', () => {
     setup();
-    expect(screen.getByLabelText(/^email$/i).getAttribute('autocomplete')).toBe('email');
+    expect(screen.getByLabelText(/^email address$/i).getAttribute('autocomplete')).toBe('email');
     expect(screen.getByLabelText(/^password$/i).getAttribute('autocomplete')).toBe('current-password');
   });
 
@@ -125,7 +125,7 @@ describe('signing in', () => {
 });
 
 describe('when it fails', () => {
-  it('shows the server message in something a screen reader announces', async () => {
+  it('says it could not sign you in, in something a screen reader announces', async () => {
     vi.spyOn(api, 'post').mockRejectedValue(httpError(401, 'Invalid email or password'));
     setup();
     fill();
@@ -134,7 +134,16 @@ describe('when it fails', () => {
     // role="alert" is the part that matters — the error used to be a plain div
     // that mounted silently.
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toMatch(/invalid email or password/i);
+    expect(alert.textContent).toMatch(/We couldn’t sign you in\. Check your email and password/);
+  });
+
+  it('passes on what the server says about the account', async () => {
+    vi.spyOn(api, 'post').mockRejectedValue(httpError(403, 'Account is deactivated'));
+    setup();
+    fill();
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/account is deactivated/i);
   });
 
   it('says you are rate limited rather than blaming the password', async () => {
@@ -147,7 +156,7 @@ describe('when it fails', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toMatch(/too many attempts/i);
-    expect(alert.textContent).not.toMatch(/invalid email or password/i);
+    expect(alert.textContent).not.toMatch(/couldn’t sign you in/i);
   });
 
   it('distinguishes an unreachable server from a rejected credential', async () => {
