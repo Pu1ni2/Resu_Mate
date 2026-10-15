@@ -1,5 +1,7 @@
 // @vitest-environment node
 // (it reads stylesheets only, and Tailwind's compiler runs in Node)
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -67,5 +69,34 @@ describe('the sign-in stylesheet', () => {
     const sizes = fontSizes(authRules);
     expect(sizes.length).toBeGreaterThan(40);
     expect(sizes.filter(({ size }) => size < 11)).toEqual([]);
+  });
+});
+
+/* Every page is near-black until the app's code has run, so index.html paints
+ * the sign-in pages cream meanwhile, as it does the homepage. */
+describe('the sign-in pages before the app starts', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const mark = (pathname) => {
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const attributes = {};
+    const page = { documentElement: { setAttribute: (name, value) => { attributes[name] = value; } } };
+    new Function('location', 'document', script)({ pathname }, page);
+    return attributes['data-boot'];
+  };
+
+  it.each(['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login'])(
+    '%s is marked by index.html', (pathname) => {
+      expect(mark(pathname)).toBe('studio');
+    },
+  );
+
+  it.each(['/hiring', '/hiring/focus', '/candidate/dashboard', '/terms'])('%s, still dark, is not', (pathname) => {
+    expect(mark(pathname)).toBeUndefined();
+  });
+
+  it("is painted the sign-in design's own paper while nothing is drawn yet", () => {
+    const boot = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+    expect(boot).toContain('html[data-boot="studio"]:has(#root:empty)');
+    expect(boot).toContain(`background: ${rule('.studio-auth')['--paper']}`);
   });
 });
