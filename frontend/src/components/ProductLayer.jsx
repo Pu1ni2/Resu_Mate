@@ -21,9 +21,13 @@ import {
 const ProductContext = createContext(null);
 export const useProduct = () => useContext(ProductContext);
 
-// The homepage and the legal pages. They get no product chrome: no toolbar,
-// no keyboard shortcuts, no panels. Notices still show.
-const PUBLIC_PATHS = ['/', '/terms', '/privacy', '/privacy/delete'];
+// The homepage, the legal pages and the sign-in pages. They get no product
+// chrome: no toolbar, no keyboard shortcuts, no panels, no walkthrough. Notices
+// still show.
+const PUBLIC_PATHS = [
+  '/', '/terms', '/privacy', '/privacy/delete',
+  '/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login',
+];
 
 export default function ProductLayer({ children }) {
   const location = useLocation();
@@ -58,12 +62,14 @@ export default function ProductLayer({ children }) {
   const isPublicPage = PUBLIC_PATHS.includes(location.pathname);
 
   // ═══ ONBOARDING ═══
+  // In the dashboard only: /hiring/login and the other sign-in pages start with
+  // /hiring too, and a tour of a product nobody has signed in to yet is noise.
   useEffect(() => {
-    if (!hasSeenOnboarding && location.pathname.startsWith('/hiring')) {
+    if (!hasSeenOnboarding && !isPublicPage && location.pathname.startsWith('/hiring')) {
       const timer = setTimeout(() => setShowOnboarding(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [hasSeenOnboarding, location.pathname]);
+  }, [hasSeenOnboarding, isPublicPage, location.pathname]);
 
   const completeOnboarding = () => {
     setShowOnboarding(false);
@@ -191,9 +197,10 @@ export default function ProductLayer({ children }) {
 
       {/* ═══ TOAST CONTAINER ═══
           Top right, except on the public pages: there the top right holds the
-          menu's way in ("Sign in"), which the free server's wake-up notice
-          covered for up to a minute. The bottom right is free there, as the
-          toolbar is hidden. */}
+          way in or back (the homepage's "Sign in", the sign-in pages' "Back to
+          the homepage"), which the free server's wake-up notice covered for up
+          to a minute. The bottom right is free there, as the toolbar is
+          hidden. */}
       <div className={`pl-toast-container${isPublicPage ? ' top-auto bottom-4' : ''}`} role="status" aria-live="polite">
         {toasts.map(t => (
           <div key={t.id} className={`pl-toast pl-toast-${t.type}`}>
