@@ -116,7 +116,9 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .field-group { min-width: 0; margin-bottom: 18px; }
 .studio-auth .form-fields .field-group, .studio-auth .field-row .field-group { margin-bottom: 0; }
 .studio-auth .field-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 7px; }
-.studio-auth .optional { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+/* After a space in the label, so it reads "Company Optional": with the space,
+   1px makes the design's 4px gap. */
+.studio-auth .optional { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 1px; }
 .studio-auth .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-bottom: 18px; }
 .studio-auth .form-fields > .field-row { margin-bottom: 0; }
 .studio-auth .form-fields .field-row > .field-group { min-width: 0; }
