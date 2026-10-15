@@ -112,20 +112,6 @@
 [data-theme="dark"] .cd-interview-tips li { color: var(--text3) !important; }
 [data-theme="dark"] .cd-start-interview { background: var(--info) !important; }
 
-/* Candidate Login dark */
-[data-theme="dark"] .candidate-login-page { background: var(--bg) !important; color: var(--text) !important; }
-[data-theme="dark"] .cl-card { background: var(--surface) !important; border-color: var(--surface-border) !important; box-shadow: var(--shadow-lg) !important; }
-[data-theme="dark"] .cl-title { color: var(--text) !important; }
-[data-theme="dark"] .cl-subtitle { color: var(--text3) !important; }
-[data-theme="dark"] .cl-input { background: var(--bg3) !important; border-color: var(--surface-border) !important; color: var(--text) !important; }
-[data-theme="dark"] .cl-input::placeholder { color: var(--text3) !important; }
-[data-theme="dark"] .cl-input-icon { color: var(--text3) !important; }
-[data-theme="dark"] .cl-error { color: var(--error) !important; }
-[data-theme="dark"] .cl-info { color: var(--text3) !important; }
-[data-theme="dark"] .cl-submit { background: var(--info) !important; }
-[data-theme="dark"] .cl-back { color: var(--text2) !important; }
-[data-theme="dark"] .cl-nav-logo { color: var(--text) !important; }
-[data-theme="dark"] .cl-bg-gradient { background: radial-gradient(ellipse at top, rgba(59,130,246,0.1), transparent 70%) !important; }
 .dashboard-layout { background: var(--bg); color: var(--text); }
 .sidebar { background: var(--bg2); border-color: var(--surface-border); }
 .main { background: var(--bg); }

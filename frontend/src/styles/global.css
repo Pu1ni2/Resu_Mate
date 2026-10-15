@@ -814,34 +814,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 
 
 /* ========================================
-   CANDIDATE LOGIN PAGE (Light theme)
-   ======================================== */
-.candidate-login-page{min-height:100vh;background:#F8FAFC;color:#1E293B;display:flex;flex-direction:column;position:relative;overflow:hidden}
-.cl-bg-gradient{position:absolute;top:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(59,130,246,0.08) 0%,transparent 70%);pointer-events:none}
-.cl-nav{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;position:relative;z-index:1}
-.cl-back{display:flex;align-items:center;gap:8px;background:none;border:1px solid #E2E8F0;border-radius:10px;padding:8px 16px;color:#64748B;cursor:pointer;font-size:14px;font-family:inherit;transition:all .2s}
-.cl-back:hover{border-color:#3B82F6;color:#3B82F6}
-.cl-nav-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:#1E293B}
-.cl-container{flex:1;display:flex;align-items:center;justify-content:center;padding:40px}
-.cl-card{background:#fff;border:1px solid #E2E8F0;border-radius:24px;padding:48px;max-width:440px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.06);text-align:center}
-.cl-icon{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#3B82F6}
-.cl-title{font-size:24px;font-weight:700;color:#1E293B;margin-bottom:8px}
-.cl-subtitle{font-size:14px;color:#64748B;line-height:1.6;margin-bottom:28px}
-.cl-form{display:flex;flex-direction:column;gap:16px}
-.cl-input-wrap{position:relative;display:flex;align-items:center}
-.cl-input-icon{position:absolute;left:16px;color:#94A3B8}
-.cl-input{width:100%;padding:14px 16px 14px 46px;border:1px solid #E2E8F0;border-radius:12px;font-size:15px;color:#1E293B;background:#F8FAFC;outline:none;transition:border-color .2s;font-family:inherit;box-sizing:border-box}
-.cl-input:focus{border-color:#3B82F6;box-shadow:0 0 0 4px rgba(59,130,246,0.1)}
-.cl-input::placeholder{color:#94A3B8}
-.cl-error{display:flex;align-items:center;gap:8px;padding:12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;color:#DC2626;font-size:13px;text-align:left}
-.cl-submit{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
-.cl-submit:hover{box-shadow:0 4px 16px rgba(59,130,246,0.3);transform:translateY(-1px)}
-.cl-submit:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-.cl-info{display:flex;align-items:center;gap:8px;margin-top:20px;font-size:12px;color:#94A3B8}
-.cl-demo-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:12px;color:#60A5FA;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .2s}
-.cl-demo-btn:hover{background:rgba(59,130,246,0.18);border-color:rgba(59,130,246,0.45)}
-
-/* ========================================
    CANDIDATE DASHBOARD (Dark theme)
    ======================================== */
 .cd-layout{display:flex;min-height:100vh;background:var(--bg);color:var(--text)}
