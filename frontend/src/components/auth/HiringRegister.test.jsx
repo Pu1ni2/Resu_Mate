@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 import HiringRegister from './HiringRegister';
@@ -11,8 +11,8 @@ import api from '../../services/api';
  * The defect worth pinning: the three client-side guards ran in the order
  * confirm-match, password-length, name — so leaving the name blank and
  * mistyping the confirm reported "Passwords do not match". You fixed the
- * password, submitted again, and only then learned about the name. They now run
- * in the order the fields appear.
+ * password, submitted again, and only then learned about the name. Now every
+ * problem is named on its field at once, in the order the fields appear.
  */
 
 const DASHBOARD = 'dashboard-reached';
@@ -49,8 +49,8 @@ const httpError = (status, detail) => {
 function fill({ agree = true, ...overrides } = {}) {
   const values = {
     'full name': 'Jane Smith',
-    email: 'jane@co.com',
-    'company (optional)': 'Acme Inc.',
+    'email address': 'jane@co.com',
+    'company optional': 'Acme Inc.',
     password: 'hunter2hunter2',
     'confirm password': 'hunter2hunter2',
     ...overrides,
@@ -81,7 +81,7 @@ afterEach(() => {
 describe('the form can actually be filled', () => {
   it('finds all five fields by their label', () => {
     setup();
-    for (const label of [/^full name$/i, /^email$/i, /^company \(optional\)$/i,
+    for (const label of [/^full name$/i, /^email address$/i, /^company optional$/i,
       /^password$/i, /^confirm password$/i]) {
       expect(screen.getByLabelText(label)).toBeTruthy();
     }
@@ -90,8 +90,8 @@ describe('the form can actually be filled', () => {
   it('tells the browser what to autofill', () => {
     setup();
     expect(screen.getByLabelText(/^full name$/i).getAttribute('autocomplete')).toBe('name');
-    expect(screen.getByLabelText(/^email$/i).getAttribute('autocomplete')).toBe('email');
-    expect(screen.getByLabelText(/^company \(optional\)$/i).getAttribute('autocomplete')).toBe('organization');
+    expect(screen.getByLabelText(/^email address$/i).getAttribute('autocomplete')).toBe('email');
+    expect(screen.getByLabelText(/^company optional$/i).getAttribute('autocomplete')).toBe('organization');
     // new-password is what tells a password manager to offer a generated one.
     expect(screen.getByLabelText(/^password$/i).getAttribute('autocomplete')).toBe('new-password');
     expect(screen.getByLabelText(/^confirm password$/i).getAttribute('autocomplete')).toBe('new-password');
@@ -99,22 +99,20 @@ describe('the form can actually be filled', () => {
 });
 
 describe('what it checks before sending anything', () => {
-  it('reports the blank name even when the confirm also mismatches', async () => {
-    // The ordering defect. Both problems are present; the name is the one the
-    // user meets first on the form, so it is the one to report.
-    //
-    // Whitespace rather than an empty string on purpose: the field carries
-    // `required`, so the browser blocks submission before any JS runs and a
-    // truly empty name never reaches this guard. Spaces satisfy `required` and
-    // fail `.trim()`, which is the only way the guard is reachable at all.
+  it('names the blank name and the mismatch together, with the keyboard on the name', async () => {
+    // The ordering defect, now gone for good: every problem is named on its
+    // field at once, and the keyboard goes to the first the user meets.
+    // Spaces still count as a blank name.
     const post = vi.spyOn(api, 'post');
     setup();
     fill({ 'full name': '   ', 'confirm password': 'something-else' });
     submit();
 
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toMatch(/full name/i);
-    expect(alert.textContent).not.toMatch(/do not match/i);
+    expect(alert.textContent).toMatch('Please check the highlighted fields before continuing.');
+    expect(screen.getByText('Please enter your full name.')).toBeTruthy();
+    expect(screen.getByText('The passwords do not match.')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText(/^full name$/i));
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -145,7 +143,7 @@ describe('creating the account', () => {
   it('trims the text fields and omits an empty company', async () => {
     const post = vi.spyOn(api, 'post').mockResolvedValue(ok);
     setup();
-    fill({ 'full name': '  Jane Smith  ', email: ' jane@co.com ', 'company (optional)': null });
+    fill({ 'full name': '  Jane Smith  ', 'email address': ' jane@co.com ', 'company optional': null });
     submit();
 
     await waitFor(() => expect(post).toHaveBeenCalled());
@@ -199,14 +197,16 @@ describe('the agreement', () => {
     submit();
 
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toMatch(/agree to the terms and the privacy policy/i);
+    expect(alert.textContent).toMatch(/agree to the Terms and Privacy Policy to continue/);
     expect(post).not.toHaveBeenCalled();
   });
 
   it('links to the Terms and the Privacy Policy, in a new tab so the form keeps its text', () => {
     setup();
-    const terms = screen.getByRole('link', { name: 'Terms' });
-    const privacy = screen.getByRole('link', { name: 'Privacy Policy' });
+    // Inside the agreement: the page's footer has a Terms link too.
+    const agreement = within(screen.getByLabelText(/^i agree to the terms/i).closest('label'));
+    const terms = agreement.getByRole('link', { name: 'Terms' });
+    const privacy = agreement.getByRole('link', { name: 'Privacy Policy' });
     expect([terms.getAttribute('href'), privacy.getAttribute('href')]).toEqual(['/terms', '/privacy']);
     expect([terms.target, privacy.target]).toEqual(['_blank', '_blank']);
   });
