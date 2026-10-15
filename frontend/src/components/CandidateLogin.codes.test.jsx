@@ -76,3 +76,67 @@ describe('the code step', () => {
     expect(screen.queryByText(/Invalid or expired/)).toBeNull();
   });
 });
+
+/* The page is a real form now, on both steps, in the Studio design. */
+const render1 = () => render(<MemoryRouter><AppProvider><CandidateLogin /></AppProvider></MemoryRouter>);
+const emailBox = () => screen.getByRole('textbox', { name: 'Email address' });
+
+describe('the email step', () => {
+  it('is a form, so Enter sends the code', async () => {
+    render1();
+    fireEvent.change(emailBox(), { target: { value: 'dana@x.com' } });
+    fireEvent.submit(emailBox().closest('form'));
+    expect(await screen.findByRole('textbox', { name: 'Access code' })).toBeTruthy();
+    expect(sent).toEqual(['dana@x.com']);
+  });
+
+  it('wants an address that looks like one, before asking the server', () => {
+    render1();
+    fireEvent.click(screen.getByRole('button', { name: 'Send access code' }));
+    expect(screen.getByRole('alert').textContent).toMatch('Please enter your email address.');
+    expect(document.activeElement).toBe(emailBox());
+    fireEvent.change(emailBox(), { target: { value: 'dana@x' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send access code' }));
+    expect(screen.getByRole('alert').textContent).toMatch('Enter a valid email address, such as you@example.com.');
+    expect(sent).toEqual([]);
+  });
+
+  it("announces the server's answer for an address it doesn't know", async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: false, status: 404,
+      json: async () => ({ detail: 'No interview access found for this email. Please check with your hiring manager.' }),
+    });
+    render1();
+    fireEvent.change(emailBox(), { target: { value: 'nobody@x.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send access code' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/No interview access found for this email/);
+  });
+
+  it('offers a way to ask for data to be deleted', () => {
+    render1();
+    expect(screen.getByRole('link', { name: 'Request deletion' }).getAttribute('href')).toBe('/privacy/delete');
+  });
+});
+
+describe('the code step, in the Studio design', () => {
+  it('says where the code went, and puts the keyboard on its heading', async () => {
+    await atTheCodeStep();
+    const heading = screen.getByRole('heading', { name: 'Check your inbox.' });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.getByText(/We sent it to/).textContent).toMatch('We sent it to dana@x.com.');
+  });
+
+  it('wants all six digits before checking the code', async () => {
+    fireEvent.change(await atTheCodeStep(), { target: { value: '12345' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify code' }));
+    expect(screen.getByRole('alert').textContent).toMatch('Enter the complete 6-digit access code.');
+    expect(globalThis.fetch.mock.calls.some(([url]) => String(url).endsWith('/verify-otp'))).toBe(false);
+  });
+
+  it('goes back to the email step, with the keyboard on its heading', async () => {
+    await atTheCodeStep();
+    fireEvent.click(screen.getByRole('button', { name: 'Use a different email' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your next chapter.' }));
+    expect(emailBox().value).toBe('Dana@X.com');
+  });
+});
