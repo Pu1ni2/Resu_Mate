@@ -10,12 +10,13 @@
     <!-- The fonts ship with the app (src/main.jsx): no page asks a font site
          for one. -->
 
-    <!-- Every page is near-black until the app's code has run, and the homepage
-         is cream, so it blinked dark on each visit. While the page is still
-         empty, the homepage is painted cream instead; once the app draws it,
-         studio.css takes over and the other pages are untouched. -->
-    <script>if (location.pathname === '/') document.documentElement.setAttribute('data-boot', 'home');</script>
-    <style>html[data-boot="home"]:has(#root:empty), html[data-boot="home"]:has(#root:empty) body { background: #f6f3eb; }</style>
+    <!-- Every page is near-black until the app's code has run, and the Studio
+         pages (the homepage and the sign-in pages) are cream, so they blinked
+         dark on each visit. While the page is still empty, they are painted
+         cream instead; once the app draws them, studio.css and studio-auth.css
+         take over, and the other pages are untouched. -->
+    <script>if (['/', '/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login'].includes(location.pathname)) document.documentElement.setAttribute('data-boot', 'studio');</script>
+    <style>html[data-boot="studio"]:has(#root:empty), html[data-boot="studio"]:has(#root:empty) body { background: #f6f3eb; }</style>
     <title>ResuMate AI | Multi-Agent Hiring Platform</title>
 </head>
 <body>

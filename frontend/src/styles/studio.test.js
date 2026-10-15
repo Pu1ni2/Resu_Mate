@@ -85,7 +85,7 @@ describe('the Studio stylesheet', () => {
 describe('the homepage before the app starts', () => {
   const html = fs.readFileSync(path.join(frontend, 'index.html'), 'utf8');
 
-  it('is marked by index.html, and no other page is', () => {
+  it('is marked by index.html, as the sign-in pages are, and the product pages are not', () => {
     const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
     const mark = (pathname) => {
       const attributes = {};
@@ -93,14 +93,14 @@ describe('the homepage before the app starts', () => {
       new Function('location', 'document', script)({ pathname }, page);
       return attributes['data-boot'];
     };
-    expect(mark('/')).toBe('home');
-    expect(mark('/hiring/login')).toBeUndefined();
+    expect(mark('/')).toBe('studio');
+    expect(mark('/hiring/login')).toBe('studio');
     expect(mark('/terms')).toBeUndefined();
   });
 
   it("is painted the homepage's own cream while nothing is drawn yet", () => {
     const boot = html.match(/<style>([\s\S]*?)<\/style>/)[1];
-    expect(boot).toContain('html[data-boot="home"]:has(#root:empty)');
+    expect(boot).toContain('html[data-boot="studio"]:has(#root:empty)');
     expect(boot).toContain(`background: ${rule('.studio')['--paper']}`);
     // :empty fails on so much as a space, and the cream would never show.
     expect(html).toContain('<div id="root"></div>');
