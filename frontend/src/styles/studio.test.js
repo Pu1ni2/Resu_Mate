@@ -3,7 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { compile } from 'tailwindcss';
+
+import {
+  read, rules, declarations, classesIn, selectorsIn, legacyClasses, tailwindUtility, fontSizes,
+} from './cssForTests';
 
 /* studio.css is the homepage's design, while the legacy stylesheets style plain
  * elements and common class names across the whole app. jsdom loads no CSS, so
@@ -12,51 +15,6 @@ import { compile } from 'tailwindcss';
  * and a homepage button left with the browser's grey box. */
 
 const frontend = path.resolve(__dirname, '../..');
-const read = file => fs.readFileSync(path.join(__dirname, file), 'utf8');
-
-/** Every rule as { media, selector, body }, one @media level deep. */
-function rules(css, media = '') {
-  const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  const out = [];
-  let i = 0;
-  while (i < text.length) {
-    const open = text.indexOf('{', i);
-    if (open === -1) break;
-    // Anything before the selector that ends in ";" is a statement (@import).
-    const head = text.slice(i, open).split(';').pop().trim().replace(/\s+/g, ' ');
-    let depth = 1;
-    let j = open + 1;
-    for (; depth && j < text.length; j += 1) {
-      if (text[j] === '{') depth += 1;
-      else if (text[j] === '}') depth -= 1;
-    }
-    const body = text.slice(open + 1, j - 1);
-    if (head.startsWith('@media')) out.push(...rules(body, head));
-    else if (!head.startsWith('@')) out.push({ media, selector: head, body });
-    i = j;
-  }
-  return out;
-}
-
-const declarations = body => Object.fromEntries(body.split(';')
-  .map(d => d.split(':'))
-  .filter(parts => parts.length > 1)
-  .map(([prop, ...value]) => [prop.trim(), value.join(':').trim()]));
-
-const classesIn = selector => [...selector.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(m => m[1]);
-
-/** A selector list's selectors: its commas outside :where(…) and the like. */
-function selectorsIn(list) {
-  const parts = [''];
-  let depth = 0;
-  for (const ch of list) {
-    if (ch === '(') depth += 1;
-    if (ch === ')') depth -= 1;
-    if (ch === ',' && depth === 0) parts.push('');
-    else parts[parts.length - 1] += ch;
-  }
-  return parts.map(s => s.trim());
-}
 
 const studio = read('studio.css');
 const studioRules = rules(studio);
@@ -97,22 +55,13 @@ describe('the Studio stylesheet', () => {
   });
 
   it('shares no class name with the legacy stylesheets', () => {
-    const legacy = [...read('index.css').matchAll(/@import '\.\/([\w-]+\.css)' layer\(legacy\)/g)].map(m => m[1]);
-    expect(legacy.length).toBeGreaterThan(0);
-    const legacyClasses = new Set(legacy.flatMap(file => rules(read(file)).flatMap(r => classesIn(r.selector))));
-    expect(studioClasses.filter(name => legacyClasses.has(name))).toEqual([]);
+    const legacy = legacyClasses();
+    expect(legacy.files.length).toBeGreaterThan(0);
+    expect(studioClasses.filter(name => legacy.names.has(name))).toEqual([]);
   });
 
   it('uses no class name Tailwind makes a utility of', async () => {
-    const tailwind = path.join(frontend, 'node_modules/tailwindcss');
-    const compiler = await compile("@import 'tailwindcss/theme.css'; @import './src/styles/theme.css'; @tailwind utilities;", {
-      base: frontend,
-      loadStylesheet: async (id, base) => {
-        const file = id.startsWith('tailwindcss/') ? path.join(tailwind, id.slice('tailwindcss/'.length)) : path.resolve(base, id);
-        return { path: file, base: path.dirname(file), content: fs.readFileSync(file, 'utf8') };
-      },
-    });
-    const generates = name => new RegExp(`\\.${name}(?![\\w-])`).test(compiler.build([name]));
+    const generates = await tailwindUtility();
     expect(generates('container')).toBe(true); // the design file's name, which is why it is .wrap here
     expect(studioClasses.length).toBeGreaterThan(80);
     expect(studioClasses.filter(generates)).toEqual([]);
@@ -125,13 +74,7 @@ describe('the Studio stylesheet', () => {
   });
 
   it('sets no text smaller than 11px', () => {
-    const sizes = studioRules.flatMap(({ selector, body }) => {
-      const d = declarations(body);
-      const px = [...(d['font-size'] || '').matchAll(/([\d.]+)px/g)].map(m => Number(m[1]));
-      const shorthand = (d.font || '').match(/([\d.]+)px/);
-      if (shorthand) px.push(Number(shorthand[1]));
-      return px.map(size => ({ size, selector }));
-    });
+    const sizes = fontSizes(studioRules);
     expect(sizes.length).toBeGreaterThan(30);
     expect(sizes.filter(({ size }) => size < 11)).toEqual([]);
   });
