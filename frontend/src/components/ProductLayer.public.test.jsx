@@ -6,7 +6,8 @@ import { MemoryRouter, Link } from 'react-router-dom';
 import { toast } from '../services/notify';
 import ProductLayer from './ProductLayer';
 
-/* The homepage, the legal pages and the sign-in pages get no product chrome.
+/* Only the product's pages get the product chrome: not the homepage, the legal
+ * pages, the sign-in pages, or an address the app doesn't have.
  * The keyboard shortcuts used to work there too: "t" flipped the dashboard's
  * saved theme for a visitor who never sees it, and "n" and "?" opened product
  * panels. Notices still show there, at the bottom: at the top they covered
@@ -74,7 +75,31 @@ describe('on the public pages', () => {
   });
 });
 
+/* An unknown address got the toolbar: the public pages were a list, and it
+ * was on none. */
+describe('on an address the app does not have', () => {
+  it.each(['/no/such/page', '/candidate', '/candidate/elsewhere', '/hiringx'])('%s shows no product toolbar', path => {
+    renderAt(path);
+    expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
+  });
+
+  it('"t" leaves the saved theme alone', () => {
+    renderAt('/no/such/page');
+    press('t');
+    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+  });
+});
+
 describe('on the product pages', () => {
+  it.each(['/hiring', '/hiring/focus', '/hiring/sourcer', '/candidate/dashboard', '/candidate/dashboard/interview', '/dashboard'])(
+    '%s shows the product toolbar', path => {
+      renderAt(path);
+      expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+    },
+  );
+
   it('the walkthrough still opens for a first-time visitor to the dashboard', () => {
     localStorage.removeItem('resumate_onboarded');
     vi.useFakeTimers();
