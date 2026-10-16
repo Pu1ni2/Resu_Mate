@@ -25,7 +25,7 @@ export const useProduct = () => useContext(ProductContext);
 // portal (/dashboard is an old address for the hiring dashboard). Every other
 // page, the homepage, the legal pages, the sign-in pages and an address the app
 // doesn't have, gets no product chrome: no toolbar, no keyboard shortcuts, no
-// panels, no walkthrough. Notices still show.
+// panels, no walkthrough. Notices still show. index.html draws the same line.
 const PRODUCT = /^\/(hiring|candidate\/dashboard|dashboard)(\/|$)/;
 const SIGN_IN = ['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset'];
 

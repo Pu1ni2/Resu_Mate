@@ -90,7 +90,7 @@ describe('the sign-in pages before the app starts', () => {
     },
   );
 
-  it.each(['/hiring', '/hiring/focus', '/candidate/dashboard', '/terms'])('%s, still dark, is not', (pathname) => {
+  it.each(['/hiring', '/hiring/focus', '/candidate/dashboard'])('%s, a product page, is not', (pathname) => {
     expect(mark(pathname)).toBeUndefined();
   });
 

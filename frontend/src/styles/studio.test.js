@@ -95,7 +95,7 @@ describe('the homepage before the app starts', () => {
     };
     expect(mark('/')).toBe('studio');
     expect(mark('/hiring/login')).toBe('studio');
-    expect(mark('/terms')).toBeUndefined();
+    expect(mark('/hiring')).toBeUndefined();
   });
 
   it("is painted the homepage's own cream while nothing is drawn yet", () => {
