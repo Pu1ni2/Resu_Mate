@@ -1,4 +1,6 @@
 import React from 'react';
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Link } from 'react-router-dom';
@@ -128,5 +130,27 @@ describe('on the product pages', () => {
     expect(screen.queryByRole('button', { name: 'Close notifications' })).toBeNull();
     press('t');
     expect(localStorage.getItem('resumate_theme')).toBe('dark');
+  });
+});
+
+/* index.html paints the Studio pages cream before the app has run, and has
+ * to tell them from the product's without the app's code: the same line. */
+describe('the line between the product and the rest', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const paintedCream = (pathname) => {
+    const attributes = {};
+    const page = { documentElement: { setAttribute: (name, value) => { attributes[name] = value; } } };
+    new Function('location', 'document', script)({ pathname }, page);
+    return attributes['data-boot'] === 'studio';
+  };
+
+  it.each([
+    '/', '/terms', '/privacy/delete', '/hiring/login', '/hiring/reset', '/candidate/login', '/no/such/page',
+    '/hiring', '/hiring/focus', '/candidate/dashboard', '/dashboard',
+  ])('is where index.html draws it, at %s', (pathname) => {
+    renderAt(pathname);
+    const product = !!screen.queryByRole('button', { name: 'Toggle theme' });
+    expect(paintedCream(pathname)).toBe(!product);
   });
 });
