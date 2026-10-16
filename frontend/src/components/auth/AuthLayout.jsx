@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
+import useHeadingFocus from '../../hooks/useHeadingFocus';
 import PageFrame from './PageFrame';
 import { JOURNEYS, SCREENS } from './authStories';
 import { JourneySymbols, JourneyThreads } from './JourneyArt';
@@ -69,42 +70,39 @@ export default function AuthLayout({ screen, children }) {
 }
 
 /* A form's eyebrow, title and introduction. The title takes the keyboard when
- * the screen changes: when the page was reached from another page in the app,
- * or when `focusKey` changes on the same page (the candidate's two steps). Not
- * when the page is opened directly, where the browser's own start is right. */
-export function FormHeading({ screen, intro, focusKey }) {
-  const { form } = SCREENS[screen];
-  const { key } = useLocation();
-  const title = useRef(null);
-  const seen = useRef(focusKey);
-
-  useEffect(() => {
-    const changed = seen.current !== focusKey;
-    seen.current = focusKey;
-    if (changed || key !== 'default') title.current?.focus({ preventScroll: true });
-  }, [key, focusKey]);
-
+ * the screen changes (hooks/useHeadingFocus.js). `level` 1 makes the title the
+ * page's own heading, on a page with no story beside the form. */
+export function StepHeading({ eyebrow, title, intro, focusKey, level = 2 }) {
+  const heading = useHeadingFocus(focusKey);
+  const Title = level === 1 ? 'h1' : 'h2';
   return (
     <>
-      <p className="form-eyebrow">{form.eyebrow}</p>
-      <h2 className="form-title" ref={title} tabIndex={-1}>{form.title}</h2>
-      <p className="form-intro">{intro ?? form.intro}</p>
+      <p className="form-eyebrow">{eyebrow}</p>
+      <Title className="form-title" ref={heading} tabIndex={-1}>{title}</Title>
+      <p className="form-intro">{intro}</p>
     </>
   );
 }
 
+/* A sign-in screen's heading, in its words from SCREENS. */
+export function FormHeading({ screen, intro, focusKey }) {
+  const { form } = SCREENS[screen];
+  return <StepHeading eyebrow={form.eyebrow} title={form.title} intro={intro ?? form.intro} focusKey={focusKey} />;
+}
+
 /* What replaces a form once it has done its job, such as "Check your inbox.".
  * Its title takes the keyboard, since the form the user was in has gone; the
- * words are announced. */
-export function SuccessPanel({ screen, title, children, action }) {
-  const { form } = SCREENS[screen];
+ * words are announced. The eyebrow is the screen's unless `eyebrow` is given,
+ * and `level` 1 makes the title the page's own heading. */
+export function SuccessPanel({ screen, eyebrow, title, level = 2, children, action }) {
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
+  const Title = level === 1 ? 'h1' : 'h2';
   return (
     <div className="success-panel">
       <span className="success-mark" aria-hidden="true">✓</span>
-      <p className="form-eyebrow">{form.eyebrow}</p>
-      <h2 className="form-title success-title" ref={heading} tabIndex={-1}>{title}</h2>
+      <p className="form-eyebrow">{eyebrow ?? SCREENS[screen].form.eyebrow}</p>
+      <Title className="form-title success-title" ref={heading} tabIndex={-1}>{title}</Title>
       <div className="success-copy" role="status">{children}</div>
       {action}
     </div>
