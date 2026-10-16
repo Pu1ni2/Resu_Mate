@@ -50,7 +50,7 @@ describe('moving between pages', () => {
 
   it('opens a page reached by a link at the top, at once', () => {
     renderApp(['/terms']);
-    fireEvent.click(screen.getByRole('button', { name: 'Back to home' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Back to the homepage' }));
     expect(scrollTo).toHaveBeenCalledTimes(1);
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' });
   });

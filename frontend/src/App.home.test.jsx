@@ -30,10 +30,10 @@ describe('the homepage address', () => {
     expect(screen.queryByText(/Specialized AI Agents/)).toBeNull();
   });
 
-  it('is where "Back to home" from the terms leads', () => {
+  it('is where "Back to the homepage" from the terms leads', () => {
     const { container } = renderAt('/terms');
     expect(container.querySelector('.studio')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to home' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Back to the homepage' }));
     expect(container.querySelector('.studio')).toBeTruthy();
   });
 });
