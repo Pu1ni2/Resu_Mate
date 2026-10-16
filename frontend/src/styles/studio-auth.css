@@ -20,6 +20,8 @@
      form fields: grey paragraphs, blue links, amber selection and focus
      rings, buttons and fields faded while disabled.
    - A heading that receives focus when the screen changes shows no ring.
+   - The 404, data-deletion and legal pages aren't in the design file. Their
+     layouts, at the end, are built from its parts.
    ═══════════════════════════════════════════════════════════ */
 
 /* Studio's paper, ink and rust, as the sign-in design has them. */
@@ -359,4 +361,66 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 }
 @media (prefers-reduced-motion: reduce) {
   .studio-auth *, .studio-auth *::before, .studio-auth *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGES THE DESIGN FILE DOESN'T HAVE
+   The 404, the data-deletion page and the legal pages, in the sign-in
+   design's frame, type, form and notices.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── a page with no story beside it: the 404 and the data-deletion page ── */
+.studio-auth .solo-layout { display: flex; align-items: center; justify-content: center; padding: 56px 0 48px; min-height: 690px; }
+.studio-auth .solo-card { width: 100%; max-width: 435px; }
+.studio-auth .success-copy strong { font-weight: 500; color: var(--ink); }
+
+/* The ways on from the 404: a ruled list, an arrow on each. */
+.studio-auth .way-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.studio-auth .way-list a { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; padding: 12px 2px; border-bottom: 1px solid var(--line); font-size: 15px; font-weight: 500; text-decoration: none; transition: color .18s; }
+.studio-auth .way-list a > span { color: var(--rust); font-size: 20px; line-height: 1; transition: transform .18s; }
+.studio-auth .way-list a:hover { color: var(--rust); }
+.studio-auth .way-list a:hover > span { transform: translateX(3px); }
+
+/* ── a legal page: the title on the left, staying in view; the text on the right ── */
+.studio-auth .legal-layout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); padding: 42px 0 56px; }
+.studio-auth .legal-head { min-width: 0; padding: 20px 40px 8px 0; align-self: start; position: sticky; top: 30px; }
+.studio-auth .legal-head h1 { font: clamp(57px, 5.4vw, 79px)/.99 var(--serif); letter-spacing: -1.8px; margin: 24px 0 21px; }
+.studio-auth .legal-updated { font-size: 12px; color: var(--muted); }
+.studio-auth .legal-head .notice { margin: 26px 0 0; max-width: 360px; }
+.studio-auth .legal-body { min-width: 0; border-left: 1px solid var(--line); padding: 20px 0 8px 56px; }
+.studio-auth .legal-section { max-width: 580px; padding-bottom: 27px; margin-bottom: 27px; border-bottom: 1px solid var(--line); }
+.studio-auth .legal-section:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
+.studio-auth .legal-number { display: block; color: var(--rust); font-size: 11px; letter-spacing: .08em; font-weight: 500; margin-bottom: 9px; }
+.studio-auth .legal-section h2 { font: 29px/1.1 var(--serif); letter-spacing: -.3px; margin-bottom: 11px; }
+.studio-auth .legal-section p { font-size: 15px; line-height: 1.8; color: var(--muted); }
+
+/* As the sign-in story's title and column at each width. */
+@media (max-width: 1150px) {
+  .studio-auth .legal-head { padding-right: 28px; }
+  .studio-auth .legal-head h1 { font-size: 62px; letter-spacing: -1.4px; }
+  .studio-auth .legal-body { padding-left: 35px; }
+}
+@media (max-width: 900px) {
+  .studio-auth .legal-head { padding-right: 24px; }
+  .studio-auth .legal-head h1 { font-size: 53px; }
+  .studio-auth .legal-body { padding-left: 27px; }
+}
+@media (max-width: 700px) {
+  .studio-auth .solo-layout { display: block; padding: 32px 0 40px; min-height: 0; }
+  .studio-auth .way-list a { font-size: 16px; }
+  .studio-auth .legal-layout { display: block; padding: 23px 0 36px; }
+  .studio-auth .legal-head { position: static; padding: 0; margin-bottom: 26px; }
+  .studio-auth .legal-head h1 { font-size: 46px; margin: 16px 0 12px; letter-spacing: -1.1px; }
+  .studio-auth .legal-head .notice { max-width: none; margin-top: 20px; }
+  .studio-auth .legal-body { border: 0; border-top: 1px solid var(--line); padding: 24px 0 0; }
+  .studio-auth .legal-section h2 { font-size: 26px; }
+}
+@media (max-width: 380px) {
+  .studio-auth .legal-head h1 { font-size: 42px; }
+}
+@media (min-width: 901px) and (max-height: 950px) {
+  .studio-auth .solo-layout { min-height: 650px; }
+  .studio-auth .legal-layout { padding-top: 27px; }
+  .studio-auth .legal-head { padding-top: 8px; }
+  .studio-auth .legal-head h1 { font-size: 65px; margin: 19px 0 17px; }
 }
