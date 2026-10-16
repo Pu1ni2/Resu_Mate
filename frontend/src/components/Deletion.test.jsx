@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 import api from '../services/api';
@@ -73,6 +73,95 @@ describe('a deletion request', () => {
   it('is linked from the Privacy Policy', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>);
     expect(screen.getByRole('link', { name: 'request deletion' }).getAttribute('href')).toBe('/privacy/delete');
+  });
+});
+
+/* The page in the sign-in pages' design: its own checks before anything is
+ * sent, the keyboard on the heading at each step, and the way back. */
+describe('the deletion page', () => {
+  async function toTheCode(answer = { message: SENT }) {
+    const post = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: answer });
+    deletionPage();
+    fireEvent.change(screen.getByLabelText('Your email address'), { target: { value: 'grace@x.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
+    await screen.findByLabelText('Code');
+    return post;
+  }
+
+  it('names the tab', () => {
+    deletionPage();
+    expect(document.title).toBe('Delete your data — ResuMate');
+  });
+
+  it('checks the address before sending it', () => {
+    const post = vi.spyOn(api, 'post');
+    deletionPage();
+    const field = screen.getByLabelText('Your email address');
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
+    expect(screen.getByRole('alert').textContent).toContain('Please enter your email address.');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(field);
+    fireEvent.change(field, { target: { value: 'grace' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
+    expect(screen.getByRole('alert').textContent).toContain('Enter a valid email address, such as you@example.com.');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('checks the code before deleting anything', async () => {
+    const post = await toTheCode();
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete everything about me' }));
+    expect(screen.getByRole('alert').textContent).toContain('Enter the complete 6-digit code.');
+    expect(document.activeElement).toBe(screen.getByLabelText('Code'));
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('says it can’t be undone above each button', async () => {
+    deletionPage();
+    expect(screen.getByText(/^This can’t be undone\./)).toBeTruthy();
+    cleanup();
+    await toTheCode();
+    expect(screen.getByText(/^This can’t be undone\./)).toBeTruthy();
+  });
+
+  it('puts the keyboard on the heading once the code is sent', async () => {
+    await toTheCode();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Delete your data.' }));
+  });
+
+  it('shows the code from a development server without email', async () => {
+    await toTheCode({ message: SENT, debug_code: '424242' });
+    expect(screen.getByText('424242')).toBeTruthy();
+  });
+
+  it('goes back for a different address, keeping the one typed', async () => {
+    await toTheCode();
+    fireEvent.click(screen.getByRole('button', { name: 'Use a different address' }));
+    expect(screen.getByLabelText('Your email address').value).toBe('grace@x.com');
+    expect(screen.queryByLabelText('Code')).toBeNull();
+  });
+
+  it('says so when there have been too many requests', async () => {
+    vi.spyOn(api, 'post').mockRejectedValueOnce(refused(429, 'Rate limit exceeded'));
+    deletionPage();
+    fireEvent.change(screen.getByLabelText('Your email address'), { target: { value: 'grace@x.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Too many attempts.');
+  });
+
+  it('ends on what was deleted, with the heading taking the keyboard and the way back', async () => {
+    vi.spyOn(api, 'post')
+      .mockResolvedValueOnce({ data: { message: SENT } })
+      .mockResolvedValueOnce({ data: { status: 'deleted', records_removed: 2 } });
+    deletionPage();
+    fireEvent.change(screen.getByLabelText('Your email address'), { target: { value: 'grace@x.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
+    fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete everything about me' }));
+    const title = await screen.findByRole('heading', { level: 1, name: 'Your data is deleted.' });
+    expect(document.activeElement).toBe(title);
+    expect(screen.getByRole('status').textContent).toContain('Everything ResuMate held about grace@x.com is deleted');
+    expect(screen.getByRole('link', { name: 'Back to ResuMate' }).getAttribute('href')).toBe('/');
   });
 });
 
