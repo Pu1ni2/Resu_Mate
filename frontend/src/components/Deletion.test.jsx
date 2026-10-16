@@ -51,7 +51,7 @@ describe('a deletion request', () => {
     expect((await screen.findByRole('status')).textContent).toContain(SENT);
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: '12a3456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Delete everything about me' }));
-    expect(await screen.findByRole('heading', { name: 'Your data is deleted' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Your data is deleted.' })).toBeTruthy();
     expect(post.mock.calls).toEqual([
       ['/privacy/erasure-code', { email: 'grace@x.com' }],
       ['/privacy/erase', { email: 'grace@x.com', code: '123456' }],
