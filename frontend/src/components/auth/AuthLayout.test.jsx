@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, Link } from 'react-router-dom';
 
-import AuthLayout, { FormHeading } from './AuthLayout';
+import AuthLayout, { FormHeading, StepHeading, SuccessPanel } from './AuthLayout';
 import { JOURNEYS, SCREENS } from './authStories';
 
 /* The sign-in pages' frame: each screen's story and journey, the switch between
@@ -100,5 +100,36 @@ describe('the form heading', () => {
     expect(document.activeElement).toBe(document.body);
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check your inbox.' }));
+  });
+});
+
+describe('a heading on a page with no story beside the form', () => {
+  it('is the page’s own heading', () => {
+    render(
+      <MemoryRouter>
+        <StepHeading level={1} eyebrow="Privacy" title="Delete your data." intro="Ask us to delete it." />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Delete your data.' })).toBeTruthy();
+    expect(screen.getByText('Privacy').className).toBe('form-eyebrow');
+    expect(screen.getByText('Ask us to delete it.').className).toBe('form-intro');
+  });
+
+  it('so is the title of what replaces the form, under its own eyebrow', () => {
+    render(
+      <MemoryRouter>
+        <SuccessPanel level={1} eyebrow="Privacy" title="Your data is deleted."><p>All of it.</p></SuccessPanel>
+      </MemoryRouter>,
+    );
+    const title = screen.getByRole('heading', { level: 1, name: 'Your data is deleted.' });
+    expect(document.activeElement).toBe(title);
+    expect(screen.getByText('Privacy')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe('All of it.');
+  });
+
+  it('while a sign-in screen’s keeps the screen’s eyebrow, under the story', () => {
+    render(<MemoryRouter><SuccessPanel screen="forgot" title="Check your inbox." /></MemoryRouter>);
+    expect(screen.getByText(SCREENS.forgot.form.eyebrow)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Check your inbox.' })).toBeTruthy();
   });
 });
