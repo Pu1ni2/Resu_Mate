@@ -29,7 +29,8 @@ export const nameError = value => (value.trim() ? '' : 'Please enter your full n
 
 export const termsError = agreed => (agreed ? '' : 'Please agree to the Terms and Privacy Policy to continue.');
 
-export const codeError = value => (/^\d{6}$/.test(value) ? '' : 'Enter the complete 6-digit access code.');
+/* `name` is what the code is called where it is asked for. */
+export const codeError = (value, name = 'access code') => (/^\d{6}$/.test(value) ? '' : `Enter the complete 6-digit ${name}.`);
 
 /* What the box above the form says about the fields: the one problem, or a
  * pointer to the highlighted fields when there are several. */
