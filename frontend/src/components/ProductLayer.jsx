@@ -21,13 +21,13 @@ import {
 const ProductContext = createContext(null);
 export const useProduct = () => useContext(ProductContext);
 
-// The homepage, the legal pages and the sign-in pages. They get no product
-// chrome: no toolbar, no keyboard shortcuts, no panels, no walkthrough. Notices
-// still show.
-const PUBLIC_PATHS = [
-  '/', '/terms', '/privacy', '/privacy/delete',
-  '/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login',
-];
+// The product is the hiring dashboard and its pages, and the candidate's
+// portal (/dashboard is an old address for the hiring dashboard). Every other
+// page, the homepage, the legal pages, the sign-in pages and an address the app
+// doesn't have, gets no product chrome: no toolbar, no keyboard shortcuts, no
+// panels, no walkthrough. Notices still show.
+const PRODUCT = /^\/(hiring|candidate\/dashboard|dashboard)(\/|$)/;
+const SIGN_IN = ['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset'];
 
 export default function ProductLayer({ children }) {
   const location = useLocation();
@@ -59,7 +59,7 @@ export default function ProductLayer({ children }) {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
   }, []);
 
-  const isPublicPage = PUBLIC_PATHS.includes(location.pathname);
+  const isPublicPage = !PRODUCT.test(location.pathname) || SIGN_IN.includes(location.pathname);
 
   // ═══ ONBOARDING ═══
   // In the dashboard only: /hiring/login and the other sign-in pages start with
