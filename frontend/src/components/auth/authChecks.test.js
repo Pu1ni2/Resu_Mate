@@ -38,6 +38,12 @@ describe('the checks', () => {
     expect(codeError('12345')).toBe('Enter the complete 6-digit access code.');
     expect(codeError('123456')).toBe('');
   });
+
+  it('name the code as the page asking for it does', () => {
+    expect(codeError('', 'code')).toBe('Enter the complete 6-digit code.');
+    expect(codeError('12a456', 'code')).toBe('Enter the complete 6-digit code.');
+    expect(codeError('123456', 'code')).toBe('');
+  });
 });
 
 describe('what the form says about them', () => {
