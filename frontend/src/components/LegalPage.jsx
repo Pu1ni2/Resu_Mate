@@ -1,6 +1,8 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+import PageFrame from './auth/PageFrame';
+import useHeadingFocus from '../hooks/useHeadingFocus';
 
 /**
  * Terms of Service / Privacy Policy pages.
@@ -9,6 +11,9 @@ import { ArrowLeft } from 'lucide-react';
  * lawyer or a generator like Termly/iubenda) before going to production with
  * paying customers. The structure, routes, and footer links are wired; only
  * the wording is a stand-in.
+ *
+ * In the sign-in pages' design (styles/studio-auth.css): the title on the left,
+ * staying in view, and the sections on the right, numbered.
  */
 
 const LAST_UPDATED = 'June 2026';
@@ -34,40 +39,31 @@ const PRIVACY_SECTIONS = [
   ['Contact', 'For privacy requests, contact [TODO: privacy@yourdomain]. '],
 ];
 
-function LegalPage({ title, sections, children }) {
-  const navigate = useNavigate();
+function LegalPage({ title, sections }) {
+  const heading = useHeadingFocus();
   return (
-    <div style={{ minHeight: '100vh', background: '#0B0B12', color: '#E4E4E7', padding: '40px 24px' }}>
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24,
-            background: 'transparent', border: 'none', color: '#A1A1AA', cursor: 'pointer', fontSize: 14,
-          }}
-        >
-          <ArrowLeft size={16} /> Back to home
-        </button>
-        <h1 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6 }}>{title}</h1>
-        <p style={{ color: '#71717A', fontSize: 13, marginBottom: 32 }}>Last updated: {LAST_UPDATED}</p>
-
-        <div style={{
-          marginBottom: 28, padding: '12px 16px', borderRadius: 8,
-          background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.3)',
-          color: '#FCD34D', fontSize: 13,
-        }}>
-          Placeholder text — replace with reviewed legal copy before launch.
+    <PageFrame title={`${title} — ResuMate`} skipTo="page-content" skipLabel="Skip to content">
+      <main className="legal-layout" id="page-content" tabIndex={-1}>
+        <div className="legal-head">
+          <p className="eyebrow issue">LEGAL</p>
+          <h1 ref={heading} tabIndex={-1}>{title}</h1>
+          <p className="legal-updated">Last updated: {LAST_UPDATED}</p>
+          <div className="notice notice-info">
+            <span className="notice-icon" aria-hidden="true">i</span>
+            <p className="notice-body">Placeholder text — replace with reviewed legal copy before launch.</p>
+          </div>
         </div>
-
-        {sections.map(([heading, body]) => (
-          <section key={heading} style={{ marginBottom: 24 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: '#F1F5F9' }}>{heading}</h2>
-            <p style={{ fontSize: 14, lineHeight: 1.7, color: '#A1A1AA' }}>{body}</p>
-          </section>
-        ))}
-        {children}
-      </div>
-    </div>
+        <div className="legal-body">
+          {sections.map(([name, text], i) => (
+            <section key={name} className="legal-section">
+              <span className="legal-number" aria-hidden="true">{`${String(i + 1).padStart(2, '0')} /`}</span>
+              <h2>{name}</h2>
+              <p>{text}</p>
+            </section>
+          ))}
+        </div>
+      </main>
+    </PageFrame>
   );
 }
 
@@ -75,17 +71,14 @@ export function TermsPage() {
   return <LegalPage title="Terms of Service" sections={TERMS_SECTIONS} />;
 }
 
+/* Not part of the placeholder text: the way to have data deleted. */
+const DELETING = ['Deleting your data', (
+  <>
+    Anyone can have everything we hold about their email address deleted, whether or not they were
+    invited to an interview: <Link className="text-link" to="/privacy/delete">request deletion</Link>.
+  </>
+)];
+
 export function PrivacyPage() {
-  return (
-    <LegalPage title="Privacy Policy" sections={PRIVACY_SECTIONS}>
-      {/* Not part of the placeholder text: the way to have data deleted. */}
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: '#F1F5F9' }}>Deleting your data</h2>
-        <p style={{ fontSize: 14, lineHeight: 1.7, color: '#A1A1AA' }}>
-          Anyone can have everything we hold about their email address deleted, whether or not they were
-          invited to an interview: <Link to="/privacy/delete" style={{ color: '#FCD34D' }}>request deletion</Link>.
-        </p>
-      </section>
-    </LegalPage>
-  );
+  return <LegalPage title="Privacy Policy" sections={[...PRIVACY_SECTIONS, DELETING]} />;
 }
