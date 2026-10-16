@@ -27,7 +27,7 @@ afterEach(() => {
 describe('an address the app does not have', () => {
   it('says so, with the ways in', async () => {
     render(<MemoryRouter initialEntries={['/no/such/page']}><AppProvider><App /></AppProvider></MemoryRouter>);
-    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Page not found.' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Hiring manager sign-in' }).getAttribute('href')).toBe('/hiring/login');
     expect(screen.getByRole('link', { name: 'Candidate portal' }).getAttribute('href')).toBe('/candidate/login');
   });
