@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" />
-  <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white" />
-  <img src="https://img.shields.io/badge/OpenAI-API-412991?logo=openai&logoColor=white" />
-  <img src="https://img.shields.io/badge/LiveKit-WebRTC-FF6B35?logo=webrtc&logoColor=white" />
-  <img src="https://img.shields.io/badge/Simli-Avatar-8B5CF6" />
-  <img src="https://img.shields.io/badge/ChromaDB-Vector--Store-green" />
-  <img src="https://img.shields.io/badge/Jarvis-AI--Copilot-F59E0B?logo=openai&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white" alt="Python 3.12" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React 18" />
+  <img src="https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white" alt="FastAPI 0.109+" />
+  <img src="https://img.shields.io/badge/OpenAI-API-412991?logo=openai&logoColor=white" alt="OpenAI API" />
+  <img src="https://img.shields.io/badge/LiveKit-WebRTC-FF6B35?logo=webrtc&logoColor=white" alt="LiveKit WebRTC" />
+  <img src="https://img.shields.io/badge/Simli-Avatar-8B5CF6" alt="Simli avatar" />
+  <img src="https://img.shields.io/badge/ChromaDB-Vector--Store-green" alt="ChromaDB vector store" />
+  <img src="https://img.shields.io/badge/Jarvis-AI--Copilot-F59E0B?logo=openai&logoColor=white" alt="Jarvis AI copilot" />
 </p>
 
 # ResuMate AI
@@ -188,11 +188,12 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 18, Vite, React Router, Tailwind, Lucide icons |
+| **Frontend** | React 18, Vite 6, React Router 7, Tailwind 4, Lucide icons; tests with Vitest. The fonts (DM Sans, Instrument Serif, JetBrains Mono) ship with the app |
 | **Backend** | FastAPI, Python 3.12, SQLAlchemy (async), Alembic, Uvicorn |
 | **Database** | PostgreSQL in production, SQLite locally and in tests |
 | **AI** | OpenAI (chat model set by `OPENAI_MODEL`, default `gpt-4o`), embeddings, Whisper, TTS, Realtime |
 | **Vector store** | ChromaDB with LangChain |
+| **File storage** | Optional S3-compatible storage keeps the original résumé files; without it, they are read and then discarded |
 | **Interviews** | OpenAI Realtime (voice); LiveKit Cloud + Simli (avatar, optional) |
 | **Search** | Tavily (web), GitHub API |
 | **Email** | SendGrid |
@@ -262,7 +263,7 @@ Report → scores, time (and proctoring, for video)
 
 ## Run It Locally
 
-You need Python 3.12 and Node 24 (CI uses both).
+You need Python 3.12 and Node 20.19+, 22.13+ or 24 (CI uses Python 3.12 and Node 24).
 
 **Backend** (API on port 8006):
 ```bash
@@ -295,9 +296,11 @@ matter most:
 | `DATABASE_URL` | Postgres in production; SQLite by default |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | The AI agents, and the model they use |
 | `FRONTEND_URL` | Where invitation and password-reset links point |
+| `CORS_ORIGINS` | The frontend addresses allowed to call the API, comma-separated |
 | `SENDGRID_API_KEY`, `FROM_EMAIL` | Email: sign-in codes, invitations, password resets, deletion codes |
 | `TAVILY_API_KEY`, `GITHUB_TOKEN` | Web search, and GitHub lookups and sourcing |
 | `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `SIMLI_*` | Avatar interviews, with the worker that runs them |
+| `S3_BUCKET`, `S3_*` | Optional storage for the original résumé files, so managers can download them again |
 
 ## Tests
 
@@ -306,8 +309,8 @@ cd backend && pytest -q                       # API, agents, migrations' models
 cd frontend && npm run lint && npm test       # lint, then the component tests
 ```
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs both, builds the frontend, and builds a
-Postgres 16 database from empty with the migrations, checks it matches the models, and takes it back down
-and up again.
+Postgres 16 database from empty with the migrations. It then checks the database matches the models and
+the app starts on it, and takes the migrations back down and up again.
 
 ## Deploying, and the Free Plan
 
@@ -319,7 +322,9 @@ and up again.
 - **The free database is deleted 30 days after it is created.** Back it up about every three weeks with
   `backend/scripts/backup_db.py`, and restore into a new one when it expires (steps in DEPLOY.md).
 - **Avatar interviews are off**: they need a worker process, which the free plan doesn't run. Interviews
-  run voice-only until you run the worker and set `AVATAR_INTERVIEWS=true`.
+  run voice-only until you run the worker and set `AVATAR_INTERVIEWS=true`. The worker
+  (`backend/interview_agent.py`) can run on Fly.io with `backend/fly.toml` and `backend/Dockerfile.agent`,
+  or as a paid Render worker, left commented out in `render.yaml`.
 - **Email needs SendGrid** with a verified sender (`FROM_EMAIL`). Without it, invitations can't be
   emailed: the app gives the manager the sign-in link to send instead.
 
