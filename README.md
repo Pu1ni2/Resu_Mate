@@ -36,7 +36,13 @@ voice or text.
   <img src="screenshots/homepage.png" alt="The ResuMate homepage: the headline “See the person. Find the fit.” beside a sample candidate's résumé" width="800" />
 </p>
 
+The sign-in pages, and the legal, data-deletion and 404 pages, share the homepage's design. The dashboards
+move to it next.
+
 ---
+
+> The recordings below are from April 2026. The dashboards still look like this, but the recordings
+> predate Screening, Find Candidates and Jarvis.
 
 ### Hiring Manager Dashboard
 
@@ -77,7 +83,8 @@ Create AI interviews, email the invitation (or share the sign-in link), draft em
   <img src="screenshots/gifs/candidate-portal.gif" alt="Candidate Portal — Auth, Dashboard, Analytics" width="800" />
 </p>
 
-Sign-in by emailed code, résumé analysis, and personal analytics.
+Candidates sign in with a code emailed to them (the recording shows the earlier sign-in page), then see
+their résumé analysis and personal analytics.
 
 #### AI Advisor & Live Interview
 <p align="center">
@@ -95,10 +102,21 @@ An AI career advisor for résumé coaching and interview prep, then the intervie
   <img src="screenshots/Architecture.png" alt="ResuMate AI System Architecture" width="800" />
 </p>
 
+The diagram predates two of the agents: **Jarvis**, which drives the others from one conversation, and
+the **Sourcer Agent**, behind Find Candidates. Around the backend sit PostgreSQL (SQLite locally),
+ChromaDB for résumé search, optional S3-compatible file storage, and the outside services: OpenAI,
+Tavily, the GitHub API and SendGrid. Avatar interviews run through a separate worker
+(`backend/interview_agent.py`) with LiveKit and Simli.
+
 ### Agent Framework
 <p align="center">
   <img src="screenshots/Agent_framework.png" alt="Agent Framework — Plan, Execute, Reflect, Output" width="800" />
 </p>
+
+The Data, HR, Technical and Research agents share this loop
+([`backend/app/agents/base_agent.py`](backend/app/agents/base_agent.py)): they plan the steps, run
+each one with retries, check the result and start again if it falls short, then write the output.
+The Sourcer, the Advisor and Jarvis run flows of their own.
 
 ---
 
