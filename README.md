@@ -279,6 +279,29 @@ Report → scores, time (and proctoring, for video)
 
 ---
 
+## Project Structure
+
+```
+backend/
+  main.py               the API app and its routes
+  app/api/              one file per area: auth, candidates, chat, jarvis, sourcer, privacy…
+  app/agents/           the agents, and the loop most of them share
+  app/services/         email, file storage, résumé search, sign-in codes, deletion…
+  app/models/           the database tables
+  alembic/              the database migrations
+  tests/                the backend tests (pytest)
+  interview_agent.py    the optional avatar-interview worker (Dockerfile.agent, fly.toml)
+  scripts/              backup_db.py, make_sample_resume.py
+frontend/
+  src/components/       the pages and their parts; home/ and auth/ hold the new design
+  src/styles/           the stylesheets; studio.css and studio-auth.css are the new design
+  src/services/         API calls, sign-in sessions, notices
+render.yaml             the Render deployment
+.github/workflows/      CI
+screenshots/            the README's images
+tools/                  fix_mojibake.py, which repairs text garbled by a wrong encoding
+```
+
 ## Run It Locally
 
 You need Python 3.12 and Node 20.19+, 22.13+ or 24 (CI uses Python 3.12 and Node 24).
@@ -356,10 +379,17 @@ the app starts on it, and takes the migrations back down and up again.
 - **Separation**: each manager sees only their own candidates and interviews.
 - **Backups** hold personal data: they are git-ignored, and never CI artifacts (the repository is public).
 
-## Status
+## Status and Roadmap
 
-The Terms of Service and Privacy Policy pages hold placeholder text, marked as such, until reviewed legal
-text replaces it.
+- **The new design**: the homepage, the sign-in pages, and the legal, data-deletion and 404 pages are in
+  it. The hiring and candidate dashboards are next.
+- **Legal text**: the Terms of Service and Privacy Policy pages hold placeholder text, marked as such,
+  until reviewed legal text replaces it.
+
+## Security and Conduct
+
+Report a security problem privately by email, as [SECURITY.md](SECURITY.md) describes, not in a public
+issue. Everyone taking part in the project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 
