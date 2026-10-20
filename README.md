@@ -104,7 +104,7 @@ An AI career advisor for résumé coaching and interview prep, then the intervie
 
 The diagram predates two of the agents: **Jarvis**, which drives the others from one conversation, and
 the **Sourcer Agent**, behind Find Candidates. Around the backend sit PostgreSQL (SQLite locally),
-ChromaDB for résumé search, optional S3-compatible file storage, and the outside services: OpenAI,
+ChromaDB, where résumés are indexed, optional S3-compatible file storage, and the outside services: OpenAI,
 Tavily, the GitHub API and SendGrid. Avatar interviews run through a separate worker
 (`backend/interview_agent.py`) with LiveKit and Simli.
 
@@ -133,17 +133,18 @@ Talk to Jarvis like a colleague:
 - *"Check his GitHub"* → repos, languages, top projects, and a technical impression
 - *"Give me his drawbacks"* → an evaluation with growth areas, fit and strengths
 - *"Show me her resume red flags"* → gaps, verification targets and red flags
-- *"Set up interviews for the top 3"* → creates the interviews and shows each candidate's invitation draft;
-  *"send it"* emails those drafts
+- *"Set up interviews for the top 3"* → creates the interviews, with an invitation draft for each
+  (the card shows the first); *"send it"* emails those drafts
 - *"Create an interview for Maya"* → one interview, with the sign-in link to send
-- *"How did his interview go?"* → the report: scores, proctoring and summary
-- *"Did he exaggerate on the resume?"* → compares résumé claims with interview answers
-- *"Open the PDF report"* → the downloadable assessment report
+- *"How did his interview go?"* → the report: the AI-written summary and, for video, proctoring
+- *"Did he exaggerate on the resume?"* → compares the résumé's claims with the interview report
+- *"Download the PDF report"* → the assessment report as a PDF
 - *"What's the market rate for this role in Bangalore?"* → a web search with sources
-- *"Share my Calendly link"* → your scheduling link
+- *"Share the Calendly link"* → the scheduling link set for the server (`CALENDLY_TOKEN`)
 
 Jarvis keeps track of the active role, candidate and shortlist, so follow-ups like *"check his GitHub"*
-or *"send it"* resolve without restating anything. Every result appears as a card you can expand.
+or *"send it"* resolve without restating anything. Results appear as cards, most of which expand for
+the detail.
 
 ---
 
@@ -166,39 +167,54 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 ---
 
 ### Hiring Manager Portal
-- **Résumé upload & RAG**: PDF/DOCX parsing, ChromaDB vector search, chat over the résumés
-- **Screening**: scores every candidate against a role on fixed, inspectable weights
+- **Résumé upload**: PDF, DOCX and TXT up to 5 MB, duplicates refused; each résumé becomes a structured
+  profile (skills, experience, roles)
+- **Screening**: ranks every candidate against a role on fixed, inspectable weights (skills, experience,
+  role, education), with the breakdown shown
 - **Résumé intelligence**: gaps, skills to verify, red flags
-- **Scanner Agent**: links in the PDF, GitHub profiles, LinkedIn via web search
-- **AI chat**: multi-candidate comparison, voice in and out, anonymized mode
+- **Scanner Agent**: finds the candidate's GitHub from the PDF's links or by web search, and LinkedIn from
+  a link in the PDF
+- **AI chat**: multi-candidate comparison over their profiles, voice in and out, anonymized mode
 - **Hiring Agent**: evaluation against a role or job description
-- **Credibility analysis**: résumé claims against interview answers
-- **Email composer**: AI-drafted emails (interest, interview, offer, pass, follow-up)
-- **Interview creator**: role, level, questions and focus areas; emails the invitation or gives the link
+- **Credibility analysis**: the résumé's claims against the interview report
+- **Email composer**: AI-drafted emails (interest, interview, offer, pass, follow-up), opened in your mail
+  app to send
+- **Interview creator**: format (voice or avatar), role, number of questions and focus areas; emails the
+  invitation or gives the link
 - **PDF report export**
+- **Account deletion**: a manager can delete their account and everything in it
 
 ### Candidate Portal
 - **Sign-in** with a code emailed to them: it lasts 15 minutes, and five wrong tries use it up
 - **Résumé upload** with a replace flow
-- **AI Advisor** with three modes: Résumé Coach, Interview Prep, Career Advisor
+- **AI Advisor**: a general chat, plus three focused modes: Résumé Coach, Interview Prep, Career Advisor
 - **The interview**: a voice conversation with an AI interviewer, or a video interview with an avatar
   where the server runs it (see below)
-- **Interview report**: scores and time, and proctoring for a video interview
+- **Interview report**: the transcript, the AI-written evaluation and the time taken, and proctoring for a
+  video interview
+- **Delete my data**: everything held about them, from the portal
 
 ### Interview System
-- **Voice interviews** (the default): OpenAI Realtime, speech to speech, in the browser
+- **Voice interviews**: OpenAI Realtime, speech to speech, straight from the browser with a short-lived
+  key from the server; 8 minutes by default (`REALTIME_MAX_TOTAL_MINUTES`). The transcript is saved as
+  it goes, and an AI-written report follows the interview
 - **Avatar video interviews** (optional): LiveKit rooms with a lip-synced Simli avatar, run by a separate
-  interview worker. Off unless `AVATAR_INTERVIEWS=true` and the worker is running; otherwise interviews
-  run voice-only
-- **Questions made for the candidate**: generated from the role and a gap analysis of the résumé
+  interview worker. They need `AVATAR_INTERVIEWS=true`, the LiveKit settings and `AGENT_SHARED_SECRET`,
+  and the worker running; otherwise interviews run voice-only
+- **Questions made for the candidate**: an interview created on its own gets questions from the role and
+  a gap analysis of the résumé; interviews made in a batch use standard questions
 - **Proctoring** (video): face-in-view tracking, tab and window monitoring, fullscreen; 3 violations end
   the interview
-- **Consent first**: before it starts, the candidate is told the interview is recorded and AI-scored
-  (and, on video, that the camera checks they stay in view), and agrees
+- **Consent first**: before it starts, the candidate is told what happens (what they say is transcribed
+  and saved; on video, the camera checks they stay in view) and agrees; the agreement is recorded
+- **One go**: a finished interview can't be retaken
 
 ### Analytics
-- **Candidates**: skills, experience, roles and levels
-- **Interviews**: completion, scores, high and low performers, recent interviews
+- **Candidates**: skills, experience, roles and levels for the selected candidates
+- **Interviews**: how many are completed, by role, and the recent ones, each opening its report
+
+Interview answers are not scored: per-answer scoring was removed on 2026-10-10, so score fields in
+reports and analytics show "—".
 
 ---
 
@@ -210,7 +226,7 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 | **Backend** | FastAPI, Python 3.12, SQLAlchemy (async), Alembic, Uvicorn |
 | **Database** | PostgreSQL in production, SQLite locally and in tests |
 | **AI** | OpenAI (chat model set by `OPENAI_MODEL`, default `gpt-4o`), embeddings, Whisper, TTS, Realtime |
-| **Vector store** | ChromaDB with LangChain |
+| **Vector store** | ChromaDB with LangChain: résumés are indexed there, and removed with their candidate (the chat reads the candidates' profiles directly) |
 | **File storage** | Optional S3-compatible storage keeps the original résumé files; without it, they are read and then discarded |
 | **Interviews** | OpenAI Realtime (voice); LiveKit Cloud + Simli (avatar, optional) |
 | **Search** | Tavily (web), GitHub API |
@@ -224,14 +240,16 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 | Agent | Role | Tools |
 |-------|------|-------|
 | **Jarvis** | Conversational copilot: screening, evaluation and interviews by voice or text | OpenAI, the agents below, TTS/STT |
-| **Data Agent** | Résumé parsing, profile scanning, enrichment | PyPDF, GitHub API, Tavily, Playwright (if installed) |
+| **Data Agent** | Profile scanning and enrichment: GitHub, LinkedIn, links in the PDF | GitHub API, Tavily, PDF reading |
 | **HR Agent** | Evaluation, email drafting, hiring recommendations | OpenAI, salary research |
-| **Technical Agent** | Interview questions, scoring, credibility analysis | OpenAI, LiveKit, Simli, Realtime |
-| ↳ Interview Agent | Conducts the interview with résumé-informed questions | Realtime voice, Simli lip-sync |
-| ↳ Scoring Agent | Per-question scoring; an answer it can't score is left unscored | OpenAI |
-| **Research Agent** | Web search, fact-checking, citations | Tavily |
+| **Technical Agent** | Interview questions, résumé intelligence, credibility analysis | OpenAI, Tavily |
+| ↳ Interview Agent | Conducts the interview: the voice interviewer, or the avatar worker | OpenAI Realtime, LiveKit, Simli lip-sync |
+| **Research Agent** | Web search with sources | Tavily |
 | **Sourcer Agent** | Finds people beyond your uploads and judges every one | GitHub API, Tavily, OpenAI |
-| **Advisor Agent** | Career coaching for candidates (3 modes) | OpenAI, résumé context |
+| **Advisor Agent** | Career coaching for candidates (a general chat and 3 focused modes) | OpenAI, résumé context |
+
+Jarvis and the Advisor use `gpt-4o`; the other agents use `OPENAI_MODEL` (default `gpt-4o`), and the
+Sourcer can use its own cheaper model (`SOURCER_MODEL`).
 
 ---
 
@@ -241,11 +259,11 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 
 **On the dashboard:**
 ```
-Upload résumés → Data Agent parses and enriches them
+Upload résumés → each becomes a structured profile
      ↓
 Screen → candidates ranked for the role
      ↓
-Résumé intelligence → gaps, verification targets, red flags
+Scan and résumé intelligence → GitHub and LinkedIn; gaps, verification targets, red flags
      ↓
 Hiring Agent → evaluation against the job description
      ↓
@@ -270,11 +288,11 @@ Sign in with an emailed code → access given by the hiring manager
      ↓
 Upload a résumé → AI analysis
      ↓
-AI Advisor → Résumé Coach | Interview Prep | Career Advisor
+AI Advisor → General | Résumé Coach | Interview Prep | Career Advisor
      ↓
 The interview → told what happens, agree, then voice (or avatar video) with the AI interviewer
      ↓
-Report → scores, time (and proctoring, for video)
+Report → transcript, AI-written evaluation, time (and proctoring, for video)
 ```
 
 ---
@@ -373,9 +391,11 @@ the app starts on it, and takes the migrations back down and up again.
 
 - **Consent**: managers agree to the Terms and Privacy Policy at sign-up; candidates agree before an
   interview starts. Both are recorded.
-- **Deletion**: a candidate can delete their data from the portal. Anyone else, including people a
-  manager uploaded or a search found, can ask at `/privacy/delete`: an emailed code confirms it, and the
-  page never reveals whether anything was held. Managers can delete their account and all its data.
+- **Deletion**: a candidate can delete their data from the portal. Anyone else, such as someone whose
+  résumé a manager uploaded, can ask at `/privacy/delete`: an emailed code confirms it, and the page never
+  reveals whether anything was held. It finds data by email address, and people a search found are
+  usually kept without one; a manager removes them by deleting the search. Managers can delete their
+  account and all its data.
 - **Separation**: each manager sees only their own candidates and interviews.
 - **Backups** hold personal data: they are git-ignored, and never CI artifacts (the repository is public).
 
