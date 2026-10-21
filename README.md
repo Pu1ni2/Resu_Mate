@@ -333,8 +333,13 @@ cp backend/.env.example backend/.env   # then set SECRET_KEY and OPENAI_API_KEY
 cd backend
 uvicorn main:app --reload --port 8006
 ```
+In `backend/.env`, also clear `TAVILY_API_KEY`, `GITHUB_TOKEN` and `CALENDLY_TOKEN` unless you have real
+ones: the example's placeholder values count as set, and GitHub refuses a made-up token where it would
+answer without one.
+
 Locally the database is SQLite (`backend/resumate.db`), created on start. With `DEBUG=true` and no email
-set up, sign-in, reset and deletion codes are shown in the app instead of emailed.
+set up, nothing is emailed: the data-deletion code and the password-reset link are shown in the app, and
+a candidate's sign-in code is printed in the backend's console.
 
 **Frontend** (on port 3006, proxying `/api` to the backend):
 ```bash
@@ -345,28 +350,32 @@ npm run dev
 
 ## Configuration
 
-Every setting is listed, with a comment, in [`backend/.env.example`](backend/.env.example). The ones that
-matter most:
+The backend's settings are listed, most with a comment, in [`backend/.env.example`](backend/.env.example).
+The ones that matter most:
 
 | Variable | What it does |
 |----------|--------------|
 | `SECRET_KEY` | Signs sign-in tokens. Required in production; the app won't start with a weak one |
-| `DEBUG` | `true` only locally: relaxes the key check and shows codes when email isn't set up |
+| `DEBUG` | `true` only locally: relaxes the key check, and lets the app work without email (see above) |
 | `DATABASE_URL` | Postgres in production; SQLite by default |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | The AI agents, and the model they use |
 | `FRONTEND_URL` | Where invitation and password-reset links point |
 | `CORS_ORIGINS` | The frontend addresses allowed to call the API, comma-separated |
 | `SENDGRID_API_KEY`, `FROM_EMAIL` | Email: sign-in codes, invitations, password resets, deletion codes |
 | `TAVILY_API_KEY`, `GITHUB_TOKEN` | Web search, and GitHub lookups and sourcing |
-| `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `SIMLI_*` | Avatar interviews, with the worker that runs them |
+| `CALENDLY_TOKEN` | The scheduling link Jarvis and the dashboard share |
+| `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `AGENT_SHARED_SECRET` | Avatar interviews; the secret lets the worker report back. `SIMLI_*` are the worker's own |
 | `S3_BUCKET`, `S3_*` | Optional storage for the original résumé files, so managers can download them again |
+| `VITE_API_URL` | The frontend's one setting, read when it is built: the API's address in production |
 
 ## Tests
 
 ```bash
-cd backend && pytest -q                       # API, agents, migrations' models
-cd frontend && npm run lint && npm test       # lint, then the component tests
+cd backend && pytest -q                       # the API, agents and services, on a throwaway SQLite file
+cd frontend && npm run lint && npm test       # lint, then the frontend tests
 ```
+The backend tests still read `backend/.env`, so run them with one that holds no real keys: with a real
+SendGrid key in it, a test can send real email.
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs both, builds the frontend, and builds a
 Postgres 16 database from empty with the migrations. It then checks the database matches the models and
 the app starts on it, and takes the migrations back down and up again.
@@ -378,14 +387,21 @@ the app starts on it, and takes the migrations back down and up again.
 
 - **The server sleeps** after about 15 idle minutes and takes up to a minute to start again. The app tells
   people while it wakes.
-- **The free database is deleted 30 days after it is created.** Back it up about every three weeks with
-  `backend/scripts/backup_db.py`, and restore into a new one when it expires (steps in DEPLOY.md).
+- **The free database expires 30 days after it is created**, and Render deletes it 14 days later unless
+  it is upgraded. Back it up about every three weeks with `backend/scripts/backup_db.py` (it needs
+  PostgreSQL 16's `pg_dump` and `pg_restore`), and restore into a new one when it expires (steps in
+  DEPLOY.md).
 - **Avatar interviews are off**: they need a worker process, which the free plan doesn't run. Interviews
   run voice-only until you run the worker and set `AVATAR_INTERVIEWS=true`. The worker
   (`backend/interview_agent.py`) can run on Fly.io with `backend/fly.toml` and `backend/Dockerfile.agent`,
   or as a paid Render worker, left commented out in `render.yaml`.
-- **Email needs SendGrid** with a verified sender (`FROM_EMAIL`). Without it, invitations can't be
-  emailed: the app gives the manager the sign-in link to send instead.
+- **Email needs SendGrid** with a verified sender (`FROM_EMAIL`), and in production the app depends on
+  it. Without it, invitations aren't emailed (the app gives the manager the sign-in link to send), but
+  candidates can't get the code that link asks for, and password resets and deletion codes don't
+  arrive either.
+- **A deployment of your own** gets its own addresses, so set `VITE_API_URL` on the frontend, and
+  `FRONTEND_URL` and `CORS_ORIGINS` on the API, to match them. Otherwise the frontend calls the original
+  demo's API.
 
 ## Data and Privacy
 
