@@ -15,8 +15,8 @@
 career coaching for candidates, and Jarvis, a conversational copilot that runs the hiring pipeline by
 voice or text.
 
-**7 specialized AI agents** handle the work, from parsing résumés to interviewing candidates by voice
-(or with a lip-synced video avatar), and Jarvis drives them all from one conversation.
+**7 specialized AI agents** handle the work, from scanning candidates' profiles to interviewing them by
+voice (or with a lip-synced video avatar), and Jarvis drives them all from one conversation.
 
 ---
 
@@ -376,6 +376,7 @@ cd frontend && npm run lint && npm test       # lint, then the frontend tests
 ```
 The backend tests still read `backend/.env`, so run them with one that holds no real keys: with a real
 SendGrid key in it, a test can send real email.
+
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs both, builds the frontend, and builds a
 Postgres 16 database from empty with the migrations. It then checks the database matches the models and
 the app starts on it, and takes the migrations back down and up again.
