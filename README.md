@@ -206,7 +206,8 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 - **Proctoring** (video): face-in-view tracking, tab and window monitoring, fullscreen; 3 violations end
   the interview
 - **Consent first**: before it starts, the candidate is told what happens (what they say is transcribed
-  and saved; on video, the camera checks they stay in view) and agrees; the agreement is recorded
+  and saved; AI writes a report from the transcript, with a hiring recommendation; on video, the camera
+  checks they stay in view) and agrees; the agreement is recorded
 - **One go**: a finished interview can't be retaken
 
 ### Analytics

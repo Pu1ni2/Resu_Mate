@@ -1,11 +1,11 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 import ConversationalInterviewRoom from './ConversationalInterviewRoom';
 import InterviewRoom from './InterviewRoom';
 
-/* An interview began, recorded and scored by AI, without the candidate being
+/* An interview began, recorded and assessed by AI, without the candidate being
  * told so first. Both rooms now say what happens and wait for their say-so,
  * and tell the server they gave it. */
 
@@ -38,7 +38,9 @@ describe('the voice interview', () => {
   it('says what happens, and waits for the candidate to agree', () => {
     room();
     expect(screen.getByText(/what you say is transcribed and saved/i)).toBeTruthy();
-    expect(screen.getByText(/ai scores your answers/i)).toBeTruthy();
+    expect(screen.getByText(/ai writes a report from your transcript, with a hiring recommendation/i)).toBeTruthy();
+    // Answers aren't scored, so the candidate isn't told they are.
+    expect(within(screen.getByRole('group', { name: 'Before you start' })).queryByText(/score/i)).toBeNull();
     expect(screen.queryByText(/your camera is used/i)).toBeNull();
     const start = screen.getByRole('button', { name: /start interview/i });
     expect(start.disabled).toBe(true);

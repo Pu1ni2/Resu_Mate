@@ -4,7 +4,7 @@
  * The AI interviewer (Simli avatar) joins as a real participant in a LiveKit room.
  * Candidate's camera shows on the left, avatar video on the right.
  * Face tracking + proctoring runs on the frontend.
- * Scoring happens on the backend after interview ends.
+ * When it ends, the backend writes a report from the transcript.
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {

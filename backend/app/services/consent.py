@@ -1,8 +1,9 @@
 """A candidate's say-so before an interview starts.
 
 Both interview rooms first tell the candidate what happens: what they say is
-transcribed and saved; an AI interviewer asks the questions and AI scores the
-answers, which the hiring team sees; and in a video interview the camera checks
+transcribed and saved; an AI interviewer asks the questions, and when it ends AI
+writes a report from the transcript, with a hiring recommendation, which the
+hiring team and the candidate see; and in a video interview the camera checks
 they stay in view. Nothing starts until they confirm.
 """
 from datetime import datetime
