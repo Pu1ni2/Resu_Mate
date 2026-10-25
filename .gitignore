@@ -13,7 +13,11 @@ chroma_db/
 interviews_data.json
 interview_results.json
 agent_memory.json
-uploads/*.pdf
+# Uploaded résumés are candidates' personal data. "uploads/*.pdf" only matched a
+# top-level folder, so backend/uploads/ was never ignored. The folder itself is
+# kept by its .gitkeep.
+**/uploads/*
+!**/uploads/.gitkeep
 # Database backups (backend/scripts/backup_db.py) hold candidates' personal
 # data. The repository is public: they must never be committed.
 backups/
