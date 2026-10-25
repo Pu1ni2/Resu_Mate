@@ -8,7 +8,7 @@ import hashlib
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,8 @@ from sqlalchemy.orm import selectinload
 # .env file overwrite real environment variables: a stray .env would beat the
 # host's settings, and in tests it put back the API key the tests clear, which
 # hid an import-time crash that CI (with no .env) hit on every run.
-load_dotenv()
+# RESUMATE_ENV_FILE names another file, as for the settings (app/core/config.py).
+load_dotenv(os.environ.get("RESUMATE_ENV_FILE") or find_dotenv())
 
 import jwt  # PyJWT
 

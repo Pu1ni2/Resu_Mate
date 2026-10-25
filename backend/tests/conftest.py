@@ -18,6 +18,9 @@ if os.path.exists(_TMP_DB):
     except OSError:
         pass
 
+# No settings file: backend/.env holds a developer's real keys, and with them a
+# test run could send real email and reach OpenAI and S3.
+os.environ["RESUMATE_ENV_FILE"] = os.devnull
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_TMP_DB}"
 os.environ["SECRET_KEY"] = "test-secret-key-that-is-definitely-long-enough-1234567890"
 os.environ["DEBUG"] = "true"

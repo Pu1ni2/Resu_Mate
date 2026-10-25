@@ -8,6 +8,11 @@ from typing import List, Optional
 _DEFAULT_SECRET = "change-me-in-production"
 _MIN_SECRET_LEN = 32
 
+# The settings file, read from the working directory. RESUMATE_ENV_FILE names
+# another: the tests give an empty one, so the real keys in a developer's
+# backend/.env (OpenAI, SendGrid, S3) never reach a test run.
+ENV_FILE = os.environ.get("RESUMATE_ENV_FILE", ".env")
+
 
 class Settings(BaseSettings):
     # OpenAI
@@ -141,7 +146,7 @@ class Settings(BaseSettings):
         return merged
     
     class Config:
-        env_file = ".env"
+        env_file = ENV_FILE
         env_file_encoding = "utf-8"
         extra = "ignore"
 
