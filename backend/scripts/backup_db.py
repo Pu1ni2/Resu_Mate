@@ -1,8 +1,9 @@
 """Back up the Postgres database to a file, or restore one into a database.
 
-Render's free Postgres is deleted 30 days after it is created. Back it up about
-every three weeks; when it expires, create a new one, restore the latest backup
-into it, and point DATABASE_URL at it (see backend/DEPLOY.md).
+Render's free Postgres expires 30 days after it is created, and is deleted 14
+days later unless upgraded. Back it up about every three weeks; when it
+expires, create a new one, restore the latest backup into it, and point
+DATABASE_URL at it (see backend/DEPLOY.md).
 
     python backend/scripts/backup_db.py backup                 # backups/resumate-YYYY-MM-DD.dump
     python backend/scripts/backup_db.py backup --out my.dump

@@ -47,9 +47,10 @@ returns 400.
 
 ## Database: back it up, because the free one expires
 
-Render deletes a **free Postgres database 30 days after it is created**. It
-emails a warning first, but nothing in the app can stop it. So back it up, and
-restore into a new database when it goes.
+A **free Postgres database expires 30 days after it is created**: it stops
+working, and Render deletes it, with all its data, 14 days later unless it is
+upgraded to a paid plan. It emails a warning first, but nothing in the app can
+stop it. So back it up, and restore into a new database when it expires.
 
 ### Every three weeks or so: back up
 

@@ -11,7 +11,8 @@
 # Free-plan limits worth knowing (see backend/DEPLOY.md):
 #   - the backend sleeps after about 15 idle minutes; the next request wakes
 #     it, which takes up to a minute;
-#   - the free database is deleted 30 days after it is created, so back it up;
+#   - the free database expires 30 days after it is created, and Render deletes
+#     it 14 days later unless it is upgraded, so back it up;
 #   - background workers have no free plan, so the avatar interview worker is
 #     not deployed here (see the commented block at the end). Interviews run
 #     voice-only, which needs no worker.
