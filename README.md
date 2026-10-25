@@ -368,6 +368,7 @@ The ones that matter most:
 | `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `AGENT_SHARED_SECRET` | Avatar interviews; the secret lets the worker report back. `SIMLI_*` are the worker's own |
 | `S3_BUCKET`, `S3_*` | Optional storage for the original résumé files, so managers can download them again |
 | `VITE_API_URL` | The frontend's one setting, read when it is built: the API's address in production |
+| `RESUMATE_ENV_FILE` | Read the backend's settings from another file than `backend/.env`; the tests use an empty one |
 
 ## Tests
 
@@ -375,8 +376,8 @@ The ones that matter most:
 cd backend && pytest -q                       # the API, agents and services, on a throwaway SQLite file
 cd frontend && npm run lint && npm test       # lint, then the frontend tests
 ```
-The backend tests still read `backend/.env`, so run them with one that holds no real keys: with a real
-SendGrid key in it, a test can send real email.
+The backend tests never read `backend/.env`: they point `RESUMATE_ENV_FILE` at an empty file, so the real
+keys a developer keeps there can't reach them.
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs both, builds the frontend, and builds a
 Postgres 16 database from empty with the migrations. It then checks the database matches the models and
