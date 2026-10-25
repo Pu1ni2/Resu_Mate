@@ -334,9 +334,9 @@ cp backend/.env.example backend/.env   # then set SECRET_KEY and OPENAI_API_KEY
 cd backend
 uvicorn main:app --reload --port 8006
 ```
-In `backend/.env`, also clear `TAVILY_API_KEY`, `GITHUB_TOKEN` and `CALENDLY_TOKEN` unless you have real
-ones: the example's placeholder values count as set, and GitHub refuses a made-up token where it would
-answer without one.
+Leave the keys you don't have blank, as the example does: a blank key leaves that feature off, where a
+made-up one counts as set and the service refuses it. A `backend/.env` copied from an older example may
+still hold placeholders such as `tvly-your-key`; clear them.
 
 Locally the database is SQLite (`backend/resumate.db`), created on start. With `DEBUG=true` and no email
 set up, nothing is emailed: the data-deletion code and the password-reset link are shown in the app, and
