@@ -152,3 +152,13 @@ def test_the_worker_asks_the_saved_questions(monkeypatch):
     assert "Ask exactly 2 questions" in prompt
     assert "1. How do you size partitions?" in prompt and "2. Tell me about a hard bug." in prompt
     assert "QUESTIONS" not in worker.build_system_prompt({"role": "Data Engineer", "num_questions": 5})
+
+
+def test_the_worker_does_not_pass_as_human(monkeypatch):
+    # Candidates are told an AI interviewer asks the questions.
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    prompt = worker.build_system_prompt({"role": "Data Engineer", "num_questions": 5, "candidate_name": "Ada"})
+    assert "Stay in character as Alex." in prompt
+    assert "human" not in prompt.lower()
