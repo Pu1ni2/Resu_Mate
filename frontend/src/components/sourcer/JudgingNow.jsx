@@ -37,7 +37,7 @@ export default function JudgingNow({ state }) {
       {!person ? (
         <p className="py-10 text-center text-[13px] text-ink-subtle">The person being read appears here.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-[112px_1fr]">
+        <div className="sourcer-person-evidence grid gap-4 sm:grid-cols-[112px_1fr]">
           <div>
             <Avatar person={person} size={112} className="rounded-[12px]" />
             <div className="mt-2 text-[15px] font-semibold text-ink">{person.name}</div>
@@ -62,7 +62,7 @@ export default function JudgingNow({ state }) {
                 const level = LEVEL[a.level] || LEVEL.unknown;
                 const missedMust = c.kind === 'must' && a.level === 'none';
                 return (
-                  <div key={c.id} className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_7rem] items-center gap-3 text-[12px]">
+                  <div key={c.id} className="sourcer-criterion grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_7rem] items-center gap-3 text-[12px]">
                     <dt className="truncate text-ink-subtle" title={c.label}>
                       {c.label}{c.kind === 'must' && <span className="text-ink-faint"> · must</span>}
                     </dt>

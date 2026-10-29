@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Zap, Loader } from 'lucide-react';
+import { Zap, Loader, FileText, SlidersHorizontal } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
+import '../../styles/studio-screening.css';
 
 /* Screening: four fields, then the ranked shortlist.
  *
@@ -30,7 +31,7 @@ import { toast, notify } from '../../services/notify';
  * button was gated behind `!inline` and could never appear, and onClose could
  * never fire. A modal over a tab you just navigated to is a dialog about
  * nothing; the nav is how you leave. */
-export default function PipelineWizard({ candidateCount = 0, onComplete }) {
+export default function PipelineWizard({ candidateCount = 0, candidateIds, onComplete }) {
   const [formData, setFormData] = useState({ role: '', jdText: '', skills: '', minExp: '' });
   const [formRunning, setFormRunning] = useState(false);
 
@@ -38,6 +39,7 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
     val.split(',').map(s => s.trim()).filter(Boolean);
 
   const handleFormRun = async () => {
+    if (candidateCount === 0) { toast('Choose at least one résumé to screen.', 'error'); return; }
     if (!formData.role.trim()) { toast('Please enter the role.', 'error'); return; }
     setFormRunning(true);
     try {
@@ -50,6 +52,7 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
           min_experience_years: parseFloat(formData.minExp) || 0,
           required_skills: formData.skills ? parseSkills(formData.skills) : [],
           auto_shortlist_count: 5,
+          ...(candidateIds?.length ? { candidate_ids: candidateIds } : {}),
         }),
       });
       if (!res.ok) {
@@ -77,11 +80,12 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
   };
 
   return (
-    <div style={styles.shell}>
-      <div style={styles.card}>
+    <div className="studio-screening" data-running={formRunning} style={styles.shell}>
+      <div className="ss-brief" aria-busy={formRunning} style={styles.card}>
         <div style={{ marginBottom: 20 }}>
-          <div style={styles.iconCircle}><Zap size={22} style={{ color: 'var(--color-accent)' }} /></div>
+          <p className="ss-kicker">THE HIRING BRIEF <span>01 / 02</span></p>
           <h2 style={styles.title}>Screen candidates</h2>
+          <p className="ss-form-intro">Tell us what matters for this role.</p>
         </div>
 
         <div style={styles.formGroup}>
@@ -106,39 +110,72 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
             value={formData.minExp} onChange={e => setFormData(f => ({ ...f, minExp: e.target.value }))} />
         </div>
 
-        <button onClick={handleFormRun} disabled={formRunning || !formData.role.trim()} style={{ ...styles.primaryBtn, marginTop: 8, opacity: formData.role.trim() ? 1 : 0.5 }}>
+        <button onClick={handleFormRun} disabled={formRunning || !formData.role.trim() || candidateCount === 0} style={{ ...styles.primaryBtn, marginTop: 8, opacity: formData.role.trim() ? 1 : 0.5 }}>
           {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Screen {candidateCount} resumes</>}
         </button>
+        <p className="ss-run-note">{candidateIds?.length ? 'Only your selected candidates will be screened.' : 'All uploaded résumés will be screened.'} Results belong to this run.</p>
       </div>
+      <aside className="ss-process">
+        <span className="ss-kicker">A CONSISTENT FIRST LOOK</span>
+        <h3>Same brief.<br /><em>Every person.</em></h3>
+        <div className="ss-dossier-scene" aria-hidden="true">
+          <div className="ss-dossier-shadow" />
+          <div className="ss-dossier-sheet ss-dossier-sheet--back" />
+          <div className="ss-dossier-sheet ss-dossier-sheet--middle" />
+          <div className="ss-dossier-sheet ss-dossier-sheet--front">
+            <FileText size={23} strokeWidth={1.2} />
+            <span>CANDIDATE FILE</span>
+            <b>A person.<br /><em>A possibility.</em></b>
+            <i /><i /><i />
+            <div className="ss-dossier-scan" />
+          </div>
+          <div className="ss-role-object">
+            <SlidersHorizontal size={23} strokeWidth={1.3} />
+            <span>ROLE BRIEF</span>
+            <b>What<br />matters.</b>
+            <i /><i />
+          </div>
+        </div>
+        <p className="ss-process-status" role="status">
+          <span aria-hidden="true" />
+          {formRunning ? 'Screening against your brief…' : 'Your criteria. A consistent review.'}
+        </p>
+        <ol>
+          <li><b>01</b><div><strong>Set your priorities</strong><p>Role, skills, and experience. Add a job description for more context.</p></div></li>
+          <li><b>02</b><div><strong>Look at the evidence</strong><p>Review the ranked results, matched skills, and reasons behind the fit.</p></div></li>
+          <li><b>03</b><div><strong>Make the next move</strong><p>Open a candidate file, go deeper, and decide who to meet.</p></div></li>
+        </ol>
+        <div className="ss-scope"><span>IN THIS RUN</span><strong>{candidateCount.toString().padStart(2, '0')}</strong><p>{candidateIds?.length ? 'selected candidates' : 'uploaded résumés'}</p></div>
+      </aside>
     </div>
   );
 }
 
 const styles = {
-  shell: { display: 'flex', justifyContent: 'center', padding: '4px 0 24px' },
+  shell: { padding: '4px 0 24px' },
   card: {
     background: 'var(--color-surface)',
     border: '1px solid var(--color-line)',
-    borderRadius: 20, padding: 32, width: '100%', maxWidth: 560,
-    position: 'relative', boxShadow: 'var(--shadow-e3)',
+    borderRadius: 5, padding: 'clamp(22px, 3vw, 36px)', width: '100%',
+    position: 'relative', boxShadow: 'var(--shadow-e1)',
   },
   iconCircle: {
     width: 56, height: 56, borderRadius: '50%',
     background: 'var(--color-accent-wash)', border: '1px solid var(--color-accent-line)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
   },
-  title: { fontSize: 22, fontWeight: 800, textAlign: 'center', marginBottom: 8, color: 'var(--color-ink)' },
+  title: { fontFamily: "'Instrument Serif', serif", fontSize: 34, fontWeight: 400, marginBottom: 7, color: 'var(--color-ink)' },
   primaryBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     width: '100%', padding: '13px 20px',
-    background: 'var(--color-accent)',
-    color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 12,
+    background: '#30382f',
+    color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 4,
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
   },
   input: {
-    flex: 1, background: 'var(--color-surface-raised)',
-    border: '1px solid var(--color-line)', borderRadius: 10,
-    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 14, outline: 'none',
+    width: '100%', boxSizing: 'border-box', background: '#fbfaf5',
+    border: '1px solid var(--color-line)', borderRadius: 4,
+    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 13,
     fontFamily: 'inherit',
   },
   formGroup: { marginBottom: 16 },

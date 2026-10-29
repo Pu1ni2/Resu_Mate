@@ -16,10 +16,10 @@ const TABS = ['All', 'Strong Fit', 'Good Fit', 'Consider', 'No Match'];
 function BucketTile({ label, count, lead }) {
   return (
     <div className={cn(
-      'rounded-[12px] border bg-surface px-4 py-3.5 text-center',
+      'rounded-[5px] border bg-surface px-4 py-3.5 text-center',
       lead ? 'border-accent-line' : 'border-line',
     )}>
-      <div className={cn('font-mono text-[26px] font-semibold', lead ? 'text-accent' : 'text-ink')}>
+      <div className={cn('font-serif text-[40px] font-normal', lead ? 'text-accent' : 'text-ink')}>
         {count ?? 0}
       </div>
       <div className="mt-0.5 text-[12px] text-ink-subtle">{label}</div>
@@ -92,19 +92,19 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
   const leadBucket = Math.max(stats?.strong_fit ?? 0, stats?.good_fit ?? 0, stats?.consider ?? 0, stats?.no_match ?? 0);
 
   return (
-    <div className={embedded ? '' : 'min-h-screen bg-canvas px-5 py-6 text-ink'}>
+    <div className={embedded ? 'studio-screening-results' : 'studio-screening-results min-h-screen bg-canvas px-5 py-6 text-ink'}>
       <div className={embedded ? '' : 'mx-auto max-w-[68rem]'}>
 
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:bg-surface-hover hover:text-ink"
+            className="inline-flex items-center gap-1.5 rounded-[4px] border border-line bg-surface px-3 py-2 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:bg-surface-hover hover:text-ink"
           >
             <ArrowLeft size={14} /> Back
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.02em] text-ink">
+            <h1 className="flex items-center gap-2 text-[30px] font-serif font-normal tracking-[-0.02em] text-ink">
               <Zap size={18} className="shrink-0 text-accent" />
               Shortlist <span className="text-ink-faint">—</span>{' '}
               <span className="truncate text-accent">{role}</span>
@@ -112,7 +112,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           </div>
           <button
             onClick={onRunAgain}
-            className="inline-flex items-center gap-1.5 rounded-[10px] bg-accent px-4 py-2 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
+            className="inline-flex items-center gap-1.5 rounded-[4px] bg-accent px-4 py-2 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
           >
             <Zap size={14} /> Run again
           </button>
@@ -128,7 +128,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
 
         {/* What it screened against */}
         {jd_requirements?.required_skills?.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[12px] border border-line bg-surface px-4 py-2.5">
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[5px] border border-line bg-surface px-4 py-2.5">
             <span className="text-[12px] font-medium text-ink-subtle">Screened against</span>
             {jd_requirements.required_skills.map((sk, i) => (
               <span key={i} className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted">{sk}</span>
@@ -194,7 +194,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
 
         {/* Sticky batch bar */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-5 left-1/2 z-[100] flex max-w-[90vw] -translate-x-1/2 items-center gap-4 rounded-[16px] border border-accent-line bg-surface px-5 py-3.5 shadow-e3">
+          <div className="fixed bottom-5 left-1/2 z-[100] flex max-w-[90vw] -translate-x-1/2 items-center gap-4 rounded-[6px] border border-accent-line bg-surface px-5 py-3.5 shadow-e3">
             <div className="flex items-center gap-2">
               <Users size={16} className="text-accent" />
               <span className="text-[14px] font-semibold text-ink">{selectedIds.length} selected</span>
@@ -202,7 +202,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
             <div className="h-6 w-px bg-line" />
             <button
               onClick={() => setShowBatchModal(true)}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-accent px-4 py-2.5 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
+              className="inline-flex items-center gap-2 rounded-[4px] bg-accent px-4 py-2.5 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
             >
               <Zap size={14} /> Create interviews + draft emails
             </button>

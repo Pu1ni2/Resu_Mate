@@ -85,7 +85,7 @@ describe('the Studio stylesheet', () => {
 describe('the homepage before the app starts', () => {
   const html = fs.readFileSync(path.join(frontend, 'index.html'), 'utf8');
 
-  it('is marked by index.html, as the sign-in pages are, and the product pages are not', () => {
+  it('is marked by index.html, as the sign-in and product pages are', () => {
     const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
     const mark = (pathname) => {
       const attributes = {};
@@ -95,7 +95,7 @@ describe('the homepage before the app starts', () => {
     };
     expect(mark('/')).toBe('studio');
     expect(mark('/hiring/login')).toBe('studio');
-    expect(mark('/hiring')).toBeUndefined();
+    expect(mark('/hiring')).toBe('studio');
   });
 
   it("is painted the homepage's own cream while nothing is drawn yet", () => {

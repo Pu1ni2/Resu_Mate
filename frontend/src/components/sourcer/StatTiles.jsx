@@ -9,13 +9,13 @@ function Tile({ label, value, of, strong, accent, progress }) {
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[12px] border px-4 py-3',
+        'sourcer-stat relative overflow-hidden rounded-[12px] border px-4 py-3',
         strong ? 'border-transparent bg-ink text-ink-inverse' : 'border-line bg-surface text-ink',
       )}
     >
       <div className={cn('text-[11px] font-medium', strong ? 'opacity-70' : 'text-ink-subtle')}>{label}</div>
       <div className="mt-1 flex items-baseline gap-1.5">
-        <span className={cn('font-mono text-[26px] font-semibold leading-none', accent && 'text-accent')}>{value}</span>
+        <span className={cn('sourcer-stat-value font-mono text-[26px] font-semibold leading-none', accent && 'text-accent')}>{value}</span>
         {of != null && <span className="font-mono text-[12px] opacity-60">/ {of}</span>}
       </div>
       {progress != null && (
@@ -31,7 +31,7 @@ export default function StatTiles({ counts, stats }) {
   const { found, judged, shortlisted } = counts;
   const tokens = (stats.tokens_in || 0) + (stats.tokens_out || 0);
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <div className="sourcer-stats grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
       <Tile label="Screened" value={formatCount(judged)} of={formatCount(found)} strong
         progress={found ? judged / found : 0} />
       <Tile label="Judgements written" value={formatCount(judged)} strong />

@@ -41,7 +41,7 @@ export default function PopulationMap({ state }) {
         <p className="py-10 text-center text-[13px] text-ink-subtle">Each person found becomes a cell here.</p>
       ) : (
         <>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(10px,1fr))] gap-[3px]" aria-hidden="true" data-testid="population-map">
+          <div className="sourcer-population grid grid-cols-[repeat(auto-fill,minmax(10px,1fr))] gap-[3px]" aria-hidden="true" data-testid="population-map">
             {order.map(pid => (
               <Cell key={pid} state={cellState(people[pid])} />
             ))}

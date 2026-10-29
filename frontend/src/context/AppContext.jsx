@@ -4,7 +4,7 @@ import { saveSession, clearSession, readStoredUser } from '../services/session';
 import { toast } from '../services/notify';
 import { computeAnalytics } from './analytics';
 
-const AppContext = createContext(null);
+export const AppContext = createContext(null);
 
 export const useApp = () => {
   const context = useContext(AppContext);

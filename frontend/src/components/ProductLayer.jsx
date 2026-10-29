@@ -4,7 +4,6 @@
  * 1. Onboarding walkthrough (first-time users)
  * 2. Notification system (toasts + bell)
  * 3. Global keyboard shortcuts
- * 4. Dark/Light mode toggle
  * 
  * Usage: Wrap <App /> with <ProductLayer> in main.jsx
  */
@@ -13,7 +12,7 @@ import { useLocation } from 'react-router-dom';
 import { TOAST_EVENT, NOTIFY_EVENT } from '../services/notify';
 import { pressable } from './ui/pressable';
 import {
-  X, ChevronRight, ChevronLeft, Bell, Sun, Moon, Keyboard,
+  X, ChevronRight, ChevronLeft, Bell, Keyboard,
   Upload, MessageSquare, Users, Cpu, Video, Check, AlertCircle, Info, ArrowRight
 } from 'lucide-react';
 
@@ -33,7 +32,7 @@ export default function ProductLayer({ children }) {
   const location = useLocation();
 
   // ─── Theme ───
-  const [theme, setTheme] = useState(() => localStorage.getItem('resumate_theme') || 'dark');
+  const theme = 'light';
 
   // ─── Onboarding ───
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -49,14 +48,9 @@ export default function ProductLayer({ children }) {
   // ─── Keyboard shortcuts panel ───
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // ═══ THEME ═══
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('resumate_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', 'light');
+    try { localStorage.removeItem('resumate_theme'); } catch { /* Storage is optional. */ }
   }, []);
 
   const isPublicPage = !PRODUCT.test(location.pathname) || SIGN_IN.includes(location.pathname);
@@ -79,31 +73,31 @@ export default function ProductLayer({ children }) {
 
   const onboardingSteps = [
     {
-      title: 'Welcome to ResuMate AI!',
-      desc: 'Your AI-powered hiring platform with 7 specialized agents. Let me show you around.',
+      title: 'Welcome to your hiring desk.',
+      desc: 'A place to see the whole person. Gather candidates, compare their experience, and start a conversation.',
       icon: <Cpu size={28} />,
       image: '🚀'
     },
     {
-      title: 'Upload Resumes',
+      title: 'Meet your candidates',
       desc: 'Start by uploading PDF, DOCX, or TXT resumes. AI will extract text, find embedded links, and analyze each candidate.',
       icon: <Upload size={28} />,
       image: '📄'
     },
     {
-      title: 'AI Chat',
+      title: 'Ask a better question',
       desc: 'Select candidates and chat with AI about them. Ask comparisons, strengths, fit analysis — AI only uses real resume data.',
       icon: <MessageSquare size={28} />,
       image: '💬'
     },
     {
-      title: 'Candidate Focus',
+      title: 'The full candidate file',
       desc: 'Deep-dive into one candidate. Scanner Agent finds their GitHub & LinkedIn. Hiring Agent evaluates fit. Create AI interviews.',
       icon: <Users size={28} />,
       image: '🎯'
     },
     {
-      title: 'Live AI Interview',
+      title: 'Make room for a conversation',
       desc: 'Create interviews for candidates. They login with email, take a live video interview with AI, and you get a detailed report.',
       icon: <Video size={28} />,
       image: '🎥'
@@ -145,15 +139,13 @@ export default function ProductLayer({ children }) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   // ═══ KEYBOARD SHORTCUTS ═══
-  // Off on the public pages: there "t" would flip the dashboard's saved theme
-  // for a visitor who never sees it, and "n" and "?" open product panels.
+  // Shortcuts belong to the workspace, where their panels are available.
   useEffect(() => {
     if (isPublicPage) return undefined;
     const handleKeyDown = (e) => {
       // Don't trigger when typing anywhere editable. Covers <input>, <textarea>,
       // <select>, AND contenteditable elements (e.g. rich-text composers). Without
-      // the contenteditable check, pressing "t" inside a Jarvis chat composer
-      // would flip the theme instead of typing the letter.
+      // this check, typing a shortcut letter would open a product panel.
       const tag = e.target?.tagName;
       const inEditable =
         ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) ||
@@ -177,16 +169,15 @@ export default function ProductLayer({ children }) {
         setShowOnboarding(false);
       }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) { setShowNotifPanel(s => !s); }
-      if (e.key === 't' && !e.ctrlKey && !e.metaKey) { toggleTheme(); }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleTheme, isPublicPage]);
+  }, [isPublicPage]);
 
   // ═══ CONTEXT VALUE ═══
   const contextValue = {
-    theme, toggleTheme,
+    theme,
     addNotification, addToast,
     showOnboarding: () => { setOnboardingStep(0); setShowOnboarding(true); }
   };
@@ -213,18 +204,9 @@ export default function ProductLayer({ children }) {
         ))}
       </div>
 
-      {/* ═══ FLOATING TOOLBAR (bottom-right) ═══
-          Product chrome, so it is hidden on the public pages, with the panels
-          below. The homepage sets its own colours, so the theme toggle would do
-          nothing there; there is nothing to be notified about; and a
-          keyboard-shortcuts modal on the homepage is noise. */}
+      {/* Workspace notifications and keyboard shortcuts. */}
       {!isPublicPage && (
       <div className="pl-toolbar">
-        {/* Theme toggle */}
-        <button className="pl-toolbar-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (T)`} aria-label="Toggle theme">
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
         {/* Notifications */}
         <button className="pl-toolbar-btn" onClick={() => setShowNotifPanel(s => !s)} title="Notifications (N)" aria-label="Notifications">
           <Bell size={18} />
@@ -278,7 +260,6 @@ export default function ProductLayer({ children }) {
             <div className="pl-shortcuts-grid">
               <div className="pl-shortcut-section">
                 <h4>Global</h4>
-                <div className="pl-shortcut"><span>Toggle theme</span><kbd>T</kbd></div>
                 <div className="pl-shortcut"><span>Notifications</span><kbd>N</kbd></div>
                 <div className="pl-shortcut"><span>This panel</span><kbd>Shift</kbd> + <kbd>?</kbd></div>
                 <div className="pl-shortcut"><span>Close panels</span><kbd>Esc</kbd></div>

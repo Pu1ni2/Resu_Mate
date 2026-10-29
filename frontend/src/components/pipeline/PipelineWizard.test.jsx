@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 const setup = (props = {}) =>
-  render(<PipelineWizard candidateCount={12} onComplete={props.onComplete || vi.fn()} />);
+  render(<PipelineWizard candidateCount={12} {...props} onComplete={props.onComplete || vi.fn()} />);
 
 describe('what the screen offers', () => {
   it('goes straight to the form', () => {
@@ -78,6 +78,22 @@ describe('the role is required', () => {
 });
 
 describe('running it', () => {
+  it('shows activity only while the real screening request is pending', async () => {
+    let finishRun;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(resolve => { finishRun = resolve; }));
+    const onComplete = vi.fn();
+    setup({ onComplete });
+    expect(screen.getByRole('status').textContent).toMatch(/your criteria/i);
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 12 resumes/i }));
+    expect(screen.getByRole('status').textContent).toMatch(/screening against your brief/i);
+    expect(screen.getByRole('button', { name: /screening 12 resumes/i }).disabled).toBe(true);
+    expect(onComplete).not.toHaveBeenCalled();
+    finishRun({ ok: true, json: async () => RESULT });
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(RESULT));
+    expect(screen.getByRole('status').textContent).toMatch(/your criteria/i);
+  });
+
   it('posts the four fields and hands the result to onComplete', async () => {
     const spy = mockRun();
     const onComplete = vi.fn();
@@ -190,5 +206,30 @@ describe('when the run fails', () => {
     await waitFor(() => expect(toasts).toHaveBeenCalled());
     window.removeEventListener('resumate:toast', toasts);
     expect(toasts.mock.calls[0][0].detail.message).toMatch(/offline/i);
+  });
+});
+
+
+describe('screening scope', () => {
+  it('sends only selected candidate IDs when a selection is supplied', async () => {
+    const spy = mockRun();
+    setup({ candidateIds: [4, 9], candidateCount: 2 });
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 2 resumes/i }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(JSON.parse(spy.mock.calls[0][1].body).candidate_ids).toEqual([4, 9]);
+  });
+  it('omits candidate IDs when screening all uploaded resumes', async () => {
+    const spy = mockRun();
+    setup();
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 12 resumes/i }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(JSON.parse(spy.mock.calls[0][1].body).candidate_ids).toBeUndefined();
+  });
+  it('cannot submit a selection with no resumes', () => {
+    setup({ candidateCount: 0 });
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    expect(screen.getByRole('button', { name: /screen 0 resumes/i }).disabled).toBe(true);
   });
 });

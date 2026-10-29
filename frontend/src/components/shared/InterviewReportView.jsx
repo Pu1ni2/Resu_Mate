@@ -6,6 +6,7 @@ import Markdown from '../ui/Markdown';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
 import { averageScore, isScore, measured, scoreOf } from '../../services/scores';
+import '../../styles/studio-interview.css';
 
 /* Both of these hand-rolled the same thing Badge already does: solid text on a
  * ~12% wash of the same hue with a ~30% border. They built the tints by
@@ -198,6 +199,8 @@ function TranscriptSection({ transcript }) {
     <Card style={{ padding: '20px', marginBottom: '16px' }}>
       <button
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="sr-transcript-toggle"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
       >
         <h3 style={{ fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-ink)' }}>
@@ -277,9 +280,10 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
   ];
 
   return (
-    <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+    <div className="studio-interview-report">
+      <div className="sr-document-label"><span>RESUMATE / INTERVIEW RECORD</span><span>Private & confidential</span></div>
       {/* Header */}
-      <Card style={{ padding: '28px', textAlign: 'center', marginBottom: '16px' }}>
+      <Card className="sr-report-header" style={{ padding: '28px', textAlign: 'center', marginBottom: '16px' }}>
         {r.terminated
           ? <AlertCircle size={40} style={{ color: 'var(--color-critical)', marginBottom: '12px' }} />
           : <CheckCircle size={40} style={{ color: 'var(--color-positive)', marginBottom: '12px' }} />
@@ -326,9 +330,9 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       </Card>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, 1fr)`, gap: '10px', marginBottom: '16px' }}>
+      <div className="sr-stats-grid" style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}>
         {stats.map((s, i) => (
-          <Card key={i} style={{ textAlign: 'center', padding: '16px' }}>
+          <Card key={i} className="sr-stat" style={{ textAlign: 'center', padding: '16px' }}>
             <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || 'var(--color-ink)' }}>{s.val}</div>
             <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>{s.label}</div>
           </Card>
@@ -342,7 +346,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
           {scores.map((s, i) => {
             const score = scoreOf(s);
             return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
+            <div key={i} className="sr-score-row">
               <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-ink-muted)', width: '28px' }}>Q{i + 1}</span>
               {/* The track was #E2E8F0, slate-200, so every score bar was drawn
                   on a bright white rail against a dark card. */}
@@ -352,7 +356,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
               </div>
               {/* An answer that couldn't be scored says so, not 0/10. */}
               <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{score === null ? '—' : `${score}/10`}</span>
-              {s?.feedback && <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)', flex: 1 }}>{s.feedback}</span>}
+              {s?.feedback && <span className="sr-score-feedback">{s.feedback}</span>}
             </div>
             );
           })}

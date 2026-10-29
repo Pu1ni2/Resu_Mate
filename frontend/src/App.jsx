@@ -13,6 +13,7 @@ import { TermsPage, PrivacyPage } from './components/LegalPage';
 import RequestDeletion from './components/RequestDeletion';
 import NotFound from './components/NotFound';
 // Lazy: a page of its own, only loaded by managers who open it.
+const HowItWorks = lazy(() => import('./components/HowItWorks'));
 const SourcerPage = lazy(() => import('./components/sourcer/SourcerPage'));
 // Lazy: the dashboards are most of the app, and the landing page downloaded
 // all of them, Jarvis and the interview rooms included.
@@ -90,6 +91,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
 
       {/* Legal — public */}
+      <Route path="/how-it-works" element={<HowItWorks />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/privacy/delete" element={<RequestDeletion />} />

@@ -97,8 +97,8 @@ describe('the sign-in pages before the app starts', () => {
   );
 
   it.each(['/hiring', '/hiring/', '/hiring/focus', '/hiring/sourcer', '/candidate/dashboard', '/candidate/dashboard/interview', '/dashboard'])(
-    '%s, a product page, is not', (pathname) => {
-      expect(mark(pathname)).toBeUndefined();
+    '%s, a redesigned product page, is marked too', (pathname) => {
+      expect(mark(pathname)).toBe('studio');
     },
   );
 

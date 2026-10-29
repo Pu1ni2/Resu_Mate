@@ -1,0 +1,21 @@
+import React from 'react';
+import '../../styles/studio-conversation.css';
+
+const contours = [28, 47, 73, 104, 139, 164, 132, 95, 66, 42, 25];
+
+export default function ConversationSculpture({ variant = 'feature', live = false, level = 0, speaking = false, muted = false }) {
+  const signal = live && !speaking && !muted && Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0;
+  return (
+    <div className={`sc-conversation sc-conversation--${variant}`} aria-hidden="true" data-live={live} data-speaking={live && speaking} data-muted={live && muted}>
+      <div className="sc-wave-stage">
+        <div className="sc-wave-orbit" />
+        <div className="sc-wave-plinth" />
+        <div className="sc-wave-body">
+          {contours.map((height, index) => <i key={index} className="sc-wave-column" style={{ '--column-height': `${height}px`, '--signal-scale': 1 + signal * (0.1 + (index % 3) * 0.08) }} />)}
+        </div>
+        <span className="sc-wave-pebble" />
+      </div>
+      {variant === 'feature' && <div className="sc-wave-caption"><span>A little space to listen.</span><small>GOOD QUESTIONS. BETTER CONVERSATIONS.</small></div>}
+    </div>
+  );
+}

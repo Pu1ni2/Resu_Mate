@@ -76,7 +76,7 @@ export default function EmailComposer({ focusCandidate, agentResult, anonymize, 
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '640px' }}>
+    <div className="sf-email-composer" style={{ padding: '20px', maxWidth: '640px' }}>
       <div className="glass-card" style={{ overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--surface-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}><Mail size={18} /> Email {displayName}</div>

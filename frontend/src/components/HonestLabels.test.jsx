@@ -66,7 +66,7 @@ describe('what the pages claim', () => {
       hiringManager: { name: 'Morgan', email: 'morgan@co.com' }, logoutHiringManager: vi.fn(),
     };
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
-    fireEvent.click(screen.getAllByText('AI Chat')[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
     expect(screen.getByText('1 candidates')).toBeTruthy();
     expect(screen.queryByText(/GPT/)).toBeNull();
   });

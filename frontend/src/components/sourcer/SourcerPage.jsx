@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Search, Square } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Search, Square, FileText, Github, Globe } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { Label, Textarea } from '../ui/Input';
@@ -20,6 +20,8 @@ import TopOfShortlist from './TopOfShortlist';
 import ShortlistDrawer from './ShortlistDrawer';
 import OutreachModal from './OutreachModal';
 import RunHistory from './RunHistory';
+import WorkspaceShell from '../studio/WorkspaceShell';
+import '../../styles/studio-sourcer.css';
 
 /* Find candidates: describe who you want, and watch the whole pool be read.
  *
@@ -47,12 +49,13 @@ const cancelFrame = id => (typeof cancelAnimationFrame === 'function' ? cancelAn
 
 function SearchForm({ description, setDescription, sources, setSources, onSubmit, error }) {
   return (
-    <Card as="form" padded onSubmit={onSubmit} className="space-y-4">
+    <Card as="form" padded onSubmit={onSubmit} className="sourcer-brief space-y-4">
+      <div className="sourcer-section-mark"><span>01 / THE BRIEF</span><FileText size={17} aria-hidden="true" /></div>
       <div className="space-y-1.5">
         <Label htmlFor="sourcer-description">Who are you looking for?</Label>
         <Textarea
           id="sourcer-description"
-          rows={3}
+          rows={5}
           value={description}
           onChange={e => setDescription(e.target.value)}
           placeholder={EXAMPLE}
@@ -73,7 +76,7 @@ function SearchForm({ description, setDescription, sources, setSources, onSubmit
           <label
             key={key}
             className={cn(
-              'inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]',
+              'sourcer-source inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]',
               sources[key] ? 'border-accent-line bg-accent-wash text-ink' : 'border-line text-ink-muted',
             )}
           >
@@ -83,14 +86,12 @@ function SearchForm({ description, setDescription, sources, setSources, onSubmit
               onChange={e => setSources(s => ({ ...s, [key]: e.target.checked }))}
               className="accent-[var(--color-accent)]"
             />
-            {label}
+            {key === 'uploads' ? <FileText size={15} aria-hidden="true" /> : key === 'github' ? <Github size={15} aria-hidden="true" /> : <Globe size={15} aria-hidden="true" />}{label}
           </label>
         ))}
       </fieldset>
       {error && <p id="sourcer-error" role="alert" className="text-[13px] text-critical">{error}</p>}
-      <Button type="submit" variant="primary">
-        <Search size={16} /> Find candidates
-      </Button>
+      <div className="sourcer-brief-bottom"><p>Start with the work.<br /><span>The right evidence will follow.</span></p><Button type="submit" variant="primary"><Search size={16} /> Find candidates <ArrowUpRight size={16} aria-hidden="true" /></Button></div>
     </Card>
   );
 }
@@ -101,11 +102,10 @@ function RunHeader({ state, onStop, onNewSearch }) {
   const githubTotal = state.stats.github_total || 0;
   const running = state.status === 'running';
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
+    <header className="sourcer-run-header flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-ink">
-          Talent mapping for the <span className="text-accent">entire pool</span>.
-        </h1>
+        <p className="sourcer-section-mark">02 / THE SEARCH</p>
+        <h2>Every person.<br /><em>A closer look.</em></h2>
         <p className="mt-1 text-[13px] text-ink-subtle">
           {[req.title, req.location, `${formatCount(state.counts.found)} people`].filter(Boolean).join(' · ')}
           {' · '}a written judgement on every single one
@@ -286,21 +286,15 @@ export default function SourcerPage() {
   );
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      {/* sm:pr-20 keeps the right column clear of ProductLayer's floating
-          buttons (theme, notifications, shortcuts) on the right edge. */}
-      <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:pl-6 sm:pr-20">
-        <Link to="/hiring" className="inline-flex items-center gap-1.5 text-[13px] text-ink-subtle hover:text-ink">
-          <ArrowLeft size={14} /> Dashboard
+    <WorkspaceShell active="candidates" title="Find candidates" eyebrow="THE TALENT SEARCH" subtitle="Good people aren't always where you'd expect. Start with what matters to the role.">
+      <div className="studio-sourcer">
+        <Link to="/hiring?view=upload" className="sourcer-back inline-flex items-center gap-1.5 text-[13px] text-ink-subtle hover:text-ink">
+          <ArrowLeft size={14} /> Candidate library
         </Link>
 
         {editing || state.status === 'idle' ? (
-          <div className="mx-auto max-w-2xl space-y-3 pt-6">
-            <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-ink">Find candidates</h1>
-            <p className="text-[14px] text-ink-muted">
-              Describe who you want. Every person found, in your uploads, on GitHub and on the public web,
-              is read against it and given a written judgement; you see who a keyword filter would have missed.
-            </p>
+          <div className="sourcer-start">
+            <div className="sourcer-start-grid">
             <SearchForm
               description={description}
               setDescription={setDescription}
@@ -309,6 +303,13 @@ export default function SourcerPage() {
               onSubmit={start}
               error={formError}
             />
+            <aside className="sourcer-guide" aria-label="How this search works">
+              <div className="sourcer-guide-art" aria-hidden="true"><svg viewBox="0 0 300 180"><ellipse cx="150" cy="158" rx="84" ry="8" fill="#536642" opacity=".08"/><ellipse cx="144" cy="91" rx="119" ry="47" fill="none" stroke="#aab799" strokeWidth="1" transform="rotate(-18 144 91)"/><circle cx="149" cy="82" r="57" fill="#e5e9d8"/><path d="m187 118 40 39" stroke="#bf4a32" strokeWidth="14" strokeLinecap="round"/><circle cx="145" cy="77" r="49" fill="#fffef9" stroke="#bf4a32" strokeWidth="2"/><circle cx="145" cy="77" r="40" fill="none" stroke="#e9c4ae"/><circle cx="145" cy="67" r="12" fill="#e2e7d3" stroke="#647651" strokeWidth="1.5"/><path d="M124 96c0-22 42-22 42 0" fill="none" stroke="#647651" strokeWidth="1.5" strokeLinecap="round"/><circle cx="47" cy="117" r="16" fill="#f0e3d4" stroke="#c69474"/><circle cx="47" cy="113" r="4" fill="none" stroke="#896d54"/><path d="M39 124c0-10 16-10 16 0" fill="none" stroke="#896d54"/><circle cx="239" cy="51" r="19" fill="#e3e8d6" stroke="#9aa98a"/><path d="m231 51 6 6 10-12" fill="none" stroke="#63794d" strokeWidth="1.5" strokeLinecap="round"/><circle cx="80" cy="44" r="3" fill="#bf4a32"/></svg></div>
+              <h2>Look beyond<br /><em>the obvious.</em></h2>
+              <ol><li><span>01</span><div><strong>Describe the work</strong><p>Set the must-haves and the nice-to-haves in your own words.</p></div></li><li><span>02</span><div><strong>Read the evidence</strong><p>Explore your uploads, GitHub, and public web profiles.</p></div></li><li><span>03</span><div><strong>Make the next move</strong><p>Review the written judgement, save people, and draft your outreach.</p></div></li></ol>
+              <p className="sourcer-guide-note">You choose who to contact. Outreach is a draft you can edit and send from your own email.</p>
+            </aside>
+            </div>
             <RunHistory runs={runs} onOpen={openRun} onDelete={deleteRun} />
           </div>
         ) : (
@@ -332,7 +333,7 @@ export default function SourcerPage() {
 
             <StatTiles counts={state.counts} stats={state.stats} />
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+            <div className="sourcer-results-grid">
               <div className="space-y-4">
                 <LiveSample state={state} />
                 <PopulationMap state={state} />
@@ -361,6 +362,6 @@ export default function SourcerPage() {
 
         <p className="sr-only" aria-live="polite">{announcement}</p>
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }

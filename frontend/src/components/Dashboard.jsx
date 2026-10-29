@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
@@ -9,7 +9,7 @@ import {
   Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch, Search, ArrowUpRight, ArrowRight
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 
@@ -19,7 +19,10 @@ const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { averageScore, isScore } from '../services/scores';
 import { pressable } from './ui/pressable';
-import Logo from './ui/Logo';
+import WorkspaceShell from './studio/WorkspaceShell';
+import InterviewHub from './studio/InterviewHub';
+import InsightBar from './studio/InsightBar';
+import '../styles/studio-dashboard.css';
 
 const AIAvatar = () => (
   <div className="avatar-sm" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))' }}>
@@ -27,7 +30,8 @@ const AIAvatar = () => (
   </div>
 );
 
-function InterviewAnalytics() {
+function InterviewAnalytics({ anonymize = false }) {
+  const [error, setError] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   // The full report existed but a manager could not open one. InterviewReportView
@@ -38,11 +42,13 @@ function InterviewAnalytics() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
       const resp = await authFetch(`${API_BASE}/api/chat/get-all-interview-results`);
+      if (!resp.ok) throw new Error('Interview results could not be loaded.');
       const json = await resp.json();
       setData(json.results || []);
-    } catch { setData([]); }
+    } catch { setError('Interview results could not be loaded. Please try again.'); }
     finally { setLoading(false); }
   };
 
@@ -54,6 +60,8 @@ function InterviewAnalytics() {
       <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '10px' }}>Loading interview data...</p>
     </div>
   );
+
+  if (error) return <div className="sd-error" role="alert"><p>{error}</p><button className="btn btn-secondary" onClick={fetchData}>Try again</button></div>;
 
   if (!data || data.length === 0) return (
     <div className="clean-section">
@@ -92,7 +100,7 @@ function InterviewAnalytics() {
   });
   const maxDist = Math.max(...dist, 1);
 
-  const distColors = ['#EF4444', '#F97316', '#F59E0B', '#22C55E', '#10B981'];
+  const distColors = ['#d8dfc8', '#b5c19e', '#8f9f78', '#6b8057', '#40593a'];
 
   // Opening a report replaces the analytics view rather than stacking a modal
   // over it -- a full report inside a dialog is a scroll trap, and this one has
@@ -146,12 +154,8 @@ function InterviewAnalytics() {
             {['0–2', '2–4', '4–6', '6–8', '8–10'].map((range, i) => (
               <div key={i} className="clean-bar-row">
                 <span className="clean-bar-label">{range}</span>
-                <div className="clean-bar-track">
-                  <div className="clean-bar-fill" style={{
-                    width: `${(dist[i] / maxDist) * 100}%`,
-                    background: distColors[i]
-                  }} />
-                </div>
+                <InsightBar percent={(dist[i] / maxDist) * 100} color={distColors[i]} index={i}
+                  detail={`${dist[i]} scored interviews in the ${range} range · ${scores.length ? Math.round(dist[i] / scores.length * 100) : 0}% of scored interviews`} />
                 <span className="clean-bar-count">{dist[i]}</span>
               </div>
             ))}
@@ -193,7 +197,7 @@ function InterviewAnalytics() {
                   style={{ cursor: 'pointer' }}
                 >
                   <div>
-                    <div className="clean-list-primary">{d.candidate_name || d.email}</div>
+                    <div className="clean-list-primary">{anonymize ? `Candidate ${i + 1}` : d.candidate_name || d.email}</div>
                     <div className="clean-list-secondary">{d.role || 'General'} · {d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—'}</div>
                   </div>
                   <span className="clean-score" style={{ color: scoreColor }}>{avg}</span>
@@ -218,7 +222,17 @@ export default function Dashboard() {
     hiringManager, logoutHiringManager,
   } = useApp();
 
-  const [tab, setTab] = useState('upload');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedView = searchParams.get('view');
+  const tab = ['upload', 'screening', 'interviews', 'analytics', 'chat'].includes(requestedView) ? requestedView : 'upload';
+  const setTab = (view) => setSearchParams({ view });
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [candidateSort, setCandidateSort] = useState('recent');
+  const resumeCandidates = candidates.filter(c => c.is_resume !== false);
+  const screeningCandidates = selectedIds.length ? resumeCandidates.filter(c => selectedIds.includes(c.id)) : resumeCandidates;
+  const visibleCandidates = candidates.map((candidate, index) => ({ candidate, index })).filter(({ candidate, index }) =>
+    [getDisplayName(candidate, index), candidate.predicted_role, ...(candidate.skills || []).map(s => typeof s === 'string' ? s : s?.name)].join(' ').toLowerCase().includes(candidateSearch.toLowerCase().trim())
+  ).sort((a, b) => candidateSort === 'name' ? getDisplayName(a.candidate, a.index).localeCompare(getDisplayName(b.candidate, b.index)) : candidateSort === 'experience' ? (b.candidate.total_experience_years || 0) - (a.candidate.total_experience_years || 0) : a.index - b.index);
   const [input, setInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   // Delete All: asking, then deleting. Its own busy flag: the context's
@@ -269,8 +283,6 @@ export default function Dashboard() {
   
   const fileRef = useRef(null);
   const msgEndRef = useRef(null);
-  const sliderRef = useRef(null);
-  const cursorRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const currentAudioRef = useRef(null);
@@ -285,17 +297,6 @@ export default function Dashboard() {
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (cursorRef.current) {
-        cursorRef.current.style.left = e.clientX + 'px';
-        cursorRef.current.style.top = e.clientY + 'px';
-      }
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
 
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
@@ -336,10 +337,6 @@ export default function Dashboard() {
       setPendingAutoSpeak(true);
       sendMessage(text.trim());
     }
-  };
-
-  const scrollSlider = (dir) => {
-    sliderRef.current?.scrollBy({ left: dir * 360, behavior: 'smooth' });
   };
 
   const getSkills = (c) => {
@@ -536,108 +533,29 @@ export default function Dashboard() {
     setPendingAutoSpeak(false);
   };
 
+  const pageTitles = {
+    upload: <>A place for <em>possibility.</em></>,
+    screening: <>Find the <em>right fit.</em></>,
+    interviews: <>Beyond the <em>résumé.</em></>,
+    analytics: <>The bigger <em>picture.</em></>,
+    chat: <>A second <em>perspective.</em></>,
+  };
+  const pageSubtitles = {
+    upload: 'Every résumé is a starting point. Bring your candidates together and get to know the people behind them.',
+    screening: 'One thoughtful brief. A consistent look at every candidate. Your judgment comes next.',
+    interviews: 'Follow each conversation, from an invitation to the details that matter.',
+    analytics: 'See the experience, skills, and interview results behind your hiring decisions.',
+    chat: 'Compare experience, explore strengths, and ask the questions a résumé leaves open.',
+  };
   return (
-    <div className="dashboard-layout">
-      <div ref={cursorRef} className="cursor-glow" />
-
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <button className="sidebar-logo" onClick={() => navigate('/')}>
-            <Logo tone="hiring" /> ResuMate
-          </button>
-        </div>
-        <nav className="sidebar-nav">
-          <div className="sidebar-section">
-            <div className="sidebar-section-title">Navigation</div>
-            <div className="sidebar-link" {...pressable(() => navigate('/'), { role: 'link' })}>
-              <Home size={18} /><span>Home</span>
-            </div>
-            {[
-              { id: 'upload', icon: <Upload size={18} />, label: 'Upload' },
-              // Screening was previously reachable only by opening the voice
-              // agent, which rendered the results inside a full-screen overlay.
-              // It is the core of the product and now has its own section.
-              { id: 'screening', icon: <Zap size={18} />, label: 'Screening' },
-              { id: 'analytics', icon: <BarChart2 size={18} />, label: 'Analytics' },
-              { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
-              // An item with a route is a page of its own rather than a tab.
-              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus', route: '/hiring/focus' },
-              // Sourcing: finds people beyond the uploads and reads every one.
-              { id: 'sourcer', icon: <ScanSearch size={18} />, label: 'Find Candidates', route: '/hiring/sourcer' }
-            ].map(item => (
-              <div
-                key={item.id}
-                className={`sidebar-link ${tab === item.id ? 'active' : ''}`}
-                {...pressable(() => item.route ? navigate(item.route) : setTab(item.id), { role: item.route ? 'link' : 'button' })}
-                aria-current={tab === item.id ? 'page' : undefined}
-              >
-                {item.icon}<span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-stats">
-            <div className="sidebar-stat">
-              <span className="sidebar-stat-value">{candidates.length}</span>
-              <span className="sidebar-stat-label">Uploaded</span>
-            </div>
-            <div className="sidebar-stat">
-              <span className="sidebar-stat-value">{selectedIds.length}</span>
-              <span className="sidebar-stat-label">Selected</span>
-            </div>
-          </div>
-
-          {/* Signed-in user */}
-          {hiringManager && (
-            <div style={{
-              marginTop: 14, padding: '10px 12px',
-              background: 'rgba(245,158,11,0.07)',
-              border: '1px solid rgba(245,158,11,0.18)',
-              borderRadius: 10,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#F59E0B,#D97706)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0,
-                }}>
-                  {(hiringManager.name || 'U')[0].toUpperCase()}
-                </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {hiringManager.name}
-                  </div>
-                  {hiringManager.company && (
-                    <div style={{ fontSize: 11, color: 'var(--color-ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {hiringManager.company}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => { logoutHiringManager(); navigate('/hiring/login'); }}
-                style={{
-                  width: '100%', padding: '6px 0',
-                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: 7, color: '#F87171', fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                }}
-              >
-                Sign Out
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAccountPassword(''); setAccountError(''); setDeletingAccount(true); }}
-                style={{
-                  width: '100%', marginTop: 6, padding: '4px 0', background: 'none', border: 'none',
-                  color: 'var(--color-ink-subtle)', fontSize: 11, cursor: 'pointer',
-                }}
-              >
-                Delete account
-              </button>
+    <WorkspaceShell
+      active={{ upload: 'candidates', screening: 'screening', interviews: 'interviews', analytics: 'insights', chat: 'chat' }[tab]}
+      eyebrow={tab === 'upload' ? '01 / THE CANDIDATE COLLECTION' : tab === 'screening' ? '02 / THE ROLE & THE PERSON' : tab === 'interviews' ? '03 / A REAL CONVERSATION' : tab === 'analytics' ? '04 / THE EVIDENCE' : 'A LITTLE HELP, WHEN YOU NEED IT'}
+      title={pageTitles[tab]} subtitle={pageSubtitles[tab]}
+      onNavigate={setTab} onChat={() => setTab('chat')} onAssistant={() => setShowPipeline(true)}
+      actions={<div className="sd-anonymize"><span>{anonymize ? <EyeOff size={15} /> : <Eye size={15} />}Hide names</span><div className={`toggle ${anonymize ? 'active' : ''}`} {...pressable(() => setAnonymize(!anonymize), { role: 'switch', label: 'Anonymize candidates' })} aria-checked={anonymize}><div className="toggle-knob" /></div></div>}
+      footer={hiringManager && <div className="sw-account"><section><strong>{hiringManager.name}</strong><small>{hiringManager.company || hiringManager.email}</small></section><div><button onClick={() => { logoutHiringManager(); navigate('/hiring/login'); }}>Sign Out</button><button onClick={() => { setAccountPassword(''); setAccountError(''); setDeletingAccount(true); }}>Delete account</button></div></div>}
+    >
               <ConfirmDialog
                 open={deletingAccount}
                 title="Delete your account?"
@@ -662,62 +580,36 @@ export default function Dashboard() {
                 />
                 {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 13, marginTop: 8 }}>{accountError}</p>}
               </ConfirmDialog>
-            </div>
-          )}
-        </div>
-      </aside>
+      <div className="studio-dashboard">
+                  {showPipeline && (
+                    <Suspense fallback={null}>
+                    <JarvisAgent
+                      candidatesSummary={candidates
+                        .filter(c => c.is_resume !== false)
+                        .map(c => ({
+                          id: c.id,
+                          name: c.name || 'Unknown',
+                          predicted_role: c.predicted_role || '',
+                          total_experience_years: c.total_experience_years || 0,
+                          experience_level: c.experience_level || '',
+                          location: c.location || '',
+                          email: c.email || c.embedded_links?.email || '',
+                          skills: c.skills || [],
+                          github_url: c.embedded_links?.github_url || '',
+                          linkedin_url: c.embedded_links?.linkedin_url || '',
+                        }))}
+                      onClose={() => setShowPipeline(false)}
+                      onComplete={(result) => {
+                        setPipelineResult(result);
+                      }}
+                    />
+                    </Suspense>
+                  )}
 
-      {/* Main */}
-      <main className="main">
-        <header className="main-header">
-          <div className="header-left">
-            <h1 className="main-title">
-              {tab === 'upload' ? 'Upload Resumes'
-                : tab === 'screening' ? 'Screening'
-                : tab === 'analytics' ? 'Analytics'
-                : tab === 'chat' ? 'AI Chat' : 'Candidate Focus'}
-            </h1>
-            {candidates.length > 0 && <span className="badge badge-orange">{candidates.length}</span>}
-            {selectedIds.length > 0 && <span className="badge badge-green">{selectedIds.length} selected</span>}
-          </div>
-          <div className="header-right">
-            <div className="toggle-wrapper">
-              <span className="toggle-label">
-                {anonymize ? <EyeOff size={16} /> : <Eye size={16} />} Anonymize
-              </span>
-              <div className={`toggle ${anonymize ? 'active' : ''}`} {...pressable(() => setAnonymize(!anonymize), { role: 'switch', label: 'Anonymize candidates' })}
-                aria-checked={anonymize}>
-                <div className="toggle-knob" />
-              </div>
-            </div>
-            {hiringManager && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '5px 12px 5px 8px',
-                background: 'rgba(245,158,11,0.08)',
-                border: '1px solid rgba(245,158,11,0.2)',
-                borderRadius: 20,
-              }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#F59E0B,#D97706)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#000',
-                }}>
-                  {(hiringManager.name || 'U')[0].toUpperCase()}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)' }}>
-                  {hiringManager.name}
-                </span>
-              </div>
-            )}
-          </div>
-        </header>
-
-        <div className="main-body">
           {/* UPLOAD TAB */}
           {tab === 'upload' && (
-            <div className="upload-tab">
+            <div className={`upload-tab ${candidates.length ? 'has-candidates' : ''}`}>
+              <div className="sd-overview"><div><span>YOUR COLLECTION</span><strong>{candidates.length.toString().padStart(2, '0')}</strong><small>candidate files</small></div><div><span>READY TO REVIEW</span><strong>{resumeCandidates.length.toString().padStart(2, '0')}</strong><small>résumés in the collection</small></div><div><span>IN YOUR SELECTION</span><strong>{selectedIds.length.toString().padStart(2, '0')}</strong><small>for screening & comparison</small></div><section className="sd-desk-note"><span aria-hidden="true">✳</span><p>Good people.<br /><em>Great possibilities.</em></p></section></div>
               <div className="card upload-card">
                 <div className="card-body">
                   <div
@@ -754,7 +646,7 @@ export default function Dashboard() {
               {candidates.length > 0 && (
                 <div className="candidates-section">
                   <div className="candidates-header">
-                    <h2>Candidates ({candidates.length})</h2>
+                    <h2>The collection <span>{candidates.length}</span></h2>
                     <div className="candidates-actions">
                       {/* One screening action. There used to be two buttons here,
                           side by side, both with a Zap icon: "AutoHire" opened the
@@ -762,16 +654,7 @@ export default function Dashboard() {
                           endpoint. Nothing in either label told you which was which. */}
                       {candidates.filter(c => c.is_resume !== false).length >= 1 && (
                         <button onClick={() => setTab('screening')} className="btn btn-primary btn-sm">
-                          <Zap size={14} /> Screen candidates
-                        </button>
-                      )}
-                      {/* Jarvis keeps an entry point until it is docked as a
-                          persistent copilot; it is the only route to several
-                          capabilities, so it cannot be stranded in the meantime.
-                          Named for what it opens rather than for what it does. */}
-                      {candidates.filter(c => c.is_resume !== false).length >= 1 && (
-                        <button onClick={() => setShowPipeline(true)} className="btn btn-secondary btn-sm">
-                          <Sparkles size={14} /> Ask Jarvis
+                          <Zap size={14} /> {selectedIds.length ? `Screen selected (${screeningCandidates.length})` : 'Screen candidates'}
                         </button>
                       )}
                       <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
@@ -803,40 +686,14 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {showPipeline && (
-                    <Suspense fallback={null}>
-                    <JarvisAgent
-                      candidatesSummary={candidates
-                        .filter(c => c.is_resume !== false)
-                        .map(c => ({
-                          id: c.id,
-                          name: c.name || 'Unknown',
-                          predicted_role: c.predicted_role || '',
-                          total_experience_years: c.total_experience_years || 0,
-                          experience_level: c.experience_level || '',
-                          location: c.location || '',
-                          email: c.email || c.embedded_links?.email || '',
-                          skills: c.skills || [],
-                          github_url: c.embedded_links?.github_url || '',
-                          linkedin_url: c.embedded_links?.linkedin_url || '',
-                        }))}
-                      onClose={() => setShowPipeline(false)}
-                      onComplete={(result) => {
-                        setPipelineResult(result);
-                      }}
-                    />
-                    </Suspense>
-                  )}
-
+                  <div className="sd-filterbar"><label><Search size={16} /><input aria-label="Search candidates" placeholder="Search by name, role, or skill" value={candidateSearch} onChange={e => setCandidateSearch(e.target.value)} /></label><div><span>{visibleCandidates.length} files</span><select aria-label="Sort candidates" value={candidateSort} onChange={e => setCandidateSort(e.target.value)}><option value="recent">Original order</option><option value="name">Name A–Z</option><option value="experience">Most experience</option></select></div></div>
+                  {visibleCandidates.length === 0 && <div className="sd-no-results">No candidates match “{candidateSearch}”. <button onClick={() => setCandidateSearch('')}>Clear search</button></div>}
                   <div className="candidates-slider">
-                    <button className="slider-btn slider-btn-left" onClick={() => scrollSlider(-1)} aria-label="Scroll candidates left">
-                      <ChevronLeft size={20} />
-                    </button>
-                    <div className="slider-track" ref={sliderRef}>
-                      {candidates.map((c, i) => (
+                    <div className="slider-track">
+                      {visibleCandidates.map(({ candidate: c, index: i }) => (
                         <div
                           key={c.id}
-                          className={`candidate-card glass-card ${selectedIds.includes(c.id) ? 'selected' : ''} ${!c.is_resume ? 'not-resume' : ''}`}
+                          className={`candidate-card glass-card ${selectedIds.includes(c.id) ? 'selected' : ''} ${c.is_resume === false ? 'not-resume' : ''}`}
                           onClick={() => toggleSelection(c.id)}
                         >
                           {/* The mouse clicks the card. The keyboard and screen readers get a real
@@ -846,13 +703,14 @@ export default function Dashboard() {
                             onChange={() => toggleSelection(c.id)}
                             onClick={e => e.stopPropagation()}
                             aria-label={`Select ${getDisplayName(c, i)}`} />
-                          {!c.is_resume && (
+                          {c.is_resume === false && (
                             <div className="not-resume-banner">
                               <AlertCircle size={14} /> Not a Resume
                             </div>
                           )}
+                          <div className="sd-file-number">CANDIDATE FILE <span>{String(i + 1).padStart(3, '0')}</span></div>
                           <div className="candidate-header">
-                            <div className="candidate-avatar" style={{ background: getAvatarGradient(c.name) }}>
+                            <div className="candidate-avatar">
                               {getDisplayName(c, i)[0]?.toUpperCase()}
                             </div>
                             {selectedIds.includes(c.id) && (
@@ -891,40 +749,18 @@ export default function Dashboard() {
                               <span key={j} className="skill">{typeof s === 'string' ? s : s?.name}</span>
                             ))}
                           </div>
+                          <button className="sd-open-file" onClick={e => { e.stopPropagation(); navigate(`/hiring/focus?candidate=${c.id}`); }} aria-label={`Open candidate file for ${getDisplayName(c, i)}`}>Open candidate file<ArrowUpRight size={16} /></button>
                         </div>
                       ))}
                     </div>
-                    <button className="slider-btn slider-btn-right" onClick={() => scrollSlider(1)} aria-label="Scroll candidates right">
-                      <ChevronRight size={20} />
-                    </button>
                   </div>
                 </div>
               )}
 
               {candidates.length === 0 && !loading && (
-                <div className="empty-state" style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
-                  <div className="empty-icon"><FileText size={40} /></div>
-                  <h3>Welcome to ResuMate 👋</h3>
-                  <p style={{ marginBottom: 20 }}>Three steps to your first AI-ranked shortlist:</p>
-                  <ol style={{
-                    textAlign: 'left', display: 'inline-block', margin: '0 auto 24px',
-                    color: 'var(--text2)', fontSize: 14, lineHeight: 1.9, paddingLeft: 20,
-                  }}>
-                    <li><strong>Upload resumes</strong> — drag-drop PDFs or DOCX above.</li>
-                    <li><strong>Run the pipeline</strong> — AI scores everyone against your role.</li>
-                    <li><strong>Interview the top picks</strong> — invite candidates with one click.</li>
-                  </ol>
-                  <div>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => fileRef.current?.click()}
-                      style={{ padding: '11px 24px', fontSize: 14, fontWeight: 600 }}
-                    >
-                      <Upload size={16} /> Upload your first resume
-                    </button>
-                  </div>
-                </div>
+                <section className="sd-first-file"><div className="sd-paper-art" aria-hidden="true"><span className="sd-paper-back" /><span className="sd-paper-front"><i /><b>YOUR NEXT<br />GREAT HIRE.</b><em>Starts with a closer look.</em><u /><u /><u /></span><span className="sd-paper-seal">POSSIBILITY<br />INSIDE</span></div><div><span className="sw-eyebrow">AN OPEN DESK. A FRESH START.</span><h2>Your next great hire<br />starts <em>here.</em></h2><p>Add a résumé to begin. We'll gather the details, so you can focus on what makes each person different.</p><div className="sd-first-steps"><span>01 Gather</span><ArrowRight size={14} /><span>02 Understand</span><ArrowRight size={14} /><span>03 Connect</span></div><button className="btn btn-primary" onClick={() => fileRef.current?.click()}><Upload size={15} />Upload your first resume</button></div></section>
               )}
+              {loading && candidates.length === 0 && <p role="status" className="sd-loading"><Loader size={18} className="spin" />Opening your candidate collection…</p>}
             </div>
           )}
 
@@ -936,10 +772,10 @@ export default function Dashboard() {
           {tab === 'screening' && (
             <div className="analytics-tab">
               {!pipelineResult ? (
-                candidates.filter(c => c.is_resume !== false).length === 0 ? (
+                screeningCandidates.length === 0 ? (
                   <div className="clean-empty">
                     <Zap size={32} style={{ color: 'var(--color-ink-faint)', marginBottom: 12 }} />
-                    <h3>Nothing to screen yet</h3>
+                    <h3>{selectedIds.length ? 'No résumés in this selection' : 'Nothing to screen yet'}</h3>
                     <p>Upload at least one resume and come back — screening ranks every candidate against a role.</p>
                     <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => setTab('upload')}>
                       Upload resumes
@@ -948,7 +784,8 @@ export default function Dashboard() {
                 ) : (
                   <Suspense fallback={null}>
                     <PipelineWizard
-                      candidateCount={candidates.filter(c => c.is_resume !== false).length}
+                      candidateCount={screeningCandidates.length}
+                      candidateIds={selectedIds.length ? screeningCandidates.map(c => c.id) : undefined}
                       onComplete={data => setPipelineResult(data)}
                     />
                   </Suspense>
@@ -964,17 +801,18 @@ export default function Dashboard() {
             </div>
           )}
 
+          {tab === 'interviews' && <InterviewHub candidates={candidates} anonymize={anonymize} getDisplayName={getDisplayName} />}
           {/* ANALYTICS TAB */}
           {tab === 'analytics' && (
-            <div className="analytics-tab">
+            <div className="analytics-tab sd-insights">
 
               {selectedCandidates.length === 0 ? (
                 <div className="clean-empty">
                   <BarChart2 size={32} strokeWidth={1.5} />
                   <h3>No candidates selected</h3>
-                  <p>Select candidates on the Upload tab to see analytics.</p>
+                  <p>Select candidates in Candidates to see analytics.</p>
                   <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setTab('upload')}>
-                    Go to Upload
+                    Go to Candidates
                   </button>
                 </div>
               ) : (
@@ -1014,9 +852,8 @@ export default function Dashboard() {
                               </div>
                             </div>
                             <div className="clean-exp-bar-area">
-                              <div className="clean-bar-track">
-                                <div className="clean-bar-fill" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
-                              </div>
+                              <InsightBar percent={pct} color="var(--accent)" index={i}
+                                detail={`${getDisplayName(c, i)} · ${c.total_experience_years || 0} years of experience`} />
                             </div>
                             <div className="clean-exp-years">{c.total_experience_years || 0}y</div>
                           </div>
@@ -1044,14 +881,11 @@ export default function Dashboard() {
                           </div>
                         ) : (
                           <div className="clean-bar-chart">
-                            {analytics.topSkills.map(s => (
+                            {analytics.topSkills.map((s, i) => (
                               <div key={s.name} className="clean-bar-row">
                                 <span className="clean-bar-label">{s.name}</span>
-                                <div className="clean-bar-track">
-                                  {/* Scaled to the most common skill, not to the
-                                      candidate count. */}
-                                  <div className="clean-bar-fill" style={{ width: `${s.barPct}%` }} />
-                                </div>
+                                <InsightBar percent={s.barPct} index={i}
+                                  detail={`${s.name} · ${s.count} of ${analytics.total} selected candidates (${s.share}%)`} />
                                 <span className="clean-bar-count" title={`${s.share}% of selected candidates`}>
                                   {s.count}
                                 </span>
@@ -1091,7 +925,7 @@ export default function Dashboard() {
                 </>
               )}
 
-              <InterviewAnalytics />
+              <InterviewAnalytics anonymize={anonymize} />
             </div>
           )}
 
@@ -1104,9 +938,9 @@ export default function Dashboard() {
                     <Bot size={40} />
                   </div>
                   <h3>Select candidates to chat</h3>
-                  <p>Select candidates on the Upload tab to chat about them.</p>
+                  <p>Select candidates in Candidates to chat about them.</p>
                   <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setTab('upload')}>
-                    Go to Upload
+                    Go to Candidates
                   </button>
                 </div>
               ) : (
@@ -1235,7 +1069,7 @@ export default function Dashboard() {
                           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                           if (e.key === 'Escape') setInput('');
                         }}
-                        placeholder={isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : "Type or use 🎤 for voice..."}
+                        placeholder={isRecording ? 'Listening…' : isTranscribing ? 'Transcribing…' : 'Ask about your selected candidates…'}
                         disabled={isTyping || isRecording || isTranscribing}
                       />
                       
@@ -1255,9 +1089,8 @@ export default function Dashboard() {
           )}
 
           {/* CANDIDATE FOCUS TAB */}
-        </div>
-      </main>
-    </div>
+      </div>
+    </WorkspaceShell>
   );
 }
 

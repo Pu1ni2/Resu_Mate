@@ -16,7 +16,7 @@ import ProductLayer from './ProductLayer';
  * "Sign in". And the first-time walkthrough opened over the sign-in form. */
 
 const SIGN_IN = ['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login'];
-const WALKTHROUGH = 'Welcome to ResuMate AI!';
+const WALKTHROUGH = 'Welcome to your hiring desk.';
 
 function renderAt(path) {
   return render(
@@ -45,11 +45,11 @@ describe('on the public pages', () => {
     expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
   });
 
-  it('"t" leaves the saved theme alone', () => {
+  it('"t" keeps Studio light', () => {
     renderAt('/');
     press('t');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(localStorage.getItem('resumate_theme')).toBeNull();
   });
 
   it('"n" and "?" open no panel', () => {
@@ -86,10 +86,10 @@ describe('on an address the app does not have', () => {
     expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
   });
 
-  it('"t" leaves the saved theme alone', () => {
+  it('"t" keeps Studio light', () => {
     renderAt('/no/such/page');
     press('t');
-    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+    expect(localStorage.getItem('resumate_theme')).toBeNull();
   });
 });
 
@@ -97,7 +97,7 @@ describe('on the product pages', () => {
   it.each(['/hiring', '/hiring/focus', '/hiring/sourcer', '/candidate/dashboard', '/candidate/dashboard/interview', '/dashboard'])(
     '%s shows the product toolbar', path => {
       renderAt(path);
-      expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
       expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
     },
   );
@@ -115,11 +115,12 @@ describe('on the product pages', () => {
     expect(screen.getByRole('status').className).toBe('pl-toast-container');
   });
 
-  it('"t" still switches the theme', () => {
+  it('a saved dark preference is removed and "t" keeps Studio light', () => {
+    localStorage.setItem('resumate_theme', 'dark');
     renderAt('/hiring');
     press('t');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-    expect(localStorage.getItem('resumate_theme')).toBe('light');
+    expect(localStorage.getItem('resumate_theme')).toBeNull();
   });
 
   it('a panel left open does not follow you to the homepage', () => {
@@ -129,13 +130,13 @@ describe('on the product pages', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Home' }));
     expect(screen.queryByRole('button', { name: 'Close notifications' })).toBeNull();
     press('t');
-    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+    expect(localStorage.getItem('resumate_theme')).toBeNull();
   });
 });
 
 /* index.html paints the Studio pages cream before the app has run, and has
  * to tell them from the product's without the app's code: the same line. */
-describe('the line between the product and the rest', () => {
+describe('cream before the app has loaded', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   const paintedCream = (pathname) => {
@@ -150,7 +151,7 @@ describe('the line between the product and the rest', () => {
     '/hiring', '/hiring/focus', '/candidate/dashboard', '/dashboard',
   ])('is where index.html draws it, at %s', (pathname) => {
     renderAt(pathname);
-    const product = !!screen.queryByRole('button', { name: 'Toggle theme' });
-    expect(paintedCream(pathname)).toBe(!product);
+    expect(paintedCream(pathname)).toBe(true);
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 });

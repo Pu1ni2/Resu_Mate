@@ -31,6 +31,7 @@ function open(overrides = {}) {
       <Routes>
         <Route path="/" element={<p>The home page</p>} />
         <Route path="/hiring" element={<Dashboard />} />
+        <Route path="/hiring/focus" element={<p>The candidate file</p>} />
         <Route path="/hiring/sourcer" element={<p>The sourcer</p>} />
       </Routes>
     </MemoryRouter>,
@@ -48,26 +49,26 @@ afterEach(() => {
 });
 
 describe('the sidebar', () => {
-  it('switches tabs from the keyboard, and says which one is open', () => {
+  it('uses native focusable buttons and says which section is open', () => {
     open();
-    const analytics = screen.getByRole('button', { name: 'Analytics' });
-    expect(screen.getByRole('button', { name: 'Upload' }).getAttribute('aria-current')).toBe('page');
+    const analytics = screen.getByRole('button', { name: 'Insights' });
+    expect(screen.getByRole('button', { name: 'Candidates' }).getAttribute('aria-current')).toBe('page');
     expect(analytics.tabIndex).toBe(0);
 
-    fireEvent.keyDown(analytics, { key: 'Enter' });
-    expect(screen.getByRole('button', { name: 'Analytics' }).getAttribute('aria-current')).toBe('page');
-    expect(screen.getByRole('button', { name: 'Upload' }).getAttribute('aria-current')).toBeNull();
+    fireEvent.click(analytics);
+    expect(screen.getByRole('button', { name: 'Insights' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('button', { name: 'Candidates' }).getAttribute('aria-current')).toBeNull();
   });
 
   it('opens the other pages as links', () => {
     open();
-    fireEvent.keyDown(screen.getByRole('link', { name: 'Find Candidates' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('link', { name: 'Find Candidates' }));
     expect(screen.getByText('The sourcer')).toBeTruthy();
   });
 
-  it('goes home from the keyboard', () => {
+  it('links home with a native focusable link', () => {
     open();
-    fireEvent.keyDown(screen.getByRole('link', { name: 'Home' }), { key: ' ' });
+    fireEvent.click(screen.getByRole('link', { name: 'ResuMate home' }));
     expect(screen.getByText('The home page')).toBeTruthy();
   });
 });
@@ -120,17 +121,25 @@ describe('a candidate card', () => {
     expect(app.toggleSelection).not.toHaveBeenCalled();
   });
 
-  it('names the arrows that scroll the cards', () => {
-    open({ candidates: [ADA] });
-    expect(screen.getByRole('button', { name: 'Scroll candidates left' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Scroll candidates right' })).toBeTruthy();
+  it('opens the full candidate file without changing selection', () => {
+    const app = open({ candidates: [ADA] });
+    fireEvent.click(screen.getByRole('button', { name: 'Open candidate file for Ada' }));
+    expect(screen.getByText('The candidate file')).toBeTruthy();
+    expect(app.toggleSelection).not.toHaveBeenCalled();
+  });
+
+  it('filters candidates by role or skill', () => {
+    open({ candidates: [ADA, { ...ADA, id: 2, name: 'Grace', predicted_role: 'Designer', skills: ['Figma'] }] });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search candidates' }), { target: { value: 'Figma' } });
+    expect(screen.queryByRole('heading', { name: 'Ada' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Grace' })).toBeTruthy();
   });
 });
 
 describe('the AI chat', () => {
   it('labels its message box and its send button', () => {
     open({ candidates: [ADA], selectedIds: [1], selectedCandidates: [ADA] });
-    fireEvent.keyDown(screen.getByRole('button', { name: 'AI Chat' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
     expect(screen.getByRole('textbox', { name: 'Message the AI assistant' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
   });

@@ -20,8 +20,8 @@ export default function HiringAgentPanel({
       <div className="agent-intro">
         <div className="agent-intro-icon"><UserCheck size={28} /></div>
         <div>
-          <h3 className="agent-intro-title">Hiring Manager Agent</h3>
-          <p className="agent-intro-desc">I'll evaluate this candidate's fit for your position using resume data, online research, and hiring best practices.</p>
+          <h3 className="agent-intro-title">A role gives the story context.</h3>
+          <p className="agent-intro-desc">Choose the role and requirements. Review the evidence in the evaluation before deciding on the next step.</p>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export default function HiringAgentPanel({
       {agentStep === 'result' && agentResult && (
         <div className="agent-result" ref={agentResultRef}>
           {agentResult.error ? (
-            <div className="agent-error glass-card"><AlertCircle size={24} /><p>{agentResult.error}</p></div>
+            <div className="agent-error glass-card" role="alert"><AlertCircle size={24} /><p>{agentResult.error}</p><button className="btn btn-secondary" onClick={onReset}>Start Over</button></div>
           ) : (
             <>
               <div className="agent-report"><Markdown text={agentResult.report} /></div>

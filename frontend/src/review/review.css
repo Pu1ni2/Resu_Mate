@@ -1,0 +1,11 @@
+.review-bar { position:relative; z-index:300; display:flex; flex-wrap:wrap; align-items:center; gap:12px 24px; background:#30382f; color:#fffef9; padding:12px 22px; min-height:56px; box-sizing:border-box; font:11px 'DM Sans',sans-serif; }
+.review-bar strong { font:10px 'JetBrains Mono',monospace; letter-spacing:1px; }
+.review-bar>span { color:#cbd4bd; margin-right:auto; }
+.review-bar select { font:12px 'DM Sans',sans-serif; border:1px solid #637059; border-radius:4px; color:#fffef9; background:#3e4a35; padding:7px 12px; min-width:175px; }
+.review-bar a { color:#e6ccac; text-decoration:none; font-size:11px; }
+.review-consent { min-height:calc(100dvh - 56px); display:grid; place-items:center; background:#f6f3eb; padding:30px 18px; }
+.review-unavailable { padding:70px 30px; text-align:center; color:#30382f; }
+.review-unavailable h1 { font:48px 'Instrument Serif',serif; }
+.review-bar~.studio-workspace .sw-sidebar { height:100dvh; }
+html[data-theme='light']:has(.review-bar) .pl-toolbar { top:auto; bottom:18px; }
+@media(max-width:600px) { .review-bar { padding:12px 16px; gap:10px; }.review-bar>span { width:100%; order:3; font-size:10px; }.review-bar strong { margin-right:auto; font-size:8px; }.review-bar>a { display:none; }.review-bar select { font-size:11px; min-width:140px; } }
