@@ -1,153 +1,109 @@
 /* ═══════════════════════════════════════════════════════════
    DESIGN TOKENS
 
-   One neutral ramp (zinc) and one brand hue (amber). Everything else is
-   status-only.
+   One light palette, Studio's: cream paper, ink, one rust, sage greys. There
+   is no dark theme any more; the product's pages are cream like the homepage
+   and the sign-in pages.
 
-   Why semantic names rather than raw Tailwind colours: `bg-surface` states
-   intent, survives a palette change, and — because Tailwind v4 compiles these
-   to `var(--color-surface)` — can be re-pointed for light mode by overriding
-   the variable at the bottom of this file. `bg-zinc-900` would hardcode dark
-   into every component.
+   Why semantic names rather than raw colours: `bg-surface` states intent and,
+   because Tailwind v4 compiles these to `var(--color-surface)`, every utility
+   built from them follows a palette change without touching a component.
 
-   Values are taken from design-system.css, which was the better of the two
-   token blocks that used to fight each other. Notably --text was #ffffff in
-   the block that won at runtime; pure white on near-black is harsh and is one
-   of the things that made the UI read cheap. Ink is zinc-100 here.
+   Text colours are chosen for 4.5:1 on both the paper (#f6f3eb) and the card
+   (#fffef9), which small text needs.
    ═══════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ─── Surfaces (dark is the default theme) ─── */
-  --color-canvas: #09090b;         /* zinc-950 — page */
-  --color-surface: #18181b;        /* zinc-900 — cards, panels */
-  --color-surface-raised: #27272a; /* zinc-800 — inputs, hover, wells */
-  --color-surface-hover: #2e2e33;
+  /* ─── Surfaces ─── */
+  --color-canvas: #f6f3eb;          /* paper: the page */
+  --color-surface: #fffef9;         /* card: panels, fields */
+  --color-surface-raised: #efeee5;  /* wells, inputs at rest */
+  --color-surface-hover: #e8ebdf;
 
-  /* Borders carry structure now that glass/glow is going away. */
-  --color-line: rgba(255, 255, 255, 0.08);
-  --color-line-strong: rgba(255, 255, 255, 0.14);
+  --color-line: #d7d8cc;
+  --color-line-strong: #bec5b0;
 
   /* ─── Ink ─── */
-  --color-ink: #f4f4f5;            /* zinc-100 — NOT #fff */
-  --color-ink-muted: #a1a1aa;      /* zinc-400 — secondary copy */
-  --color-ink-subtle: #71717a;     /* zinc-500 — labels, meta */
-  --color-ink-faint: #52525b;      /* zinc-600 — disabled, watermarks */
-  --color-ink-inverse: #09090b;    /* on amber fills */
+  --color-ink: #2b3029;
+  --color-ink-muted: #596150;       /* secondary copy, 5.8:1 on paper */
+  --color-ink-subtle: #68705e;      /* labels, meta, 4.7:1 */
+  --color-ink-faint: #6b7162;       /* the quietest text, still 4.5:1 */
+  --color-ink-inverse: #fffef9;     /* on rust and forest fills */
 
-  /* ─── Brand: one hue, used sparingly ─── */
-  --color-accent: #f59e0b;         /* amber-500 */
-  --color-accent-hover: #fbbf24;   /* amber-400 */
-  --color-accent-press: #d97706;   /* amber-600 */
-  --color-accent-wash: rgba(245, 158, 11, 0.12);
-  --color-accent-line: rgba(245, 158, 11, 0.35);
+  /* ─── Brand: one rust. A touch darker than the public pages' #bf4a32,
+         which is 4.47:1 on paper; the product sets much more small text in
+         rust, and #b74630 is 4.8:1. ─── */
+  --color-accent: #b74630;
+  --color-accent-hover: #9d3827;
+  --color-accent-press: #8b3022;
+  --color-accent-wash: #f4e5dc;
+  --color-accent-line: #dcb5a5;
 
-  /* ─── Status: reserved. Never reused as a "series 4" colour, and always
-         paired with an icon or label so meaning is never colour-alone. ─── */
-  --color-positive: #22c55e;
-  --color-positive-wash: rgba(34, 197, 94, 0.12);
-  --color-critical: #ef4444;
-  --color-critical-wash: rgba(239, 68, 68, 0.12);
-  /* For text on a critical tint, e.g. a danger button: --color-critical there
-     is ~4.2:1, below the 4.5:1 that text this size needs. red-400 is 5.7:1. */
-  --color-critical-ink: #f87171;
-  /* Caution is amber-400 rather than the brand amber-500 so a warning is not
-     mistaken for a call to action. It must always ship with an icon. */
-  --color-caution: #fbbf24;
-  --color-caution-wash: rgba(251, 191, 36, 0.12);
+  /* ─── Status: reserved, and always paired with an icon or a label, so
+         meaning is never colour alone. ─── */
+  --color-positive: #46623d;
+  --color-positive-wash: #e5ebdc;
+  --color-critical: #aa362b;
+  --color-critical-wash: #f8e6df;
+  --color-critical-ink: #982e25;    /* text on the critical tint */
+  --color-caution: #8c5c23;
+  --color-caution-wash: #f2e9d7;
 
-  /* ─── Data viz: sequential magnitude = one hue, light to dark.
-         Categorical series and any multi-hue palette must be validated before
-         use; a rainbow ramp is what the old distColors array got wrong. ─── */
-  --color-data-1: #fde68a;
-  --color-data-2: #fcd34d;
-  --color-data-3: #f59e0b;
-  --color-data-4: #d97706;
-  --color-data-5: #b45309;
-  --color-data-track: rgba(255, 255, 255, 0.06);
+  /* ─── Data: one sage ramp, light to dark, for magnitude. ─── */
+  --color-data-1: #d8dfc8;
+  --color-data-2: #b5c19e;
+  --color-data-3: #8f9f78;
+  --color-data-4: #6b8057;
+  --color-data-5: #40593a;
+  --color-data-track: #e9ebdf;
 
   /* ─── Type ─── */
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --font-serif: 'Instrument Serif', Georgia, serif;
 
-  /* ─── Radius ─── */
-  --radius-control: 10px;  /* buttons, inputs */
-  --radius-card: 14px;
-  --radius-panel: 18px;
+  /* ─── Radius: Studio's corners are small. ─── */
+  --radius-control: 4px;  /* buttons, inputs */
+  --radius-card: 5px;
+  --radius-panel: 6px;
 
-  /* ─── Motion: short and flat. Long springy easing on UI chrome is another
-         thing that reads unserious. ─── */
+  /* ─── Motion: short and flat. ─── */
   --ease-out-quick: cubic-bezier(0.2, 0, 0, 1);
   --duration-quick: 120ms;
-  --duration-normal: 160ms;
+  --duration-normal: 180ms;
 
-  /* ─── Depth ──────────────────────────────────────────────
-     A flat surface with a hairline border reads clean but inert. What makes a
-     dark interface feel built rather than drawn is a light model: a top edge
-     that catches light, and a shadow that says how far the surface sits off
-     the page.
-
-     Shadows are tuned for dark: on a near-black canvas a soft grey shadow is
-     invisible, so these are near-opaque black at a tight radius. --shadow-e3
-     also carries a faint accent bleed, which is what makes a lifted panel look
-     lit rather than cut out.
-     ──────────────────────────────────────────────────────── */
-  --color-highlight: rgba(255, 255, 255, 0.09);
-  --color-highlight-strong: rgba(255, 255, 255, 0.16);
-
-  --shadow-e1: 0 1px 2px rgb(0 0 0 / 0.40);
-  --shadow-e2: 0 4px 12px -2px rgb(0 0 0 / 0.50), 0 2px 4px -2px rgb(0 0 0 / 0.40);
-  --shadow-e3: 0 24px 56px -16px rgb(0 0 0 / 0.72), 0 8px 20px -8px rgb(0 0 0 / 0.50);
-}
-
-/* ─── Light theme ───────────────────────────────────────────
-   Re-points the same variables, so every utility built from them follows
-   automatically and no component needs a light: variant. The theme attribute
-   is set on <html> by ProductLayer.jsx.
-
-   This is a first pass covering the tokens above. The three inconsistent light
-   palettes still living in the legacy stylesheets get folded in during the
-   teardown, not here.
-   ─────────────────────────────────────────────────────────── */
-[data-theme='light'] {
-  --color-canvas: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-raised: #f4f4f5;
-  --color-surface-hover: #e4e4e7;
-
-  --color-line: rgba(9, 9, 11, 0.10);
-  --color-line-strong: rgba(9, 9, 11, 0.18);
-
-  --color-ink: #18181b;
-  --color-ink-muted: #52525b;
-  --color-ink-subtle: #71717a;
-  --color-ink-faint: #a1a1aa;
-  --color-ink-inverse: #ffffff;
-
-  /* amber-600 on white: amber-500 does not carry enough contrast for text or
-     small marks on a light surface. */
-  --color-accent: #d97706;
-  --color-accent-hover: #b45309;
-  --color-accent-press: #92400e;
-  --color-accent-wash: rgba(217, 119, 6, 0.10);
-  --color-accent-line: rgba(217, 119, 6, 0.30);
-
-  --color-positive: #15803d;
-  --color-positive-wash: rgba(21, 128, 61, 0.10);
-  --color-critical: #dc2626;
-  --color-critical-wash: rgba(220, 38, 38, 0.10);
-  --color-critical-ink: #b91c1c;  /* red-700, 5.4:1 on the tint; red-600 is 4.0:1 */
-  --color-caution: #b45309;
-  --color-caution-wash: rgba(180, 83, 9, 0.10);
-
-  --color-data-track: rgba(9, 9, 11, 0.08);
-
-  /* On white there is no light to catch, so the top-edge highlight would just
-     dirty the border. It goes transparent, and depth comes from shadow alone —
-     which is also why these are softer and wider than the dark set. */
+  /* ─── Depth: on paper there is no light to catch, so the top-edge
+         highlight goes, and depth comes from soft shadows alone. ─── */
   --color-highlight: transparent;
   --color-highlight-strong: transparent;
 
-  --shadow-e1: 0 1px 2px rgb(9 9 11 / 0.06);
-  --shadow-e2: 0 4px 12px -2px rgb(9 9 11 / 0.08), 0 2px 4px -2px rgb(9 9 11 / 0.04);
-  --shadow-e3: 0 24px 56px -16px rgb(9 9 11 / 0.14), 0 8px 20px -8px rgb(9 9 11 / 0.08);
+  --shadow-e1: 0 1px 3px #30382f08;
+  --shadow-e2: 0 5px 16px #30382f0c;
+  --shadow-e3: 0 18px 48px -14px #30382f30;
+}
+
+/* ─── The legacy stylesheets' own variables ────────────────
+   design-system.css and the stylesheets after it name their colours
+   differently (--bg, --text, --accent...) and default to the old dark
+   palette. These point them at the same Studio colours, so the screens they
+   still style read cream too. Unlayered (index.css), so they beat the
+   legacy layer's definitions.
+
+   The radius scale is also Tailwind's own (--radius-sm ... --radius-2xl):
+   `rounded-lg` and the rest come out at Studio's smaller corners.
+   ─────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --bg: #f6f3eb; --bg2: #fffef9; --bg3: #efeee5; --bg4: #e9ebdf; --bg-elevated: #fffef9;
+  --surface: #fffef9; --surface-border: #d7d8cc; --surface-hover: #e9ebdf; --surface-active: #e0e6d5;
+  --glass: #fffef9; --glass-border: #d7d8cc; --glass-hover: #f0f1e8;
+  --accent: #b74630; --accent2: #9d3827; --accent-dark: #8b3022; --accent-glow: #b7463015;
+  --accent-bg: #f4e5dc; --accent-subtle: #f6eae2;
+  --text: #2b3029; --text2: #596150; --text3: #68705e; --text4: #6b7162; --text-inverse: #fffef9;
+  --success: #46623d; --success-bg: #e5ebdc; --error: #aa362b; --error-bg: #f8e6df;
+  --warning: #8c5c23; --warning-bg: #f2e9d7; --info: #486563; --info-bg: #e5ece5;
+  --purple: #665a72; --purple-bg: #ede8ef;
+  --radius-sm: 4px; --radius-md: 5px; --radius-lg: 6px; --radius-xl: 8px; --radius-2xl: 10px;
+  --shadow-sm: 0 2px 5px #30382f08; --shadow-md: 0 5px 16px #30382f0c; --shadow-lg: 0 10px 28px #30382f12;
+  --shadow-xl: 0 20px 50px #30382f1a; --shadow-glow: none;
 }

@@ -37,7 +37,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .glass-card:hover { border-color: var(--glass-hover); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; font-family: inherit; font-size: 14px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; transition: all 0.25s ease; white-space: nowrap; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #000; box-shadow: 0 4px 20px var(--accent-glow); }
+.btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: var(--text-inverse); box-shadow: 0 4px 20px var(--accent-glow); }
 .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
 .btn-secondary { background: var(--glass); color: var(--text); border: 1px solid var(--glass-border); }
 .btn-secondary:hover:not(:disabled) { border-color: var(--glass-hover); background: var(--bg3); }

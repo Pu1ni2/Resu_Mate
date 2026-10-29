@@ -10,8 +10,7 @@ import ProductLayer from './ProductLayer';
 
 /* Only the product's pages get the product chrome: not the homepage, the legal
  * pages, the sign-in pages, or an address the app doesn't have.
- * The keyboard shortcuts used to work there too: "t" flipped the dashboard's
- * saved theme for a visitor who never sees it, and "n" and "?" opened product
+ * The keyboard shortcuts used to work there too: "n" and "?" opened product
  * panels. Notices still show there, at the bottom: at the top they covered
  * "Sign in". And the first-time walkthrough opened over the sign-in form. */
 
@@ -41,15 +40,8 @@ afterEach(() => {
 describe('on the public pages', () => {
   it.each(['/', '/terms', '/privacy', '/privacy/delete', ...SIGN_IN])('%s shows no product toolbar', path => {
     renderAt(path);
-    expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
-  });
-
-  it('"t" leaves the saved theme alone', () => {
-    renderAt('/');
-    press('t');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+    expect(screen.queryByRole('button', { name: 'Keyboard shortcuts' })).toBeNull();
   });
 
   it('"n" and "?" open no panel', () => {
@@ -82,14 +74,16 @@ describe('on the public pages', () => {
 describe('on an address the app does not have', () => {
   it.each(['/no/such/page', '/candidate', '/candidate/elsewhere', '/hiringx'])('%s shows no product toolbar', path => {
     renderAt(path);
-    expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Keyboard shortcuts' })).toBeNull();
   });
 
-  it('"t" leaves the saved theme alone', () => {
+  it('"n" and "?" open no panel', () => {
     renderAt('/no/such/page');
-    press('t');
-    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+    press('n');
+    press('?', { shiftKey: true });
+    expect(screen.queryByRole('button', { name: 'Close notifications' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close shortcuts' })).toBeNull();
   });
 });
 
@@ -97,8 +91,8 @@ describe('on the product pages', () => {
   it.each(['/hiring', '/hiring/focus', '/hiring/sourcer', '/candidate/dashboard', '/candidate/dashboard/interview', '/dashboard'])(
     '%s shows the product toolbar', path => {
       renderAt(path);
-      expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeTruthy();
     },
   );
 
@@ -115,11 +109,13 @@ describe('on the product pages', () => {
     expect(screen.getByRole('status').className).toBe('pl-toast-container');
   });
 
-  it('"t" still switches the theme', () => {
+  it('has one light theme: no switch, no "t", and an old saved choice forgotten', () => {
+    localStorage.setItem('resumate_theme', 'dark');
     renderAt('/hiring');
+    expect(screen.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
     press('t');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-    expect(localStorage.getItem('resumate_theme')).toBe('light');
+    expect(localStorage.getItem('resumate_theme')).toBeNull();
   });
 
   it('a panel left open does not follow you to the homepage', () => {
@@ -128,29 +124,31 @@ describe('on the product pages', () => {
     expect(screen.getByRole('button', { name: 'Close notifications' })).toBeTruthy();
     fireEvent.click(screen.getByRole('link', { name: 'Home' }));
     expect(screen.queryByRole('button', { name: 'Close notifications' })).toBeNull();
-    press('t');
-    expect(localStorage.getItem('resumate_theme')).toBe('dark');
+    // and its shortcut is off there too
+    press('n');
+    expect(screen.queryByRole('button', { name: 'Close notifications' })).toBeNull();
   });
 });
 
-/* index.html paints the Studio pages cream before the app has run, and has
- * to tell them from the product's without the app's code: the same line. */
-describe('the line between the product and the rest', () => {
+/* Every page is cream, so index.html paints each one cream before the app has
+ * run, and sets the light theme before anything reads it. */
+describe('before the app starts', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
-  const paintedCream = (pathname) => {
+  const marks = (pathname) => {
     const attributes = {};
     const page = { documentElement: { setAttribute: (name, value) => { attributes[name] = value; } } };
     new Function('location', 'document', script)({ pathname }, page);
-    return attributes['data-boot'] === 'studio';
+    return attributes;
   };
 
-  it.each([
-    '/', '/terms', '/privacy/delete', '/hiring/login', '/hiring/reset', '/candidate/login', '/no/such/page',
-    '/hiring', '/hiring/focus', '/candidate/dashboard', '/dashboard',
-  ])('is where index.html draws it, at %s', (pathname) => {
-    renderAt(pathname);
-    const product = !!screen.queryByRole('button', { name: 'Toggle theme' });
-    expect(paintedCream(pathname)).toBe(!product);
+  it.each(['/', '/hiring/login', '/no/such/page', '/hiring', '/hiring/focus', '/candidate/dashboard'])(
+    '%s is painted cream, in the light theme', (pathname) => {
+      expect(marks(pathname)).toEqual({ 'data-boot': 'studio', 'data-theme': 'light' });
+    },
+  );
+
+  it("and the phone's browser bar starts cream", () => {
+    expect(html).toContain('<meta name="theme-color" content="#f6f3eb">');
   });
 });

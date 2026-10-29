@@ -80,12 +80,12 @@ describe('the Studio stylesheet', () => {
   });
 });
 
-/* Every page is near-black until the app's code has run, so index.html paints
- * the homepage cream meanwhile; otherwise it blinked dark on each visit. */
+/* Nothing is drawn until the app's code has run, so index.html paints every
+ * page cream meanwhile; otherwise the homepage blinked dark on each visit. */
 describe('the homepage before the app starts', () => {
   const html = fs.readFileSync(path.join(frontend, 'index.html'), 'utf8');
 
-  it('is marked by index.html, as the sign-in pages are, and the product pages are not', () => {
+  it('is marked by index.html, as every other page is', () => {
     const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
     const mark = (pathname) => {
       const attributes = {};
@@ -95,7 +95,7 @@ describe('the homepage before the app starts', () => {
     };
     expect(mark('/')).toBe('studio');
     expect(mark('/hiring/login')).toBe('studio');
-    expect(mark('/hiring')).toBeUndefined();
+    expect(mark('/hiring')).toBe('studio');
   });
 
   it("is painted the homepage's own cream while nothing is drawn yet", () => {

@@ -4,7 +4,6 @@
  * 1. Onboarding walkthrough (first-time users)
  * 2. Notification system (toasts + bell)
  * 3. Global keyboard shortcuts
- * 4. Dark/Light mode toggle
  * 
  * Usage: Wrap <App /> with <ProductLayer> in main.jsx
  */
@@ -13,7 +12,7 @@ import { useLocation } from 'react-router-dom';
 import { TOAST_EVENT, NOTIFY_EVENT } from '../services/notify';
 import { pressable } from './ui/pressable';
 import {
-  X, ChevronRight, ChevronLeft, Bell, Sun, Moon, Keyboard,
+  X, ChevronRight, ChevronLeft, Bell, Keyboard,
   Upload, MessageSquare, Users, Cpu, Video, Check, AlertCircle, Info, ArrowRight
 } from 'lucide-react';
 
@@ -25,15 +24,12 @@ export const useProduct = () => useContext(ProductContext);
 // portal (/dashboard is an old address for the hiring dashboard). Every other
 // page, the homepage, the legal pages, the sign-in pages and an address the app
 // doesn't have, gets no product chrome: no toolbar, no keyboard shortcuts, no
-// panels, no walkthrough. Notices still show. index.html draws the same line.
+// panels, no walkthrough. Notices still show.
 const PRODUCT = /^\/(hiring|candidate\/dashboard|dashboard)(\/|$)/;
 const SIGN_IN = ['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset'];
 
 export default function ProductLayer({ children }) {
   const location = useLocation();
-
-  // ─── Theme ───
-  const [theme, setTheme] = useState(() => localStorage.getItem('resumate_theme') || 'dark');
 
   // ─── Onboarding ───
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -50,13 +46,12 @@ export default function ProductLayer({ children }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // ═══ THEME ═══
+  // One light theme (theme.css). index.html sets it before the app runs; the
+  // dark/light switch and the "t" shortcut are gone, and so is the choice a
+  // visitor saved while there was one.
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('resumate_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', 'light');
+    try { localStorage.removeItem('resumate_theme'); } catch { /* storage unavailable */ }
   }, []);
 
   const isPublicPage = !PRODUCT.test(location.pathname) || SIGN_IN.includes(location.pathname);
@@ -145,15 +140,13 @@ export default function ProductLayer({ children }) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   // ═══ KEYBOARD SHORTCUTS ═══
-  // Off on the public pages: there "t" would flip the dashboard's saved theme
-  // for a visitor who never sees it, and "n" and "?" open product panels.
+  // Off on the public pages, where "n" and "?" would open product panels.
   useEffect(() => {
     if (isPublicPage) return undefined;
     const handleKeyDown = (e) => {
       // Don't trigger when typing anywhere editable. Covers <input>, <textarea>,
-      // <select>, AND contenteditable elements (e.g. rich-text composers). Without
-      // the contenteditable check, pressing "t" inside a Jarvis chat composer
-      // would flip the theme instead of typing the letter.
+      // <select>, AND contenteditable elements (e.g. rich-text composers), so
+      // typing "n" in a chat box doesn't open the notifications.
       const tag = e.target?.tagName;
       const inEditable =
         ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) ||
@@ -177,16 +170,14 @@ export default function ProductLayer({ children }) {
         setShowOnboarding(false);
       }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) { setShowNotifPanel(s => !s); }
-      if (e.key === 't' && !e.ctrlKey && !e.metaKey) { toggleTheme(); }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleTheme, isPublicPage]);
+  }, [isPublicPage]);
 
   // ═══ CONTEXT VALUE ═══
   const contextValue = {
-    theme, toggleTheme,
     addNotification, addToast,
     showOnboarding: () => { setOnboardingStep(0); setShowOnboarding(true); }
   };
@@ -215,16 +206,10 @@ export default function ProductLayer({ children }) {
 
       {/* ═══ FLOATING TOOLBAR (bottom-right) ═══
           Product chrome, so it is hidden on the public pages, with the panels
-          below. The homepage sets its own colours, so the theme toggle would do
-          nothing there; there is nothing to be notified about; and a
-          keyboard-shortcuts modal on the homepage is noise. */}
+          below: on the public pages there is nothing to be notified about, and
+          a keyboard-shortcuts modal is noise. */}
       {!isPublicPage && (
       <div className="pl-toolbar">
-        {/* Theme toggle */}
-        <button className="pl-toolbar-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (T)`} aria-label="Toggle theme">
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
         {/* Notifications */}
         <button className="pl-toolbar-btn" onClick={() => setShowNotifPanel(s => !s)} title="Notifications (N)" aria-label="Notifications">
           <Bell size={18} />
@@ -278,7 +263,6 @@ export default function ProductLayer({ children }) {
             <div className="pl-shortcuts-grid">
               <div className="pl-shortcut-section">
                 <h4>Global</h4>
-                <div className="pl-shortcut"><span>Toggle theme</span><kbd>T</kbd></div>
                 <div className="pl-shortcut"><span>Notifications</span><kbd>N</kbd></div>
                 <div className="pl-shortcut"><span>This panel</span><kbd>Shift</kbd> + <kbd>?</kbd></div>
                 <div className="pl-shortcut"><span>Close panels</span><kbd>Esc</kbd></div>

@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 
 /* A Studio page's tab title, and the cream browser bar on phones, while the page
- * is open. Both go back to what they were when it closes: the product's pages
- * are dark, and their bar is too. */
+ * is open. Both go back to what they were when it closes. */
 
 const PAPER = '#f6f3eb';
 

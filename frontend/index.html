@@ -4,21 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ResuMate AI - Multi-Agent Hiring Platform with AI-powered resume analysis, candidate profiling, and live interviews">
-    <meta name="theme-color" content="#09090B">
+    <meta name="theme-color" content="#f6f3eb">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
     <!-- The fonts ship with the app (src/main.jsx): no page asks a font site
          for one. -->
 
-    <!-- Every page is near-black until the app's code has run, and the Studio
-         pages are cream, so they blinked dark on each visit. The Studio pages
-         are all but the product's (the hiring dashboard and the candidate's
-         portal): the homepage, the sign-in, legal and data-deletion pages, and
-         the page for an address the app doesn't have. ProductLayer.jsx draws
-         the same line. While the page is still empty, they are painted cream
-         instead; once the app draws them, studio.css and studio-auth.css take
-         over, and the product's pages are untouched. -->
-    <script>if (['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset'].includes(location.pathname) || !/^\/(hiring|candidate\/dashboard|dashboard)(\/|$)/.test(location.pathname)) document.documentElement.setAttribute('data-boot', 'studio');</script>
+    <!-- Every page is cream (theme.css). This paints the moment before the
+         stylesheet has arrived the same cream, and sets the light theme before
+         anything reads it. -->
+    <script>document.documentElement.setAttribute('data-boot', 'studio'); document.documentElement.setAttribute('data-theme', 'light');</script>
     <style>html[data-boot="studio"]:has(#root:empty), html[data-boot="studio"]:has(#root:empty) body { background: #f6f3eb; }</style>
     <title>ResuMate AI | Multi-Agent Hiring Platform</title>
 </head>

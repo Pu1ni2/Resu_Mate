@@ -72,8 +72,8 @@ describe('the sign-in stylesheet', () => {
   });
 });
 
-/* Every page is near-black until the app's code has run, so index.html paints
- * the sign-in pages cream meanwhile, as it does the homepage. */
+/* Nothing is drawn until the app's code has run, so index.html paints every
+ * page cream meanwhile, the sign-in pages included. */
 describe('the sign-in pages before the app starts', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
   const mark = (pathname) => {
@@ -96,9 +96,9 @@ describe('the sign-in pages before the app starts', () => {
     },
   );
 
-  it.each(['/hiring', '/hiring/', '/hiring/focus', '/hiring/sourcer', '/candidate/dashboard', '/candidate/dashboard/interview', '/dashboard'])(
-    '%s, a product page, is not', (pathname) => {
-      expect(mark(pathname)).toBeUndefined();
+  it.each(['/hiring', '/hiring/focus', '/hiring/sourcer', '/candidate/dashboard', '/dashboard'])(
+    '%s, a product page, cream now as well, is marked too', (pathname) => {
+      expect(mark(pathname)).toBe('studio');
     },
   );
 
