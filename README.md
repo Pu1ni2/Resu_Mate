@@ -298,57 +298,6 @@ Report → transcript, AI-written evaluation, time (and proctoring, for video)
 
 ---
 
-## Project Structure
-
-```
-backend/
-  main.py               the API app and its routes
-  app/api/              one file per area: auth, candidates, chat, jarvis, sourcer, privacy…
-  app/agents/           the agents, and the loop most of them share
-  app/services/         email, file storage, résumé search, sign-in codes, deletion…
-  app/models/           the database tables
-  alembic/              the database migrations
-  tests/                the backend tests (pytest)
-  interview_agent.py    the optional avatar-interview worker (Dockerfile.agent, fly.toml)
-  scripts/              backup_db.py, make_sample_resume.py
-frontend/
-  src/components/       the pages and their parts; home/ and auth/ hold the new design
-  src/styles/           the stylesheets; studio.css and studio-auth.css are the new design
-  src/services/         API calls, sign-in sessions, notices
-render.yaml             the Render deployment
-.github/workflows/      CI
-screenshots/            the README's images
-tools/                  fix_mojibake.py, which repairs text garbled by a wrong encoding
-```
-
-## Run It Locally
-
-You need Python 3.12 and Node 20.19+, 22.13+ or 24 (CI uses Python 3.12 and Node 24).
-
-**Backend** (API on port 8006):
-```bash
-python -m venv venv
-source venv/bin/activate            # Windows: venv\Scripts\activate
-pip install -r backend/requirements.txt
-cp backend/.env.example backend/.env   # then set SECRET_KEY and OPENAI_API_KEY
-cd backend
-uvicorn main:app --reload --port 8006
-```
-Leave the keys you don't have blank, as the example does: a blank key leaves that feature off, where a
-made-up one counts as set and the service refuses it. A `backend/.env` copied from an older example may
-still hold placeholders such as `tvly-your-key`; clear them.
-
-Locally the database is SQLite (`backend/resumate.db`), created on start. With `DEBUG=true` and no email
-set up, nothing is emailed: the data-deletion code and the password-reset link are shown in the app, and
-a candidate's sign-in code is printed in the backend's console.
-
-**Frontend** (on port 3006, proxying `/api` to the backend):
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
 ## Configuration
 
 The backend's settings are listed, most with a comment, in [`backend/.env.example`](backend/.env.example).
@@ -357,7 +306,7 @@ The ones that matter most:
 | Variable | What it does |
 |----------|--------------|
 | `SECRET_KEY` | Signs sign-in tokens. Required in production; the app won't start with a weak one |
-| `DEBUG` | `true` only locally: relaxes the key check, and lets the app work without email (see above) |
+| `DEBUG` | `true` only locally: relaxes the key check, and works without email, showing codes and reset links instead |
 | `DATABASE_URL` | Postgres in production; SQLite by default |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | The AI agents, and the model they use |
 | `FRONTEND_URL` | Where invitation and password-reset links point |
@@ -369,42 +318,6 @@ The ones that matter most:
 | `S3_BUCKET`, `S3_*` | Optional storage for the original résumé files, so managers can download them again |
 | `VITE_API_URL` | The frontend's one setting, read when it is built: the API's address in production |
 | `RESUMATE_ENV_FILE` | Read the backend's settings from another file than `backend/.env`; the tests use an empty one |
-
-## Tests
-
-```bash
-cd backend && pytest -q                       # the API, agents and services, on a throwaway SQLite file
-cd frontend && npm run lint && npm test       # lint, then the frontend tests
-```
-The backend tests never read `backend/.env`: they point `RESUMATE_ENV_FILE` at an empty file, so the real
-keys a developer keeps there can't reach them.
-
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs both, builds the frontend, and builds a
-Postgres 16 database from empty with the migrations. It then checks the database matches the models and
-the app starts on it, and takes the migrations back down and up again.
-
-## Deploying, and the Free Plan
-
-[`render.yaml`](render.yaml) deploys the API, the frontend and Postgres on Render's free plan;
-[`backend/DEPLOY.md`](backend/DEPLOY.md) has the details. What the free plan means:
-
-- **The server sleeps** after about 15 idle minutes and takes up to a minute to start again. The app tells
-  people while it wakes.
-- **The free database expires 30 days after it is created**, and Render deletes it 14 days later unless
-  it is upgraded. Back it up about every three weeks with `backend/scripts/backup_db.py` (it needs
-  PostgreSQL 16's `pg_dump` and `pg_restore`), and restore into a new one when it expires (steps in
-  DEPLOY.md).
-- **Avatar interviews are off**: they need a worker process, which the free plan doesn't run. Interviews
-  run voice-only until you run the worker and set `AVATAR_INTERVIEWS=true`. The worker
-  (`backend/interview_agent.py`) can run on Fly.io with `backend/fly.toml` and `backend/Dockerfile.agent`,
-  or as a paid Render worker, left commented out in `render.yaml`.
-- **Email needs SendGrid** with a verified sender (`FROM_EMAIL`), and in production the app depends on
-  it. Without it, invitations aren't emailed (the app gives the manager the sign-in link to send), but
-  candidates can't get the code that link asks for, and password resets and deletion codes don't
-  arrive either.
-- **A deployment of your own** gets its own addresses, so set `VITE_API_URL` on the frontend, and
-  `FRONTEND_URL` and `CORS_ORIGINS` on the API, to match them. Otherwise the frontend calls the original
-  demo's API.
 
 ## Data and Privacy
 
