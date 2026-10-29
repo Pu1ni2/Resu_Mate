@@ -8,6 +8,13 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
   const [suggestions, setSuggestions] = useState([]);
   const [pendingAutoSpeak, setPendingAutoSpeak] = useState(false);
   const msgEndRef = useRef(null);
+  const requestVersion = useRef(0);
+
+  useEffect(() => {
+    setIsTyping(false);
+    setPendingAutoSpeak(false);
+    return () => { requestVersion.current += 1; };
+  }, [focusCandidate?.id]);
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,6 +34,7 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
   const sendMessage = useCallback(async (msg, { autoSpeak = false } = {}) => {
     const text = msg || chatInput.trim();
     if (!text || !focusCandidate || isTyping) return;
+    const version = requestVersion.current;
 
     setChatInput('');
     setPendingAutoSpeak(autoSpeak);
@@ -48,18 +56,22 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
           anonymize,
         }),
       });
+      if (version !== requestVersion.current) return;
       if (!response.ok) {
         const message = await responseError(response, 'Sorry, I could not generate a response.');
+        if (version !== requestVersion.current) return;
         setMessages(prev => [...prev, { role: 'assistant', content: `**Error:** ${message}` }]);
         return;
       }
       const data = await response.json();
+      if (version !== requestVersion.current) return;
       setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'Sorry, I could not generate a response.' }]);
       if (data.suggestions?.length) setSuggestions(data.suggestions);
     } catch (_) {
+      if (version !== requestVersion.current) return;
       setMessages(prev => [...prev, { role: 'assistant', content: '**Error:** Could not reach the server. Please check your backend is running.' }]);
     } finally {
-      setIsTyping(false);
+      if (version === requestVersion.current) setIsTyping(false);
     }
   }, [chatInput, focusCandidate, isTyping, messages, scanProfiles, scanContact, anonymize, getCandidatePayload, apiBase]);
 
