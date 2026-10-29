@@ -73,6 +73,15 @@ describe('the video interview', () => {
     expect(join.disabled).toBe(false);
   });
 
+  it('says what counts as a violation, as the room counts them', () => {
+    room();
+    const box = within(screen.getByRole('group', { name: 'Before you start' }));
+    expect(box.getByText(/switching tabs or windows, or leaving full screen, counts as a violation/i)).toBeTruthy();
+    expect(box.getByText(/three violations end the interview/i)).toBeTruthy();
+    // Looking away is watched, never counted.
+    expect(box.queryByText(/looking away/i)).toBeNull();
+  });
+
   it("tells the server the candidate agreed, and shows the server's reason for a refusal", async () => {
     refusal = { status: 409, detail: 'This interview is already complete.' };
     room();
