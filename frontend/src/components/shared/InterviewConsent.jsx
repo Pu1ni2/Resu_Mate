@@ -19,7 +19,8 @@ export default function InterviewConsent({ video = false, checked, onChange }) {
       <ul style={{ margin: '0 0 12px', paddingLeft: '18px', fontSize: '13px', color: '#A1A1AA', lineHeight: 1.6 }}>
         <li>What you say is transcribed and saved.</li>
         <li>An AI interviewer asks the questions. When it ends, AI writes a report from your transcript, with a hiring recommendation. The hiring team sees your transcript and the report, and so can you.</li>
-        {video && <li>Your camera is used to check you stay in view. Looking away too often can end the interview.</li>}
+        {/* What InterviewRoom counts: the tab hidden, another window, leaving full screen. */}
+        {video && <li>Your camera is used to check you stay in view. Switching tabs or windows, or leaving full screen, counts as a violation. Three violations end the interview.</li>}
       </ul>
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#E4E4E7', cursor: 'pointer' }}>
         <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
