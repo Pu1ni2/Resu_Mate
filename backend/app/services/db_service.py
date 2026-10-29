@@ -395,13 +395,11 @@ async def get_all_completed_interviews(session: AsyncSession, manager_id: int = 
     interviews = result.scalars().all()
     out = []
     for iv in interviews:
-        import json
-        report = iv.report
-        if report and isinstance(report, str):
-            try:
-                report = json.loads(report)
-            except:
-                pass
+        # The report as the candidate's own screen reads it: it parses a
+        # report kept as plain text, and adds the transcript and the duration,
+        # which are kept apart from the report, so the manager's report showed
+        # neither, and 0:00.
+        report = candidate_report(iv)
         out.append({
             "email": iv.candidate_email,
             # candidate_id is needed by the manager-side report view to run
