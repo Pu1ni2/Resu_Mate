@@ -12,7 +12,10 @@ import { useAvatarInterviews } from '../../services/features';
 const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
 const AUTO_RETRY_DELAY_MS = 650;
-const HANDS_FREE_DEFAULT = true;
+// Off until the manager presses the orb or the mic: Jarvis opened the
+// microphone by itself once its greeting was spoken, and after every reply to
+// a typed message.
+const HANDS_FREE_DEFAULT = false;
 
 /* The orb is the only fixed-width element in the panel — everything else is a
  * maxWidth that already flexes. At a flat 120px, with 72px of padding above and
@@ -549,6 +552,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
     onTranscribeFail: handleTranscribeFail,
     onAutoStop:       handleAutoStop,
     onBargeIn:        handleBargeIn,
+    // Listening for an interruption is listening: only while hands-free is on.
+    listenWhileSpeaking: () => autoListenEnabledRef.current,
   });
 
   voiceRef.current = voice;   // always current, no stale closure
@@ -2732,7 +2737,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 voice.isRecording    ? 'Recording… (or type here)' :
                 voice.isTranscribing ? 'Transcribing…' :
                 isProcessing         ? 'Jarvis is thinking…' :
-                'Type a message, or let Jarvis keep listening'
+                'Type a message, or press the mic to speak'
               }
               disabled={isProcessing || voice.isTranscribing}
               style={{

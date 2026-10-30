@@ -18,6 +18,7 @@ export default function useVoice({
   onTranscribeFail,    // (err: string) => void — silent error callback
   onAutoStop,          // () => void  — fires when silence detection auto-stops recording
   onBargeIn,           // () => void  — fires when user speaks while TTS is playing
+  listenWhileSpeaking, // () => boolean — whether to open the mic for onBargeIn right now
 }) {
   const [isRecording,      setIsRecording]      = useState(false);
   const [isTranscribing,   setIsTranscribing]   = useState(false);
@@ -46,9 +47,11 @@ export default function useVoice({
   const bargeIntervalRef   = useRef(null);
   const bargeSustainedRef  = useRef(0);
   const onBargeInRef       = useRef(null);
+  const listenWhileSpeakingRef = useRef(null);
 
   useEffect(() => { onAutoStopRef.current = onAutoStop; }, [onAutoStop]);
   useEffect(() => { onBargeInRef.current = onBargeIn; }, [onBargeIn]);
+  useEffect(() => { listenWhileSpeakingRef.current = listenWhileSpeaking; }, [listenWhileSpeaking]);
 
   // ── Stop silence detection ────────────────────────────────────────────────────
   const stopSilenceDetection = useCallback(() => {
@@ -89,6 +92,10 @@ export default function useVoice({
   }, []);
 
   const startBargeInDetection = useCallback(async () => {
+    // The mic opens to hear an interruption only for a caller that listens for
+    // one, and only while it says to: reading anything aloud used to open it,
+    // asked or not, and with nothing listening.
+    if (!onBargeInRef.current || listenWhileSpeakingRef.current?.() === false) return;
     // Don't layer on top of an active recording (that mic is busy).
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') return;
     if (bargeIntervalRef.current) return; // already running
