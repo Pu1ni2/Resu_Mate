@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-import InterviewReportView, { toneForScore } from './InterviewReportView';
+import InterviewReportView from './InterviewReportView';
 
 /* The report a hiring manager reads after every interview, and the one a
  * candidate sees of themselves. It had no test.
@@ -9,7 +9,7 @@ import InterviewReportView, { toneForScore } from './InterviewReportView';
  * Three things these pin down:
  *   - The score bands. Green/amber/red were literals scattered across four
  *     places; they are one function now and the boundaries are 80 and 60.
- *   - The manager-only sections. Credibility analysis compares someone's resume
+ *   - The manager-only sections. The résumé-and-interview comparison checks someone's resume
  *     claims against their interview answers to detect exaggeration, and its
  *     endpoint is manager-scoped, so showing it to the candidate being assessed
  *     was a product mistake as much as an auth one. Same for the PDF export,
@@ -36,18 +36,6 @@ const renderReport = (props = {}) =>
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-});
-
-describe('the score bands', () => {
-  it('splits at 80 and 60', () => {
-    expect(toneForScore(100)).toBe('positive');
-    expect(toneForScore(80)).toBe('positive');
-    // Just under each boundary, which is where an off-by-one would show.
-    expect(toneForScore(79)).toBe('caution');
-    expect(toneForScore(60)).toBe('caution');
-    expect(toneForScore(59)).toBe('critical');
-    expect(toneForScore(0)).toBe('critical');
-  });
 });
 
 describe('what the report shows', () => {
@@ -143,30 +131,30 @@ describe('a terminated interview', () => {
 describe('who sees what', () => {
   const managerProps = { candidateId: 1, candidateEmail: 'jane@co.com', viewer: 'manager' };
 
-  it('offers the manager credibility analysis and a PDF export', () => {
+  it('offers the manager the résumé comparison and a PDF export', () => {
     renderReport(managerProps);
-    expect(screen.getByRole('button', { name: /run credibility analysis/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /compare résumé and interview/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /export pdf report/i })).toBeTruthy();
   });
 
   it('offers a candidate neither', () => {
     // Both endpoints are manager-scoped, so for a candidate these buttons could
-    // only ever 401 — and credibility analysis is a tool for assessing them,
+    // only ever 401 — and the comparison is a tool for assessing them,
     // not one to hand them.
     renderReport({ candidateId: 1, candidateEmail: 'jane@co.com', viewer: 'candidate' });
-    expect(screen.queryByRole('button', { name: /run credibility analysis/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /compare résumé and interview/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /export pdf report/i })).toBeNull();
   });
 
   it('defaults to the candidate view', () => {
     // The default matters: a missing prop must not leak the manager tools.
     renderReport({ candidateId: 1, candidateEmail: 'jane@co.com' });
-    expect(screen.queryByRole('button', { name: /run credibility analysis/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /compare résumé and interview/i })).toBeNull();
   });
 
   it('shows the manager nothing to run without a candidate to run it on', () => {
     renderReport({ viewer: 'manager' });
-    expect(screen.queryByRole('button', { name: /run credibility analysis/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /compare résumé and interview/i })).toBeNull();
   });
 });
 

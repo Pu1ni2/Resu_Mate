@@ -309,8 +309,7 @@ function buildInterviewReportArtifact(report = {}, candidateEmail = '') {
 function buildCredibilityArtifact(credibility = {}, candidateEmail = '') {
   return {
     candidateEmail,
-    credibilityScore: isScore(credibility.credibility_score) ? credibility.credibility_score : null,
-    recommendation: credibility.hiring_recommendation || '',
+    // Findings only: the comparison gives no score or recommendation.
     keyInsights: (credibility.key_insights || []).slice(0, 3),
     details: credibility,
   };
@@ -1298,16 +1297,16 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         updateContext({ lastAction: 'credibility_analysis' });
         appendMsg({
           role: 'action',
-          content: `Credibility analysis: ${params.candidate_name || 'Candidate'}`,
+          content: `Résumé and interview: ${params.candidate_name || 'Candidate'}`,
           credibilityData: { candidateName: params.candidate_name || 'Candidate', candidateEmail, credibility },
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[CREDIBILITY_RESULT] ${params.candidate_name || 'Candidate'} ${artifact.credibilityScore === null ? 'could not be scored for credibility (the analysis could not be completed)' : `scored ${artifact.credibilityScore} out of 100 for credibility`}. Recommendation: ${artifact.recommendation || 'not provided'}. Key insights: ${(artifact.keyInsights || []).join('; ') || 'none'}.`
+          `[CREDIBILITY_RESULT] ${params.candidate_name || 'Candidate'}: the résumé was compared with the interview${credibility.analysis_failed ? ', but the comparison could not be completed' : ''}. Key insights: ${(artifact.keyInsights || []).join('; ') || 'none'}.`
         );
       } catch (err) {
         setStatus('ERROR');
-        directSay(`Credibility analysis failed — ${err.message}.`);
+        directSay(`The comparison failed — ${err.message}.`);
       }
 
     } else if (action === 'export_report') {
@@ -1924,18 +1923,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const rvi = credibility.resume_vs_interview || {};
                 const levelAssessment = credibility.level_assessment || {};
                 const groups = [
-                  { label: 'Confirmed Skills', color: '#4ADE80', items: rvi.confirmed_skills || [] },
-                  { label: 'Overrated Skills', color: '#F87171', items: rvi.overrated_skills || [] },
-                  { label: 'Hidden Strengths', color: '#60A5FA', items: rvi.hidden_strengths || [] },
-                  { label: 'Unverified Skills', color: '#A1A1AA', items: rvi.unverified_skills || [] },
+                  { label: 'Shown in the interview', color: '#4ADE80', items: rvi.confirmed_skills || [] },
+                  { label: 'Claimed, not shown', color: '#F87171', items: rvi.overrated_skills || [] },
+                  { label: 'Not on the résumé', color: '#60A5FA', items: rvi.hidden_strengths || [] },
+                  { label: 'Not discussed', color: '#A1A1AA', items: rvi.unverified_skills || [] },
                 ];
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(139,92,246,0.55)', marginBottom: 6 }}>CREDIBILITY ANALYSIS</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(139,92,246,0.55)', marginBottom: 6 }}>RÉSUMÉ AND INTERVIEW</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{cr.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#60A5FA', marginBottom: 18 }}>{cr.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
-                      {[['Credibility', isScore(credibility.credibility_score) ? `${credibility.credibility_score}/100` : 'Not scored'], ['Recommendation', credibility.hiring_recommendation || 'N/A'], ['Confidence', credibility.confidence_in_assessment || 'N/A']].map(([label, value]) => (
+                      {[['Interview covered', credibility.confidence_in_assessment || 'N/A']].map(([label, value]) => (
                         <div key={label}>
                           <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#E4E4E7' }}>{value}</div>
@@ -2521,18 +2520,10 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.22)', borderRadius: 12, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(139,92,246,0.6)' }}>CREDIBILITY ANALYSIS</div>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgba(139,92,246,0.6)' }}>RÉSUMÉ AND INTERVIEW</div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 8 }}>{cr.candidateName}</div>
-                        <div style={{ display: 'flex', gap: 18, marginBottom: insights.length > 0 ? 8 : 0, flexWrap: 'wrap' }}>
-                          {[{ label: 'SCORE', val: isScore(credibility.credibility_score) ? `${credibility.credibility_score}/100` : 'Not scored' }, { label: 'RECOMMENDATION', val: credibility.hiring_recommendation || 'N/A' }].map(({ label, val }) => (
-                            <div key={label}>
-                              <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
-                              <div style={{ fontSize: 12, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>
-                            </div>
-                          ))}
-                        </div>
                         {insights.slice(0, 2).map((insight, i) => (
                           <div key={i} style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.5, marginBottom: 4 }}>{insight}</div>
                         ))}

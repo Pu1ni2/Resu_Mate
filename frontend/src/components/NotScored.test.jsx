@@ -42,13 +42,13 @@ describe('the interview report', () => {
     expect(screen.queryByText('0/10')).toBeNull();
   });
 
-  it('says "Not scored" for a credibility analysis that could not be completed', async () => {
-    answers({ credibility: { credibility_score: null, analysis_failed: true, key_insights: ['The credibility analysis could not be completed. Try again.'] } });
+  it('says a résumé comparison that could not be completed failed, with no score', async () => {
+    answers({ credibility: { analysis_failed: true, key_insights: ['The comparison could not be completed. Try again.'] } });
     render(<InterviewReportView report={report} viewer="manager" candidateId={1} candidateEmail="ada@x.com" />);
-    fireEvent.click(screen.getByRole('button', { name: /run credibility analysis/i }));
-    expect(await screen.findByText('Not scored')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /compare résumé and interview/i }));
+    expect(await screen.findByText('The comparison could not be completed. Try again.')).toBeTruthy();
     expect(screen.queryByText(/\/100/)).toBeNull();
-    expect(screen.getByText(/confidence: —/i)).toBeTruthy();
+    expect(screen.getByText(/how much the interview covered: —/i)).toBeTruthy();
   });
 });
 

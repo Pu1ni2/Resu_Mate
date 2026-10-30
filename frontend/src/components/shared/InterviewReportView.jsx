@@ -6,40 +6,6 @@ import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
 import { averageScore, isScore, measured, scoreOf } from '../../services/scores';
 
-/* Both of these hand-rolled the same thing Badge already does: solid text on a
- * ~12% wash of the same hue with a ~30% border. They built the tints by
- * concatenating hex alpha -- `${color}30` -- which only works on six-digit
- * literals and is precisely why this file could not be put on tokens without
- * being rewritten.
- */
-export function toneForScore(score) {
-  if (score >= 80) return 'positive';
-  if (score >= 60) return 'caution';
-  return 'critical';
-}
-
-function labelForScore(score) {
-  if (score >= 80) return 'Highly Credible';
-  if (score >= 60) return 'Credible';
-  if (score >= 40) return 'Partially Credible';
-  return 'Low Credibility';
-}
-
-function CredibilityBadge({ score }) {
-  // An analysis that couldn't be completed has no score. It used to read 50.
-  if (!isScore(score)) return <Badge tone="neutral" className="font-bold">Not scored</Badge>;
-  const tone = toneForScore(score);
-  return (
-    <Badge tone={tone} className="gap-1.5 font-bold">
-      <span
-        className="h-2 w-2 rounded-full bg-current"
-        aria-hidden="true"
-      />
-      {labelForScore(score)} — {score}/100
-    </Badge>
-  );
-}
-
 /* "Hidden strength" was blue, a sixth hue on a screen that already had five and
  * a third semantic state with no token behind it. There is no info colour in
  * this design system on purpose, so it reads as accent: notable, which is what
@@ -91,9 +57,9 @@ function CredibilitySection({ candidateId, candidateEmail }) {
     return (
       <div className="sr-card" style={{ padding: '20px', textAlign: 'center' }}>
         <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-          <Target size={15} /> Run Credibility Analysis
+          <Target size={15} /> Compare résumé and interview
         </button>
-        <p style={{ color: 'var(--color-ink-muted)', fontSize: '11px', marginTop: '8px' }}>Cross-reference resume claims against interview performance</p>
+        <p style={{ color: 'var(--color-ink-muted)', fontSize: '11px', marginTop: '8px' }}>Checks the résumé's claims against what the candidate said in the interview</p>
       </div>
     );
   }
@@ -102,7 +68,7 @@ function CredibilitySection({ candidateId, candidateEmail }) {
     return (
       <div className="sr-card" style={{ padding: '28px', textAlign: 'center' }}>
         <Loader size={20} className="spin" style={{ color: 'var(--color-accent)', marginBottom: '8px' }} />
-        <p style={{ color: 'var(--color-ink-muted)', fontSize: '13px' }}>Analyzing credibility...</p>
+        <p style={{ color: 'var(--color-ink-muted)', fontSize: '13px' }}>Comparing the résumé and the interview…</p>
       </div>
     );
   }
@@ -110,7 +76,7 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   if (error) {
     return (
       <div className="sr-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '13px' }}>
-        Credibility analysis unavailable: {error}
+        The comparison couldn't be completed: {error}
       </div>
     );
   }
@@ -122,37 +88,38 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   return (
     <div className="sr-card" style={{ padding: '24px', borderColor: 'var(--color-accent-line)' }}>
       <h3 className="sr-section-title" style={{ marginBottom: '16px' }}>
-        <Target size={16} style={{ color: 'var(--color-accent)' }} /> Credibility Analysis
+        <Target size={16} style={{ color: 'var(--color-accent)' }} /> Résumé and interview
       </h3>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <CredibilityBadge score={c.credibility_score} />
-        <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)' }}>Confidence: {c.confidence_in_assessment || '—'}</span>
-      </div>
+      {/* Findings only: no score, verdict label or second recommendation on a
+          person. The report already gives the recommendation. */}
+      <p style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginBottom: '16px' }}>
+        How much the interview covered: {c.confidence_in_assessment || '—'}
+      </p>
 
       {/* Skills Comparison */}
       <div style={{ marginBottom: '14px' }}>
         {(rvi.confirmed_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-positive)', display: 'block', marginBottom: '4px' }}>Confirmed in Interview</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-positive)', display: 'block', marginBottom: '4px' }}>Shown in the interview</span>
             {rvi.confirmed_skills.map((s, i) => <SkillTag key={i} skill={s} type="confirmed" />)}
           </div>
         )}
         {(rvi.overrated_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-critical)', display: 'block', marginBottom: '4px' }}>Overrated (claimed but underperformed)</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-critical)', display: 'block', marginBottom: '4px' }}>Claimed, but not shown in the interview</span>
             {rvi.overrated_skills.map((s, i) => <SkillTag key={i} skill={s} type="overrated" />)}
           </div>
         )}
         {(rvi.hidden_strengths || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Hidden Strengths (not on resume)</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Strengths not on the résumé</span>
             {rvi.hidden_strengths.map((s, i) => <SkillTag key={i} skill={s} type="hidden" />)}
           </div>
         )}
         {(rvi.unverified_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-ink-muted)', display: 'block', marginBottom: '4px' }}>Unverified</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-ink-muted)', display: 'block', marginBottom: '4px' }}>Not discussed</span>
             {rvi.unverified_skills.slice(0, 6).map((s, i) => <SkillTag key={i} skill={s} type="unverified" />)}
           </div>
         )}
@@ -179,12 +146,6 @@ function CredibilitySection({ candidateId, candidateEmail }) {
           ))}
         </div>
       )}
-
-      {/* Recommendation */}
-      <div style={{ marginTop: '14px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-accent-wash)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '12px', fontWeight: '600' }}>Hiring Recommendation</span>
-        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-accent)' }}>{c.hiring_recommendation || '—'}</span>
-      </div>
     </div>
   );
 }
@@ -373,7 +334,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       {/* Conversation Transcript */}
       <TranscriptSection transcript={r.transcript} />
 
-      {/* Credibility Analysis */}
+      {/* Résumé and interview */}
       {isManager && <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} />}
 
       {/* Proctoring */}
