@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 const setup = (props = {}) =>
-  render(<PipelineWizard candidateCount={12} onComplete={props.onComplete || vi.fn()} />);
+  render(<PipelineWizard candidateCount={12} {...props} onComplete={props.onComplete || vi.fn()} />);
 
 describe('what the screen offers', () => {
   it('goes straight to the form', () => {
@@ -215,5 +215,31 @@ describe('a run the server refuses', () => {
     await waitFor(() => expect(heard).toHaveBeenCalled());
     expect(heard.mock.calls[0][0].detail.message).toBe("The job description couldn't be read just now.");
     window.removeEventListener('resumate:toast', heard);
+  });
+});
+
+describe('screening scope', () => {
+  it('sends only selected candidate IDs when a selection is supplied', async () => {
+    const spy = mockRun();
+    setup({ candidateIds: [4, 9], candidateCount: 2 });
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 2 resumes/i }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(JSON.parse(spy.mock.calls[0][1].body).candidate_ids).toEqual([4, 9]);
+  });
+
+  it('omits candidate IDs when screening all uploaded resumes', async () => {
+    const spy = mockRun();
+    setup();
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 12 resumes/i }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(JSON.parse(spy.mock.calls[0][1].body).candidate_ids).toBeUndefined();
+  });
+
+  it('cannot submit a selection with no resumes', () => {
+    setup({ candidateCount: 0 });
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    expect(screen.getByRole('button', { name: /screen 0 resumes/i }).disabled).toBe(true);
   });
 });
