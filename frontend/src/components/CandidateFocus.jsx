@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   User, ArrowLeft, Briefcase, Award, MapPin,
@@ -70,6 +70,7 @@ const MatrixRain = () => {
 
 export default function CandidateFocus() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { candidates, anonymize, getDisplayName, getAvatarGradient } = useApp();
 
   // ─── Phase: 'select' | 'matrix' | 'tools' ───
@@ -298,6 +299,16 @@ export default function CandidateFocus() {
     }
   };
 
+  // A link can name the candidate to open (/hiring/focus?candidate=ID), as the
+  // dashboard's cards and its Interviews view do. Opened once, also when the
+  // candidate list arrives after the page.
+  const requestedCandidate = searchParams.get('candidate');
+  useEffect(() => {
+    const person = candidates.find(c => String(c.id) === requestedCandidate);
+    if (person && String(focusCandidate?.id) !== requestedCandidate) handleCandidateSelect(person);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedCandidate, candidates]);
+
   const handleBack = () => {
     voice.stopSpeaking();
     if (focusCandidate) {
@@ -307,6 +318,8 @@ export default function CandidateFocus() {
         searchResults, searchHistory,
       });
     }
+    // Back to the list, without the address opening the same file again.
+    setSearchParams({}, { replace: true });
     setFocusCandidate(null);
     setPhase('select');
   };
