@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Loader } from 'lucide-react';
+import { Zap, Loader, FileText, SlidersHorizontal } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
 
@@ -85,11 +85,12 @@ export default function PipelineWizard({ candidateCount = 0, candidateIds, onCom
   };
 
   return (
-    <div style={styles.shell}>
-      <div style={styles.card}>
+    <div className="studio-screening" data-running={formRunning} style={styles.shell}>
+      <div className="ss-brief" aria-busy={formRunning} style={styles.card}>
         <div style={{ marginBottom: 20 }}>
-          <div style={styles.iconCircle}><Zap size={22} style={{ color: 'var(--color-accent)' }} /></div>
+          <p className="ss-kicker">THE HIRING BRIEF <span>01 / 02</span></p>
           <h2 style={styles.title}>Screen candidates</h2>
+          <p className="ss-form-intro">Tell us what matters for this role.</p>
         </div>
 
         <div style={styles.formGroup}>
@@ -121,39 +122,76 @@ export default function PipelineWizard({ candidateCount = 0, candidateIds, onCom
           </p>
         )}
 
-        <button onClick={handleFormRun} disabled={formRunning || !canRun} style={{ ...styles.primaryBtn, marginTop: 8, opacity: canRun ? 1 : 0.5 }}>
+        <button className="ss-run" onClick={handleFormRun} disabled={formRunning || !canRun} style={{ ...styles.primaryBtn, marginTop: 8, opacity: canRun ? 1 : 0.5 }}>
           {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Screen {candidateCount} resumes</>}
         </button>
+        <p className="ss-run-note">
+          {candidateIds?.length ? 'Only your selected candidates will be screened.' : 'All uploaded résumés will be screened.'} Results belong to this run.
+        </p>
       </div>
+
+      {/* Beside the brief: one brief for every person, drawn, the three steps,
+          and how many people this run takes in. */}
+      <aside className="ss-process">
+        <span className="ss-kicker">A CONSISTENT FIRST LOOK</span>
+        <h2>Same brief.<br /><em>Every person.</em></h2>
+        <div className="ss-dossier-scene" aria-hidden="true">
+          <div className="ss-dossier-shadow" />
+          <div className="ss-dossier-sheet ss-dossier-sheet--back" />
+          <div className="ss-dossier-sheet ss-dossier-sheet--middle" />
+          <div className="ss-dossier-sheet ss-dossier-sheet--front">
+            <FileText size={23} strokeWidth={1.2} />
+            <span>CANDIDATE FILE</span>
+            <b>A person.<br /><em>A possibility.</em></b>
+            <i /><i /><i />
+            <div className="ss-dossier-scan" />
+          </div>
+          <div className="ss-role-object">
+            <SlidersHorizontal size={23} strokeWidth={1.3} />
+            <span>ROLE BRIEF</span>
+            <b>What<br />matters.</b>
+            <i /><i />
+          </div>
+        </div>
+        <p className="ss-process-status" role="status">
+          <span aria-hidden="true" />
+          {formRunning ? 'Screening against your brief…' : 'Your criteria. A consistent review.'}
+        </p>
+        <ol>
+          <li><b>01</b><div><strong>Set your priorities</strong><p>Role, skills, and experience. Add a job description for more context.</p></div></li>
+          <li><b>02</b><div><strong>Look at the evidence</strong><p>Review the ranked results, matched skills, and reasons behind the fit.</p></div></li>
+          <li><b>03</b><div><strong>Make the next move</strong><p>Open a candidate file, go deeper, and decide who to meet.</p></div></li>
+        </ol>
+        <div className="ss-scope">
+          <span>IN THIS RUN</span>
+          <strong>{String(candidateCount).padStart(2, '0')}</strong>
+          <p>{candidateIds?.length ? 'selected candidates' : 'uploaded résumés'}</p>
+        </div>
+      </aside>
     </div>
   );
 }
 
 const styles = {
-  shell: { display: 'flex', justifyContent: 'center', padding: '4px 0 24px' },
+  shell: { padding: '4px 0 24px' },
   card: {
     background: 'var(--color-surface)',
     border: '1px solid var(--color-line)',
-    borderRadius: 20, padding: 32, width: '100%', maxWidth: 560,
-    position: 'relative', boxShadow: 'var(--shadow-e3)',
+    borderRadius: 'var(--radius-card)', padding: 'clamp(22px, 3vw, 36px)', width: '100%',
+    position: 'relative', boxShadow: 'var(--shadow-e1)',
   },
-  iconCircle: {
-    width: 56, height: 56, borderRadius: '50%',
-    background: 'var(--color-accent-wash)', border: '1px solid var(--color-accent-line)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-  },
-  title: { fontSize: 22, fontWeight: 800, textAlign: 'center', marginBottom: 8, color: 'var(--color-ink)' },
+  title: { fontFamily: 'var(--font-serif)', fontSize: 34, fontWeight: 400, marginBottom: 7, color: 'var(--color-ink)' },
+  // Its colour is in studio-screening.css, with the hover.
   primaryBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     width: '100%', padding: '13px 20px',
-    background: 'var(--color-accent)',
-    color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 12,
+    color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 'var(--radius-control)',
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
   },
   input: {
-    flex: 1, background: 'var(--color-surface-raised)',
-    border: '1px solid var(--color-line)', borderRadius: 10,
-    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 14, outline: 'none',
+    width: '100%', boxSizing: 'border-box', background: '#fbfaf5',
+    border: '1px solid var(--color-line)', borderRadius: 'var(--radius-control)',
+    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 13,
     fontFamily: 'inherit',
   },
   formGroup: { marginBottom: 16 },

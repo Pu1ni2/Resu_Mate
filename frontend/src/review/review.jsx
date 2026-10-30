@@ -32,6 +32,7 @@ import { candidates as sampleCandidates, pipeline, report, results, session, sta
  * A page is added here once it has come over in the Studio design. */
 const PAGES = [
   ['/hiring?view=upload', 'Candidates'],
+  ['/hiring?view=screening', 'Screening brief'],
   ['/review/results', 'Screening results'],
   ['/hiring?view=interviews', 'Interviews'],
   ['/review/report', 'Interview report'],

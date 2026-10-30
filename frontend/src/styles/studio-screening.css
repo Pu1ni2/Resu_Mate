@@ -1,0 +1,134 @@
+/* ═══════════════════════════════════════════════════════════
+   STUDIO SCREENING: the screening brief
+
+   components/pipeline/PipelineWizard.jsx: the four fields of a screening
+   run, and beside them a candidate file and a role brief, drawn, with the
+   three steps and how many people the run takes in. The shortlist,
+   pipeline/ATSResultsView.jsx, is styled where it is written, and
+   .studio-screening-results only lets it shrink with the page. Every rule is
+   scoped to one of the two, and index.css loads it in the components layer.
+   The colours are theme.css's, apart from the drawing's paper and card.
+   ═══════════════════════════════════════════════════════════ */
+
+.studio-screening { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr); gap: 30px; align-items: start; }
+.studio-screening-results { min-width: 0; }
+
+/* ── the brief ── */
+.studio-screening .ss-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 20px; color: var(--color-ink-subtle); font: 11px/1.5 var(--font-mono); letter-spacing: 1px; }
+.studio-screening .ss-kicker > span { color: var(--color-ink-faint); }
+.studio-screening .ss-form-intro { margin-bottom: 25px; color: var(--color-ink-subtle); font-size: 12px; }
+.studio-screening .ss-brief :is(input, textarea):focus-visible { outline: 2px solid #839370; outline-offset: 2px; }
+.studio-screening .ss-run { background: var(--color-forest); }
+.studio-screening .ss-run:hover:not(:disabled) { background: var(--color-forest-hover); }
+.studio-screening .ss-run-note { margin: 14px 0 0; color: var(--color-ink-subtle); font-size: 11px; line-height: 1.6; text-align: center; }
+
+/* ── beside it: one brief for every person ── */
+.studio-screening .ss-process { padding: 27px 22px; }
+.studio-screening .ss-process h2 { margin: 0 0 30px; color: var(--color-forest); font: 43px/1.05 var(--font-serif); letter-spacing: -1px; }
+.studio-screening .ss-process h2 em { color: var(--color-accent); font-weight: 400; }
+
+/* The drawing: three sheets of a candidate file, the role brief laid across
+   them, and a band that passes down the file while a run works. */
+.studio-screening .ss-dossier-scene { position: relative; isolation: isolate; height: 252px; max-width: 350px; margin: 4px auto 0; perspective: 850px; }
+.studio-screening .ss-dossier-shadow { position: absolute; bottom: 8px; left: 8%; width: 83%; height: 27px; border-radius: 50%; background: radial-gradient(ellipse, #59634c30, transparent 70%); transform: rotate(-8deg); }
+.studio-screening .ss-dossier-sheet { position: absolute; top: 15px; left: 10%; width: 57%; height: 194px; border: 1px solid #d3d6c4; border-radius: 3px 8px 4px 3px; transform-origin: 50% 90%; }
+.studio-screening .ss-dossier-sheet--back {
+  background: linear-gradient(130deg, #dce4cb, #a9b592);
+  box-shadow: 4px 7px 0 -3px #a8b493, 10px 19px 22px #30382f14;
+  transform: rotate(-15deg) rotateY(10deg) translate(-8px, 7px);
+  animation: studio-screening-file-back 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.studio-screening .ss-dossier-sheet--middle {
+  background: linear-gradient(120deg, #f3f3e7, #e0e5d4);
+  box-shadow: 3px 6px 0 -2px #ccd3bc;
+  transform: rotate(-6deg) translate(3px, 4px);
+  animation: studio-screening-file-middle 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.studio-screening .ss-dossier-sheet--front {
+  overflow: hidden; padding: 19px 17px;
+  background: linear-gradient(120deg, var(--color-surface) 60%, #f3f0e5);
+  box-shadow: 1px 1px 0 var(--color-surface) inset, 8px 15px 22px #30382f17;
+  color: #4f6340;
+  transform: rotate(4deg) rotateY(-8deg);
+  animation: studio-screening-file-front 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.studio-screening .ss-dossier-sheet--front > svg { margin-bottom: 9px; }
+.studio-screening .ss-dossier-sheet--front > span { display: block; font: 11px/1.5 var(--font-mono); letter-spacing: 0.7px; }
+.studio-screening .ss-dossier-sheet--front > b { display: block; margin: 10px 0 14px; color: var(--color-forest); font: 24px/1.04 var(--font-serif); }
+.studio-screening .ss-dossier-sheet--front > b > em { color: #6b7f50; font-weight: 400; }
+.studio-screening .ss-dossier-sheet--front > i { display: block; width: 85%; height: 2px; margin: 6px 0; background: #d9dfcc; }
+.studio-screening .ss-dossier-sheet--front > i:nth-last-of-type(1) { width: 60%; }
+.studio-screening .ss-role-object {
+  position: absolute; top: 68px; right: 1%; width: 43%; padding: 19px 15px 17px;
+  border: 1px solid #c18467; border-radius: 5px;
+  background: linear-gradient(130deg, #f5d7bb 0%, #dfad8b 55%, #bc7656);
+  box-shadow: 2px 2px 0 #ffe4c8 inset, 3px 4px 0 #a56044, 10px 19px 22px #653b2324;
+  color: #713e2d;
+  transform: rotate(11deg) rotateY(-12deg);
+  animation: studio-screening-role-arrive 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.studio-screening .ss-role-object > span { display: block; margin: 9px 0; font: 11px/1.5 var(--font-mono); letter-spacing: 0.7px; }
+.studio-screening .ss-role-object > b { display: block; font: 24px/1.05 var(--font-serif); }
+.studio-screening .ss-role-object > i { display: block; width: 80%; height: 2px; margin-top: 12px; background: #a86c4b55; }
+.studio-screening .ss-role-object > i:last-child { width: 55%; margin-top: 6px; }
+.studio-screening .ss-dossier-scan {
+  position: absolute; inset: 0; opacity: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 39%, #a6b58b22 48%, #70845d99 50%, #c9d5b822 52%, transparent 61%);
+  transform: translateY(-100%);
+}
+.studio-screening[data-running=true] .ss-dossier-scan { animation: studio-screening-scan 2.5s ease-in-out infinite; }
+
+/* What the run is doing, under the drawing. */
+.studio-screening .ss-process-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 22px; margin: 0 0 27px; color: var(--color-ink-subtle); font-size: 11px; }
+.studio-screening .ss-process-status > span { flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: #839370; }
+.studio-screening[data-running=true] .ss-process-status { color: var(--color-accent-hover); }
+.studio-screening[data-running=true] .ss-process-status > span { background: var(--color-accent); box-shadow: 0 0 0 4px #b7463012; }
+
+@keyframes studio-screening-file-back { from { opacity: 0; transform: translate(15px, 23px) rotate(-3deg); } to { opacity: 1; transform: rotate(-15deg) rotateY(10deg) translate(-8px, 7px); } }
+@keyframes studio-screening-file-middle { from { opacity: 0; transform: translate(8px, 19px) rotate(1deg); } to { opacity: 1; transform: rotate(-6deg) translate(3px, 4px); } }
+@keyframes studio-screening-file-front { from { opacity: 0; transform: translateY(26px) rotate(-3deg) rotateY(-16deg); } to { opacity: 1; transform: rotate(4deg) rotateY(-8deg); } }
+@keyframes studio-screening-role-arrive { from { opacity: 0; transform: translate(10px, 32px) rotate(17deg) rotateY(-25deg); } to { opacity: 1; transform: rotate(11deg) rotateY(-12deg); } }
+@keyframes studio-screening-scan { 0% { opacity: 0; transform: translateY(-85%); } 15%, 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(85%); } }
+
+/* The three steps, and how many people this run takes in. */
+.studio-screening .ss-process ol { display: grid; gap: 22px; margin: 0; padding: 0; list-style: none; }
+.studio-screening .ss-process li { display: flex; align-items: flex-start; gap: 13px; }
+.studio-screening .ss-process li > b { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #e9ebdf; color: #677b51; font: 11px var(--font-mono); }
+.studio-screening .ss-process li strong { color: #47573b; font-size: 12px; font-weight: 600; }
+.studio-screening .ss-process li p { margin: 6px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
+.studio-screening .ss-scope { display: grid; grid-template-columns: auto 1fr; gap: 4px 13px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-line); }
+.studio-screening .ss-scope > span { grid-column: 2; align-self: end; color: var(--color-ink-subtle); font: 11px var(--font-mono); letter-spacing: 1px; }
+.studio-screening .ss-scope > strong { grid-column: 1; grid-row: 1 / 3; color: #6b7f50; font: 45px/1 var(--font-serif); }
+.studio-screening .ss-scope > p { grid-column: 2; margin: 0; color: var(--color-ink-muted); font-size: 12px; }
+
+@media (max-width: 1100px) {
+  .studio-screening { grid-template-columns: minmax(0, 1fr) 270px; gap: 15px; }
+  .studio-screening .ss-process { padding: 25px 10px; }
+  .studio-screening :is(.ss-dossier-sheet--front, .ss-role-object) { padding: 17px 12px; }
+}
+
+/* One column: the brief, then the drawing, and the steps side by side. */
+@media (max-width: 760px) {
+  .studio-screening { grid-template-columns: 1fr; }
+  .studio-screening .ss-process { padding: 20px 12px; }
+  .studio-screening .ss-process h2 { margin-bottom: 15px; font-size: 38px; }
+  /* 244px, not the design's 240: its labels grew to 11px, and the role brief
+     with them, so the line under the drawing keeps the room it had. */
+  .studio-screening .ss-dossier-scene { width: 270px; max-width: 100%; height: 244px; }
+  .studio-screening .ss-process ol { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+  .studio-screening .ss-process li { display: block; }
+  .studio-screening .ss-process li > b { margin-bottom: 10px; }
+}
+
+/* A phone: the steps one under another again. */
+@media (max-width: 480px) {
+  .studio-screening .ss-process ol { grid-template-columns: 1fr; }
+  .studio-screening .ss-process li { display: flex; gap: 13px; }
+  .studio-screening .ss-process li > b { margin-bottom: 0; }
+}
+
+/* Still: the drawing in place, and while a run works the band rests on the file. */
+@media (prefers-reduced-motion: reduce) {
+  .studio-screening :is(.ss-dossier-sheet, .ss-role-object, .ss-dossier-scan) { animation: none; }
+  .studio-screening[data-running=true] .ss-dossier-scan { animation: none; opacity: 0.45; transform: none; }
+}

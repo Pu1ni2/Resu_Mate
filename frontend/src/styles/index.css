@@ -45,6 +45,8 @@
 @import './studio-interview.css' layer(components);
 /* The hiring dashboard's views, scoped to .studio-dashboard. */
 @import './studio-dashboard.css' layer(components);
+/* The screening brief, scoped to .studio-screening and .studio-screening-results. */
+@import './studio-screening.css' layer(components);
 /* The conversation sculpture, scoped to .sc-conversation. */
 @import './studio-conversation.css' layer(components);
 
