@@ -38,7 +38,7 @@ function StatusPill({ status }) {
   const Icon = status.status === 'in_progress' ? Clock : isVoice ? Mic : Video;
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] text-ink-subtle"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-subtle"
       title={`${isVoice ? 'Voice' : 'Avatar'} interview — ${label}`}
     >
       <Icon size={10} /> {label}
@@ -51,7 +51,7 @@ function VerdictPill({ verdict, className }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap',
+        'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
         verdictTone[toneForVerdict(verdict)],
         className,
       )}
@@ -169,7 +169,7 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             aria-label={open ? `Hide details for ${row.name}` : `Show details for ${row.name}`}
-            className="shrink-0 rounded-md p-1.5 text-ink-faint transition-colors duration-[120ms] hover:bg-surface-raised hover:text-ink-muted"
+            className="shrink-0 rounded-md border-0 bg-transparent p-1.5 text-ink-faint transition-colors duration-[120ms] hover:bg-surface-raised hover:text-ink-muted"
           >
             <ChevronDown size={16} className={cn('transition-transform duration-[160ms]', open && 'rotate-180')} />
           </button>

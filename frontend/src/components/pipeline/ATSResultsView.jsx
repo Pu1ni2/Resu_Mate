@@ -16,10 +16,10 @@ const TABS = ['All', 'Strong Fit', 'Good Fit', 'Consider', 'No Match'];
 function BucketTile({ label, count, lead }) {
   return (
     <div className={cn(
-      'rounded-[12px] border bg-surface px-4 py-3.5 text-center',
+      'rounded-[5px] border bg-surface px-4 py-3.5 text-center',
       lead ? 'border-accent-line' : 'border-line',
     )}>
-      <div className={cn('font-mono text-[26px] font-semibold', lead ? 'text-accent' : 'text-ink')}>
+      <div className={cn('font-serif text-[40px] font-normal', lead ? 'text-accent' : 'text-ink')}>
         {count ?? 0}
       </div>
       <div className="mt-0.5 text-[12px] text-ink-subtle">{label}</div>
@@ -31,10 +31,8 @@ function BucketTile({ label, count, lead }) {
  * tab. It was written as a standalone takeover because the only thing that
  * could open it was the voice agent's full-screen overlay; now that Screening
  * is a section with its own nav entry, it has to sit in the workspace and
- * inherit the page background rather than paint its own.
- *
- * The palette here is still the hardcoded slate/violet set that exists nowhere
- * else in the app -- that gets replaced when this moves onto RankedCandidates. */
+ * inherit the page background rather than paint its own. There the frame's
+ * title is the page's heading, so the shortlist's is the next level down. */
 export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, embedded = false }) {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedIds, setSelectedIds] = useState(() =>
@@ -90,29 +88,31 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
   }));
 
   const leadBucket = Math.max(stats?.strong_fit ?? 0, stats?.good_fit ?? 0, stats?.consider ?? 0, stats?.no_match ?? 0);
+  const Heading = embedded ? 'h2' : 'h1';
 
   return (
-    <div className={embedded ? '' : 'min-h-screen bg-canvas px-5 py-6 text-ink'}>
+    <div className={embedded ? 'studio-screening-results' : 'studio-screening-results min-h-screen bg-canvas px-5 py-6 text-ink'}>
       <div className={embedded ? '' : 'mx-auto max-w-[68rem]'}>
 
-        {/* Header */}
+        {/* Header. On a phone the heading takes a row of its own, under the
+            two buttons: squeezed between them, the role was cut to nothing. */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:bg-surface-hover hover:text-ink"
+            className="inline-flex items-center gap-1.5 rounded-[4px] border border-line bg-surface px-3 py-2 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:bg-surface-hover hover:text-ink"
           >
             <ArrowLeft size={14} /> Back
           </button>
-          <div className="min-w-0 flex-1">
-            <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.02em] text-ink">
+          <div className="order-last min-w-0 flex-1 basis-full sm:order-none sm:basis-0">
+            <Heading className="flex flex-wrap items-center gap-x-2 text-[30px] font-serif font-normal tracking-[-0.02em] text-ink">
               <Zap size={18} className="shrink-0 text-accent" />
               Shortlist <span className="text-ink-faint">—</span>{' '}
-              <span className="truncate text-accent">{role}</span>
-            </h1>
+              <span className="min-w-0 text-accent">{role}</span>
+            </Heading>
           </div>
           <button
             onClick={onRunAgain}
-            className="inline-flex items-center gap-1.5 rounded-[10px] bg-accent px-4 py-2 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-[4px] border-0 bg-accent px-4 py-2 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
           >
             <Zap size={14} /> Run again
           </button>
@@ -129,7 +129,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
         {/* What the scores are made of, when that is less than it looks: a run
             given only a role compares roles. And the files it left out. */}
         {pipelineResult.assessed?.length === 1 && pipelineResult.assessed[0] === 'role' && (
-          <p className="mb-3 rounded-[12px] border border-line bg-surface px-4 py-2.5 text-[12px] text-ink-muted">
+          <p className="mb-3 rounded-[5px] border border-line bg-surface px-4 py-2.5 text-[12px] text-ink-muted">
             Ranked by role only. No must-have skills, experience or education were given, so these
             verdicts compare roles and profiles, not skills.
           </p>
@@ -143,7 +143,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
 
         {/* What it screened against */}
         {jd_requirements?.required_skills?.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[12px] border border-line bg-surface px-4 py-2.5">
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[5px] border border-line bg-surface px-4 py-2.5">
             <span className="text-[12px] font-medium text-ink-subtle">Screened against</span>
             {jd_requirements.required_skills.map((sk, i) => (
               <span key={i} className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted">{sk}</span>
@@ -184,7 +184,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           <div className="mb-2.5 flex items-center justify-between">
             <button
               onClick={toggleAll}
-              className="text-[13px] text-ink-muted transition-colors duration-[120ms] hover:text-ink"
+              className="border-0 bg-transparent p-0 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:text-ink"
             >
               {selectedIds.length === filtered.length ? 'Deselect all' : 'Select all'}
             </button>
@@ -209,7 +209,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
 
         {/* Sticky batch bar */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-5 left-1/2 z-[100] flex max-w-[90vw] -translate-x-1/2 items-center gap-4 rounded-[16px] border border-accent-line bg-surface px-5 py-3.5 shadow-e3">
+          <div className="fixed bottom-5 left-1/2 z-[100] flex max-w-[90vw] -translate-x-1/2 items-center gap-4 rounded-[6px] border border-accent-line bg-surface px-5 py-3.5 shadow-e3">
             <div className="flex items-center gap-2">
               <Users size={16} className="text-accent" />
               <span className="text-[14px] font-semibold text-ink">{selectedIds.length} selected</span>
@@ -217,14 +217,14 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
             <div className="h-6 w-px bg-line" />
             <button
               onClick={() => setShowBatchModal(true)}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-accent px-4 py-2.5 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
+              className="inline-flex items-center gap-2 rounded-[4px] border-0 bg-accent px-4 py-2.5 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
             >
               <Zap size={14} /> Create interviews + draft emails
             </button>
             <button
               onClick={() => setSelectedIds([])}
               aria-label="Clear selection"
-              className="p-1 text-ink-faint transition-colors duration-[120ms] hover:text-ink-muted"
+              className="border-0 bg-transparent p-1 text-ink-faint transition-colors duration-[120ms] hover:text-ink-muted"
             >
               <XCircle size={16} />
             </button>
