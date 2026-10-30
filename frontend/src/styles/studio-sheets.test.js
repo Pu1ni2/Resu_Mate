@@ -31,6 +31,11 @@ const SHEETS = {
     ],
   },
   'studio-interview.css': { roots: ['studio-interview-report'], keyframes: 'studio-interview-' },
+  'studio-dashboard.css': {
+    roots: ['studio-dashboard'],
+    keyframes: 'studio-dashboard-',
+    restyles: ['clean-bar-track', 'clean-bar-fill'],
+  },
 };
 
 /* Does a selector start at one of these roots: the class itself, not a longer
