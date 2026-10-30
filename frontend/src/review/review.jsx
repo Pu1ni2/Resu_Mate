@@ -21,12 +21,6 @@ import api from '../services/api';
 import ProductLayer from '../components/ProductLayer';
 import WorkspaceShell from '../components/studio/WorkspaceShell';
 import Home from '../components/home/Home';
-import Dashboard from '../components/Dashboard';
-import CandidateFocus from '../components/CandidateFocus';
-import SourcerPage from '../components/sourcer/SourcerPage';
-import CandidateDashboard from '../components/CandidateDashboard';
-import ConversationalInterviewRoom from '../components/ConversationalInterviewRoom';
-import InterviewRoom from '../components/InterviewRoom';
 import InterviewReportView from '../components/shared/InterviewReportView';
 import ATSResultsView from '../components/pipeline/ATSResultsView';
 import { candidates as sampleCandidates, pipeline, report, results, session, statuses } from './fixtures';
@@ -34,16 +28,10 @@ import { candidates as sampleCandidates, pipeline, report, results, session, sta
 /* The design review page (design-review.html), for development only: every
  * product page, the real component, with the sample people and results in
  * fixtures.js, and nothing sent anywhere. Pick a page in the bar at the top.
- * The pages are added here as each one comes over in the Studio design. */
+ * A page is added here once it has come over in the Studio design. */
 const PAGES = [
-  ['/hiring?view=upload', 'Candidates'],
-  ['/hiring/focus?candidate=101', 'Candidate file'],
   ['/review/results', 'Screening results'],
   ['/review/report', 'Interview report'],
-  ['/hiring/sourcer', 'Find candidates'],
-  ['/candidate/dashboard', 'Candidate portal'],
-  ['/review/consent', 'Voice interview welcome'],
-  ['/review/avatar', 'Avatar interview welcome'],
   ['/', 'Homepage'],
 ];
 
@@ -119,15 +107,11 @@ export function Review() {
 
   return (
     <AppContext.Provider value={value}>
-      <MemoryRouter initialEntries={['/hiring?view=upload']}>
+      <MemoryRouter initialEntries={[PAGES[0][0]]}>
         <ReviewBar />
         <ProductLayer>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/hiring" element={<Dashboard />} />
-            <Route path="/hiring/focus" element={<CandidateFocus />} />
-            <Route path="/hiring/sourcer" element={<SourcerPage />} />
-            <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
             <Route
               path="/review/results"
               element={(
@@ -146,30 +130,6 @@ export function Review() {
                 <WorkspaceShell active="interviews" title={<>The conversation, <em>considered.</em></>}>
                   <InterviewReportView viewer="manager" report={report} candidateId={101} candidateEmail="maya@example.com" />
                 </WorkspaceShell>
-              )}
-            />
-            <Route
-              path="/review/consent"
-              element={(
-                <ConversationalInterviewRoom
-                  interviewId={41}
-                  candidateName="Maya Chen"
-                  candidateEmail="maya@example.com"
-                  onExit={reload}
-                  onComplete={() => {}}
-                />
-              )}
-            />
-            <Route
-              path="/review/avatar"
-              element={(
-                <InterviewRoom
-                  config={session.interview_config}
-                  candidateName="Maya Chen"
-                  candidateEmail="maya@example.com"
-                  onExit={reload}
-                  onComplete={() => {}}
-                />
               )}
             />
             <Route
