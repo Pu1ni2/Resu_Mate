@@ -106,7 +106,7 @@ describe('the chat', () => {
     await screen.findByText('Ada writes Python.');
 
     fireEvent.click(screen.getByRole('button', { name: 'All candidate files' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open Focus' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open file for Ada' }));
     fireEvent.click(screen.getByRole('button', { name: 'Discuss candidate' }));
     expect(screen.getByText('What does Ada build?')).toBeTruthy();
     expect(screen.getByText('Ada writes Python.')).toBeTruthy();

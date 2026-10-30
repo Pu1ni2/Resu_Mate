@@ -33,8 +33,8 @@ afterEach(() => {
 describe("the hiring agent's suggested roles", () => {
   it('come back after Start Over', async () => {
     render(<MemoryRouter><CandidateFocus /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Open Focus' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Hiring Agent' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open file for Ada' }));
+    fireEvent.click(screen.getByRole('button', { name: /evaluate role fit/i }));
 
     fireEvent.click(screen.getByRole('button', { name: /quick setup/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Data Scientist' }));

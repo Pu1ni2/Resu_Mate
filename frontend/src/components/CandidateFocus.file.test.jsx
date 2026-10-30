@@ -76,7 +76,7 @@ describe('the candidate file', () => {
     expect(screen.getByRole('heading', { name: 'Candidate 2' })).toBeTruthy();
     fireEvent.change(screen.getByRole('textbox', { name: 'Find a candidate file' }), { target: { value: 'Go' } });
     expect(screen.getByRole('heading', { name: 'Candidate 2' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Open Focus' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open file for Candidate 2' }));
     expect(screen.getByRole('heading', { name: 'Candidate 2' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /02 Résumé/ }));
     expect(screen.queryByText(GRACE.text)).toBeNull();
@@ -93,7 +93,7 @@ describe('the candidate file', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     fireEvent.click(screen.getByRole('button', { name: 'All candidate files' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Find a candidate file' }), { target: { value: 'Grace' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Open Focus' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open file for Grace' }));
     await act(async () => { finishSearch(reply({ results: [{ title: 'Ada research result', url: 'https://example.test', snippet: 'Details for Ada' }] })); });
     fireEvent.click(screen.getByRole('button', { name: /03 Research/ }));
     expect(screen.queryByText('Ada research result')).toBeNull();
