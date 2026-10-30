@@ -41,6 +41,8 @@
 @import './studio-auth.css' layer(components);
 /* The hiring workspace's frame, scoped to .studio-workspace. */
 @import './studio-workspace.css' layer(components);
+/* The interview report, scoped to .studio-interview-report. */
+@import './studio-interview.css' layer(components);
 
 /* Project tokens. Unlayered on purpose: @theme is a Tailwind at-rule, not
    ordinary CSS, and the :root/[data-theme] variables it emits need to sit

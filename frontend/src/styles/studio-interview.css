@@ -1,0 +1,85 @@
+/* ═══════════════════════════════════════════════════════════
+   STUDIO INTERVIEW: the interview report
+
+   components/shared/InterviewReportView.jsx: a finished interview as the
+   hiring team and the candidate read it, wherever it is shown. Every rule is
+   scoped to .studio-interview-report, and index.css loads it in the
+   components layer. The colours are theme.css's.
+   ═══════════════════════════════════════════════════════════ */
+
+.studio-interview-report { color: var(--color-ink); font-family: var(--font-sans); }
+.studio-interview-report * { box-sizing: border-box; }
+.studio-interview-report :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
+
+.studio-interview-report .sr-document-label {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+  margin: 0 0 18px; padding-bottom: 13px;
+  border-bottom: 1px solid #d8decb;
+  color: var(--color-ink-faint); font: 11px/1.7 var(--font-mono); letter-spacing: 1px;
+}
+
+/* Each part of the report is a card. */
+.studio-interview-report .sr-card {
+  margin-bottom: 16px;
+  border: 1px solid #d8decb; border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: 0 3px 12px #30382f04;
+}
+.studio-interview-report .sr-section-title {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 14px;
+  font: 25px/1.15 var(--font-serif); color: var(--color-ink);
+}
+
+/* ── the heading: how it ended, how long, and the export ── */
+.studio-interview-report .sr-report-header { padding: 32px; border-color: #d2dcc1; background: #edf1e2; text-align: left; }
+.studio-interview-report .sr-report-header > svg { margin-bottom: 16px; }
+.studio-interview-report .sr-report-header h2 { margin: 0 0 12px; font: 40px/1.08 var(--font-serif); letter-spacing: -0.8px; color: var(--color-ink); }
+.studio-interview-report .sr-report-meta { margin: 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
+.studio-interview-report .sr-export {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px; padding: 11px 17px;
+  border: 0; border-radius: var(--radius-control);
+  background: var(--color-forest); color: var(--color-ink-inverse);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.studio-interview-report .sr-export:hover { background: var(--color-forest-hover); }
+
+/* ── the numbers ── */
+.studio-interview-report .sr-stats-grid {
+  display: grid; grid-template-columns: repeat(var(--sr-columns, 4), minmax(0, 1fr)); gap: 12px;
+  margin-bottom: 24px;
+}
+.studio-interview-report .sr-stat { margin: 0; padding: 24px 16px; border-radius: var(--radius-control); box-shadow: none; text-align: center; }
+.studio-interview-report .sr-stat-value { font: 36px/1.1 var(--font-serif); }
+.studio-interview-report .sr-stat-label { margin-top: 8px; color: var(--color-ink-muted); font-size: 11px; }
+
+/* ── the answers, for an interview that was scored ── */
+.studio-interview-report .sr-score-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid #e2e6d7; }
+.studio-interview-report .sr-score-row:last-child { border-bottom: 0; }
+.studio-interview-report .sr-score-feedback { flex: 1 1 230px; padding-left: 8px; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
+
+/* ── the transcript, folded away until it is asked for ── */
+.studio-interview-report .sr-transcript-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 15px;
+  width: 100%; padding: 0;
+  border: 0; background: none;
+  text-align: left; cursor: pointer;
+}
+.studio-interview-report .sr-transcript-toggle .sr-section-title { flex-wrap: wrap; margin: 0; }
+
+/* Phones: the numbers two by two. */
+@media (max-width: 760px) {
+  .studio-interview-report .sr-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-interview-report .sr-report-header h2 { font-size: 34px; }
+}
+
+@media (max-width: 420px) {
+  .studio-interview-report .sr-report-header { padding: 23px 20px; }
+  .studio-interview-report .sr-stat { padding: 20px 12px; }
+  .studio-interview-report .sr-score-feedback { flex-basis: 100%; padding-left: 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-interview-report *, .studio-interview-report *::before, .studio-interview-report *::after { animation: none !important; transition: none !important; }
+}

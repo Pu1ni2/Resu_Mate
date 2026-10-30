@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle, AlertCircle, Shield, XCircle, EyeOff, FileText, TrendingUp, Target, Loader, Download, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import Badge from '../ui/Badge';
-import Card from '../ui/Card';
 import Markdown from '../ui/Markdown';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast } from '../../services/notify';
@@ -90,29 +89,29 @@ function CredibilitySection({ candidateId, candidateEmail }) {
 
   if (!credibility && !loading && !error) {
     return (
-      <Card style={{ padding: '20px', marginBottom: '16px', textAlign: 'center' }}>
+      <div className="sr-card" style={{ padding: '20px', textAlign: 'center' }}>
         <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
           <Target size={15} /> Run Credibility Analysis
         </button>
         <p style={{ color: 'var(--color-ink-muted)', fontSize: '11px', marginTop: '8px' }}>Cross-reference resume claims against interview performance</p>
-      </Card>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Card style={{ padding: '28px', marginBottom: '16px', textAlign: 'center' }}>
+      <div className="sr-card" style={{ padding: '28px', textAlign: 'center' }}>
         <Loader size={20} className="spin" style={{ color: 'var(--color-accent)', marginBottom: '8px' }} />
         <p style={{ color: 'var(--color-ink-muted)', fontSize: '13px' }}>Analyzing credibility...</p>
-      </Card>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card style={{ padding: '20px', marginBottom: '16px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '13px' }}>
+      <div className="sr-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '13px' }}>
         Credibility analysis unavailable: {error}
-      </Card>
+      </div>
     );
   }
 
@@ -121,8 +120,8 @@ function CredibilitySection({ candidateId, candidateEmail }) {
   const la = c.level_assessment || {};
 
   return (
-    <Card style={{ padding: '24px', marginBottom: '16px', borderColor: 'var(--color-accent-line)' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className="sr-card" style={{ padding: '24px', borderColor: 'var(--color-accent-line)' }}>
+      <h3 className="sr-section-title" style={{ marginBottom: '16px' }}>
         <Target size={16} style={{ color: 'var(--color-accent)' }} /> Credibility Analysis
       </h3>
 
@@ -186,7 +185,7 @@ function CredibilitySection({ candidateId, candidateEmail }) {
         <span style={{ fontSize: '12px', fontWeight: '600' }}>Hiring Recommendation</span>
         <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-accent)' }}>{c.hiring_recommendation || '—'}</span>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -195,12 +194,9 @@ function TranscriptSection({ transcript }) {
   if (!transcript || transcript.length === 0) return null;
 
   return (
-    <Card style={{ padding: '20px', marginBottom: '16px' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-      >
-        <h3 style={{ fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-ink)' }}>
+    <div className="sr-card" style={{ padding: '20px' }}>
+      <button className="sr-transcript-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+        <h3 className="sr-section-title">
           <MessageSquare size={16} style={{ color: 'var(--color-accent)' }} /> Conversation Transcript
           <span style={{ fontSize: '12px', fontWeight: '400', color: 'var(--color-ink-muted)' }}>({transcript.length} turns)</span>
         </h3>
@@ -231,7 +227,7 @@ function TranscriptSection({ transcript }) {
           })}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -269,26 +265,28 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
   const secs = String(timerVal % 60).padStart(2, '0');
   const scores = Array.isArray(r.scores) ? r.scores : [];
   const reportText = typeof r.report === 'string' ? r.report : '';
+  // Interviews aren't scored per answer any more, so an average shows only
+  // for one that was, and the count of answers only where they were scored.
   const stats = [
-    { val: avgScore, label: 'Avg Score' },
+    ...(isScore(average) ? [{ val: avgScore, label: 'Avg Score' }] : []),
     ...(eyeContact === null ? [] : [{ val: `${eyeContact}%`, label: 'Face in view' }]),
     ...(violations === null ? [] : [{ val: violations, label: 'Violations', color: violations > 0 ? 'var(--color-critical)' : 'var(--color-positive)' }]),
     { val: `${mins}:${secs}`, label: 'Duration' },
   ];
 
   return (
-    <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+    <div className="studio-interview-report">
+      <div className="sr-document-label"><span>RESUMATE / INTERVIEW RECORD</span><span>Private &amp; confidential</span></div>
+
       {/* Header */}
-      <Card style={{ padding: '28px', textAlign: 'center', marginBottom: '16px' }}>
+      <div className="sr-card sr-report-header">
         {r.terminated
-          ? <AlertCircle size={40} style={{ color: 'var(--color-critical)', marginBottom: '12px' }} />
-          : <CheckCircle size={40} style={{ color: 'var(--color-positive)', marginBottom: '12px' }} />
+          ? <AlertCircle size={25} style={{ color: 'var(--color-critical)' }} />
+          : <CheckCircle size={25} style={{ color: 'var(--color-positive)' }} />
         }
-        <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px' }}>
-          {r.terminated ? 'Interview Terminated' : 'Interview Completed'}
-        </h2>
-        <p style={{ color: 'var(--color-ink-subtle)', fontSize: '14px' }}>
-          {scores.length} questions answered · {mins}:{secs} duration
+        <h2>{r.terminated ? 'Interview Terminated' : 'Interview Completed'}</h2>
+        <p className="sr-report-meta">
+          {scores.length > 0 && `${scores.length} questions answered · `}{mins}:{secs} duration
         </p>
         {isManager && candidateEmail && (
           <button onClick={async () => {
@@ -311,7 +309,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             } catch {
               toast('Could not export report. Please try again.', 'error');
             }
-          }} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+          }} className="sr-export">
             <Download size={14} /> Export PDF Report
           </button>
         )}
@@ -323,26 +321,29 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             Terminated: exceeded proctoring violations limit
           </div>
         )}
-      </Card>
-
-      {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, 1fr)`, gap: '10px', marginBottom: '16px' }}>
-        {stats.map((s, i) => (
-          <Card key={i} style={{ textAlign: 'center', padding: '16px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'monospace', color: s.color || 'var(--color-ink)' }}>{s.val}</div>
-            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>{s.label}</div>
-          </Card>
-        ))}
       </div>
+
+      {/* Stats Grid: left out when the duration alone would be in it, as the
+          heading already gives it. */}
+      {stats.length > 1 && (
+        <div className="sr-stats-grid" style={{ '--sr-columns': stats.length }}>
+          {stats.map((s, i) => (
+            <div key={i} className="sr-card sr-stat">
+              <div className="sr-stat-value" style={s.color ? { color: s.color } : undefined}>{s.val}</div>
+              <div className="sr-stat-label">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Score Breakdown */}
       {scores.length > 0 && (
-        <Card style={{ padding: '20px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px' }}>Score Breakdown</h3>
+        <div className="sr-card" style={{ padding: '20px' }}>
+          <h3 className="sr-section-title">Score Breakdown</h3>
           {scores.map((s, i) => {
             const score = scoreOf(s);
             return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
+            <div key={i} className="sr-score-row">
               <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-ink-muted)', width: '28px' }}>Q{i + 1}</span>
               {/* The track was #E2E8F0, slate-200, so every score bar was drawn
                   on a bright white rail against a dark card. */}
@@ -352,21 +353,21 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
               </div>
               {/* An answer that couldn't be scored says so, not 0/10. */}
               <span style={{ fontSize: '12px', fontWeight: '700', width: '36px' }}>{score === null ? '—' : `${score}/10`}</span>
-              {s?.feedback && <span style={{ fontSize: '12px', color: 'var(--color-ink-muted)', flex: 1 }}>{s.feedback}</span>}
+              {s?.feedback && <span className="sr-score-feedback">{s.feedback}</span>}
             </div>
             );
           })}
-        </Card>
+        </div>
       )}
 
       {/* AI Report */}
       {reportText.length > 5 && (
-        <Card style={{ padding: '24px', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="sr-card" style={{ padding: '24px' }}>
+          <h3 className="sr-section-title">
             <FileText size={16} style={{ color: 'var(--color-accent)' }} /> Evaluation
           </h3>
           <Markdown text={reportText} />
-        </Card>
+        </div>
       )}
 
       {/* Conversation Transcript */}
@@ -377,8 +378,8 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
 
       {/* Proctoring */}
       {(violations > 0 || (r.lookAwayCount || 0) > 10) && (
-        <Card style={{ padding: '20px', marginBottom: '16px', borderColor: 'var(--color-critical)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px', color: 'var(--color-critical)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="sr-card" style={{ padding: '20px', borderColor: 'var(--color-critical)' }}>
+          <h3 className="sr-section-title" style={{ marginBottom: '10px', color: 'var(--color-critical)' }}>
             <Shield size={14} /> Proctoring Summary
           </h3>
           {violations > 0 && (
@@ -391,7 +392,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
               <EyeOff size={13} style={{ color: 'var(--color-caution)' }} /> Gaze aversion: {r.lookAwayCount} times
             </p>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );
