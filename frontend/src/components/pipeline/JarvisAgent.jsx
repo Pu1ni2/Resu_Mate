@@ -266,7 +266,6 @@ function buildEvaluationArtifact(report, role) {
 
 function buildResumeIntelArtifact(intel) {
   return {
-    confidence: isScore(intel?.resume_confidence_score) ? intel.resume_confidence_score : null,
     gaps: (intel?.gaps || []).map(g => g.detail).filter(Boolean).slice(0, 3),
     redFlags: (intel?.red_flags || []).slice(0, 3),
     verificationTargets: (intel?.verification_targets || []).map(t => t.skill || t.claim).filter(Boolean).slice(0, 4),
@@ -1180,7 +1179,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[RESUME_INTEL_RESULT] ${params.candidate_name || 'Candidate'}: confidence ${artifact.confidence ?? 'not scored (the analysis could not be completed)'}. Gaps: ${(artifact.gaps || []).join('; ') || 'none called out'}. Red flags: ${(artifact.redFlags || []).join('; ') || 'none'}. Verification targets: ${(artifact.verificationTargets || []).join(', ') || 'none'}.`
+          `[RESUME_INTEL_RESULT] ${params.candidate_name || 'Candidate'}${intel?.analysis_failed ? ': the analysis could not be completed' : ''}. Gaps: ${(artifact.gaps || []).join('; ') || 'none called out'}. Red flags: ${(artifact.redFlags || []).join('; ') || 'none'}. Verification targets: ${(artifact.verificationTargets || []).join(', ') || 'none'}.`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1763,10 +1762,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   <>
                     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgba(139,92,246,0.55)', marginBottom: 6 }}>RESUME INTELLIGENCE</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#E4E4E7', marginBottom: 6 }}>{ri.candidateName || 'Candidate'}</div>
-                    <div style={{ fontSize: 30, fontWeight: 900, color: !isScore(intel.resume_confidence_score) ? '#71717A' : intel.resume_confidence_score >= 70 ? '#4ADE80' : intel.resume_confidence_score >= 50 ? '#F59E0B' : '#F87171', marginBottom: 18 }}>
-                      {shownScore(intel.resume_confidence_score)}
-                      <span style={{ fontSize: 13, color: '#52525B', marginLeft: 6 }}>resume confidence</span>
-                    </div>
                     {gaps.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>GAPS AND INCONSISTENCIES</div>
@@ -1846,7 +1841,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#52525B', letterSpacing: '0.1em', marginBottom: 10 }}>ATTACHED RESUME INTELLIGENCE</div>
                         <div style={{ fontSize: 13, color: '#A1A1AA', lineHeight: 1.7, marginBottom: 8 }}>
-                          Confidence: {shownScore(intel.resume_confidence_score)}. Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
+                          Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
                         </div>
                         {(intel.verification_targets || []).slice(0, 4).map((target, i) => (
                           <div key={i} style={{ fontSize: 12, color: '#71717A', lineHeight: 1.6, padding: '3px 0' }}>
@@ -2416,7 +2411,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const gaps = intel.gaps || [];
                   const targets = intel.verification_targets || [];
                   const redFlags = intel.red_flags || [];
-                  const confidence = shownScore(intel.resume_confidence_score);
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '12px 16px' }}>
@@ -2427,10 +2421,10 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           {expandBtn(msg)}
                         </div>
                         <div style={{ display: 'flex', gap: 18, marginBottom: 10, flexWrap: 'wrap' }}>
-                          {[{ label: 'CONFIDENCE', val: confidence }, { label: 'GAPS', val: gaps.length }, { label: 'TARGETS', val: targets.length }, { label: 'RED FLAGS', val: redFlags.length }].map(({ label, val }) => (
+                          {[{ label: 'GAPS', val: gaps.length }, { label: 'TARGETS', val: targets.length }, { label: 'RED FLAGS', val: redFlags.length }].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#52525B', letterSpacing: '0.1em' }}>{label}</div>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: label === 'CONFIDENCE' ? (!isScore(confidence) ? '#71717A' : confidence >= 70 ? '#4ADE80' : confidence >= 50 ? '#FCD34D' : '#F87171') : '#E4E4E7' }}>{val}</div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: '#E4E4E7' }}>{val}</div>
                             </div>
                           ))}
                         </div>

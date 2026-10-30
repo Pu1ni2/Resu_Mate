@@ -54,10 +54,10 @@ describe('the interview report', () => {
 
 describe('the résumé analysis', () => {
   it('says it could not be completed, and offers it again', async () => {
-    const spy = answers({ intelligence: { resume_confidence_score: null, analysis_failed: true, gaps: [] } });
+    const spy = answers({ intelligence: { analysis_failed: true, gaps: [] } });
     render(<ResumeIntelPanel focusCandidate={{ id: 3, name: 'Ada' }} />);
     fireEvent.click(screen.getByRole('button', { name: /analyze resume/i }));
-    expect(await screen.findByText(/couldn't be completed, so there is no confidence score/i)).toBeTruthy();
+    expect(await screen.findByText("The analysis couldn't be completed.")).toBeTruthy();
     expect(screen.queryByText('70')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /try again/i }));
     expect(spy).toHaveBeenCalledTimes(2);
