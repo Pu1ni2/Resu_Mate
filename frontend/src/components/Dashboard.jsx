@@ -1,15 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
 import ATSResultsView from './pipeline/ATSResultsView';
 import InterviewReportView from './shared/InterviewReportView';
 import { 
-  Users, BarChart2, MessageSquare, Upload, Check, Home, Sparkles,
-  Eye, EyeOff, Briefcase, MapPin, Award, Trash2, User,
+  Users, BarChart2, Upload, Check, Sparkles,
+  Eye, EyeOff, Briefcase, MapPin, Award, Trash2,
   ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap, ScanSearch
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 
@@ -19,7 +19,8 @@ const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { averageScore, isScore } from '../services/scores';
 import { pressable } from './ui/pressable';
-import Logo from './ui/Logo';
+import WorkspaceShell from './studio/WorkspaceShell';
+import InterviewHub from './studio/InterviewHub';
 
 const AIAvatar = () => (
   <div className="avatar-sm" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))' }}>
@@ -207,6 +208,41 @@ function InterviewAnalytics() {
   );
 }
 
+/* The dashboard's views, as the address names them (/hiring?view=…), the
+ * workspace section each belongs to, and what the frame says above it. */
+const VIEWS = {
+  upload: {
+    section: 'candidates',
+    eyebrow: '01 / THE CANDIDATE COLLECTION',
+    title: <>A place for <em>possibility.</em></>,
+    subtitle: 'Every résumé is a starting point. Bring your candidates together and get to know the people behind them.',
+  },
+  screening: {
+    section: 'screening',
+    eyebrow: '02 / THE ROLE & THE PERSON',
+    title: <>Find the <em>right fit.</em></>,
+    subtitle: 'One thoughtful brief. A consistent look at every candidate. Your judgment comes next.',
+  },
+  interviews: {
+    section: 'interviews',
+    eyebrow: '03 / A REAL CONVERSATION',
+    title: <>Beyond the <em>résumé.</em></>,
+    subtitle: 'Follow each conversation, from an invitation to the details that matter.',
+  },
+  analytics: {
+    section: 'insights',
+    eyebrow: '04 / THE EVIDENCE',
+    title: <>The bigger <em>picture.</em></>,
+    subtitle: 'See the experience, skills, and interview results behind your hiring decisions.',
+  },
+  chat: {
+    section: 'chat',
+    eyebrow: 'A LITTLE HELP, WHEN YOU NEED IT',
+    title: <>A second <em>perspective.</em></>,
+    subtitle: 'Compare experience, explore strengths, and ask the questions a résumé leaves open.',
+  },
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
@@ -218,7 +254,12 @@ export default function Dashboard() {
     hiringManager, logoutHiringManager,
   } = useApp();
 
-  const [tab, setTab] = useState('upload');
+  // The view is in the address, so the workspace's other pages can link to
+  // one, and Back goes back to the one before.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get('view');
+  const tab = Object.keys(VIEWS).includes(requested) ? requested : 'upload';
+  const setTab = view => setSearchParams({ view });
   const [input, setInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   // Delete All: asking, then deleting. Its own busy flag: the context's
@@ -270,7 +311,6 @@ export default function Dashboard() {
   const fileRef = useRef(null);
   const msgEndRef = useRef(null);
   const sliderRef = useRef(null);
-  const cursorRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const currentAudioRef = useRef(null);
@@ -285,17 +325,6 @@ export default function Dashboard() {
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (cursorRef.current) {
-        cursorRef.current.style.left = e.clientX + 'px';
-        cursorRef.current.style.top = e.clientY + 'px';
-      }
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
 
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
@@ -536,185 +565,88 @@ export default function Dashboard() {
     setPendingAutoSpeak(false);
   };
 
+  const view = VIEWS[tab];
   return (
-    <div className="dashboard-layout">
-      <div ref={cursorRef} className="cursor-glow" />
-
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <button className="sidebar-logo" onClick={() => navigate('/')}>
-            <Logo tone="hiring" /> ResuMate
-          </button>
+    <WorkspaceShell
+      active={view.section}
+      eyebrow={view.eyebrow}
+      title={view.title}
+      subtitle={view.subtitle}
+      onNavigate={setTab}
+      onChat={() => setTab('chat')}
+      onAssistant={() => setShowPipeline(true)}
+      actions={(
+        <button type="button" role="switch" aria-checked={anonymize} className="sw-switch" onClick={() => setAnonymize(!anonymize)}>
+          {anonymize ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
+          Hide names
+          <span className="sw-switch-track" aria-hidden="true"><span className="sw-switch-knob" /></span>
+        </button>
+      )}
+      footer={hiringManager && (
+        <div className="sw-account">
+          <section>
+            <strong>{hiringManager.name}</strong>
+            <small>{hiringManager.company || hiringManager.email}</small>
+          </section>
+          <div>
+            <button type="button" onClick={() => { logoutHiringManager(); navigate('/hiring/login'); }}>Sign Out</button>
+            <button type="button" onClick={() => { setAccountPassword(''); setAccountError(''); setDeletingAccount(true); }}>Delete account</button>
+          </div>
         </div>
-        <nav className="sidebar-nav">
-          <div className="sidebar-section">
-            <div className="sidebar-section-title">Navigation</div>
-            <div className="sidebar-link" {...pressable(() => navigate('/'), { role: 'link' })}>
-              <Home size={18} /><span>Home</span>
-            </div>
-            {[
-              { id: 'upload', icon: <Upload size={18} />, label: 'Upload' },
-              // Screening was previously reachable only by opening the voice
-              // agent, which rendered the results inside a full-screen overlay.
-              // It is the core of the product and now has its own section.
-              { id: 'screening', icon: <Zap size={18} />, label: 'Screening' },
-              { id: 'analytics', icon: <BarChart2 size={18} />, label: 'Analytics' },
-              { id: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
-              // An item with a route is a page of its own rather than a tab.
-              { id: 'focus', icon: <User size={18} />, label: 'Candidate Focus', route: '/hiring/focus' },
-              // Sourcing: finds people beyond the uploads and reads every one.
-              { id: 'sourcer', icon: <ScanSearch size={18} />, label: 'Find Candidates', route: '/hiring/sourcer' }
-            ].map(item => (
-              <div
-                key={item.id}
-                className={`sidebar-link ${tab === item.id ? 'active' : ''}`}
-                {...pressable(() => item.route ? navigate(item.route) : setTab(item.id), { role: item.route ? 'link' : 'button' })}
-                aria-current={tab === item.id ? 'page' : undefined}
-              >
-                {item.icon}<span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-stats">
-            <div className="sidebar-stat">
-              <span className="sidebar-stat-value">{candidates.length}</span>
-              <span className="sidebar-stat-label">Uploaded</span>
-            </div>
-            <div className="sidebar-stat">
-              <span className="sidebar-stat-value">{selectedIds.length}</span>
-              <span className="sidebar-stat-label">Selected</span>
-            </div>
-          </div>
+      )}
+    >
+      <ConfirmDialog
+        open={deletingAccount}
+        title="Delete your account?"
+        confirmLabel="Delete account"
+        busy={accountBusy}
+        onConfirm={deleteAccount}
+        onCancel={() => setDeletingAccount(false)}
+      >
+        <p style={{ marginBottom: 12 }}>
+          This deletes your account and everything in it: candidates, interviews and reports,
+          searches and chats. It can't be undone.
+        </p>
+        <label htmlFor="delete-account-password" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Your password</label>
+        <input
+          id="delete-account-password"
+          type="password"
+          autoComplete="current-password"
+          className="input"
+          value={accountPassword}
+          onChange={e => setAccountPassword(e.target.value)}
+          style={{ width: '100%' }}
+        />
+        {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 13, marginTop: 8 }}>{accountError}</p>}
+      </ConfirmDialog>
 
-          {/* Signed-in user */}
-          {hiringManager && (
-            <div style={{
-              marginTop: 14, padding: '10px 12px',
-              background: 'rgba(245,158,11,0.07)',
-              border: '1px solid rgba(245,158,11,0.18)',
-              borderRadius: 10,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#F59E0B,#D97706)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, color: '#000', flexShrink: 0,
-                }}>
-                  {(hiringManager.name || 'U')[0].toUpperCase()}
-                </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {hiringManager.name}
-                  </div>
-                  {hiringManager.company && (
-                    <div style={{ fontSize: 11, color: 'var(--color-ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {hiringManager.company}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => { logoutHiringManager(); navigate('/hiring/login'); }}
-                style={{
-                  width: '100%', padding: '6px 0',
-                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: 7, color: '#F87171', fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                }}
-              >
-                Sign Out
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAccountPassword(''); setAccountError(''); setDeletingAccount(true); }}
-                style={{
-                  width: '100%', marginTop: 6, padding: '4px 0', background: 'none', border: 'none',
-                  color: 'var(--color-ink-subtle)', fontSize: 11, cursor: 'pointer',
-                }}
-              >
-                Delete account
-              </button>
-              <ConfirmDialog
-                open={deletingAccount}
-                title="Delete your account?"
-                confirmLabel="Delete account"
-                busy={accountBusy}
-                onConfirm={deleteAccount}
-                onCancel={() => setDeletingAccount(false)}
-              >
-                <p style={{ marginBottom: 12 }}>
-                  This deletes your account and everything in it: candidates, interviews and reports,
-                  searches and chats. It can't be undone.
-                </p>
-                <label htmlFor="delete-account-password" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Your password</label>
-                <input
-                  id="delete-account-password"
-                  type="password"
-                  autoComplete="current-password"
-                  className="input"
-                  value={accountPassword}
-                  onChange={e => setAccountPassword(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-                {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 13, marginTop: 8 }}>{accountError}</p>}
-              </ConfirmDialog>
-            </div>
-          )}
-        </div>
-      </aside>
+      {/* Jarvis opens over any view, from the sidebar. */}
+      {showPipeline && (
+        <Suspense fallback={null}>
+        <JarvisAgent
+          candidatesSummary={candidates
+            .filter(c => c.is_resume !== false)
+            .map(c => ({
+              id: c.id,
+              name: c.name || 'Unknown',
+              predicted_role: c.predicted_role || '',
+              total_experience_years: c.total_experience_years || 0,
+              experience_level: c.experience_level || '',
+              location: c.location || '',
+              email: c.email || c.embedded_links?.email || '',
+              skills: c.skills || [],
+              github_url: c.embedded_links?.github_url || '',
+              linkedin_url: c.embedded_links?.linkedin_url || '',
+            }))}
+          onClose={() => setShowPipeline(false)}
+          onComplete={(result) => {
+            setPipelineResult(result);
+          }}
+        />
+        </Suspense>
+      )}
 
-      {/* Main */}
-      <main className="main">
-        <header className="main-header">
-          <div className="header-left">
-            <h1 className="main-title">
-              {tab === 'upload' ? 'Upload Resumes'
-                : tab === 'screening' ? 'Screening'
-                : tab === 'analytics' ? 'Analytics'
-                : tab === 'chat' ? 'AI Chat' : 'Candidate Focus'}
-            </h1>
-            {candidates.length > 0 && <span className="badge badge-orange">{candidates.length}</span>}
-            {selectedIds.length > 0 && <span className="badge badge-green">{selectedIds.length} selected</span>}
-          </div>
-          <div className="header-right">
-            <div className="toggle-wrapper">
-              <span className="toggle-label">
-                {anonymize ? <EyeOff size={16} /> : <Eye size={16} />} Anonymize
-              </span>
-              <div className={`toggle ${anonymize ? 'active' : ''}`} {...pressable(() => setAnonymize(!anonymize), { role: 'switch', label: 'Anonymize candidates' })}
-                aria-checked={anonymize}>
-                <div className="toggle-knob" />
-              </div>
-            </div>
-            {hiringManager && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '5px 12px 5px 8px',
-                background: 'rgba(245,158,11,0.08)',
-                border: '1px solid rgba(245,158,11,0.2)',
-                borderRadius: 20,
-              }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#F59E0B,#D97706)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#000',
-                }}>
-                  {(hiringManager.name || 'U')[0].toUpperCase()}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)' }}>
-                  {hiringManager.name}
-                </span>
-              </div>
-            )}
-          </div>
-        </header>
-
-        <div className="main-body">
+      <div className="studio-dashboard">
           {/* UPLOAD TAB */}
           {tab === 'upload' && (
             <div className="upload-tab">
@@ -802,31 +734,6 @@ export default function Dashboard() {
 
                     </div>
                   </div>
-
-                  {showPipeline && (
-                    <Suspense fallback={null}>
-                    <JarvisAgent
-                      candidatesSummary={candidates
-                        .filter(c => c.is_resume !== false)
-                        .map(c => ({
-                          id: c.id,
-                          name: c.name || 'Unknown',
-                          predicted_role: c.predicted_role || '',
-                          total_experience_years: c.total_experience_years || 0,
-                          experience_level: c.experience_level || '',
-                          location: c.location || '',
-                          email: c.email || c.embedded_links?.email || '',
-                          skills: c.skills || [],
-                          github_url: c.embedded_links?.github_url || '',
-                          linkedin_url: c.embedded_links?.linkedin_url || '',
-                        }))}
-                      onClose={() => setShowPipeline(false)}
-                      onComplete={(result) => {
-                        setPipelineResult(result);
-                      }}
-                    />
-                    </Suspense>
-                  )}
 
                   <div className="candidates-slider">
                     <button className="slider-btn slider-btn-left" onClick={() => scrollSlider(-1)} aria-label="Scroll candidates left">
@@ -963,6 +870,9 @@ export default function Dashboard() {
               )}
             </div>
           )}
+
+          {/* INTERVIEWS */}
+          {tab === 'interviews' && <InterviewHub candidates={candidates} anonymize={anonymize} getDisplayName={getDisplayName} />}
 
           {/* ANALYTICS TAB */}
           {tab === 'analytics' && (
@@ -1254,10 +1164,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* CANDIDATE FOCUS TAB */}
-        </div>
-      </main>
-    </div>
+      </div>
+    </WorkspaceShell>
   );
 }
 

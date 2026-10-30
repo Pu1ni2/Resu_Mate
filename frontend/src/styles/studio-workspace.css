@@ -112,6 +112,13 @@
 .studio-workspace .sw-page-header h1 em { font-weight: 400; color: var(--color-accent); }
 .studio-workspace .sw-subtitle { max-width: 570px; margin: 0; font-size: 13px; line-height: 1.7; color: var(--color-ink-muted); }
 .studio-workspace .sw-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 4px; }
+/* A switch among the page's actions, as the dashboard's Hide names: a button
+   with role="switch", named by its words, the track showing whether it is on. */
+.studio-workspace .sw-switch { display: flex; align-items: center; gap: 7px; padding: 6px 0; border: 0; background: none; color: var(--color-ink-muted); font-size: 11px; cursor: pointer; }
+.studio-workspace .sw-switch-track { position: relative; display: block; width: 34px; height: 20px; margin-left: 5px; border-radius: 10px; background: #d8dccd; box-shadow: inset 0 0 0 1px #b9bfaa; transition: background 0.18s; }
+.studio-workspace .sw-switch-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-surface); box-shadow: 0 1px 2px #30382f30; transition: transform 0.18s; }
+.studio-workspace .sw-switch[aria-checked=true] .sw-switch-track { background: #526443; box-shadow: none; }
+.studio-workspace .sw-switch[aria-checked=true] .sw-switch-knob { transform: translateX(14px); }
 .studio-workspace .sw-content { min-height: 65vh; outline: none; }
 
 .studio-workspace .sw-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 45px; padding: 25px 0; border-top: 1px solid var(--color-line); color: var(--color-ink-muted); font-size: 11px; }

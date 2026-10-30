@@ -6,6 +6,8 @@
    index.css loads it in the components layer. The colours are theme.css's.
    ═══════════════════════════════════════════════════════════ */
 
+.studio-dashboard { padding-bottom: 12px; }
+
 /* ── the Insights view's bars (components/studio/InsightBar.jsx): each one
    names its value, and shows it on hover or keyboard focus ── */
 .studio-dashboard .sd-insight-bar { position: relative; flex: 1; min-width: 0; padding: 8px 0; border-radius: 4px; outline-offset: 4px; }

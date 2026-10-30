@@ -5,10 +5,10 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 import Dashboard from './Dashboard';
 
-/* The sidebar, the anonymize switch, the upload area and the candidate cards
- * were divs with onClick: none could be reached or used without a mouse, and a
- * screen reader read them as plain text. The card arrows, Delete and the chat's
- * Send were icons with no name. */
+/* The sidebar, the anonymize switch (now Hide names), the upload area and the
+ * candidate cards were divs with onClick: none could be reached or used without
+ * a mouse, and a screen reader read them as plain text. The card arrows, Delete
+ * and the chat's Send were icons with no name. */
 
 const mocks = vi.hoisted(() => ({ app: null }));
 vi.mock('../context/AppContext', () => ({ useApp: () => mocks.app }));
@@ -47,37 +47,41 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// The sections, the switch and the links are native buttons and links now, so
+// the keyboard reaches and presses them by itself: a click is what Enter or
+// Space on them does.
 describe('the sidebar', () => {
-  it('switches tabs from the keyboard, and says which one is open', () => {
+  it('switches views with native buttons, and says which one is open', () => {
     open();
-    const analytics = screen.getByRole('button', { name: 'Analytics' });
-    expect(screen.getByRole('button', { name: 'Upload' }).getAttribute('aria-current')).toBe('page');
-    expect(analytics.tabIndex).toBe(0);
+    const insights = screen.getByRole('button', { name: 'Insights' });
+    expect(screen.getByRole('button', { name: 'Candidates' }).getAttribute('aria-current')).toBe('page');
+    expect(insights.tabIndex).toBe(0);
 
-    fireEvent.keyDown(analytics, { key: 'Enter' });
-    expect(screen.getByRole('button', { name: 'Analytics' }).getAttribute('aria-current')).toBe('page');
-    expect(screen.getByRole('button', { name: 'Upload' }).getAttribute('aria-current')).toBeNull();
+    fireEvent.click(insights);
+    expect(screen.getByRole('button', { name: 'Insights' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('button', { name: 'Candidates' }).getAttribute('aria-current')).toBeNull();
   });
 
   it('opens the other pages as links', () => {
     open();
-    fireEvent.keyDown(screen.getByRole('link', { name: 'Find Candidates' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('link', { name: 'Find Candidates' }));
     expect(screen.getByText('The sourcer')).toBeTruthy();
   });
 
-  it('goes home from the keyboard', () => {
+  it('goes home with a native link', () => {
     open();
-    fireEvent.keyDown(screen.getByRole('link', { name: 'Home' }), { key: ' ' });
+    fireEvent.click(screen.getByRole('link', { name: 'ResuMate homepage' }));
     expect(screen.getByText('The home page')).toBeTruthy();
   });
 });
 
-describe('the anonymize switch', () => {
-  it('is a switch that says whether it is on, and Space flips it', () => {
+describe('the Hide names switch', () => {
+  it('is a switch named by its words, that says whether it is on', () => {
     const app = open();
-    const toggle = screen.getByRole('switch', { name: 'Anonymize candidates' });
+    const toggle = screen.getByRole('switch', { name: 'Hide names' });
+    expect(toggle.tagName).toBe('BUTTON');
     expect(toggle.getAttribute('aria-checked')).toBe('false');
-    fireEvent.keyDown(toggle, { key: ' ' });
+    fireEvent.click(toggle);
     expect(app.setAnonymize).toHaveBeenCalledWith(true);
   });
 });
@@ -127,10 +131,10 @@ describe('a candidate card', () => {
   });
 });
 
-describe('the AI chat', () => {
+describe('the candidate chat', () => {
   it('labels its message box and its send button', () => {
     open({ candidates: [ADA], selectedIds: [1], selectedCandidates: [ADA] });
-    fireEvent.keyDown(screen.getByRole('button', { name: 'AI Chat' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
     expect(screen.getByRole('textbox', { name: 'Message the AI assistant' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
   });
