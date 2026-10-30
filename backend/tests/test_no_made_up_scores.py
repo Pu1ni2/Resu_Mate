@@ -59,6 +59,13 @@ def test_a_failed_resume_analysis_has_no_confidence_score(model):
     assert intel["analysis_failed"] is True
 
 
+def test_a_resume_analysis_gives_no_score_even_if_the_model_adds_one(model):
+    model["reply"] = json.dumps({"gaps": [], "red_flags": [], "resume_confidence_score": 42})
+    intel = _run(technical_agent.analyze_resume_gaps(CANDIDATE))
+    assert "resume_confidence_score" not in intel
+    assert "0-100" not in model["prompts"][0]
+
+
 def test_a_failed_comparison_has_no_score_or_recommendation(model):
     # The résumé-and-interview comparison gives no score or recommendation at
     # all now; a failed one has no findings either.
