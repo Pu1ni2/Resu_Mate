@@ -623,7 +623,8 @@ async def credibility_analysis(request: Request, req: CredibilityRequest, user=D
         except:
             report_data = {"report": report_data}
 
-    analysis = await technical_agent.analyze_credibility(candidate, report_data)
+    # The transcript is kept apart from the report; it is the evidence.
+    analysis = await technical_agent.analyze_credibility(candidate, report_data, transcript=interview.transcript)
     return {"credibility": analysis, "candidate_id": req.candidate_id, "email": req.candidate_email}
 
 class AutomateRankingRequest(BaseModel):

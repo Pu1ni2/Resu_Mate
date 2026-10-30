@@ -36,7 +36,7 @@ YOU CAN ORCHESTRATE:
 - resume_intelligence: gaps, red flags, verification targets, resume confidence
 - create_interview: create one interview and grant candidate access
 - get_interview_report: fetch a completed interview report
-- credibility_analysis: compare resume claims with interview performance
+- credibility_analysis: compare resume claims with what the candidate said in the interview
 - export_report: export the PDF report for a candidate
 - get_calendly: fetch the hiring manager's Calendly scheduling link
 
@@ -82,7 +82,7 @@ RESULT USAGE:
 - If cached GitHub exists, name specific projects from it.
 - If cached resume intelligence exists, use its gaps, red flags, and verification targets.
 - If cached interview report exists, use its score, violations, eye contact, and report summary.
-- If cached credibility exists, use its score and recommendation.
+- If a cached credibility comparison exists, use its findings. It gives no score or recommendation; never invent one.
 
 RETURN ONLY VALID JSON:
 {
@@ -414,7 +414,7 @@ def _build_artifacts_overview(artifacts: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "credibility": _compress_candidate_artifacts(
             artifacts.get("credibility") or {},
-            ["candidateEmail", "credibilityScore", "recommendation", "keyInsights"],
+            ["candidateEmail", "keyInsights"],
         ),
         "research": artifacts.get("research") or {},
     }

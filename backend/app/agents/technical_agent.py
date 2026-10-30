@@ -14,7 +14,7 @@ from typing import Dict, List, Any
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
-from app.services.scores import describe_average, is_number, score_of
+from app.services.scores import describe_average
 
 def clean_questions(questions) -> List[str]:
     """The model's questions as plain text: no numbering or bullets, no blanks."""
@@ -191,8 +191,14 @@ Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
 
     # ═══════ CREDIBILITY ANALYSIS ═══════
 
-    async def analyze_credibility(self, candidate_data: dict, interview_report: dict) -> Dict:
-        """Cross-reference resume claims against interview performance."""
+    async def analyze_credibility(self, candidate_data: dict, interview_report: dict, transcript=None) -> Dict:
+        """Compare the résumé's claims with what the candidate said in the interview.
+
+        No score, verdict label or hiring recommendation: those were the model's
+        own numbers ("72/100", "Low Credibility") on a person, judged from the
+        first 1,500 characters of another model's summary, and the report
+        already gives the recommendation. The evidence is the transcript itself.
+        """
         skills = candidate_data.get("skills", [])
         work_exp = candidate_data.get("work_experience", [])
         role = candidate_data.get("predicted_role", "Professional")
@@ -200,13 +206,17 @@ Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
         total_years = candidate_data.get("total_experience_years", 0)
         key_strengths = candidate_data.get("key_strengths", [])
 
-        # Extract interview data
-        report_text = interview_report.get("report", "")
-        scores = interview_report.get("scores", [])
-        avg_score = interview_report.get("avgScore")
-        average_text = f"{avg_score:.1f}/10" if is_number(avg_score) else describe_average(scores)
+        turns = transcript or interview_report.get("transcript") or []
+        if turns:
+            said = "\n".join(
+                f"{'Interviewer' if t.get('role') == 'interviewer' else 'Candidate'}: {t.get('text', '')}"
+                for t in turns if isinstance(t, dict)
+            )[:12000]
+            evidence = f"INTERVIEW TRANSCRIPT:\n{said}"
+        else:
+            evidence = f"INTERVIEW REPORT (no transcript was saved):\n{str(interview_report.get('report', ''))[:4000]}"
 
-        prompt = f"""Cross-reference this candidate's RESUME CLAIMS against their INTERVIEW PERFORMANCE.
+        prompt = f"""Compare this candidate's RESUME CLAIMS with what they said in their INTERVIEW.
 
 RESUME CLAIMS:
 - Role: {role} | Level: {level} | Claims {total_years} years experience
@@ -214,56 +224,52 @@ RESUME CLAIMS:
 - Key Strengths: {', '.join(key_strengths[:5])}
 - Work History: {', '.join(f"{w.get('title','')} at {w.get('company','')}" for w in work_exp[:4])}
 
-INTERVIEW PERFORMANCE:
-- Average Score: {average_text}
-- Per-Question Scores: {json.dumps([score_of(s) for s in scores])}
-- Per-Question Feedback: {json.dumps([s.get('feedback', '') if isinstance(s, dict) else '' for s in scores[:8]])}
-- AI Report Excerpt: {report_text[:1500]}
+{evidence}
 
-ANALYZE and return ONLY valid JSON:
+Base every finding on what was said. A skill nobody asked about is "not discussed",
+not a weakness. Give no score, rating or hiring recommendation.
+
+Return ONLY valid JSON:
 {{
-    "credibility_score": 0-100,
-    "verdict": "Highly Credible / Credible / Partially Credible / Low Credibility",
     "resume_vs_interview": {{
-        "confirmed_skills": ["skills demonstrated in interview"],
-        "unverified_skills": ["claimed but not tested or not demonstrated"],
-        "overrated_skills": ["claimed as strength but performed poorly"],
-        "hidden_strengths": ["not on resume but showed in interview"]
+        "confirmed_skills": ["claimed skills the candidate showed with specifics"],
+        "unverified_skills": ["claimed skills the interview didn't discuss"],
+        "overrated_skills": ["claimed as a strength, but the answers about it stayed thin"],
+        "hidden_strengths": ["shown in the interview but not on the resume"]
     }},
     "level_assessment": {{
         "resume_claims": "{level}",
-        "interview_suggests": "actual level based on performance",
+        "interview_suggests": "the level the answers suggest",
         "match": true/false,
-        "explanation": "brief why"
+        "explanation": "brief why, from the answers"
     }},
     "key_insights": [
-        "insight about the candidate's actual abilities vs claims"
+        "a finding about the claims and the answers, with the evidence"
     ],
-    "hiring_recommendation": "Strong Hire / Hire / Consider / Pass",
-    "confidence_in_assessment": "High / Medium / Low"
+    "confidence_in_assessment": "High / Medium / Low, by how much the interview covered"
 }}"""
 
         try:
-            content = await openai_tool.structured_call(prompt, "You are a senior hiring analyst cross-referencing resume claims against interview evidence. Be fair, data-driven, and constructive.")
+            content = await openai_tool.structured_call(prompt, "You are a careful hiring analyst comparing a resume with an interview transcript. Be fair and specific, and claim nothing the transcript doesn't show.")
             content = content.strip()
             if '```' in content:
                 for part in content.split('```'):
                     part = part.strip()
                     if part.startswith('json'): content = part[4:].strip(); break
                     elif part.startswith('{'): content = part; break
-            return json.loads(content)
+            result = json.loads(content)
+            # Whatever the model adds anyway, the app shows no number or label on a person.
+            for invented in ("credibility_score", "verdict", "hiring_recommendation"):
+                result.pop(invented, None)
+            return result
         except Exception as e:
-            # No made-up verdict: this used to say 50/100, a level match and
-            # "Consider" when nothing had been assessed.
+            # No made-up finding when nothing was compared.
             print(f"[WARN] credibility analysis failed: {e}")
             return {
-                "credibility_score": None,
                 "analysis_failed": True,
-                "verdict": "Unable to assess",
                 "resume_vs_interview": {"confirmed_skills": [], "unverified_skills": [], "overrated_skills": [], "hidden_strengths": []},
                 "level_assessment": {"resume_claims": level, "interview_suggests": None, "match": None, "explanation": "Analysis unavailable"},
-                "key_insights": ["The credibility analysis could not be completed. Try again."],
-                "hiring_recommendation": None,
+                "key_insights": ["The comparison could not be completed. Try again."],
                 "confidence_in_assessment": None,
             }
 

@@ -59,28 +59,35 @@ def test_a_failed_resume_analysis_has_no_confidence_score(model):
     assert intel["analysis_failed"] is True
 
 
-def test_a_failed_credibility_analysis_has_no_score_or_recommendation(model):
+def test_a_failed_comparison_has_no_score_or_recommendation(model):
+    # The résumé-and-interview comparison gives no score or recommendation at
+    # all now; a failed one has no findings either.
     model["reply"] = RuntimeError("model unavailable")
     result = _run(technical_agent.analyze_credibility(CANDIDATE, {"report": "ok", "scores": [8]}))
-    assert result["credibility_score"] is None
-    assert result["hiring_recommendation"] is None
+    assert "credibility_score" not in result
+    assert "hiring_recommendation" not in result
     assert result["level_assessment"]["match"] is None
     assert result["analysis_failed"] is True
 
 
 # ── what the model is told ────────────────────────────────────────────────────
 
-def test_credibility_is_judged_on_the_scored_answers_only(model):
-    model["reply"] = json.dumps({"credibility_score": 80})
-    _run(technical_agent.analyze_credibility(CANDIDATE, {"report": "ok", "scores": [{"score": 8}, {"score": None}, {"score": 6}]}))
-    assert "Average Score: 7.0/10" in model["prompts"][0]
-    assert "Per-Question Scores: [8, null, 6]" in model["prompts"][0]
+def test_the_comparison_reads_what_was_said_not_scores(model):
+    model["reply"] = json.dumps({"key_insights": []})
+    transcript = [{"role": "interviewer", "text": "Tell me about Python."},
+                  {"role": "candidate", "text": "I built a scheduler in it."}]
+    _run(technical_agent.analyze_credibility(CANDIDATE, {"report": "ok", "scores": [{"score": 8}]}, transcript=transcript))
+    prompt = model["prompts"][0]
+    assert "Candidate: I built a scheduler in it." in prompt
+    assert "Average Score" not in prompt
+    assert "Per-Question Scores" not in prompt
 
 
-def test_an_interview_with_nothing_scored_is_described_so(model):
-    model["reply"] = json.dumps({"credibility_score": 60})
-    _run(technical_agent.analyze_credibility(CANDIDATE, {"report": "ok", "scores": []}))
-    assert "Average Score: not scored" in model["prompts"][0]
+def test_without_a_transcript_the_comparison_says_so_and_reads_the_report(model):
+    model["reply"] = json.dumps({"key_insights": []})
+    _run(technical_agent.analyze_credibility(CANDIDATE, {"report": "Clear answers about Python.", "scores": []}))
+    assert "no transcript was saved" in model["prompts"][0]
+    assert "Clear answers about Python." in model["prompts"][0]
 
 
 def test_a_report_with_an_unscored_answer_still_writes(model):
