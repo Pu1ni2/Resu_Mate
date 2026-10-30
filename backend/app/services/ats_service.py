@@ -10,6 +10,58 @@ from app.tools.openai_tool import openai_tool
 from app.services.resume_rag import primary_email
 
 
+class JDParseError(Exception):
+    """The job description couldn't be turned into requirements.
+
+    It used to fall back to empty requirements, which scored everyone as a
+    strong fit without saying the description had been ignored."""
+
+
+# Each part's share of the score. A part counts only when the run asked for it:
+# a part nobody asked for used to count as a perfect 100, so a run with only a
+# role scored everyone 85 or more.
+WEIGHTS = {"skills": 0.45, "experience": 0.30, "role": 0.15, "education": 0.10}
+
+# Other names for the same skill, on the normalised key (see skill_key).
+SKILL_ALIASES = {
+    "js": "javascript", "ts": "typescript", "golang": "go", "k8s": "kubernetes",
+    "postgres": "postgresql", "py": "python", "ml": "machine learning",
+    "amazon web services": "aws", "google cloud platform": "gcp", "google cloud": "gcp",
+}
+
+
+def skill_key(skill) -> str:
+    """A skill as it is compared: lower case, words split on dots, dashes,
+    slashes and underscores, and a framework's ".js" dropped, so "React.js",
+    "ReactJS" and "react" agree. "+" and "#" stay, so C++ and C# aren't C."""
+    s = str(skill).lower().strip()
+    s = re.sub(r"(?<=[a-z]{3})\.?js$", "", s)
+    s = re.sub(r"[._/\-]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return SKILL_ALIASES.get(s, s)
+
+
+def has_skill(candidate_keys: set, wanted) -> bool:
+    """Whether a candidate has a skill: the same key, or the skill's words
+    inside one of theirs ("Python" in "Python 3", "AWS" in "AWS Lambda")."""
+    key = skill_key(wanted)
+    return bool(key) and any(key == k or f" {key} " in f" {k} " for k in candidate_keys)
+
+
+def assessed_parts(requirements: dict, role: str = "") -> list:
+    """The parts a run asked for, which are the only parts it scores."""
+    parts = []
+    if requirements.get("required_skills") or requirements.get("nice_to_have_skills"):
+        parts.append("skills")
+    if float(requirements.get("min_experience_years", 0) or 0) > 0:
+        parts.append("experience")
+    if str(role or "").strip():
+        parts.append("role")
+    if str(requirements.get("education_requirement", "") or "").strip():
+        parts.append("education")
+    return parts
+
+
 class ATSService:
 
     # ── JD Parsing ────────────────────────────────────────────────────────────
@@ -58,45 +110,30 @@ Return only valid JSON."""
                 "role_keywords": result.get("role_keywords", []),
             }
         except Exception as e:
-            print(f"⚠️ JD parse failed: {e}")
-            return {
-                "required_skills": [],
-                "nice_to_have_skills": [],
-                "min_experience_years": 0,
-                "education_requirement": "",
-                "seniority_level": "",
-                "role_keywords": [],
-            }
+            raise JDParseError(str(e)) from e
 
     # ── Algorithmic Scoring ───────────────────────────────────────────────────
 
     def _score_skills(self, candidate_skills: list, required: list, nice_to_have: list) -> tuple[float, list, list]:
-        """Returns (score 0-100, matched_skills[], missing_skills[])"""
-        candidate_lower = {str(s).lower() for s in candidate_skills}
+        """Returns (score 0-100, matched_skills[], missing_skills[]).
 
-        required_lower = [str(s).lower() for s in required]
-        matched = [s for s in required_lower if s in candidate_lower]
-        missing = [s for s in required_lower if s not in candidate_lower]
+        Only the lists given count: with no must-haves the score is the
+        nice-to-haves alone, rather than a must-have share of 100% for free."""
+        candidate_keys = {skill_key(s) for s in candidate_skills}
+        matched = [s for s in required if has_skill(candidate_keys, s)]
+        missing = [s for s in required if not has_skill(candidate_keys, s)]
 
-        if required_lower:
-            required_ratio = len(matched) / len(required_lower)
+        required_ratio = len(matched) / len(required) if required else None
+        nice_ratio = (
+            sum(1 for s in nice_to_have if has_skill(candidate_keys, s)) / len(nice_to_have)
+            if nice_to_have else None
+        )
+        if required_ratio is not None and nice_ratio is not None:
+            score = round((required_ratio * 0.8 + nice_ratio * 0.2) * 100)
         else:
-            required_ratio = 1.0
+            score = round((required_ratio if required_ratio is not None else nice_ratio or 0) * 100)
 
-        nice_lower = [str(s).lower() for s in nice_to_have]
-        if nice_lower:
-            nice_matched = sum(1 for s in nice_lower if s in candidate_lower)
-            nice_ratio = nice_matched / len(nice_lower)
-        else:
-            nice_ratio = 1.0
-
-        score = round((required_ratio * 0.8 + nice_ratio * 0.2) * 100)
-
-        # Return original-casing matched/missing from required list
-        matched_display = [s for s in required if str(s).lower() in candidate_lower]
-        missing_display = [s for s in required if str(s).lower() not in candidate_lower]
-
-        return score, matched_display, missing_display
+        return score, matched, missing
 
     def _score_experience(self, candidate_years: float, required_min: float) -> float:
         """Returns experience match score 0-100."""
@@ -121,8 +158,9 @@ Return only valid JSON."""
             " ".join(str(s) for s in candidate.get("key_strengths", []))
         ).lower()
 
-        # Direct role title match
-        if target in predicted or predicted in target:
+        # Direct role title match. An empty predicted role matched every role
+        # ("" is in any string) and scored 90.
+        if predicted and (target in predicted or predicted in target):
             base = 90.0
         else:
             # Keyword overlap
@@ -182,13 +220,15 @@ Return only valid JSON."""
         role_score = self._score_role_match(candidate, role, role_keywords)
         education_score = self._score_education(candidate, education_req)
 
-        # Weighted ATS score
-        ats_score = round(
-            skills_score * 0.45 +
-            experience_score * 0.30 +
-            role_score * 0.15 +
-            education_score * 0.10
-        )
+        # The weighted score, over the parts the run asked for only, each
+        # weight's share scaled up to fill the whole.
+        parts = assessed_parts(jd_requirements, role)
+        part_scores = {
+            "skills": skills_score, "experience": experience_score,
+            "role": role_score, "education": education_score,
+        }
+        weight = sum(WEIGHTS[p] for p in parts)
+        ats_score = round(sum(WEIGHTS[p] * part_scores[p] for p in parts) / weight) if weight else 0
 
         # Auto-reject: missing required skills AND overall low score
         auto_reject = bool(missing_skills and required_skills and ats_score < 30)
@@ -213,10 +253,12 @@ Return only valid JSON."""
             # rarely sets candidate["email"], so most showed "no email".
             "email": primary_email(candidate),
             "ats_score": ats_score,
-            "skills_match": skills_score,
-            "experience_match": round(experience_score),
-            "role_match": round(role_score),
-            "education_match": round(education_score),
+            # A part the run didn't ask for has no score (None), not 100.
+            "assessed": parts,
+            "skills_match": skills_score if "skills" in parts else None,
+            "experience_match": round(experience_score) if "experience" in parts else None,
+            "role_match": round(role_score) if "role" in parts else None,
+            "education_match": round(education_score) if "education" in parts else None,
             "matched_skills": matched_skills,
             "missing_skills": missing_skills,
             "verdict": verdict,

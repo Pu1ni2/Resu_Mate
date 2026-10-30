@@ -14,7 +14,7 @@ from app.core.rate_limit import limiter
 from app.core.config import settings
 from app.core.database import get_db
 from app.services.auth import get_current_user
-from app.services.ats_service import ats_service
+from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag, primary_email
 from app.services import db_service
 from app.services import interview_modes
@@ -78,10 +78,27 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
 
     if not pool:
         raise HTTPException(400, "No candidates found. Please upload resumes first.")
+    if not req.role.strip():
+        raise HTTPException(400, "Name the role to screen for.")
+
+    # Only analysed résumés are screened. A file that isn't a résumé, or whose
+    # analysis failed, was ranked like the rest from its empty fields.
+    screenable = [c for c in pool if c.get("is_resume") is not False and not c.get("analysis_failed")]
+    excluded = len(pool) - len(screenable)
+    if not screenable:
+        raise HTTPException(400, "None of these files can be screened: they aren't résumés, or their analysis failed.")
+    pool = screenable
 
     # 2. Parse JD (if provided)
     if req.jd_text and req.jd_text.strip():
-        jd_requirements = await ats_service.parse_jd(req.jd_text, req.role)
+        try:
+            jd_requirements = await ats_service.parse_jd(req.jd_text, req.role)
+        except JDParseError:
+            # Screening on without it would ignore the description and say nothing.
+            raise HTTPException(
+                502,
+                "The job description couldn't be read just now. Try again, or enter the must-have skills instead.",
+            )
     else:
         # No JD — build minimal requirements from caller-supplied fields
         jd_requirements = {
@@ -129,6 +146,10 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
         "role": req.role,
         "total_screened": len(results),
         "elapsed_ms": elapsed_ms,
+        # What the scores are made of: with only "role", they compare roles,
+        # not skills or experience, and the results say so.
+        "assessed": results[0]["assessed"] if results else assessed_parts(jd_requirements, req.role),
+        "excluded": excluded,
         "jd_requirements": jd_requirements,
         "results": results,
         "shortlist": shortlist,

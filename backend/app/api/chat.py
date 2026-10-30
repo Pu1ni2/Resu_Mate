@@ -393,38 +393,12 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
         if not candidate:
             return {"error": "Candidate not found."}
 
-        # Compute the deterministic score here and hand it to the agent, rather
-        # than letting the model produce its own. The two used to be independent:
-        # ats_service scored on fixed weights while the report ended with its own
-        # "Overall Fit Score: X/100", so the same candidate could be 92 on the
-        # shortlist and 68 in their evaluation with nothing on screen saying one
-        # was arithmetic and the other an opinion.
-        #
-        # Requirements are built from the role rather than by parsing the JD,
-        # which keeps this free of an extra LLM call. It is the same minimal
-        # shape /pipeline/run uses when no JD is supplied, so the number matches
-        # what an unparameterised screening run would give.
-        role_for_score = req.role or candidate.get("predicted_role") or "General"
+        # No score for the evaluation to cite. The model doesn't make one up
+        # (screening owns the number), and this route has no screening
+        # requirements to score against: with the role alone, every part but
+        # the role counted as a perfect 100, and the evaluation quoted that
+        # 85-100 as the candidate's fit.
         ats_score = None
-        try:
-            from app.services.ats_service import ats_service
-            scored = await ats_service.score_candidate(
-                candidate,
-                {
-                    "required_skills": [],
-                    "nice_to_have_skills": [],
-                    "min_experience_years": 0,
-                    "education_requirement": "",
-                    "seniority_level": req.level or "",
-                    "role_keywords": role_for_score.lower().split(),
-                },
-                role=role_for_score,
-            )
-            ats_score = scored.get("ats_score")
-        except Exception as exc:
-            # A missing score is not worth failing the evaluation over; the
-            # prompt simply omits the line.
-            print(f"[WARN] could not compute ats_score for evaluation: {exc}")
 
         result = await hr_agent.evaluate(
             candidate=candidate,
