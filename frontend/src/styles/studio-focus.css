@@ -164,6 +164,11 @@
 .studio-focus .scanner-bar-expandable { padding: 20px; border-color: #dbdfce; background: #fafbf3; }
 .studio-focus .scanner-bar-chip { border-radius: 3px; background: #e2e7d4; color: #546347; }
 .studio-focus .scanner-bar-logs { color: var(--color-ink-subtle); font-size: 11px; line-height: 1.9; }
+/* Each step: a found one marked in the theme's green, a failed one in its red. */
+.studio-focus .scanner-log { display: flex; gap: 6px; }
+.studio-focus .scanner-log.success .scanner-prefix { color: var(--color-positive); }
+.studio-focus .scanner-log.warning { color: var(--color-caution); }
+.studio-focus .scanner-log.error { color: var(--color-critical); }
 .studio-focus .scanner-result-card { border: 1px solid #d7ddc8; background: var(--color-surface); color: #5d6b50; }
 .studio-focus .scanner-ai-summary { border-color: #d9dfca; background: #edf0e2; color: #566349; }
 

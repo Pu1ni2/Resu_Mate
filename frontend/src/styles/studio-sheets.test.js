@@ -54,7 +54,7 @@ const SHEETS = {
     keyframes: 'studio-focus-',
     restyles: [
       'scanner-bar', 'scanner-bar-main', 'scanner-bar-left', 'scanner-bar-status', 'scanner-bar-expandable', 'scanner-bar-chip',
-      'scanner-bar-logs', 'scanner-bar-summary', 'scanner-result-card',
+      'scanner-bar-logs', 'scanner-log', 'success', 'error', 'scanner-bar-summary', 'scanner-result-card',
       'agent-container', 'tool-panel', 'focus-websearch-container', 'glass-card', 'agent-report',
       'btn', 'btn-primary', 'btn-secondary', 'btn-ghost', 'agent-chip', 'focus-search-chip', 'chat-suggestion', 'active',
       'agent-intro', 'agent-intro-icon', 'agent-intro-title', 'agent-intro-desc', 'agent-choose', 'agent-option',

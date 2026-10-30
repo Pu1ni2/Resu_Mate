@@ -170,11 +170,6 @@
 [data-theme="light"] .toggle { background: #E2E8F0; }
 [data-theme="light"] .toggle.active { background: #F59E0B; }
 
-/* Scanner terminal stays dark always */
-[data-theme="light"] .scanner-terminal { background: #0a0a0a !important; color: #22c55e !important; }
-[data-theme="light"] .scanner-log { color: #22c55e !important; }
-[data-theme="light"] .matrix-canvas { opacity: 0.3; }
-
 /* ─── Consistent spacing for all pages ─── */
 .main-content { padding: 24px; }
 .focus-content { padding: 0; }
