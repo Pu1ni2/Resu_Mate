@@ -27,7 +27,8 @@ export default function CandidateFocus() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { candidates, anonymize, getDisplayName } = useApp();
 
-  // Open the file immediately; scan progress stays inside it.
+  // A file opens at once, on the résumé alone; the online lookup waits until
+  // the manager asks for it.
   const [phase, setPhase] = useState('select');
   const [focusCandidate, setFocusCandidate] = useState(null);
   const [activeTool, setActiveTool] = useState('overview');
@@ -119,6 +120,29 @@ export default function CandidateFocus() {
 
   const candidateName = (candidate) => getDisplayName(candidate, candidates.findIndex(c => c.id === candidate.id));
 
+  // The chat's opening line: what it can draw on, the résumé and whatever a
+  // lookup found online.
+  const chatIntro = (c, profiles = null, contact = null) => {
+    const name = anonymize ? 'this candidate' : (c?.name || 'this candidate');
+    let intro = `**A closer look at ${name}.** Here is the information available for our conversation:\n\n`;
+    intro += `**Resume** — skills, experience, education\n`;
+    if (profiles?.github) intro += `**GitHub** (@${profiles.github.username}) — ${profiles.github.public_repos} repos\n`;
+    if (profiles?.linkedin) intro += `**LinkedIn** — ${profiles.linkedin.headline || profiles.linkedin.name || 'Profile found'}\n`;
+    if (contact?.email) intro += `**Contact** — ${contact.email}\n`;
+    intro += `\nAsk me anything about **${name}** and I'll use all sources to answer.`;
+    return { role: 'assistant', content: intro, intro: true };
+  };
+  const chatSuggestions = (c, profiles = null) => {
+    const name = anonymize ? 'this candidate' : (c?.name || 'this candidate');
+    return [
+      `Summarize everything about ${name}`,
+      'What are their strongest skills?',
+      'Are they a good fit for a senior role?',
+      // Only once there is a GitHub profile to ask about.
+      ...(profiles?.github ? ['Tell me about their GitHub projects'] : []),
+    ];
+  };
+
   // ─── Reset agent ───
   const resetAgent = () => {
     setAgentStep('choose');
@@ -204,21 +228,10 @@ export default function CandidateFocus() {
       setScanSummary(scannedSummary);
       setScanContact(scannedContact);
 
-      const name = anonymize ? 'this candidate' : (c?.name || 'this candidate');
-      let intro = `**A closer look at ${name}.** Here is the information available for our conversation:\n\n`;
-      intro += `**Resume** — skills, experience, education\n`;
-      if (scannedProfiles?.github) intro += `**GitHub** (@${scannedProfiles.github.username}) — ${scannedProfiles.github.public_repos} repos\n`;
-      if (scannedProfiles?.linkedin) intro += `**LinkedIn** — ${scannedProfiles.linkedin.headline || scannedProfiles.linkedin.name || 'Profile found'}\n`;
-      if (scannedContact?.email) intro += `**Contact** — ${scannedContact.email}\n`;
-      intro += `\nAsk me anything about **${name}** and I'll use all sources to answer.`;
-
-      chat.setMessages([{ role: 'assistant', content: intro }]);
-      chat.setSuggestions([
-        `Summarize everything about ${name}`,
-        `What are their strongest skills?`,
-        `Are they a good fit for a senior role?`,
-        `Tell me about their GitHub projects`,
-      ]);
+      // The opening line names what was found too; the rest of the
+      // conversation stays as it was.
+      chat.setMessages(prev => (prev[0]?.intro ? [chatIntro(c, scannedProfiles, scannedContact), ...prev.slice(1)] : prev));
+      chat.setSuggestions(chatSuggestions(c, scannedProfiles));
 
     } catch (_) {
       if (version !== selectionVersion.current) return;
@@ -231,7 +244,9 @@ export default function CandidateFocus() {
     }
   };
 
-  // Preserve the existing scan/cache contract without the forced opening animation.
+  // Opening a file clears the last one's state and puts this one's back if it
+  // was open before. Nobody is looked up online here: opening a file used to
+  // search the web for the person by name straight away.
   const handleCandidateSelect = (candidate) => {
     voice.stopSpeaking();
     selectionVersion.current += 1;
@@ -247,22 +262,23 @@ export default function CandidateFocus() {
     setSearchQuery(''); setSearchResults([]); setSearchHistory([]); setSearchError(''); setSearchLoading(false);
     setGhProfile(null); setGhError(''); setGhUsername(''); setGhNeedsInput(false); setGhLoading(false);
     setCalData(null); setCalError(''); setCalLoading(false);
-    setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanDone(false);
+    // Also a lookup still running for the last file: its answer is dropped.
+    setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanDone(false); setScanRunning(false);
     setSearchParams({ candidate: String(candidate.id) }, { replace: true });
     const cached = restoreFromCache(candidate.id);
-    if (cached?.scanDone) {
-      setScanProfiles(cached.scanProfiles);
+    if (cached) {
+      setScanProfiles(cached.scanProfiles || null);
       setScanSummary(cached.scanSummary || '');
       setScanContact(cached.scanContact || null);
       setScanLogs(cached.scanLogs || []);
+      setScanDone(Boolean(cached.scanDone));
       chat.setMessages(cached.messages || []);
       chat.setSuggestions(cached.suggestions || []);
       setSearchResults(cached.searchResults || []);
       setSearchHistory(cached.searchHistory || []);
-      setScanDone(true);
-      setScanRunning(false);
     } else {
-      runScanner(candidate.id, candidate);
+      chat.setMessages([chatIntro(candidate)]);
+      chat.setSuggestions(chatSuggestions(candidate));
     }
   };
 
@@ -540,7 +556,7 @@ export default function CandidateFocus() {
         <nav className="sf-file-tabs" aria-label="Candidate file sections">
           {sectionTabs.map(({ id, label, icon: Icon, tool }, index) => <button key={id} onClick={() => goTool(tool)} aria-current={activeSection === id ? 'page' : undefined}><span className="sf-tab-number">0{index + 1}</span><Icon size={16} /><span>{label}</span></button>)}
         </nav>
-        <ScannerBar scanLogs={anonymize ? scanLogs.filter(log => log.status === 'error') : scanLogs} scanProfiles={anonymize ? null : scanProfiles} scanSummary={anonymize ? '' : scanSummary} scanContact={anonymize ? null : scanContact} scanRunning={scanRunning} scanDone={scanDone} onRescan={() => runScanner(focusCandidate.id)} />
+        <ScannerBar scanLogs={anonymize ? scanLogs.filter(log => log.status === 'error') : scanLogs} scanProfiles={anonymize ? null : scanProfiles} scanSummary={anonymize ? '' : scanSummary} scanContact={anonymize ? null : scanContact} scanRunning={scanRunning} scanDone={scanDone} onLookup={anonymize ? undefined : () => runScanner(focusCandidate.id)} namesHidden={anonymize} />
 
         {activeTool === 'overview' && (
           <div className="sf-overview-grid">
@@ -567,7 +583,7 @@ export default function CandidateFocus() {
 
         {activeSection === 'interviews' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">MAKE ROOM FOR A CONVERSATION</span><h3>The next chapter.</h3><p>Prepare a focused interview or share a time to meet.</p></div><Calendar className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" aria-label="Interview tools"><button aria-pressed={activeTool === 'interview'} onClick={() => goTool('interview')}><Video size={16} /> Interview setup</button><button aria-pressed={activeTool === 'calendly'} onClick={() => goTool('calendly')}><Calendar size={16} /> Scheduling</button></div>{activeTool === 'calendly' ? <SchedulePanel calData={calData} calLoading={calLoading} calError={calError} anonymize={anonymize} candidateName={focusCandidate.name} /> : hasEvaluation ? <InterviewCreator key={focusCandidate.id} focusCandidate={focusCandidate} selectedRole={selectedRole === 'other' ? customRole : selectedRole} selectedLevel={selectedLevel} selectedExperience={selectedExperience} scanContact={anonymize ? null : scanContact} /> : <div className="sf-empty sf-gated"><Video size={32} strokeWidth={1.2} /><h3>Give the conversation a direction.</h3><p>Complete a role evaluation first, then create an interview with the right context for this candidate.</p><button className="sf-button sf-button-primary" onClick={() => goTool('agent')}>Evaluate role fit <ArrowUpRight size={16} /></button></div>}</section>}
 
-        {activeTool === 'chat' && <section className="sf-tool-section sf-conversation"><div className="sf-section-heading"><div><span className="sf-kicker">A SECOND PERSPECTIVE</span><h3>Let’s talk about the person.</h3><p>Ask about experience, strengths and the questions to explore together.</p></div><MessageSquare className="sf-section-symbol" size={36} strokeWidth={1} /></div><ChatPanel messages={chat.messages} isTyping={chat.isTyping} suggestions={chat.suggestions} chatInput={chat.chatInput} setChatInput={chat.setChatInput} onSend={chat.sendMessage} scanDone={scanDone} candidateName={focusCandidate.name} anonymize={anonymize} voice={voice} msgEndRef={chat.msgEndRef} /></section>}
+        {activeTool === 'chat' && <section className="sf-tool-section sf-conversation"><div className="sf-section-heading"><div><span className="sf-kicker">A SECOND PERSPECTIVE</span><h3>Let’s talk about the person.</h3><p>Ask about experience, strengths and the questions to explore together.</p></div><MessageSquare className="sf-section-symbol" size={36} strokeWidth={1} /></div><ChatPanel messages={chat.messages} isTyping={chat.isTyping} suggestions={chat.suggestions} chatInput={chat.chatInput} setChatInput={chat.setChatInput} onSend={chat.sendMessage} candidateName={focusCandidate.name} anonymize={anonymize} voice={voice} msgEndRef={chat.msgEndRef} /></section>}
         {activeTool === 'email' && hasEvaluation && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">THOUGHTFUL COMMUNICATION</span><h3>Find the right words.</h3><p>Prepare and edit a draft, then open it in your email app to send.</p></div><Mail className="sf-section-symbol" size={36} strokeWidth={1} /></div><EmailComposer key={focusCandidate.id} focusCandidate={focusCandidate} agentResult={agentResult} anonymize={anonymize} getCandidatePayload={getCandidatePayload} /></section>}
       </div>
     </WorkspaceShell>

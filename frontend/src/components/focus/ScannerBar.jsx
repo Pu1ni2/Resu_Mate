@@ -3,14 +3,22 @@ import { Github, Globe, Mail, ExternalLink, Brain, ChevronDown, Loader, Zap } fr
 import Markdown from '../ui/Markdown';
 import { pressable } from '../ui/pressable';
 
-export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanContact, scanRunning, scanDone, onRescan }) {
+/* What was found about the person online, and the way to ask for it. Nothing
+ * is looked up until the manager asks (onLookup): opening a file used to
+ * search the web for the person by name at once. Never while names are
+ * hidden, either, as the search goes by the name. */
+export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanContact, scanRunning, scanDone, onLookup, namesHidden }) {
   const [expanded, setExpanded] = useState(false);
 
   // No percentage: the steps come back together with the result, so a bar
   // worked out from them was never real progress.
   const lastLog = scanLogs[scanLogs.length - 1];
+  const notYet = !scanRunning && !scanDone;
 
-  if (!scanRunning && !scanDone) return null;
+  let status = 'Not looked up online yet. This searches the web for their GitHub and LinkedIn.';
+  if (scanRunning) status = 'Looking them up online…';
+  else if (scanDone) status = lastLog?.status === 'error' ? lastLog.msg : 'Looked up online';
+  else if (namesHidden) status = "Names are hidden, so they aren't looked up online.";
 
   return (
     <div className="scanner-bar">
@@ -19,15 +27,19 @@ export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanCo
         <div className="scanner-bar-left">
           {scanRunning ? (
             <Loader size={14} className="spin" style={{ color: 'var(--success)' }} />
+          ) : notYet ? (
+            <Globe size={14} style={{ color: 'var(--accent)' }} />
           ) : (
             <Zap size={14} style={{ color: 'var(--accent)' }} />
           )}
-          <span className="scanner-bar-status">
-            {scanRunning ? "Scanning the résumé's links and profiles…" : (lastLog?.status === 'error' ? lastLog.msg : 'Scan complete')}
-          </span>
+          {/* Announced as it changes: a lookup starting, and how it ended. */}
+          <span className="scanner-bar-status" role="status">{status}</span>
         </div>
 
         <div className="scanner-bar-right">
+          {notYet && onLookup && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onLookup}>Look them up online</button>
+          )}
           {scanDone && scanProfiles && (
             <div className="scanner-bar-summary">
               {scanProfiles.github && <span className="scanner-bar-chip"><Github size={12} /> GitHub</span>}
@@ -94,8 +106,8 @@ export default function ScannerBar({ scanLogs, scanProfiles, scanSummary, scanCo
             </div>
           )}
 
-          {onRescan && (
-            <button className="btn btn-ghost btn-sm" onClick={onRescan} style={{ marginTop: '8px' }}>↻ Re-scan</button>
+          {onLookup && (
+            <button className="btn btn-ghost btn-sm" onClick={onLookup} style={{ marginTop: '8px' }}>↻ Look again</button>
           )}
         </div>
       )}

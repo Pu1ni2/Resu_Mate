@@ -115,7 +115,7 @@ describe('icon buttons have names', () => {
   it("the candidate chat's box and Send", () => {
     render(
       <ChatPanel messages={[]} isTyping={false} suggestions={[]} chatInput="" setChatInput={vi.fn()}
-        onSend={vi.fn()} scanDone candidateName="Ada" anonymize={false} msgEndRef={{ current: null }}
+        onSend={vi.fn()} candidateName="Ada" anonymize={false} msgEndRef={{ current: null }}
         voice={{ isRecording: false, isTranscribing: false, startRecording: vi.fn(), stopRecording: vi.fn(), speakText: vi.fn(),
           speakingMsgIndex: null, loadingMsgIndex: null }} />,
     );
@@ -177,9 +177,9 @@ describe('choices the keyboard can reach and press', () => {
   it('the scan summary, once the scan is done, says whether it is open', () => {
     render(
       <ScannerBar scanLogs={[{ msg: 'Read the résumé', status: 'success' }]} scanProfiles={{}} scanSummary=""
-        scanContact={null} scanRunning={false} scanDone onRescan={vi.fn()} />,
+        scanContact={null} scanRunning={false} scanDone onLookup={vi.fn()} />,
     );
-    const bar = screen.getByRole('button', { name: /scan complete/i });
+    const bar = screen.getByRole('button', { name: /looked up online/i });
     expect(bar.getAttribute('aria-expanded')).toBe('false');
     fireEvent.keyDown(bar, { key: 'Enter' });
     expect(bar.getAttribute('aria-expanded')).toBe('true');
@@ -189,7 +189,7 @@ describe('choices the keyboard can reach and press', () => {
   it('but not while the scan runs, when there is nothing to open', () => {
     render(
       <ScannerBar scanLogs={[]} scanProfiles={null} scanSummary="" scanContact={null}
-        scanRunning scanDone={false} onRescan={vi.fn()} />,
+        scanRunning scanDone={false} onLookup={vi.fn()} />,
     );
     expect(screen.queryByRole('button')).toBeNull();
   });

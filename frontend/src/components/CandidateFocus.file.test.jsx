@@ -28,15 +28,15 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe('the candidate file', () => {
-  it('opens the requested candidate immediately with all five sections and gated next actions', async () => {
+  it('opens the requested candidate immediately with all five sections and gated next actions', () => {
     open();
     expect(screen.getByRole('heading', { name: 'Ada' })).toBeTruthy();
     const sections = screen.getByRole('navigation', { name: 'Candidate file sections' });
     expect(sections.textContent).toMatch(/Overview.*Résumé.*Research.*Evaluation.*Interviews/);
     expect(screen.getByRole('button', { name: 'Draft email' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Create interview' }).disabled).toBe(true);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-    expect(JSON.parse(fetch.mock.calls[0][1].body).candidate_id).toBe(1);
+    // Nobody is looked up online until asked.
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('keeps the extracted text available when no original file was stored', async () => {
@@ -70,7 +70,7 @@ describe('the candidate file', () => {
     expect(opened).not.toHaveBeenCalled();
   });
 
-  it('uses stable anonymous labels after filtering and hides original identifying text', async () => {
+  it('uses stable anonymous labels after filtering and hides original identifying text', () => {
     mocks.app.anonymize = true;
     open('/hiring/focus');
     expect(screen.getByRole('heading', { name: 'Candidate 2' })).toBeTruthy();
@@ -81,7 +81,7 @@ describe('the candidate file', () => {
     fireEvent.click(screen.getByRole('button', { name: /02 Résumé/ }));
     expect(screen.queryByText(GRACE.text)).toBeNull();
     expect(screen.getByRole('button', { name: 'Original file' }).disabled).toBe(true);
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('does not apply a previous candidate’s late research to the newly opened file', async () => {

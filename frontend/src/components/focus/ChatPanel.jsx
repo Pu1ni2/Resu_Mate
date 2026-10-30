@@ -10,9 +10,11 @@ const AIAvatar = () => (
   </div>
 );
 
+/* The chat about one candidate. It opens on the résumé alone: it used to wait
+ * for the online lookup, which no longer runs until asked for. */
 export default function ChatPanel({
   messages, isTyping, suggestions, chatInput, setChatInput,
-  onSend, scanDone, candidateName, anonymize,
+  onSend, candidateName, anonymize,
   voice: { isRecording, isTranscribing, startRecording, stopRecording, speakText, speakingMsgIndex, loadingMsgIndex },
   msgEndRef,
 }) {
@@ -59,7 +61,7 @@ export default function ChatPanel({
         <button
           className={`btn-icon voice-btn ${isRecording ? 'recording' : ''} ${isTranscribing ? 'transcribing' : ''}`}
           onClick={isRecording ? stopRecording : startRecording}
-          disabled={isTranscribing || isTyping || !scanDone}
+          disabled={isTranscribing || isTyping}
           title={isRecording ? 'Stop recording' : 'Voice input'}
         >
           {isTranscribing ? <Loader size={20} className="spin" /> : isRecording ? <MicOff size={20} /> : <Mic size={20} />}
@@ -74,10 +76,10 @@ export default function ChatPanel({
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); }
             if (e.key === 'Escape') setChatInput('');
           }}
-          placeholder={!scanDone ? 'Scanning...' : isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : `Ask about ${displayName}...`}
-          disabled={isTyping || isRecording || isTranscribing || !scanDone}
+          placeholder={isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : `Ask about ${displayName}...`}
+          disabled={isTyping || isRecording || isTranscribing}
         />
-        <button onClick={() => onSend()} disabled={!chatInput.trim() || isTyping || !scanDone} className="btn btn-primary send-btn" aria-label="Send">
+        <button onClick={() => onSend()} disabled={!chatInput.trim() || isTyping} className="btn btn-primary send-btn" aria-label="Send">
           <Send size={18} />
         </button>
       </div>

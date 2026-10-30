@@ -46,7 +46,7 @@ describe('the chat input', () => {
     const setChatInput = vi.fn();
     render(
       <ChatPanel messages={[]} isTyping={false} suggestions={[]} chatInput="half a question" setChatInput={setChatInput}
-        onSend={vi.fn()} scanDone candidateName="Ada" anonymize={false} msgEndRef={{ current: null }}
+        onSend={vi.fn()} candidateName="Ada" anonymize={false} msgEndRef={{ current: null }}
         voice={{ isRecording: false, isTranscribing: false, startRecording: vi.fn(), stopRecording: vi.fn(), speakText: vi.fn(),
           speakingMsgIndex: null, loadingMsgIndex: null }} />,
     );

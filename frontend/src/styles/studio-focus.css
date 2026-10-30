@@ -157,6 +157,9 @@
 /* What the scan found. */
 .studio-focus .scanner-bar { border: 1px solid #dbdfce; border-top: 0; background: #f0f1e6; }
 .studio-focus .scanner-bar-main { padding: 12px 17px; }
+.studio-focus .scanner-bar-left svg { flex-shrink: 0; }
+/* Look them up online, sized to the bar. */
+.studio-focus .scanner-bar .btn { min-height: 34px; padding: 7px 12px; }
 .studio-focus .scanner-bar-status { overflow: visible; max-width: none; color: var(--color-ink-subtle); font: 11px/1.6 var(--font-sans); white-space: normal; }
 .studio-focus .scanner-bar-expandable { padding: 20px; border-color: #dbdfce; background: #fafbf3; }
 .studio-focus .scanner-bar-chip { border-radius: 3px; background: #e2e7d4; color: #546347; }

@@ -75,7 +75,7 @@ describe('what the pages claim', () => {
 describe('progress that is real', () => {
   it('a running scan says it is running, with no made-up percentage', () => {
     const { container } = render(<ScannerBar scanLogs={[]} scanRunning scanDone={false} />);
-    expect(screen.getByText("Scanning the résumé's links and profiles…")).toBeTruthy();
+    expect(screen.getByText('Looking them up online…')).toBeTruthy();
     expect(container.querySelector('.scanner-bar-progress-fill')).toBeNull();
   });
 
