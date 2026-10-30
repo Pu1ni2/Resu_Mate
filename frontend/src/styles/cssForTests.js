@@ -10,7 +10,10 @@ const frontend = path.resolve(styles, '../..');
 
 export const read = file => fs.readFileSync(path.join(styles, file), 'utf8');
 
-/** Every rule as { media, selector, body }, one @media level deep. */
+/** Every rule as { media, selector, body }, inside @media, @supports,
+ * @container and @layer blocks too, however deep. `media` is the condition the
+ * rule depends on, '' when it always applies: a @layer block is no condition,
+ * so its rules keep the condition around it. */
 export function rules(css, media = '') {
   const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const out = [];
@@ -27,7 +30,8 @@ export function rules(css, media = '') {
       else if (text[j] === '}') depth -= 1;
     }
     const body = text.slice(open + 1, j - 1);
-    if (head.startsWith('@media')) out.push(...rules(body, head));
+    if (/^@(media|supports|container)\b/.test(head)) out.push(...rules(body, media ? `${media} and ${head}` : head));
+    else if (/^@layer\b/.test(head)) out.push(...rules(body, media));
     else if (!head.startsWith('@')) out.push({ media, selector: head, body });
     i = j;
   }
