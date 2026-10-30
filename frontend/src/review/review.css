@@ -1,0 +1,29 @@
+/* The design review page's own bar (review.jsx), above the page under review.
+   Development only. */
+.review-bar {
+  position: relative; z-index: 300;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+  box-sizing: border-box; min-height: 56px; padding: 12px 22px;
+  background: #30382f; color: #fffef9;
+  font: 11px 'DM Sans', sans-serif;
+}
+.review-bar strong { font: 11px 'JetBrains Mono', monospace; letter-spacing: 1px; }
+.review-bar > span { margin-right: auto; color: #cbd4bd; }
+.review-bar select {
+  min-width: 175px; padding: 7px 12px;
+  border: 1px solid #637059; border-radius: 4px;
+  background: #3e4a35; color: #fffef9;
+  font: 12px 'DM Sans', sans-serif;
+}
+.review-bar a { color: #e6ccac; font-size: 11px; text-decoration: none; }
+
+.review-unavailable { padding: 70px 30px; text-align: center; color: #30382f; }
+.review-unavailable h1 { font: 48px 'Instrument Serif', serif; }
+
+@media (max-width: 600px) {
+  .review-bar { gap: 10px; padding: 12px 16px; }
+  .review-bar strong { margin-right: auto; }
+  .review-bar > span { order: 3; width: 100%; }
+  .review-bar > a { display: none; }
+  .review-bar select { min-width: 140px; font-size: 11px; }
+}

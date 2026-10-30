@@ -4,7 +4,9 @@ import { saveSession, clearSession, readStoredUser } from '../services/session';
 import { toast } from '../services/notify';
 import { computeAnalytics } from './analytics';
 
-const AppContext = createContext(null);
+// Exported for the design review page (src/review), which fills it with
+// sample data; the app itself goes through AppProvider and useApp.
+export const AppContext = createContext(null);
 
 export const useApp = () => {
   const context = useContext(AppContext);
