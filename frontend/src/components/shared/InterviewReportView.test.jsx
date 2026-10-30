@@ -76,6 +76,48 @@ describe('what the report shows', () => {
     render(<InterviewReportView report={null} />);
     expect(screen.getByText(/no report data available/i)).toBeTruthy();
   });
+
+  it('is marked as a private interview record', () => {
+    renderReport();
+    expect(screen.getByText('RESUMATE / INTERVIEW RECORD')).toBeTruthy();
+    expect(screen.getByText('Private & confidential')).toBeTruthy();
+  });
+});
+
+describe('an interview that was not scored', () => {
+  // How every interview is reported now: the worker writes the report from the
+  // transcript, and no answer gets a score.
+  const voice = { scores: [], avgScore: null, timer: 1080, report: '## Interview Summary\n\nClear and kind.', mode: 'conversational' };
+
+  it('shows no average and counts no answers', () => {
+    renderReport({ report: voice });
+    expect(screen.queryByText('Avg Score')).toBeNull();
+    expect(screen.queryByText('—')).toBeNull();
+    expect(screen.queryByText(/questions answered/i)).toBeNull();
+    expect(screen.queryByText(/score breakdown/i)).toBeNull();
+  });
+
+  it('gives its length once, in the heading, with no box for it alone', () => {
+    renderReport({ report: voice });
+    expect(screen.getAllByText(/18:00/)).toHaveLength(1);
+    expect(screen.getByText('18:00 duration')).toBeTruthy();
+    expect(screen.queryByText('Duration')).toBeNull();
+  });
+
+  it('still shows what a video interview measured', () => {
+    renderReport({ report: { ...voice, mode: 'avatar', eyeContact: 82, violations: 1 } });
+    expect(screen.getByText('Face in view')).toBeTruthy();
+    expect(screen.getByText('Violations')).toBeTruthy();
+    expect(screen.getByText('Duration')).toBeTruthy();
+    expect(screen.queryByText('Avg Score')).toBeNull();
+  });
+
+  it('shows an average the server kept, without the answers', () => {
+    renderReport({ report: { ...voice, avgScore: 7.5 } });
+    expect(screen.getByText('7.5')).toBeTruthy();
+    expect(screen.getByText('Avg Score')).toBeTruthy();
+    expect(screen.queryByText(/questions answered/i)).toBeNull();
+  });
 });
 
 describe('a terminated interview', () => {
@@ -136,6 +178,14 @@ describe('the transcript', () => {
 
     fireEvent.click(screen.getByText(/conversation transcript/i));
     expect(screen.getByText(/race in our cache layer/i)).toBeTruthy();
+  });
+
+  it('tells a screen reader whether it is open', () => {
+    renderReport();
+    const toggle = screen.getByRole('button', { name: /conversation transcript/i });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('stays away when there is no transcript', () => {
