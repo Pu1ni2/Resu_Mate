@@ -35,6 +35,7 @@ const PAGES = [
   ['/review/results', 'Screening results'],
   ['/hiring?view=interviews', 'Interviews'],
   ['/review/report', 'Interview report'],
+  ['/hiring?view=analytics', 'Insights'],
   ['/', 'Homepage'],
 ];
 

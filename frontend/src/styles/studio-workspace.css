@@ -138,7 +138,9 @@
 .studio-workspace .clean-section-title { margin-bottom: 15px; font: 11px var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--color-ink-muted); }
 .studio-workspace .clean-stat-card { border: 1px solid var(--color-line); border-radius: 4px; background: var(--color-surface); }
 .studio-workspace .clean-stat-value { font: 42px/1.15 var(--font-serif); color: var(--color-forest); }
-.studio-workspace .clean-stat-icon { background: #f3e8de; color: var(--color-accent); }
+/* A small round tile: the old rule is a full-width row, which the tint turned
+   into a band across the card. */
+.studio-workspace .clean-stat-icon { align-items: center; width: 36px; height: 36px; margin: 0 auto 12px; border-radius: 50%; background: #f3e8de; color: var(--color-accent); }
 .studio-workspace .clean-bar-track { background: #e9ebdf; }
 .studio-workspace .clean-bar-fill { background: #6f7f58; }
 .studio-workspace .clean-pill { background: #e9ebdf; color: #536146; }

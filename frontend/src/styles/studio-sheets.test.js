@@ -43,6 +43,7 @@ const SHEETS = {
       'candidate-card', 'selected', 'candidate-select', 'candidate-header', 'candidate-avatar',
       'candidate-name', 'candidate-role', 'candidate-stats', 'candidate-location', 'candidate-skills',
       'skill', 'candidate-badges', 'delete-btn', 'selected-check',
+      'clean-card--padded', 'clean-stat-card', 'clean-bar-label', 'clean-empty', 'empty-state',
     ],
   },
   'studio-conversation.css': { roots: ['sc-conversation'], keyframes: 'studio-conversation-', decorative: true },

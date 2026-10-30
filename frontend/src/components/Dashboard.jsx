@@ -17,10 +17,10 @@ import { API_BASE, authFetch, responseError } from '../services/authFetch';
 const JarvisAgent = lazy(() => import('./pipeline/JarvisAgent'));
 const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
-import { averageScore, isScore } from '../services/scores';
 import { pressable } from './ui/pressable';
 import WorkspaceShell from './studio/WorkspaceShell';
 import InterviewHub from './studio/InterviewHub';
+import InsightBar from './studio/InsightBar';
 
 const AIAvatar = () => (
   <div className="avatar-sm" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))' }}>
@@ -28,23 +28,35 @@ const AIAvatar = () => (
   </div>
 );
 
-function InterviewAnalytics() {
+const INTERVIEW_KINDS = { conversational: 'Voice interview', avatar: 'Avatar interview' };
+
+/* The Insights view's interviews: how many are done, for which roles and how
+ * recently, and the latest ones, each opening its report. Interviews aren't
+ * scored any more, so there are no averages or score bands to show. With names
+ * hidden, each person is the name the dashboard gives them. */
+function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName }) {
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   // The full report existed but a manager could not open one. InterviewReportView
-  // is a complete screen -- per-question scores, transcript, credibility, PDF
-  // export -- and was mounted only in the candidate portal. The manager's only
-  // route to it was asking the voice agent.
+  // is a complete screen -- transcript, credibility, PDF export -- and was
+  // mounted only in the candidate portal. The manager's only route to it was
+  // asking the voice agent.
   const [openReport, setOpenReport] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
       const resp = await authFetch(`${API_BASE}/api/chat/get-all-interview-results`);
+      if (!resp.ok) throw new Error('Interview results could not be loaded.');
       const json = await resp.json();
       setData(json.results || []);
-    } catch { setData([]); }
-    finally { setLoading(false); }
+    } catch {
+      setError('Interview results could not be loaded. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -56,44 +68,43 @@ function InterviewAnalytics() {
     </div>
   );
 
+  // A failed load says so: "no completed interviews" would be a claim.
+  if (error) return (
+    <div className="clean-section" style={{ marginTop: '32px' }}>
+      <h3 className="clean-section-title">Interviews</h3>
+      <div className="sd-error" role="alert">
+        <p>{error}</p>
+        <button className="btn btn-secondary btn-sm" onClick={fetchData}>Try again</button>
+      </div>
+    </div>
+  );
+
   if (!data || data.length === 0) return (
     <div className="clean-section">
-      <h3 className="clean-section-title">Interview Analytics</h3>
+      <h3 className="clean-section-title">Interviews</h3>
       <div className="clean-card" style={{ padding: '40px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text3)', fontSize: '13px' }}>No completed interviews yet</p>
       </div>
     </div>
   );
 
-  const total = data.length;
-  // Each interview's average of its scored answers; unscored ones count for
-  // nothing rather than 0.
-  const scores = data.map(d => {
-    const r = typeof d.report === 'object' ? d.report : {};
-    return averageScore(r.scores || d.scores || []);
-  }).filter(isScore);
-  const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
-  const highPerformers = scores.filter(s => s >= 7).length;
-  const lowPerformers = scores.filter(s => s < 4).length;
+  const nameOf = (d) => {
+    if (!anonymize) return d.candidate_name || d.email;
+    const email = String(d.email || '').toLowerCase();
+    const index = candidates.findIndex(c => [c.email, c.embedded_links?.email].some(e => typeof e === 'string' && e.toLowerCase() === email));
+    return index >= 0 && getDisplayName ? getDisplayName(candidates[index], index) : 'Candidate';
+  };
+  const kindOf = d => INTERVIEW_KINDS[(typeof d.report === 'object' && d.report?.mode) || d.mode] || 'Interview';
+  const dateOf = d => (d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—');
 
+  const total = data.length;
   const roleMap = {};
   data.forEach(d => {
     const role = d.role || 'General';
     roleMap[role] = (roleMap[role] || 0) + 1;
   });
-  const roles = Object.entries(roleMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
-
-  const dist = [0, 0, 0, 0, 0];
-  scores.forEach(s => {
-    if (s < 2) dist[0]++;
-    else if (s < 4) dist[1]++;
-    else if (s < 6) dist[2]++;
-    else if (s < 8) dist[3]++;
-    else dist[4]++;
-  });
-  const maxDist = Math.max(...dist, 1);
-
-  const distColors = ['#EF4444', '#F97316', '#F59E0B', '#22C55E', '#10B981'];
+  const roles = Object.entries(roleMap).sort((a, b) => b[1] - a[1]);
+  const latest = data.map(d => d.timestamp).filter(Boolean).sort().at(-1);
 
   // Opening a report replaces the analytics view rather than stacking a modal
   // over it -- a full report inside a dialog is a scroll trap, and this one has
@@ -122,15 +133,14 @@ function InterviewAnalytics() {
   return (
     <>
       <div className="clean-section" style={{ marginTop: '32px' }}>
-        <h3 className="clean-section-title">Interview Analytics</h3>
-        <div className="clean-stat-grid clean-stat-grid--4">
+        <h3 className="clean-section-title">Interviews</h3>
+        <div className="clean-stat-grid">
           {[
-            { label: 'Total Interviews', value: total, sub: 'completed', icon: <Video size={18} /> },
-            { label: 'Avg Score', value: avgScore, sub: 'out of 10', icon: <TrendingUp size={18} /> },
-            { label: 'High Performers', value: highPerformers, sub: 'scored 7+', icon: <Award size={18} /> },
-            { label: 'Needs Improvement', value: lowPerformers, sub: 'scored below 4', icon: <AlertCircle size={18} /> },
-          ].map((stat, i) => (
-            <div key={i} className="clean-stat-card">
+            { label: 'Completed', value: total, sub: total === 1 ? 'interview' : 'interviews', icon: <Video size={18} /> },
+            { label: 'Roles', value: roles.length, sub: roles.length === 1 ? 'role interviewed for' : 'roles interviewed for', icon: <Briefcase size={18} /> },
+            { label: 'Most recent', value: latest ? new Date(latest).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—', sub: 'last completed', icon: <TrendingUp size={18} /> },
+          ].map(stat => (
+            <div key={stat.label} className="clean-stat-card">
               <div className="clean-stat-icon">{stat.icon}</div>
               <div className="clean-stat-value">{stat.value}</div>
               <div className="clean-stat-label">{stat.label}</div>
@@ -140,67 +150,31 @@ function InterviewAnalytics() {
         </div>
       </div>
 
-      <div className="clean-section">
-        <h3 className="clean-section-title">Score Distribution</h3>
-        <div className="clean-card clean-card--padded">
-          <div className="clean-bar-chart">
-            {['0–2', '2–4', '4–6', '6–8', '8–10'].map((range, i) => (
-              <div key={i} className="clean-bar-row">
-                <span className="clean-bar-label">{range}</span>
-                <div className="clean-bar-track">
-                  <div className="clean-bar-fill" style={{
-                    width: `${(dist[i] / maxDist) * 100}%`,
-                    background: distColors[i]
-                  }} />
-                </div>
-                <span className="clean-bar-count">{dist[i]}</span>
+      <div className="clean-two-col">
+        <div className="clean-section">
+          <h3 className="clean-section-title">By Role</h3>
+          <div className="clean-card">
+            {roles.slice(0, 6).map(([role, count]) => (
+              <div key={role} className="clean-list-row">
+                <span className="clean-list-label">{role}</span>
+                <span className="clean-pill">{count}</span>
               </div>
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="clean-two-col">
-        {roles.length > 0 && (
-          <div className="clean-section">
-            <h3 className="clean-section-title">By Role</h3>
-            <div className="clean-card">
-              {roles.map(([role, count], i) => (
-                <div key={i} className="clean-list-row">
-                  <span className="clean-list-label">{role}</span>
-                  <span className="clean-pill">{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="clean-section">
           <h3 className="clean-section-title">Recent Interviews</h3>
           <div className="clean-card">
-            {data.slice(0, 6).map((d, i) => {
-              const r = typeof d.report === 'object' ? d.report : {};
-              const average = averageScore(r.scores || d.scores || []);
-              const avg = isScore(average) ? average.toFixed(1) : '—';
-              const scoreColor = avg >= 7 ? 'var(--success)' : avg >= 4 ? 'var(--warning)' : 'var(--error)';
-              return (
-                <div
-                  key={i}
-                  className="clean-list-row"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setOpenReport(d)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenReport(d); } }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div>
-                    <div className="clean-list-primary">{d.candidate_name || d.email}</div>
-                    <div className="clean-list-secondary">{d.role || 'General'} · {d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '—'}</div>
-                  </div>
-                  <span className="clean-score" style={{ color: scoreColor }}>{avg}</span>
+            {data.slice(0, 6).map((d, i) => (
+              <button key={i} type="button" className="clean-list-row sd-list-button" onClick={() => setOpenReport(d)}>
+                <div>
+                  <div className="clean-list-primary">{nameOf(d)}</div>
+                  <div className="clean-list-secondary">{d.role || 'General'} · {dateOf(d)}</div>
                 </div>
-              );
-            })}
+                <span className="clean-list-secondary">{kindOf(d)}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -933,15 +907,15 @@ export default function Dashboard() {
 
           {/* ANALYTICS TAB */}
           {tab === 'analytics' && (
-            <div className="analytics-tab">
+            <div className="analytics-tab sd-insights">
 
               {selectedCandidates.length === 0 ? (
                 <div className="clean-empty">
                   <BarChart2 size={32} strokeWidth={1.5} />
                   <h3>No candidates selected</h3>
-                  <p>Select candidates on the Upload tab to see analytics.</p>
+                  <p>Select candidates in Candidates to see analytics.</p>
                   <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setTab('upload')}>
-                    Go to Upload
+                    Go to Candidates
                   </button>
                 </div>
               ) : (
@@ -969,21 +943,27 @@ export default function Dashboard() {
                       {selectedCandidates.filter(c => c.is_resume !== false).map((c, i) => {
                         const maxExp = Math.max(...selectedCandidates.map(x => x.total_experience_years || 0), 1);
                         const pct = ((c.total_experience_years || 0) / maxExp) * 100;
+                        // Named by their place in the whole list, as on Candidates,
+                        // so a hidden name is the same stand-in everywhere.
+                        const name = getDisplayName(c, candidates.findIndex(x => x.id === c.id));
                         return (
                           <div key={c.id} className="clean-exp-row">
                             <div className="clean-exp-info">
                               <div className="avatar-sm" style={{ background: getAvatarGradient(c.name) }}>
-                                {getDisplayName(c, i)[0]}
+                                {name[0]}
                               </div>
                               <div>
-                                <div className="clean-exp-name">{getDisplayName(c, i)}</div>
+                                <div className="clean-exp-name">{name}</div>
                                 <div className="clean-exp-role">{c.predicted_role}</div>
                               </div>
                             </div>
                             <div className="clean-exp-bar-area">
-                              <div className="clean-bar-track">
-                                <div className="clean-bar-fill" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
-                              </div>
+                              <InsightBar
+                                percent={pct}
+                                color="var(--accent)"
+                                index={i}
+                                detail={`${name} · ${c.total_experience_years || 0} years of experience`}
+                              />
                             </div>
                             <div className="clean-exp-years">{c.total_experience_years || 0}y</div>
                           </div>
@@ -1011,14 +991,16 @@ export default function Dashboard() {
                           </div>
                         ) : (
                           <div className="clean-bar-chart">
-                            {analytics.topSkills.map(s => (
+                            {analytics.topSkills.map((s, i) => (
                               <div key={s.name} className="clean-bar-row">
                                 <span className="clean-bar-label">{s.name}</span>
-                                <div className="clean-bar-track">
-                                  {/* Scaled to the most common skill, not to the
-                                      candidate count. */}
-                                  <div className="clean-bar-fill" style={{ width: `${s.barPct}%` }} />
-                                </div>
+                                {/* Scaled to the most common skill, not to the
+                                    candidate count. */}
+                                <InsightBar
+                                  percent={s.barPct}
+                                  index={i}
+                                  detail={`${s.name} · ${s.count} of ${analytics.total} selected candidates (${s.share}%)`}
+                                />
                                 <span className="clean-bar-count" title={`${s.share}% of selected candidates`}>
                                   {s.count}
                                 </span>
@@ -1058,7 +1040,7 @@ export default function Dashboard() {
                 </>
               )}
 
-              <InterviewAnalytics />
+              <InterviewAnalytics candidates={candidates} anonymize={anonymize} getDisplayName={getDisplayName} />
             </div>
           )}
 
