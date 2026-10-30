@@ -61,6 +61,14 @@ describe('adapters', () => {
     expect(row.matched).toEqual(['Django']);
   });
 
+  it("leaves a part the run didn't ask for without a score, not 0 or 100", () => {
+    const row = fromAtsResult({ ...atsPayload, skills_match: null, experience_match: null, education_match: null });
+    expect(row.bars.map(b => b.value)).toEqual([null, null, 90, null]);
+    // The bar under the name falls back to the role's match.
+    expect(row.matchLabel).toBe('role');
+    expect(row.matchValue).toBe(90);
+  });
+
   it('survives a malformed payload rather than rendering NaN', () => {
     const row = fromAtsResult({});
     expect(row.score).toBe(0);
@@ -111,6 +119,13 @@ describe('RankedCandidates', () => {
     render(<RankedCandidates rows={rows} selectable selectedIds={[]} onToggleSelect={onToggle} />);
     fireEvent.click(screen.getByRole('checkbox', { name: /Select Maya/ }));
     expect(onToggle).toHaveBeenCalledWith(7);
+  });
+
+  it('says "Not asked for" for a part the run left out', () => {
+    const row = fromAtsResult({ ...atsPayload, experience_match: null, education_match: null });
+    render(<RankedCandidates rows={[row]} />);
+    fireEvent.click(screen.getByRole('button', { name: /Show details/ }));
+    expect(screen.getAllByText('Not asked for')).toHaveLength(2);
   });
 
   it('scales match bars to their value, never full width', () => {

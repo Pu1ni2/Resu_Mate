@@ -192,3 +192,28 @@ describe('when the run fails', () => {
     expect(toasts.mock.calls[0][0].detail.message).toMatch(/offline/i);
   });
 });
+
+describe('what the form says before a run', () => {
+  it('that a role alone compares roles, until something else is asked for', () => {
+    setup();
+    expect(screen.getByText(/compared by role alone/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/must-have skills/i), { target: { value: 'Python' } });
+    expect(screen.queryByText(/compared by role alone/)).toBeNull();
+  });
+});
+
+describe('a run the server refuses', () => {
+  it("shows the server's own sentence, with nothing in front", async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false, status: 502, json: async () => ({ detail: "The job description couldn't be read just now." }),
+    });
+    const heard = vi.fn();
+    window.addEventListener('resumate:toast', heard);
+    setup();
+    fireEvent.change(screen.getByLabelText(/role you/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 12 resumes/i }));
+    await waitFor(() => expect(heard).toHaveBeenCalled());
+    expect(heard.mock.calls[0][0].detail.message).toBe("The job description couldn't be read just now.");
+    window.removeEventListener('resumate:toast', heard);
+  });
+});
