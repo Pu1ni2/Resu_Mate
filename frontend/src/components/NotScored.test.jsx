@@ -62,4 +62,16 @@ describe('the résumé analysis', () => {
     fireEvent.click(screen.getByRole('button', { name: /try again/i }));
     expect(spy).toHaveBeenCalledTimes(2);
   });
+
+  it('shows its findings, and no confidence score on the person', async () => {
+    answers({ intelligence: {
+      gaps: [{ type: 'employment_gap', detail: 'A year between two roles', severity: 'low' }],
+      verification_targets: [], red_flags: [], strong_points: [], resume_confidence_score: 61,
+    } });
+    render(<ResumeIntelPanel focusCandidate={{ id: 3, name: 'Ada' }} />);
+    fireEvent.click(screen.getByRole('button', { name: /analyze resume/i }));
+    expect(await screen.findByText('A year between two roles')).toBeTruthy();
+    expect(screen.queryByText('61')).toBeNull();
+    expect(screen.queryByText(/confidence score/i)).toBeNull();
+  });
 });
