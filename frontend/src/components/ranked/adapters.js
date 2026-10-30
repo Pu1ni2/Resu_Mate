@@ -57,8 +57,12 @@ function metaLine(parts) {
 }
 
 /** POST /api/pipeline/run -> row */
+// A part the run didn't ask for comes as null: it has no score, not 0 or 100.
+const part = value => (value === null || value === undefined ? null : Number(value) || 0);
+
 export function fromAtsResult(r) {
   const score = Number(r.ats_score) || 0;
+  const skills = part(r.skills_match);
   return {
     id: r.candidate_id,
     name: r.name || 'Unknown',
@@ -70,15 +74,17 @@ export function fromAtsResult(r) {
       r.total_experience_years ? `${r.total_experience_years}y exp` : '',
       r.location,
     ]),
-    matchLabel: 'skills',
-    matchValue: Number(r.skills_match) || 0,
+    // The bar under the name is the skills match, or the role's when skills
+    // weren't asked for.
+    matchLabel: skills === null ? 'role' : 'skills',
+    matchValue: skills === null ? part(r.role_match) || 0 : skills,
     matched: r.matched_skills || [],
     missing: r.missing_skills || [],
     bars: [
-      { label: 'Skills match', value: Number(r.skills_match) || 0 },
-      { label: 'Experience', value: Number(r.experience_match) || 0 },
-      { label: 'Role relevance', value: Number(r.role_match) || 0 },
-      { label: 'Education', value: Number(r.education_match) || 0 },
+      { label: 'Skills match', value: skills },
+      { label: 'Experience', value: part(r.experience_match) },
+      { label: 'Role relevance', value: part(r.role_match) },
+      { label: 'Education', value: part(r.education_match) },
     ],
     note: r.summary || '',
     rejected: Boolean(r.auto_reject),

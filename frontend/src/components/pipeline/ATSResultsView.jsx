@@ -126,6 +126,21 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           <BucketTile label="No match"   count={stats?.no_match}   lead={stats?.no_match === leadBucket} />
         </div>
 
+        {/* What the scores are made of, when that is less than it looks: a run
+            given only a role compares roles. And the files it left out. */}
+        {pipelineResult.assessed?.length === 1 && pipelineResult.assessed[0] === 'role' && (
+          <p className="mb-3 rounded-[12px] border border-line bg-surface px-4 py-2.5 text-[12px] text-ink-muted">
+            Ranked by role only. No must-have skills, experience or education were given, so these
+            verdicts compare roles and profiles, not skills.
+          </p>
+        )}
+        {pipelineResult.excluded > 0 && (
+          <p className="mb-3 text-[12px] text-ink-subtle">
+            {pipelineResult.excluded === 1 ? '1 file was' : `${pipelineResult.excluded} files were`} left
+            out: not a résumé, or its analysis failed.
+          </p>
+        )}
+
         {/* What it screened against */}
         {jd_requirements?.required_skills?.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[12px] border border-line bg-surface px-4 py-2.5">

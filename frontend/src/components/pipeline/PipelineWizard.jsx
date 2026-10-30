@@ -53,8 +53,8 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
         }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Pipeline failed');
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Screening failed. Please try again.');
       }
       const data = await res.json();
       // A run is the longest operation in the product and people switch away
@@ -71,7 +71,9 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
       setFormRunning(false);
       onComplete(data);
     } catch (err) {
-      toast('Pipeline error: ' + err.message, 'error');
+      // The server's message is written for the manager ("Name the role to
+      // screen for."); a "Pipeline error:" prefix only made it read as a fault.
+      toast(err.message, 'error');
       setFormRunning(false);
     }
   };
@@ -105,6 +107,13 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
           <input id="wizard-min-exp" style={{ ...styles.input, width: 120 }} type="number" min="0" placeholder="0"
             value={formData.minExp} onChange={e => setFormData(f => ({ ...f, minExp: e.target.value }))} />
         </div>
+        {/* Screening scores only what it's asked for: with the role alone it
+            compares roles, which is worth saying before the run, not after. */}
+        {!formData.jdText.trim() && !formData.skills.trim() && !(parseFloat(formData.minExp) > 0) && (
+          <p style={{ fontSize: 12, color: 'var(--color-ink-subtle)', margin: '0 0 12px' }}>
+            With only a role, candidates are compared by role alone. Add must-have skills or a job description for a fuller comparison.
+          </p>
+        )}
 
         <button onClick={handleFormRun} disabled={formRunning || !formData.role.trim()} style={{ ...styles.primaryBtn, marginTop: 8, opacity: formData.role.trim() ? 1 : 0.5 }}>
           {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Screen {candidateCount} resumes</>}

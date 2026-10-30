@@ -178,11 +178,13 @@ export const session = {
 };
 
 /* A screening run, as /pipeline/run sends it, with no job description: the
- * requirements are the role's words and the skills asked for. Each score is
- * worked out the way the backend's ATS weighs it (skills 45%, experience 30%,
- * role 15%, education 10%), and its verdict follows from it. */
+ * requirements are the role's words, the skills and the years asked for. Each
+ * score is worked out the way the backend's ATS weighs it (skills 45%,
+ * experience 30%, role 15%, education 10%), over the parts asked for only:
+ * education wasn't, so it has no score and no share. Its verdict follows. */
 const REQUIRED = ['Figma', 'User research'];
 const MIN_YEARS = 3;
+const ASSESSED = ['skills', 'experience', 'role'];
 
 const verdictFor = score => (
   score >= 75 ? 'Strong Fit' : score >= 55 ? 'Good Fit' : score >= 35 ? 'Consider' : 'No Match'
@@ -206,17 +208,17 @@ export const pipeline = (ids, role = 'Product Designer') => {
       const skills = Math.round((100 * matched.length) / REQUIRED.length);
       const experience = Math.min(100, Math.round((100 * c.total_experience_years) / MIN_YEARS));
       const roleMatch = keywords.some(word => c.predicted_role.toLowerCase().includes(word)) ? 100 : 40;
-      const education = c.education?.length ? 80 : 50;
-      const score = Math.round(skills * 0.45 + experience * 0.3 + roleMatch * 0.15 + education * 0.1);
+      const score = Math.round((skills * 0.45 + experience * 0.3 + roleMatch * 0.15) / 0.9);
       return {
         candidate_id: c.id,
         name: c.name,
         email: c.email,
         ats_score: score,
+        assessed: ASSESSED,
         skills_match: skills,
         experience_match: experience,
         role_match: roleMatch,
-        education_match: education,
+        education_match: null,
         matched_skills: matched,
         missing_skills: REQUIRED.filter(skill => !has(skill)),
         verdict: verdictFor(score),
@@ -235,6 +237,8 @@ export const pipeline = (ids, role = 'Product Designer') => {
   return {
     role,
     total_screened: ranked.length,
+    assessed: ASSESSED,
+    excluded: 0,
     elapsed_ms: 1240,
     jd_requirements: jd,
     results: ranked,

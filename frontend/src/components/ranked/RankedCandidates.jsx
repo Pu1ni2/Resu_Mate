@@ -183,7 +183,9 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
               {row.bars.map(b => (
                 <div key={b.label}>
                   <div className="mb-1 text-[11px] text-ink-subtle">{b.label}</div>
-                  <MatchBar value={b.value} label="" />
+                  {b.value === null
+                    ? <div className="text-[12px] text-ink-subtle">Not asked for</div>
+                    : <MatchBar value={b.value} label="" />}
                 </div>
               ))}
             </div>

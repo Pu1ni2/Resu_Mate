@@ -55,7 +55,8 @@ describe('its sample data', () => {
   it('has a screening run with what the backend sends, ranked and judged as it is', () => {
     const run = pipeline([101, 102, 103]);
     expect(Object.keys(run).sort()).toEqual([
-      'elapsed_ms', 'jd_requirements', 'results', 'role', 'shortlist', 'stats', 'total_screened',
+      'assessed', 'elapsed_ms', 'excluded', 'jd_requirements', 'results', 'role', 'shortlist', 'stats',
+      'total_screened',
     ]);
     expect(run.total_screened).toBe(3);
     const scores = run.results.map(r => r.ats_score);
