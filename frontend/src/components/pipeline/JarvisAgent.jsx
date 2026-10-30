@@ -2142,13 +2142,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             className="sa-orb-control"
             role="button"
             tabIndex={0}
-            aria-label={voice.speakingMsgIndex !== null ? 'Interrupt Jarvis and reply' : voice.isRecording ? 'Pause listening' : 'Resume listening'}
+            aria-label={voice.speakingMsgIndex !== null ? 'Interrupt Jarvis and reply' : voice.isRecording ? 'Pause listening' : 'Start listening'}
             onKeyDown={e => {
               // A div with an onClick is invisible to the keyboard. This is the
               // control that starts and stops listening — the main one.
               if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOrbClick(); }
             }}
-            title={voice.speakingMsgIndex !== null ? 'Interrupt and reply' : voice.isRecording ? 'Pause listening' : 'Resume listening'}
+            title={voice.speakingMsgIndex !== null ? 'Interrupt and reply' : voice.isRecording ? 'Pause listening' : 'Start listening'}
             style={{ position: 'relative', width: ORB_SIZE, height: ORB_SIZE, cursor: 'pointer', marginBottom: 18 }}
           >
             {orbMode === 'listening' && [0, 1, 2].map(i => (
@@ -2770,7 +2770,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               title={
                 voice.speakingMsgIndex !== null ? 'Interrupt Jarvis and reply' :
                 voice.isRecording               ? 'Pause listening' :
-                                                  'Resume listening'
+                                                  'Start listening'
               }
               style={{
                 width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
