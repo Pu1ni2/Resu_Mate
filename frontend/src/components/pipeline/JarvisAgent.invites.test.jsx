@@ -5,7 +5,9 @@ import JarvisAgent from './JarvisAgent';
 
 /* Jarvis's Send button on an invitation draft, and "send it" said after one,
  * ran the batch again: every interview was made a second time, and what went
- * out was a fixed template rather than the draft on screen. */
+ * out was a fixed template rather than the draft on screen. Now an interview is
+ * made only once the manager says yes on screen, and "send it" sends nothing
+ * itself: the draft goes from its Send button. */
 
 // Jarvis talks through the voice hook; here it says nothing and hears nothing.
 vi.mock('../../hooks/useVoice', () => ({
@@ -56,9 +58,13 @@ function say(text) {
   fireEvent.keyDown(input, { key: 'Enter' });
 }
 
+// Jarvis asks before it creates an interview; the manager says yes.
+const yes = async () => fireEvent.click(await screen.findByRole('button', { name: 'Create the interview' }));
+
 async function draftForDana() {
   render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
   say('invite Dana');
+  await yes();
   await screen.findByText(/EMAIL DRAFT · TO: Dana/);
 }
 
@@ -98,13 +104,13 @@ describe("sending Jarvis's invitation draft", () => {
     expect(callsTo('/api/pipeline/send-invites')).toHaveLength(1);
   });
 
-  it('"send it" sends the draft rather than making the interviews again', async () => {
+  it('"send it" makes no interview again and sends nothing itself: the draft goes from its Send button', async () => {
     replies = [INVITE_DANA, { reply: 'Sending now.', action: 'batch_action', action_params: { candidate_ids: [7], role: 'Dev', send_emails: true } }];
     await draftForDana();
     say('send it');
-    await screen.findByText(/1 of 1 invitation emailed/);
+    await screen.findByText(/The draft is above\. Read it over, then press Send Email/);
     expect(callsTo('/api/pipeline/batch-action')).toHaveLength(1);
-    expect(callsTo('/api/pipeline/send-invites')).toHaveLength(1);
+    expect(callsTo('/api/pipeline/send-invites')).toHaveLength(0);
   });
 
   it('gives the sign-in link when email is not set up', async () => {
@@ -130,6 +136,7 @@ describe('what Jarvis says after a batch', () => {
     batchAnswer = { total: 1, interviews_created: 0, emails_sent: 0, portal_link: LINK, outcomes: [ELI_SKIPPED] };
     render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
     say('invite Eli');
+    await yes();
     expect(await screen.findByText(/I couldn't create any interviews/)).toBeTruthy();
     expect(screen.queryByText(/EMAIL DRAFT/)).toBeNull();
   });
@@ -143,6 +150,7 @@ describe('a single interview from Jarvis', () => {
     }];
     render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
     say('interview Dana');
+    await yes();
     await screen.findByText('INTERVIEW CREATED');
     await waitFor(() => expect(screen.getByText(LINK)).toBeTruthy());
     expect(screen.getByText(/not emailed\. send them this sign-in link/i)).toBeTruthy();

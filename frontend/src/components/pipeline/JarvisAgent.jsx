@@ -7,6 +7,7 @@ import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
+import { useAvatarInterviews } from '../../services/features';
 
 const SESSION_KEY = 'jarvis_session_v3';
 const AUTO_LISTEN_DELAY_MS = 900;
@@ -410,6 +411,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const msgIndexRef    = useRef(0);
   const messagesEndRef = useRef(null);
   const messagesRef    = useRef(messages);
+  // What an interview will be run as, for the card that asks: voice when
+  // the server can't run avatar interviews, as it falls back to then.
+  const avatarAvailable = useAvatarInterviews();
   const contextRef     = useRef(context);
   const processingRef  = useRef(false);
   const interruptedRef = useRef(false);
@@ -782,6 +786,57 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
     };
 
+    // Nothing that reaches a candidate happens on the model's word alone. An
+    // interview gives them the candidate portal, so the manager says yes to it
+    // on screen; and an email goes out only from its draft's Send button, with
+    // the draft in front of them, never from "send it".
+    if ((action === 'batch_action' || action === 'create_interview') && !params.confirmed) {
+      const ids = action === 'batch_action' ? (params.candidate_ids || ctx.shortlistedIds || []) : [params.candidate_id];
+      const key = ids.map(String).sort().join(',');
+      if (action === 'batch_action' && params.send_emails) {
+        const draft = [...messagesRef.current].reverse()
+          .find(m => m.invites?.length && !m.invitesSent && m.draftCandidateIds === key);
+        if (draft) {
+          setStatus('DONE');
+          directSay("The draft is above. Read it over, then press Send Email when it's ready to go.");
+          return;
+        }
+      }
+      const waiting = messagesRef.current.find(m => m.confirmData?.state === 'waiting'
+        && m.confirmData.action === action && m.confirmData.key === key);
+      if (waiting) {
+        setStatus('DONE');
+        directSay(`It's waiting for you above: press ${waiting.confirmData.label} to go ahead.`);
+        return;
+      }
+      const meta = action === 'create_interview' ? getCandidateMeta(params.candidate_id) : null;
+      const email = action === 'create_interview' ? (params.candidate_email || getKnownEmail(params.candidate_id)) : null;
+      if (action === 'create_interview' && !email) {
+        directSay(`I need the candidate's email before I can create the interview. Ask me to scan their profile first.`);
+        setStatus('DONE');
+        return;
+      }
+      const names = ids.map(id => getCandidateMeta(id)?.name
+        || (String(id) === String(params.candidate_id) ? params.candidate_name : '') || 'a candidate');
+      const label = ids.length === 1 ? 'Create the interview' : `Create the ${ids.length} interviews`;
+      appendMsg({
+        role: 'action',
+        content: ids.length === 1 ? `Create an interview for ${names[0]}?` : `Create interviews for ${names.join(', ')}?`,
+        confirmData: {
+          action, key, names, email, label, state: 'waiting',
+          role: params.role || ctx.role || meta?.predicted_role || (action === 'batch_action' ? 'Engineer' : 'General'),
+          level: params.level || meta?.experience_level || 'Mid-Level',
+          numQuestions: params.num_questions || 8,
+          mode: params.mode || 'avatar',
+          // Drafts, not emails: those go from the draft's own Send button.
+          params: { ...params, ...(action === 'batch_action' ? { send_emails: false } : {}), confirmed: true },
+        },
+      });
+      setStatus('WAITING FOR YOU');
+      directSay(`Shall I ${ids.length === 1 ? 'create the interview' : `create the ${ids.length} interviews`}? Press ${label} to go ahead.`);
+      return;
+    }
+
     if (action === 'run_ats') {
       // ATS DOES recurse so Jarvis can summarize results conversationally
       setStatus('RUNNING ATS…');
@@ -822,18 +877,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       await sendInvites(params.invites || [], params.messageId);
 
     } else if (action === 'batch_action') {
-      // "Send it" after a draft sends that draft for the interviews already
-      // made. Running the batch again made every interview a second time, and
-      // sent a fixed template rather than the draft.
-      if (params.send_emails) {
-        const wanted = [...(params.candidate_ids || ctx.shortlistedIds || [])].map(String).sort().join(',');
-        const draft = [...messagesRef.current].reverse()
-          .find(m => m.invites?.length && !m.invitesSent && m.draftCandidateIds === wanted);
-        if (draft) {
-          await sendInvites(draft.invites, draft.id);
-          return;
-        }
-      }
       setStatus('CREATING INTERVIEWS…');
       try {
         const batchBody = {
@@ -1486,6 +1529,15 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   }
 
   // ── Expanded card modal ────────────────────────────────────────────────────
+  // The manager's answer to a card asking to create interviews.
+  const answerConfirm = (msg, yes) => {
+    setMessages(prev => prev.map(m => (m.id === msg.id
+      ? { ...m, confirmData: { ...m.confirmData, state: yes ? 'confirmed' : 'declined' } }
+      : m)));
+    if (yes) executeAction(msg.confirmData.action, msg.confirmData.params);
+    else appendMsg({ role: 'assistant', content: 'Okay. Nothing was created.' });
+  };
+
   const expandBtn = (msg) => (
     <button
       onClick={() => setExpandedCard(msg)}
@@ -2268,6 +2320,40 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 }
 
                 // ── Email draft card
+                // ── Asking before creating interviews
+                if (msg.confirmData) {
+                  const c = msg.confirmData;
+                  const format = c.mode === 'conversational' || !avatarAvailable ? 'voice' : 'avatar';
+                  return (
+                    <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
+                      <div role="group" aria-label={msg.content} style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(183,70,48,0.24)', borderRadius: 5, padding: '12px 16px' }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)', marginBottom: 8 }}>WAITING FOR YOUR OK</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 6 }}>
+                          {c.names.length === 1 ? `An interview for ${c.names[0]}` : `Interviews for ${c.names.join(', ')}`}{c.email ? ` (${c.email})` : ''}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#596150', lineHeight: 1.6, marginBottom: 10 }}>
+                          {c.role} · {c.level} · {c.numQuestions} questions · a {format} interview. {c.names.length === 1 ? 'They' : 'Each of them'} can
+                          then sign in to the candidate portal to take it. Nothing is emailed until you send the draft.
+                        </div>
+                        {c.state === 'waiting' ? (
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => answerConfirm(msg, true)}
+                              style={{ padding: '7px 18px', borderRadius: 100, background: '#30382f', border: '1px solid #30382f', color: '#fffef9', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            >{c.label}</button>
+                            <button
+                              onClick={() => answerConfirm(msg, false)}
+                              style={{ padding: '7px 18px', borderRadius: 100, background: 'transparent', border: '1px solid rgba(76,87,61,0.3)', color: '#596150', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            >Not now</button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: '#68705e' }}>{c.state === 'confirmed' ? 'You said yes.' : 'Not created.'}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 if (msg.emailDraftData) {
                   const e = msg.emailDraftData;
                   return (
