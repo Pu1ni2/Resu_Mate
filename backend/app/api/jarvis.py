@@ -55,6 +55,7 @@ WORKFLOW RULES:
 7. Prefer cached GitHub, scan, evaluation, resume intelligence, interview report, and credibility artifacts when available.
 8. Only ask a short follow-up when a required field is truly missing, like candidate email for create_interview with no known email.
 9. Ask at most one follow-up question per turn.
+10. batch_action and create_interview wait for the manager to confirm them on screen, and no email is sent from here: the manager sends each draft with its Send button. Say what you have prepared for them to confirm or send; never say an interview is created or an email is sent.
 
 TRIGGER GUIDE:
 - ATS / ranking / shortlist / screen / best fit -> run_ats
