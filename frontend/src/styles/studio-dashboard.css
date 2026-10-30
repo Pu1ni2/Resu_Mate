@@ -157,6 +157,14 @@
 /* A recent interview is a button that opens its report. */
 .studio-dashboard .sd-list-button { width: 100%; border-top: 0; border-inline: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 
+/* ── the candidate chat: sage for the assistant, forest for you ── */
+.studio-dashboard .chat-card { height: 100%; }
+.studio-dashboard .chat-ai-name { color: var(--color-ink); }
+.studio-dashboard .chat-bubble.assistant { border: 1px solid #d8dfc9; border-radius: 4px 14px 14px; background: #eff1e5; color: var(--color-ink); box-shadow: none; }
+.studio-dashboard .chat-bubble.user { border: 0; border-radius: 14px 4px 14px 14px; background: #3e4d35; color: var(--color-ink-inverse); box-shadow: none; }
+.studio-dashboard .chat-bubble.user p { color: inherit; }
+.studio-dashboard .chat-suggestion { border: 1px solid var(--color-line); border-radius: var(--radius-control); background: #f4f2e8; color: #5c694d; }
+
 /* ── a view's empty state ── */
 .studio-dashboard :is(.clean-empty, .empty-state) { padding: 55px 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .studio-dashboard :is(.clean-empty, .empty-state) h3 { color: var(--color-ink); font: 32px var(--font-serif); }

@@ -1048,14 +1048,14 @@ export default function Dashboard() {
           {tab === 'chat' && (
             <div className="chat-tab">
               {selectedCandidates.length === 0 ? (
-                <div className="empty-state glass-card" style={{ padding: '60px' }}>
+                <div className="empty-state glass-card">
                   <div className="empty-icon" style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>
                     <Bot size={40} />
                   </div>
                   <h3>Select candidates to chat</h3>
-                  <p>Select candidates on the Upload tab to chat about them.</p>
+                  <p>Select candidates in Candidates to chat about them.</p>
                   <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => setTab('upload')}>
-                    Go to Upload
+                    Go to Candidates
                   </button>
                 </div>
               ) : (
@@ -1096,8 +1096,8 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Messages */}
-                    <div className="chat-messages">
+                    {/* Messages: a log, so a screen reader reads each reply as it arrives. */}
+                    <div className="chat-messages" role="log" aria-label="Conversation">
                       {messages.map((m, i) => (
                         <div key={i} className={`chat-message ${m.role}`}>
                           {m.role === 'assistant' && <AIAvatar />}
@@ -1184,7 +1184,7 @@ export default function Dashboard() {
                           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                           if (e.key === 'Escape') setInput('');
                         }}
-                        placeholder={isRecording ? '🎤 Listening...' : isTranscribing ? '⏳ Transcribing...' : "Type or use 🎤 for voice..."}
+                        placeholder={isRecording ? 'Listening…' : isTranscribing ? 'Transcribing…' : 'Ask about your selected candidates…'}
                         disabled={isTyping || isRecording || isTranscribing}
                       />
                       
