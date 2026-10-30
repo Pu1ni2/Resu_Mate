@@ -958,10 +958,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             content: 'Email draft ready',
             emailDraftData: { subject: invites[0].subject, body: invites[0].body, to: invited[0].name || '?', count: invites.length },
             invites,
+            draftNames: invited.map(o => o.name || 'Candidate'),
             draftCandidateIds: [...batchBody.candidate_ids].map(String).sort().join(','),
           });
           setStatus('EMAIL DRAFTED');
-          directSay(`Interview set up for ${toNames}. Here's the email draft — review it and hit Send when you're ready.${skippedNote}`);
+          directSay(`Interview set up for ${toNames}. Here's the email draft — read it over, change anything you like, and press Send when you're ready.${skippedNote}`);
         }
       } catch (err) {
         appendMsg({ role: 'action', content: `Batch failed: ${err.message}` });
@@ -1529,6 +1530,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   }
 
   // ── Expanded card modal ────────────────────────────────────────────────────
+  // A change to one candidate's draft, before it is sent.
+  const editDraft = (msgId, index, patch) => {
+    setMessages(prev => prev.map(m => (m.id === msgId
+      ? { ...m, invites: m.invites.map((invite, i) => (i === index ? { ...invite, ...patch } : invite)) }
+      : m)));
+  };
+
   // The manager's answer to a card asking to create interviews.
   const answerConfirm = (msg, yes) => {
     setMessages(prev => prev.map(m => (m.id === msg.id
@@ -1720,20 +1728,48 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 </>
               )}
 
-              {/* ── Email draft expanded ── */}
-              {em && (
-                <>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 6 }}>EMAIL DRAFT</div>
-                  <div style={{ fontSize: 13, color: '#68705e', marginBottom: 4 }}>To: {em.to}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#2b3029', marginBottom: 16 }}>{em.subject}</div>
-                  <div style={{ fontSize: 13, color: '#596150', lineHeight: 1.8, background: 'rgba(76,87,61,0.04)', borderRadius: 10, padding: '16px 18px', whiteSpace: 'pre-wrap', marginBottom: 20 }}>{em.body}</div>
-                  <button
-                    onClick={() => { setExpandedCard(null); executeAction('send_invites', { invites: expandedCard.invites, messageId: expandedCard.id }); }}
-                    disabled={!expandedCard.invites?.length || !!expandedCard.invitesSent}
-                    style={{ padding: '10px 24px', borderRadius: 100, background: 'rgba(183,70,48,0.25)', border: '1px solid rgba(183,70,48,0.45)', color: '#b65b40', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-                  >{expandedCard.invitesSent ? 'Sent ✓' : 'Send Email →'}</button>
-                </>
-              )}
+              {/* ── Email draft expanded: every candidate's own, to change
+                  before it goes. The message itself holds the changes. */}
+              {em && (() => {
+                const draft = messages.find(m => m.id === expandedCard.id) || expandedCard;
+                const drafts = draft.invites || [];
+                const field = { width: '100%', boxSizing: 'border-box', border: '1px solid rgba(76,87,61,0.25)', borderRadius: 4, background: '#fffef9', color: '#2b3029', font: 'inherit', padding: '9px 11px' };
+                return (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 14 }}>
+                      {drafts.length > 1 ? `${drafts.length} EMAIL DRAFTS` : 'EMAIL DRAFT'}
+                    </div>
+                    {drafts.map((invite, i) => {
+                      const to = draft.draftNames?.[i] || (i === 0 ? em.to : `Candidate ${i + 1}`);
+                      return (
+                        <div key={invite.interview_id ?? i} style={{ marginBottom: 20 }}>
+                          <div style={{ fontSize: 13, color: '#68705e', marginBottom: 8 }}>To: {to}</div>
+                          <input
+                            aria-label={`Subject for ${to}`}
+                            value={invite.subject}
+                            onChange={e => editDraft(draft.id, i, { subject: e.target.value })}
+                            disabled={!!draft.invitesSent}
+                            style={{ ...field, fontSize: 15, fontWeight: 700, marginBottom: 8 }}
+                          />
+                          <textarea
+                            aria-label={`Message for ${to}`}
+                            value={invite.body}
+                            onChange={e => editDraft(draft.id, i, { body: e.target.value })}
+                            disabled={!!draft.invitesSent}
+                            rows={9}
+                            style={{ ...field, fontSize: 13, lineHeight: 1.7, resize: 'vertical' }}
+                          />
+                        </div>
+                      );
+                    })}
+                    <button
+                      onClick={() => { setExpandedCard(null); executeAction('send_invites', { invites: drafts, messageId: draft.id }); }}
+                      disabled={!drafts.length || !!draft.invitesSent}
+                      style={{ padding: '10px 24px', borderRadius: 100, background: 'rgba(183,70,48,0.25)', border: '1px solid rgba(183,70,48,0.45)', color: '#b65b40', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                    >{draft.invitesSent ? 'Sent ✓' : drafts.length > 1 ? `Send ${drafts.length} Emails →` : 'Send Email →'}</button>
+                  </>
+                );
+              })()}
 
               {/* ── Scan expanded ── */}
               {sc && (() => {
@@ -2356,6 +2392,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
 
                 if (msg.emailDraftData) {
                   const e = msg.emailDraftData;
+                  const first = msg.invites?.[0] || e;
+                  const count = msg.invites?.length || 0;
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(183,70,48,0.2)', borderRadius: 5, padding: '14px 16px' }}>
@@ -2365,19 +2403,27 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           </div>
                           {expandBtn(msg)}
                         </div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#2b3029', marginBottom: 8 }}>{e.subject}</div>
-                        {e.body && (
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#2b3029', marginBottom: 8 }}>{first.subject}</div>
+                        {first.body && (
                           <div style={{ fontSize: 12, color: '#596150', lineHeight: 1.65, background: 'rgba(76,87,61,0.08)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxHeight: 120, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-                            {e.body.slice(0, 400)}{e.body.length > 400 ? '…' : ''}
+                            {first.body.slice(0, 400)}{first.body.length > 400 ? '…' : ''}
                           </div>
                         )}
-                        <button
-                          onClick={() => executeAction('send_invites', { invites: msg.invites, messageId: msg.id })}
-                          disabled={!msg.invites?.length || !!msg.invitesSent}
-                          style={{ padding: '7px 18px', borderRadius: 100, background: 'rgba(183,70,48,0.2)', border: '1px solid rgba(183,70,48,0.4)', color: '#b65b40', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
-                          onMouseEnter={e2 => { e2.currentTarget.style.background = 'rgba(183,70,48,0.35)'; }}
-                          onMouseLeave={e2 => { e2.currentTarget.style.background = 'rgba(183,70,48,0.2)'; }}
-                        >{msg.invitesSent ? 'Sent ✓' : 'Send Email →'}</button>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {!msg.invitesSent && (
+                            <button
+                              onClick={() => setExpandedCard(msg)}
+                              style={{ padding: '7px 18px', borderRadius: 100, background: 'transparent', border: '1px solid rgba(76,87,61,0.3)', color: '#596150', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            >{count > 1 ? 'Review and edit the drafts' : 'Review and edit'}</button>
+                          )}
+                          <button
+                            onClick={() => executeAction('send_invites', { invites: msg.invites, messageId: msg.id })}
+                            disabled={!count || !!msg.invitesSent}
+                            style={{ padding: '7px 18px', borderRadius: 100, background: 'rgba(183,70,48,0.2)', border: '1px solid rgba(183,70,48,0.4)', color: '#b65b40', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+                            onMouseEnter={e2 => { e2.currentTarget.style.background = 'rgba(183,70,48,0.35)'; }}
+                            onMouseLeave={e2 => { e2.currentTarget.style.background = 'rgba(183,70,48,0.2)'; }}
+                          >{msg.invitesSent ? 'Sent ✓' : count > 1 ? `Send ${count} Emails →` : 'Send Email →'}</button>
+                        </div>
                       </div>
                     </div>
                   );
