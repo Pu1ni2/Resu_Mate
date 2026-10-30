@@ -29,15 +29,20 @@ import { toast, notify } from '../../services/notify';
  * own nav entry, so every call site passed inline -- which also meant the close
  * button was gated behind `!inline` and could never appear, and onClose could
  * never fire. A modal over a tab you just navigated to is a dialog about
- * nothing; the nav is how you leave. */
-export default function PipelineWizard({ candidateCount = 0, onComplete }) {
+ * nothing; the nav is how you leave.
+ *
+ * candidateIds: the candidates chosen on the Candidates page, when some are.
+ * Only they are screened; without it, every résumé is. */
+export default function PipelineWizard({ candidateCount = 0, candidateIds, onComplete }) {
   const [formData, setFormData] = useState({ role: '', jdText: '', skills: '', minExp: '' });
   const [formRunning, setFormRunning] = useState(false);
 
   const parseSkills = (val) =>
     val.split(',').map(s => s.trim()).filter(Boolean);
+  const canRun = Boolean(formData.role.trim()) && candidateCount > 0;
 
   const handleFormRun = async () => {
+    if (candidateCount === 0) { toast('Choose at least one résumé to screen.', 'error'); return; }
     if (!formData.role.trim()) { toast('Please enter the role.', 'error'); return; }
     setFormRunning(true);
     try {
@@ -50,6 +55,7 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
           min_experience_years: parseFloat(formData.minExp) || 0,
           required_skills: formData.skills ? parseSkills(formData.skills) : [],
           auto_shortlist_count: 5,
+          ...(candidateIds?.length ? { candidate_ids: candidateIds } : {}),
         }),
       });
       if (!res.ok) {
@@ -115,7 +121,7 @@ export default function PipelineWizard({ candidateCount = 0, onComplete }) {
           </p>
         )}
 
-        <button onClick={handleFormRun} disabled={formRunning || !formData.role.trim()} style={{ ...styles.primaryBtn, marginTop: 8, opacity: formData.role.trim() ? 1 : 0.5 }}>
+        <button onClick={handleFormRun} disabled={formRunning || !canRun} style={{ ...styles.primaryBtn, marginTop: 8, opacity: canRun ? 1 : 0.5 }}>
           {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Screen {candidateCount} resumes</>}
         </button>
       </div>

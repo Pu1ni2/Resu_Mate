@@ -296,8 +296,13 @@ export default function Dashboard() {
   useEffect(() => { loadCandidates(); }, [loadCandidates]);
 
   const resumeCandidates = candidates.filter(c => c.is_resume !== false);
-  // Ready to review: a résumé whose analysis didn't fail.
-  const readyCount = resumeCandidates.filter(c => !c.analysis_failed).length;
+  // Ready to review: a résumé whose analysis didn't fail. A screening run
+  // takes these, or the ones among them that are selected.
+  const readyCandidates = resumeCandidates.filter(c => !c.analysis_failed);
+  const readyCount = readyCandidates.length;
+  const screeningCandidates = selectedIds.length
+    ? readyCandidates.filter(c => selectedIds.includes(c.id))
+    : readyCandidates;
   const query = candidateSearch.toLowerCase().trim();
   const skillNames = c => (c.skills || []).map(s => (typeof s === 'string' ? s : s?.name));
   const visibleCandidates = candidates
@@ -700,7 +705,7 @@ export default function Dashboard() {
                           endpoint. Nothing in either label told you which was which. */}
                       {resumeCandidates.length >= 1 && (
                         <button onClick={() => setTab('screening')} className="btn btn-primary btn-sm">
-                          <Zap size={14} /> Screen candidates
+                          <Zap size={14} /> {selectedIds.length ? `Screen selected (${screeningCandidates.length})` : 'Screen candidates'}
                         </button>
                       )}
                       {/* Jarvis opens from the sidebar, on every view. */}
@@ -874,19 +879,32 @@ export default function Dashboard() {
           {tab === 'screening' && (
             <div className="analytics-tab">
               {!pipelineResult ? (
-                candidates.filter(c => c.is_resume !== false).length === 0 ? (
+                screeningCandidates.length === 0 ? (
                   <div className="clean-empty">
                     <Zap size={32} style={{ color: 'var(--color-ink-faint)', marginBottom: 12 }} />
-                    <h3>Nothing to screen yet</h3>
-                    <p>Upload at least one resume and come back — screening ranks every candidate against a role.</p>
-                    <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => setTab('upload')}>
-                      Upload resumes
-                    </button>
+                    {selectedIds.length ? (
+                      <>
+                        <h3>No résumés in this selection</h3>
+                        <p>None of the candidates you selected has a résumé ready to screen. Choose others, or clear the selection to screen every résumé.</p>
+                        <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => setTab('upload')}>
+                          Go to Candidates
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <h3>Nothing to screen yet</h3>
+                        <p>Upload at least one resume and come back — screening ranks every candidate against a role.</p>
+                        <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => setTab('upload')}>
+                          Upload resumes
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <Suspense fallback={null}>
                     <PipelineWizard
-                      candidateCount={candidates.filter(c => c.is_resume !== false).length}
+                      candidateCount={screeningCandidates.length}
+                      candidateIds={selectedIds.length ? screeningCandidates.map(c => c.id) : undefined}
                       onComplete={data => setPipelineResult(data)}
                     />
                   </Suspense>
