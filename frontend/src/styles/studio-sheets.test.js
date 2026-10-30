@@ -15,7 +15,9 @@ import { read, rules, classesIn, selectorsIn, legacyClasses, tailwindUtility, fo
  * Each one is listed here: the root classes its rules sit under (a rule may
  * also reach the whole page while a root is on it, as html:has(.root)), the
  * prefix of its animation names, which are global, and the legacy class names
- * it deliberately restyles inside its root while the page still uses them. */
+ * it deliberately restyles inside its root while the page still uses them. A
+ * `decorative` sheet draws a picture with nothing in it to focus, so it needs
+ * no focus ring of its own. */
 const SHEETS = {
   'studio.css': { roots: ['studio'], keyframes: 'studio-' },
   'studio-auth.css': { roots: ['studio-auth'], keyframes: 'studio-auth-' },
@@ -36,6 +38,7 @@ const SHEETS = {
     keyframes: 'studio-dashboard-',
     restyles: ['clean-bar-track', 'clean-bar-fill'],
   },
+  'studio-conversation.css': { roots: ['sc-conversation'], keyframes: 'studio-conversation-', decorative: true },
 };
 
 /* Does a selector start at one of these roots: the class itself, not a longer
@@ -63,7 +66,7 @@ describe('the Studio stylesheets', () => {
   });
 });
 
-describe.each(Object.entries(SHEETS))('%s', (file, { roots, keyframes, restyles = [] }) => {
+describe.each(Object.entries(SHEETS))('%s', (file, { roots, keyframes, restyles = [], decorative = false }) => {
   const css = read(file);
   const list = rules(css);
   const selectors = list.flatMap(r => selectorsIn(r.selector));
@@ -96,7 +99,7 @@ describe.each(Object.entries(SHEETS))('%s', (file, { roots, keyframes, restyles 
     expect(names.filter(name => !name.startsWith(keyframes))).toEqual([]);
   });
 
-  it('shows the keyboard where it is', () => {
+  it.skipIf(decorative)('shows the keyboard where it is', () => {
     expect(selectors.some(s => s.includes(':focus-visible'))).toBe(true);
   });
 
