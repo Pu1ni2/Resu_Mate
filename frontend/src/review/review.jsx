@@ -22,6 +22,7 @@ import ProductLayer from '../components/ProductLayer';
 import WorkspaceShell from '../components/studio/WorkspaceShell';
 import Home from '../components/home/Home';
 import Dashboard from '../components/Dashboard';
+import CandidateFocus from '../components/CandidateFocus';
 import InterviewReportView from '../components/shared/InterviewReportView';
 import ATSResultsView from '../components/pipeline/ATSResultsView';
 import { candidates as sampleCandidates, pipeline, report, results, session, statuses } from './fixtures';
@@ -32,6 +33,7 @@ import { candidates as sampleCandidates, pipeline, report, results, session, sta
  * A page is added here once it has come over in the Studio design. */
 const PAGES = [
   ['/hiring?view=upload', 'Candidates'],
+  ['/hiring/focus?candidate=101', 'Candidate file'],
   ['/hiring?view=screening', 'Screening brief'],
   ['/review/results', 'Screening results'],
   ['/hiring?view=interviews', 'Interviews'],
@@ -119,6 +121,7 @@ export function Review() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/hiring" element={<Dashboard />} />
+            <Route path="/hiring/focus" element={<CandidateFocus />} />
             <Route
               path="/review/results"
               element={(

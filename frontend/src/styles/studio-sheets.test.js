@@ -49,6 +49,25 @@ const SHEETS = {
   },
   'studio-conversation.css': { roots: ['sc-conversation'], keyframes: 'studio-conversation-', decorative: true },
   'studio-screening.css': { roots: ['studio-screening', 'studio-screening-results'], keyframes: 'studio-screening-' },
+  'studio-focus.css': {
+    roots: ['studio-focus'],
+    keyframes: 'studio-focus-',
+    restyles: [
+      'scanner-bar', 'scanner-bar-main', 'scanner-bar-status', 'scanner-bar-expandable', 'scanner-bar-chip',
+      'scanner-bar-logs', 'scanner-bar-summary', 'scanner-result-card',
+      'agent-container', 'tool-panel', 'focus-websearch-container', 'glass-card', 'agent-report',
+      'btn', 'btn-primary', 'btn-secondary', 'btn-ghost', 'agent-chip', 'focus-search-chip', 'chat-suggestion', 'active',
+      'agent-intro', 'agent-intro-icon', 'agent-intro-title', 'agent-intro-desc', 'agent-choose', 'agent-option',
+      'agent-option-icon', 'agent-label', 'agent-section', 'agent-actions', 'agent-loading', 'agent-error',
+      'tool-error', 'tool-ai-analysis',
+      'focus-search-bar', 'focus-search-input-wrap', 'focus-search-input', 'focus-search-result',
+      'focus-result-title', 'focus-result-url', 'focus-result-snippet',
+      'gh-header', 'gh-avatar', 'gh-info', 'gh-link', 'gh-stat-val', 'gh-repo-header', 'gh-repo', 'gh-search-bar',
+      'gh-search-input', 'cal-header', 'cal-fallback', 'cal-event', 'cal-event-info',
+      'focus-chat-container', 'focus-chat-messages', 'chat-message', 'chat-bubble', 'assistant', 'user', 'avatar-sm',
+      'chat-suggestions', 'chat-input-area', 'chat-input', 'voice-btn', 'msg-speak-btn',
+    ],
+  },
 };
 
 /* Does a selector start at one of these roots: the class itself, not a longer

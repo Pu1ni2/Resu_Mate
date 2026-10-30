@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   User, ArrowLeft, Briefcase, Award, MapPin,
-  UserCheck, Mail, Github, Calendar, Video, MessageSquare, Globe, Target
+  Mail, Github, Calendar, Video, MessageSquare, Globe, Target, FileText, ArrowUpRight, Search, Download, Loader, BookOpen, CheckCircle, AlertCircle
 } from 'lucide-react';
 
 import useVoice from '../hooks/useVoice';
@@ -21,62 +21,20 @@ import InterviewCreator from './focus/InterviewCreator';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { toast } from '../services/notify';
-
-// ─── Full-Screen Matrix Rain ───
-const MatrixRain = () => {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-    const chars = 'アイウエオカキクケコサシスセソタチツテト01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef{}[]<>/=+*&#';
-    const fontSize = 14;
-    const columns = Math.floor(canvas.width / fontSize);
-    const drops = Array(columns).fill(1);
-    const draw = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fontSize}px monospace`;
-      for (let i = 0; i < drops.length; i++) {
-        const char = chars[Math.floor(Math.random() * chars.length)];
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
-        ctx.fillStyle = `rgba(34, 197, 94, ${Math.random() * 0.5 + 0.3})`;
-        ctx.fillText(char, x, y);
-        if (Math.random() > 0.95) {
-          ctx.fillStyle = 'rgba(134, 239, 172, 0.9)';
-          ctx.fillText(char, x, y);
-        }
-        if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-      }
-    };
-    const interval = setInterval(draw, 50);
-    return () => { clearInterval(interval); window.removeEventListener('resize', resize); };
-  }, []);
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0 }}
-    />
-  );
-};
+import WorkspaceShell from './studio/WorkspaceShell';
 
 export default function CandidateFocus() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { candidates, anonymize, getDisplayName, getAvatarGradient } = useApp();
+  const { candidates, anonymize, getDisplayName } = useApp();
 
-  // ─── Phase: 'select' | 'matrix' | 'tools' ───
+  // Open the file immediately; scan progress stays inside it.
   const [phase, setPhase] = useState('select');
   const [focusCandidate, setFocusCandidate] = useState(null);
-  const [activeTool, setActiveTool] = useState('chat');
+  const [activeTool, setActiveTool] = useState('overview');
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [fileBusy, setFileBusy] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const selectionVersion = useRef(0);
 
   // ─── Scanner state ───
   const [scanLogs, setScanLogs] = useState([]);
@@ -159,6 +117,8 @@ export default function CandidateFocus() {
     return Array.isArray(c.skills) ? c.skills : [];
   };
 
+  const candidateName = (candidate) => getDisplayName(candidate, candidates.findIndex(c => c.id === candidate.id));
+
   // ─── Reset agent ───
   const resetAgent = () => {
     setAgentStep('choose');
@@ -193,13 +153,14 @@ export default function CandidateFocus() {
 
   useEffect(() => {
     if (agentResult && agentResultRef.current) {
-      agentResultRef.current.scrollIntoView({ behavior: 'smooth' });
+      agentResultRef.current.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
     }
   }, [agentResult]);
 
   // ─── Scanner ───
   const runScanner = async (candidateId, candidate) => {
     const c = candidate || focusCandidate;
+    const version = selectionVersion.current;
     setScanRunning(true);
     setScanLogs([]);
     setScanProfiles(null);
@@ -222,12 +183,14 @@ export default function CandidateFocus() {
           },
         }),
       });
+      if (version !== selectionVersion.current) return;
       if (!resp.ok) {
         const message = await responseError(resp, 'The scan failed. Please try again.');
         setScanLogs(prev => [...prev, { step: 'error', msg: message, status: 'error' }]);
         return;
       }
       const data = await resp.json();
+      if (version !== selectionVersion.current) return;
 
       // As they happened, all at once: they arrive with the reply, and were
       // replayed 400 ms apart as if live.
@@ -242,7 +205,7 @@ export default function CandidateFocus() {
       setScanContact(scannedContact);
 
       const name = anonymize ? 'this candidate' : (c?.name || 'this candidate');
-      let intro = `**AI Chat Supercharged!** I now have data from multiple sources:\n\n`;
+      let intro = `**A closer look at ${name}.** Here is the information available for our conversation:\n\n`;
       intro += `**Resume** — skills, experience, education\n`;
       if (scannedProfiles?.github) intro += `**GitHub** (@${scannedProfiles.github.username}) — ${scannedProfiles.github.public_repos} repos\n`;
       if (scannedProfiles?.linkedin) intro += `**LinkedIn** — ${scannedProfiles.linkedin.headline || scannedProfiles.linkedin.name || 'Profile found'}\n`;
@@ -258,29 +221,36 @@ export default function CandidateFocus() {
       ]);
 
     } catch (_) {
+      if (version !== selectionVersion.current) return;
       setScanLogs(prev => [...prev, { step: 'error', msg: 'Scanner failed to connect', status: 'error' }]);
     } finally {
-      setScanRunning(false);
-      setScanDone(true);
+      if (version === selectionVersion.current) {
+        setScanRunning(false);
+        setScanDone(true);
+      }
     }
   };
 
-  // ─── Candidate selection → matrix rain → tools ───
+  // Preserve the existing scan/cache contract without the forced opening animation.
   const handleCandidateSelect = (candidate) => {
+    voice.stopSpeaking();
+    selectionVersion.current += 1;
     setFocusCandidate(candidate);
+    setActiveTool('overview');
+    setPhase('tools');
+    setFileError('');
+    setFileBusy(false);
     resetAgent();
     chat.setMessages([]);
     chat.setSuggestions([]);
-    setSearchResults([]);
-    setSearchHistory([]);
-    setScanLogs([]);
-    setScanProfiles(null);
-    setScanSummary('');
-    setScanContact(null);
-    setScanDone(false);
-
+    chat.setChatInput('');
+    setSearchQuery(''); setSearchResults([]); setSearchHistory([]); setSearchError(''); setSearchLoading(false);
+    setGhProfile(null); setGhError(''); setGhUsername(''); setGhNeedsInput(false); setGhLoading(false);
+    setCalData(null); setCalError(''); setCalLoading(false);
+    setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanDone(false);
+    setSearchParams({ candidate: String(candidate.id) }, { replace: true });
     const cached = restoreFromCache(candidate.id);
-    if (cached?.scanProfiles) {
+    if (cached?.scanDone) {
       setScanProfiles(cached.scanProfiles);
       setScanSummary(cached.scanSummary || '');
       setScanContact(cached.scanContact || null);
@@ -290,44 +260,75 @@ export default function CandidateFocus() {
       setSearchResults(cached.searchResults || []);
       setSearchHistory(cached.searchHistory || []);
       setScanDone(true);
-      setPhase('matrix');
-      setTimeout(() => setPhase('tools'), 2500);
+      setScanRunning(false);
     } else {
-      setPhase('matrix');
-      setTimeout(() => runScanner(candidate.id, candidate), 300);
-      setTimeout(() => setPhase('tools'), 3500);
+      runScanner(candidate.id, candidate);
     }
   };
 
-  // A link can name the candidate to open (/hiring/focus?candidate=ID), as the
-  // dashboard's cards and its Interviews view do. Opened once, also when the
-  // candidate list arrives after the page.
   const requestedCandidate = searchParams.get('candidate');
   useEffect(() => {
     const person = candidates.find(c => String(c.id) === requestedCandidate);
     if (person && String(focusCandidate?.id) !== requestedCandidate) handleCandidateSelect(person);
+    // Selection resets the file once, including when the candidate list loads later.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedCandidate, candidates]);
 
+  useEffect(() => () => { selectionVersion.current += 1; }, []);
+
   const handleBack = () => {
     voice.stopSpeaking();
+    selectionVersion.current += 1;
     if (focusCandidate) {
       saveToCache(focusCandidate.id, {
-        scanProfiles, scanSummary, scanContact, scanLogs,
+        scanProfiles, scanSummary, scanContact, scanLogs, scanDone,
         messages: chat.messages, suggestions: chat.suggestions,
         searchResults, searchHistory,
       });
     }
-    // Back to the list, without the address opening the same file again.
     setSearchParams({}, { replace: true });
     setFocusCandidate(null);
     setPhase('select');
+  };
+
+  const openOriginalResume = async () => {
+    if (!focusCandidate || fileBusy) return;
+    const version = selectionVersion.current;
+    setFileBusy(true); setFileError('');
+    try {
+      const response = await authFetch(`${API_BASE}/api/candidates/${focusCandidate.id}/file`);
+      if (version !== selectionVersion.current) return;
+      if (response.status === 404) {
+        setFileError('The original file is not available. The extracted résumé text is shown below.');
+        return;
+      }
+      if (!response.ok) throw new Error(await responseError(response, 'Could not retrieve the original résumé.'));
+      if (response.headers.get('content-type')?.includes('application/json')) {
+        const data = await response.json();
+        const url = new URL(data.url);
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('The file link is unavailable.');
+        if (version === selectionVersion.current) window.open(url.href, '_blank', 'noopener,noreferrer');
+      } else {
+        const blob = await response.blob();
+        if (version !== selectionVersion.current) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = focusCandidate.file_name || 'resume';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch (error) {
+      if (version === selectionVersion.current) setFileError(error.message || 'The original file could not be retrieved.');
+    } finally {
+      if (version === selectionVersion.current) setFileBusy(false);
+    }
   };
 
   // ─── Web Search ───
   const handleWebSearch = async (query) => {
     const q = query || searchQuery.trim();
     if (!q || searchLoading) return;
+    const version = selectionVersion.current;
     setSearchLoading(true);
     setSearchError('');
     setSearchHistory(prev => [q, ...prev.filter(h => h !== q)].slice(0, 10));
@@ -337,20 +338,23 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, candidate_id: focusCandidate?.id, candidate_name: anonymize ? null : focusCandidate?.name }),
       });
+      if (version !== selectionVersion.current) return;
       if (!response.ok) {
         setSearchResults([]);
         setSearchError(await responseError(response, 'The web search failed. Please try again.'));
         return;
       }
       const data = await response.json();
+      if (version !== selectionVersion.current) return;
       setSearchResults(data.results || []);
       if (data.error) setSearchError(data.error);
     } catch {
+      if (version !== selectionVersion.current) return;
       // An error, not a result card counted as "Found 1 result".
       setSearchResults([]);
       setSearchError('Could not reach the server to search. Please try again.');
     } finally {
-      setSearchLoading(false);
+      if (version === selectionVersion.current) setSearchLoading(false);
     }
   };
 
@@ -366,6 +370,7 @@ export default function CandidateFocus() {
 
   // ─── GitHub ───
   const fetchGitHub = async (username) => {
+    const version = selectionVersion.current;
     setGhLoading(true); setGhError(''); setGhProfile(null); setGhNeedsInput(false);
     try {
       const resp = await authFetch(`${API_BASE}/api/chat/github-analyze`, {
@@ -373,30 +378,36 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), github_username: username || null, anonymize }),
       });
+      if (version !== selectionVersion.current) return;
       // A failed reply's error is an object; shown as is, it crashed the page.
       if (!resp.ok) { setGhError(await responseError(resp, 'GitHub analysis failed. Please try again.')); return; }
       const data = await resp.json();
+      if (version !== selectionVersion.current) return;
       if (data.error) { setGhError(data.error); if (data.needs_username) setGhNeedsInput(true); }
       else setGhProfile(data.profile);
-    } catch { setGhError('Failed to connect to server'); }
-    finally { setGhLoading(false); }
+    } catch { if (version === selectionVersion.current) setGhError('Failed to connect to server'); }
+    finally { if (version === selectionVersion.current) setGhLoading(false); }
   };
 
   // ─── Calendly ───
   const fetchCalendly = async () => {
+    const version = selectionVersion.current;
     setCalLoading(true); setCalError(''); setCalData(null);
     try {
       const resp = await authFetch(`${API_BASE}/api/chat/calendly-link`);
+      if (version !== selectionVersion.current) return;
       if (!resp.ok) { setCalError(await responseError(resp, 'Could not reach Calendly. Please try again.')); return; }
       const data = await resp.json();
+      if (version !== selectionVersion.current) return;
       if (data.error) setCalError(data.error);
       else setCalData(data);
-    } catch { setCalError('Failed to connect to server'); }
-    finally { setCalLoading(false); }
+    } catch { if (version === selectionVersion.current) setCalError('Failed to connect to server'); }
+    finally { if (version === selectionVersion.current) setCalLoading(false); }
   };
 
   // ─── Hiring Agent ───
   const runHiringAgent = async () => {
+    const version = selectionVersion.current;
     const role = selectedRole === 'other' ? customRole : selectedRole;
     if (!role) { toast('Please select or enter a role', 'error'); return; }
     if (!selectedExperience) { toast('Please select experience level', 'error'); return; }
@@ -408,17 +419,20 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), role, experience_required: selectedExperience, level: selectedLevel, job_description: jdText || null, anonymize }),
       });
+      if (version !== selectionVersion.current) return;
       if (!response.ok) {
         setAgentResult({ error: await responseError(response, 'The evaluation failed. Please try again.') }); setAgentStep('result');
         return;
       }
       const data = await response.json();
+      if (version !== selectionVersion.current) return;
       setAgentResult(data); setAgentStep('result');
-    } catch { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); }
-    finally { setAgentLoading(false); }
+    } catch { if (version === selectionVersion.current) { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); } }
+    finally { if (version === selectionVersion.current) setAgentLoading(false); }
   };
 
   const runJDAnalysis = async () => {
+    const version = selectionVersion.current;
     if (!jdText.trim()) { toast('Please paste a job description', 'error'); return; }
     setAgentLoading(true); setAgentStep('loading');
     try {
@@ -427,294 +441,135 @@ export default function CandidateFocus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: focusCandidate.id, candidate_data: getCandidatePayload(), job_description: jdText, role: null, experience_required: null, level: null, anonymize }),
       });
+      if (version !== selectionVersion.current) return;
       if (!response.ok) {
         setAgentResult({ error: await responseError(response, 'The analysis failed. Please try again.') }); setAgentStep('result');
         return;
       }
       const data = await response.json();
+      if (version !== selectionVersion.current) return;
       setAgentResult(data); setAgentStep('result');
-    } catch { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); }
-    finally { setAgentLoading(false); }
+    } catch { if (version === selectionVersion.current) { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); } }
+    finally { if (version === selectionVersion.current) setAgentLoading(false); }
   };
 
-  // ════════════════════════════════════════════════════
-  // RENDER: PHASE — select
-  // ════════════════════════════════════════════════════
-  if (phase === 'select') {
+  const skillLabel = (skill) => typeof skill === 'string' ? skill : skill?.name || '';
+  const readable = (value) => typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const goTool = (tool) => {
+    setActiveTool(tool);
+    if (tool === 'github' && !ghProfile && !ghLoading && !ghError) fetchGitHub('');
+    if (tool === 'calendly' && !calData && !calLoading && !calError) fetchCalendly();
+  };
+  const filteredCandidates = candidates.filter(candidate => {
+    const query = pickerQuery.trim().toLowerCase();
+    return !query || [candidateName(candidate), candidate.predicted_role, ...getSkills(candidate).map(skillLabel)].join(' ').toLowerCase().includes(query);
+  });
+
+  if (phase === 'select' || !focusCandidate) {
     return (
-      <div className="focus-page">
-
-        <div className="focus-page-header">
-          <button className="focus-back-btn" onClick={() => navigate('/hiring')}>
-            <ArrowLeft size={18} /><span>Dashboard</span>
-          </button>
-          <h1 className="focus-page-title">Candidate Focus</h1>
-        </div>
-
-        <div className="focus-select-header">
-          <div className="focus-select-icon"><User size={32} /></div>
-          <h2 className="focus-select-title">Select a Candidate</h2>
-          <p className="focus-select-subtitle">Choose one candidate to unlock AI-powered tools — deep-dive chat, web research, hiring evaluation, and more.</p>
-        </div>
-
-        {candidates.length === 0 ? (
-          <div className="focus-empty">
-            <div className="focus-empty-icon"><User size={48} /></div>
-            <h3>No candidates uploaded yet</h3>
-            <p>Add résumés on the <Link to="/hiring">Upload tab</Link> first.</p>
+      <WorkspaceShell active="candidates" eyebrow="THE CANDIDATE FILE" title="A closer look." subtitle="Behind every résumé, a person worth understanding.">
+        <div className="studio-focus studio-focus-picker">
+          <div className="sf-picker-intro">
+            <div><span className="sf-kicker">YOUR PEOPLE, IN PERSPECTIVE</span><h2>Open a file. See the whole story.</h2><p>Bring their experience, research and next conversation together in one place.</p></div>
+            <div className="sf-file-illustration" aria-hidden="true"><FileText size={44} strokeWidth={1} /><span>THE PERSON<br />BEHIND THE PAPER.</span><i /></div>
           </div>
-        ) : (
-          <div className="focus-candidates-grid">
-            {candidates
-              .filter((c, idx, self) => idx === self.findIndex(t => t.id === c.id))
-              .map((c, i) => {
-                const skills = getSkills(c);
-                const name = getDisplayName(c, i);
-                const gradient = getAvatarGradient(c.name);
-                const skillNames = skills.slice(0, 4).map(s => typeof s === 'string' ? s : s?.name || '');
-                return (
-                  <div key={c.id} className="pc-card" onClick={() => handleCandidateSelect(c)}>
-                    <div className="pc-stripe" style={{ background: gradient }} />
-                    <div className="pc-body">
-                      <div className="pc-header">
-                        <div className="pc-avatar" style={{ background: gradient }}>
-                          {name[0]?.toUpperCase()}
-                        </div>
-                        <div className="pc-info">
-                          <h3 className="pc-name">{name}</h3>
-                          <p className="pc-role">
-                            {c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || 'Processing...')}
-                          </p>
-                          <div className="pc-meta">
-                            {c.total_experience_years != null && <span>{c.total_experience_years}y exp</span>}
-                            {c.experience_level && <span>{c.experience_level}</span>}
-                            {c.location && <span>{c.location}</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      {skillNames.length > 0 && (
-                        <div className="pc-skills">
-                          {skillNames.map((s, j) => <span key={j} className="pc-skill">{s}</span>)}
-                          {skills.length > 4 && <span className="pc-skill pc-skill-more">+{skills.length - 4}</span>}
-                        </div>
-                      )}
-
-                      <div className="pc-footer">
-                        <span className="pc-verified">
-                          {c.is_resume === false ? '⚠ Not a resume' : ''}
-                        </span>
-                        <button className="pc-btn" style={{ '--g': gradient }}>
-                          Open Focus
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="sf-picker-toolbar">
+            <p><strong>{filteredCandidates.length}</strong> candidate {filteredCandidates.length === 1 ? 'file' : 'files'}</p>
+            <label className="sf-search"><Search size={17} /><input aria-label="Find a candidate file" placeholder="Search name, role or skill" value={pickerQuery} onChange={event => setPickerQuery(event.target.value)} /></label>
           </div>
-        )}
-      </div>
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  // RENDER: PHASE — matrix rain transition
-  // ════════════════════════════════════════════════════
-  if (phase === 'matrix') {
-    const name = anonymize ? 'Candidate' : (focusCandidate?.name || 'Candidate');
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 100 }}>
-        <MatrixRain />
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', zIndex: 1,
-          background: 'rgba(0,0,0,0.45)',
-        }}>
-          <div style={{ fontFamily: 'monospace', color: '#22c55e', fontSize: '13px', marginBottom: '32px', opacity: 0.7, letterSpacing: '2px' }}>
-            RESUMATE SCANNER AGENT
-          </div>
-          <div style={{
-            fontFamily: 'monospace', color: '#86efac', fontSize: '28px', fontWeight: 700,
-            letterSpacing: '3px', textShadow: '0 0 20px #22c55e', marginBottom: '16px',
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }}>
-            {name}
-          </div>
-          <div style={{ fontFamily: 'monospace', color: '#4ade80', fontSize: '14px', letterSpacing: '4px', opacity: 0.8 }}>
-            SCANNING...
-          </div>
-          <div style={{ marginTop: '48px', display: 'flex', gap: '8px' }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{
-                width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e',
-                animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-              }} />
-            ))}
-          </div>
-        </div>
-        <style>{`
-          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-          @keyframes bounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-10px); opacity: 1; } }
-        `}</style>
-      </div>
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  // RENDER: PHASE — tools (sidebar layout)
-  // ════════════════════════════════════════════════════
-  const sidebarItems = [
-    {
-      group: 'Analyze', items: [
-        { key: 'chat', icon: <MessageSquare size={18} />, label: 'AI Chat' },
-        { key: 'websearch', icon: <Globe size={18} />, label: 'Web Search' },
-        { key: 'github', icon: <Github size={18} />, label: 'GitHub' },
-      ]
-    },
-    {
-      group: 'Evaluate', items: [
-        { key: 'agent', icon: <UserCheck size={18} />, label: 'Hiring Agent' },
-        { key: 'resume-intel', icon: <Target size={18} />, label: 'Resume Intel' },
-        ...(agentStep === 'result' && agentResult && !agentResult.error ? [
-          { key: 'email', icon: <Mail size={18} />, label: 'Email' },
-          { key: 'interview', icon: <Video size={18} />, label: 'Interview' },
-        ] : []),
-      ]
-    },
-    {
-      group: 'Schedule', items: [
-        { key: 'calendly', icon: <Calendar size={18} />, label: 'Schedule' },
-      ]
-    },
-  ];
-
-  return (
-    <div className="focus-container">
-
-      {/* Header */}
-      <div className="focus-header">
-        <button className="focus-back-btn" onClick={handleBack}>
-          <ArrowLeft size={18} /><span>Back</span>
-        </button>
-        <div className="focus-profile">
-          <div className="focus-avatar" style={{ background: getAvatarGradient(focusCandidate.name) }}>
-            {getDisplayName(focusCandidate, candidates.indexOf(focusCandidate))[0]?.toUpperCase()}
-          </div>
-          <div className="focus-profile-info">
-            <h2 className="focus-profile-name">{getDisplayName(focusCandidate, candidates.indexOf(focusCandidate))}</h2>
-            <p className="focus-profile-role">{focusCandidate.predicted_role || 'Candidate'}</p>
-          </div>
-        </div>
-        <div className="focus-profile-badges">
-          {focusCandidate.total_experience_years != null && <span className="badge badge-orange"><Briefcase size={12} /> {focusCandidate.total_experience_years}y</span>}
-          {focusCandidate.experience_level && <span className="badge badge-green"><Award size={12} /> {focusCandidate.experience_level}</span>}
-          {focusCandidate.location && <span className="badge badge-blue"><MapPin size={12} /> {focusCandidate.location}</span>}
-        </div>
-      </div>
-
-      {/* Scanner bar (compact, collapsible) */}
-      <ScannerBar
-        scanLogs={scanLogs} scanProfiles={scanProfiles} scanSummary={scanSummary}
-        scanContact={scanContact} scanRunning={scanRunning} scanDone={scanDone}
-        onRescan={() => { setScanDone(false); setScanLogs([]); setScanProfiles(null); setScanRunning(false); runScanner(focusCandidate.id); }}
-      />
-
-      {/* Workspace: sidebar + panel */}
-      <div className="focus-workspace">
-        <nav className="focus-sidebar">
-          {sidebarItems.map(group => (
-            <div key={group.group} className="focus-sidebar-group">
-              <span className="focus-sidebar-label">{group.group}</span>
-              {group.items.map(item => (
-                <button
-                  key={item.key}
-                  className={`focus-sidebar-btn ${activeTool === item.key ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveTool(item.key);
-                    if (item.key === 'github' && !ghProfile && !ghLoading && !ghError) fetchGitHub();
-                    if (item.key === 'calendly' && !calData && !calLoading && !calError) fetchCalendly();
-                  }}
-                  title={item.label}
-                >
-                  {item.icon}
-                </button>
+          {filteredCandidates.length > 0 ? (
+            <div className="sf-people-grid">
+              {filteredCandidates.map((candidate, index) => (
+                <article className="sf-person-card" key={candidate.id}>
+                  <div className="sf-person-top"><span className="sf-file-number">FILE {String(candidate.id).padStart(3, '0')}</span><span className={`sf-person-mark sf-mark-${index % 3}`} aria-hidden="true">{anonymize ? <User size={20} /> : (candidate.name || '?').split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}</span></div>
+                  <h3>{candidateName(candidate)}</h3><p className="sf-person-role">{candidate.predicted_role || 'Role not specified'}</p>
+                  <p className="sf-person-detail"><Briefcase size={14} />{candidate.total_experience_years != null ? `${candidate.total_experience_years} years of experience` : 'Experience not specified'}</p>
+                  <div className="sf-skills">{getSkills(candidate).slice(0, 4).map((skill, i) => <span key={i}>{skillLabel(skill)}</span>)}{!getSkills(candidate).length && <span>No skills extracted yet</span>}</div>
+                  <button className="sf-person-open" aria-label="Open Focus" onClick={() => handleCandidateSelect(candidate)}><span>Open file</span><ArrowUpRight size={18} /></button>
+                </article>
               ))}
             </div>
-          ))}
+          ) : (
+            <div className="sf-empty"><FileText size={34} strokeWidth={1.3} /><h3>{pickerQuery ? 'No matching files.' : 'Your next great hire starts here.'}</h3><p>{pickerQuery ? 'Try another name, role or skill.' : 'Upload a résumé to bring a candidate into your workspace.'}</p>{pickerQuery ? <button className="sf-button" onClick={() => setPickerQuery('')}>Clear search</button> : <Link className="sf-button sf-button-primary" to="/hiring?view=upload">Add candidates <ArrowUpRight size={16} /></Link>}</div>
+          )}
+        </div>
+      </WorkspaceShell>
+    );
+  }
+
+  const displayName = candidateName(focusCandidate);
+  const hasEvaluation = agentStep === 'result' && agentResult && !agentResult.error;
+  const activeSection = ['websearch', 'github'].includes(activeTool) ? 'research' : ['agent', 'resume-intel'].includes(activeTool) ? 'evaluation' : ['interview', 'calendly'].includes(activeTool) ? 'interviews' : activeTool;
+  const sectionTabs = [
+    { id: 'overview', label: 'Overview', icon: User, tool: 'overview' },
+    { id: 'resume', label: 'Résumé', icon: FileText, tool: 'resume' },
+    { id: 'research', label: 'Research', icon: Globe, tool: 'websearch' },
+    { id: 'evaluation', label: 'Evaluation', icon: Target, tool: 'agent' },
+    { id: 'interviews', label: 'Interviews', icon: Calendar, tool: 'interview' },
+  ];
+  const exportEvaluation = () => {
+    const url = URL.createObjectURL(new Blob([agentResult.report || ''], { type: 'text/markdown;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = `candidate-${focusCandidate.id}-evaluation.md`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  return (
+    <WorkspaceShell active="candidates" eyebrow="PEOPLE IN PERSPECTIVE" title="The candidate file." actions={<button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button>}>
+      <div className="studio-focus sf-file-open">
+        <div className="sf-file-cover">
+        <header className="sf-identity">
+          <div className="sf-identity-main">
+            <div className="sf-identity-mark" aria-hidden="true">{anonymize ? <User size={30} /> : (focusCandidate.name || '?').split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}<span /></div>
+            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}</span><h2>{displayName}</h2><p>{focusCandidate.predicted_role || 'Role not specified'}</p></div>
+          </div>
+          <dl className="sf-facts">
+            <div><dt><Briefcase size={14} /> Experience</dt><dd>{focusCandidate.total_experience_years != null ? `${focusCandidate.total_experience_years} years` : 'Not specified'}</dd></div>
+            <div><dt><Award size={14} /> Level</dt><dd>{focusCandidate.experience_level || 'Not specified'}</dd></div>
+            <div><dt><MapPin size={14} /> Location</dt><dd>{anonymize ? 'Hidden' : focusCandidate.location || 'Not specified'}</dd></div>
+          </dl>
+        </header>
+        <div className="sf-action-row">
+          <button className={`sf-button ${activeTool === 'chat' ? 'sf-button-primary' : ''}`} onClick={() => goTool('chat')}><MessageSquare size={16} /> Discuss candidate</button>
+          <button className={`sf-button ${activeTool === 'email' ? 'sf-button-primary' : ''}`} onClick={() => goTool('email')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to prepare an email.' : 'Prepare an email draft'}><Mail size={16} /> Draft email</button>
+          <button className="sf-button" onClick={() => goTool('interview')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to create an interview.' : 'Set up an interview'}><Video size={16} /> Create interview</button>
+          {hasEvaluation && agentResult.report && <button className="sf-button sf-export" onClick={exportEvaluation}><Download size={16} /> Export evaluation</button>}
+          {!hasEvaluation && <span className="sf-action-note">Evaluate role fit to unlock email & interview setup.</span>}
+        </div>
+        </div>
+        <nav className="sf-file-tabs" aria-label="Candidate file sections">
+          {sectionTabs.map(({ id, label, icon: Icon, tool }, index) => <button key={id} onClick={() => goTool(tool)} aria-current={activeSection === id ? 'page' : undefined}><span className="sf-tab-number">0{index + 1}</span><Icon size={16} /><span>{label}</span></button>)}
         </nav>
+        <ScannerBar scanLogs={anonymize ? scanLogs.filter(log => log.status === 'error') : scanLogs} scanProfiles={anonymize ? null : scanProfiles} scanSummary={anonymize ? '' : scanSummary} scanContact={anonymize ? null : scanContact} scanRunning={scanRunning} scanDone={scanDone} onRescan={() => runScanner(focusCandidate.id)} />
 
-        <main className="focus-panel">
-          {activeTool === 'chat' && (
-            <ChatPanel
-              messages={chat.messages} isTyping={chat.isTyping}
-              suggestions={chat.suggestions} chatInput={chat.chatInput}
-              setChatInput={chat.setChatInput} onSend={chat.sendMessage}
-              scanDone={scanDone} candidateName={focusCandidate.name}
-              anonymize={anonymize} voice={voice} msgEndRef={chat.msgEndRef}
-            />
-          )}
+        {activeTool === 'overview' && (
+          <div className="sf-overview-grid">
+            <article className="sf-paper sf-profile-story">
+              <div className="sf-section-masthead"><span className="sf-kicker">THE PROFILE</span><span className="sf-source-tag"><FileText size={13} /> From the résumé</span></div>
+              <h3>More than a résumé.</h3>
+              <p className="sf-story-summary">{anonymize ? 'Explore this candidate’s experience and skills with their identity hidden.' : focusCandidate.summary || 'Start with their experience, follow the evidence, and make room for the conversation.'}</p>
+              <div className="sf-story-block"><h4>Skills & expertise</h4><div className="sf-skills sf-skills-large">{getSkills(focusCandidate).length ? getSkills(focusCandidate).map((skill, i) => <span key={i}>{skillLabel(skill)}</span>) : <p>No skills were extracted from this file.</p>}</div></div>
+              {Array.isArray(focusCandidate.key_strengths) && focusCandidate.key_strengths.length > 0 && <div className="sf-story-block"><h4>Noted strengths</h4><ul className="sf-strengths">{focusCandidate.key_strengths.map((strength, i) => <li key={i}><CheckCircle size={16} /><span>{readable(strength) || readable(strength?.description) || readable(strength?.name)}</span></li>)}</ul></div>}
+              <button className="sf-text-link" onClick={() => goTool('resume')}>Read the full résumé <ArrowUpRight size={17} /></button>
+            </article>
+            <aside className="sf-overview-aside">
+              <div className="sf-note"><span className="sf-kicker">THE RIGHT NEXT QUESTION</span><Target size={28} strokeWidth={1.2} /><h3>Great experience.<br />The right fit?</h3><p>Bring a role into the picture. Compare this person’s experience with what your team needs.</p><button className="sf-button sf-button-dark" aria-label="Hiring Agent" onClick={() => goTool('agent')}>Evaluate role fit <ArrowUpRight size={17} /></button></div>
+              <div className="sf-explore"><h4>Follow the evidence</h4><button onClick={() => goTool('websearch')}><Globe size={17} /><span>Research & public work<small>Look beyond the document</small></span><ArrowUpRight size={16} /></button><button onClick={() => goTool('resume-intel')}><BookOpen size={17} /><span>Résumé intelligence<small>Find what to ask next</small></span><ArrowUpRight size={16} /></button><button onClick={() => goTool('chat')}><MessageSquare size={17} /><span>A second perspective<small>Discuss this candidate</small></span><ArrowUpRight size={16} /></button></div>
+            </aside>
+          </div>
+        )}
 
-          {activeTool === 'websearch' && (
-            <WebSearchPanel
-              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-              searchResults={searchResults} searchLoading={searchLoading} searchError={searchError}
-              searchHistory={searchHistory} onSearch={handleWebSearch}
-              getSearchSuggestions={getSearchSuggestions}
-            />
-          )}
+        {activeTool === 'resume' && <article className="sf-paper sf-resume-paper"><div className="sf-section-heading"><div><span className="sf-kicker">SOURCE DOCUMENT</span><h3>The résumé, in full.</h3><p>{anonymize ? 'Identity is hidden for this review.' : focusCandidate.file_name || 'Extracted candidate résumé'}</p></div><button className="sf-button" onClick={openOriginalResume} disabled={fileBusy || anonymize}>{fileBusy ? <Loader className="spin" size={16} /> : <Download size={16} />} Original file</button></div><p className="sf-document-note">Original downloads are available when the uploaded file was stored. Extracted text remains available below.</p>{fileError && <div className="sf-notice" role="status"><AlertCircle size={16} />{fileError}</div>}<div className="sf-resume-text">{anonymize ? 'The source text can contain identifying details. Turn off anonymous review to read the original résumé.' : focusCandidate.text || focusCandidate.raw_text || 'No extracted résumé text is available for this candidate.'}</div></article>}
 
-          {activeTool === 'agent' && (
-            <HiringAgentPanel
-              agentStep={agentStep} setAgentStep={setAgentStep}
-              jdText={jdText} setJdText={setJdText}
-              selectedRole={selectedRole} setSelectedRole={setSelectedRole}
-              customRole={customRole} setCustomRole={setCustomRole}
-              selectedExperience={selectedExperience} setSelectedExperience={setSelectedExperience}
-              selectedLevel={selectedLevel} setSelectedLevel={setSelectedLevel}
-              agentResult={agentResult} agentLoading={agentLoading}
-              suggestedRoles={suggestedRoles}
-              onRunHiringAgent={runHiringAgent} onRunJDAnalysis={runJDAnalysis}
-              onReset={resetAgent} onSwitchToChat={() => setActiveTool('chat')}
-              agentResultRef={agentResultRef}
-            />
-          )}
+        {activeSection === 'research' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">BEYOND THE RÉSUMÉ</span><h3>A wider perspective.</h3><p>Explore public work and sources that add context to the candidate’s experience.</p></div><Globe className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" aria-label="Research tools"><button aria-pressed={activeTool === 'websearch'} onClick={() => goTool('websearch')}><Globe size={16} /> Web research</button><button aria-pressed={activeTool === 'github'} onClick={() => goTool('github')}><Github size={16} /> GitHub portfolio</button></div>{activeTool === 'websearch' ? <WebSearchPanel searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchResults={searchResults} searchError={searchError} searchLoading={searchLoading} searchHistory={searchHistory} onSearch={handleWebSearch} getSearchSuggestions={getSearchSuggestions} /> : <GitHubPanel ghUsername={ghUsername} setGhUsername={setGhUsername} ghProfile={ghProfile} ghLoading={ghLoading} ghError={ghError} ghNeedsInput={ghNeedsInput} onFetchGitHub={fetchGitHub} />}</section>}
 
-          {activeTool === 'github' && (
-            <GitHubPanel
-              ghUsername={ghUsername} setGhUsername={setGhUsername}
-              ghProfile={ghProfile} ghLoading={ghLoading} ghError={ghError}
-              ghNeedsInput={ghNeedsInput} onFetchGitHub={fetchGitHub}
-            />
-          )}
+        {activeSection === 'evaluation' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">MAKE AN INFORMED CALL</span><h3>Evidence meets opportunity.</h3><p>Assess the match to your role, then explore the questions worth asking.</p></div><Target className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" aria-label="Evaluation tools"><button aria-label="Hiring Agent" aria-pressed={activeTool === 'agent'} onClick={() => goTool('agent')}><Target size={16} /> Role fit</button><button aria-pressed={activeTool === 'resume-intel'} onClick={() => goTool('resume-intel')}><BookOpen size={16} /> Résumé intelligence</button></div>{activeTool === 'agent' ? <HiringAgentPanel agentStep={agentStep} setAgentStep={setAgentStep} jdText={jdText} setJdText={setJdText} selectedRole={selectedRole} setSelectedRole={setSelectedRole} customRole={customRole} setCustomRole={setCustomRole} selectedExperience={selectedExperience} setSelectedExperience={setSelectedExperience} selectedLevel={selectedLevel} setSelectedLevel={setSelectedLevel} agentResult={agentResult} agentLoading={agentLoading} suggestedRoles={suggestedRoles} onRunHiringAgent={runHiringAgent} onRunJDAnalysis={runJDAnalysis} onReset={resetAgent} onSwitchToChat={() => goTool('chat')} agentResultRef={agentResultRef} /> : <ResumeIntelPanel key={focusCandidate.id} focusCandidate={focusCandidate} />}</section>}
 
-          {activeTool === 'calendly' && (
-            <SchedulePanel
-              calData={calData} calLoading={calLoading} calError={calError}
-              anonymize={anonymize} candidateName={focusCandidate.name}
-            />
-          )}
+        {activeSection === 'interviews' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">MAKE ROOM FOR A CONVERSATION</span><h3>The next chapter.</h3><p>Prepare a focused interview or share a time to meet.</p></div><Calendar className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" aria-label="Interview tools"><button aria-pressed={activeTool === 'interview'} onClick={() => goTool('interview')}><Video size={16} /> Interview setup</button><button aria-pressed={activeTool === 'calendly'} onClick={() => goTool('calendly')}><Calendar size={16} /> Scheduling</button></div>{activeTool === 'calendly' ? <SchedulePanel calData={calData} calLoading={calLoading} calError={calError} anonymize={anonymize} candidateName={focusCandidate.name} /> : hasEvaluation ? <InterviewCreator key={focusCandidate.id} focusCandidate={focusCandidate} selectedRole={selectedRole === 'other' ? customRole : selectedRole} selectedLevel={selectedLevel} selectedExperience={selectedExperience} scanContact={anonymize ? null : scanContact} /> : <div className="sf-empty sf-gated"><Video size={32} strokeWidth={1.2} /><h3>Give the conversation a direction.</h3><p>Complete a role evaluation first, then create an interview with the right context for this candidate.</p><button className="sf-button sf-button-primary" onClick={() => goTool('agent')}>Evaluate role fit <ArrowUpRight size={16} /></button></div>}</section>}
 
-          {activeTool === 'email' && (
-            <EmailComposer
-              focusCandidate={focusCandidate} agentResult={agentResult}
-              anonymize={anonymize} getCandidatePayload={getCandidatePayload}
-            />
-          )}
-
-          {activeTool === 'resume-intel' && (
-            <ResumeIntelPanel focusCandidate={focusCandidate} />
-          )}
-
-          {activeTool === 'interview' && (
-            <InterviewCreator
-              focusCandidate={focusCandidate} selectedRole={selectedRole}
-              selectedLevel={selectedLevel} selectedExperience={selectedExperience}
-              scanContact={scanContact}
-            />
-          )}
-        </main>
+        {activeTool === 'chat' && <section className="sf-tool-section sf-conversation"><div className="sf-section-heading"><div><span className="sf-kicker">A SECOND PERSPECTIVE</span><h3>Let’s talk about the person.</h3><p>Ask about experience, strengths and the questions to explore together.</p></div><MessageSquare className="sf-section-symbol" size={36} strokeWidth={1} /></div><ChatPanel messages={chat.messages} isTyping={chat.isTyping} suggestions={chat.suggestions} chatInput={chat.chatInput} setChatInput={chat.setChatInput} onSend={chat.sendMessage} scanDone={scanDone} candidateName={focusCandidate.name} anonymize={anonymize} voice={voice} msgEndRef={chat.msgEndRef} /></section>}
+        {activeTool === 'email' && hasEvaluation && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">THOUGHTFUL COMMUNICATION</span><h3>Find the right words.</h3><p>Prepare and edit a draft, then open it in your email app to send.</p></div><Mail className="sf-section-symbol" size={36} strokeWidth={1} /></div><EmailComposer key={focusCandidate.id} focusCandidate={focusCandidate} agentResult={agentResult} anonymize={anonymize} getCandidatePayload={getCandidatePayload} /></section>}
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }

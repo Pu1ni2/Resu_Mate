@@ -47,6 +47,8 @@
 @import './studio-dashboard.css' layer(components);
 /* The screening brief, scoped to .studio-screening and .studio-screening-results. */
 @import './studio-screening.css' layer(components);
+/* The candidate file, scoped to .studio-focus. */
+@import './studio-focus.css' layer(components);
 /* The conversation sculpture, scoped to .sc-conversation. */
 @import './studio-conversation.css' layer(components);
 

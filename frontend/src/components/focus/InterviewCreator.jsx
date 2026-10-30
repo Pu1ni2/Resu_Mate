@@ -74,7 +74,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
 
   if (created) {
     return (
-      <div style={{ padding: '20px', maxWidth: '640px' }}>
+      <div className="sf-interview-creator" style={{ padding: '20px', maxWidth: '640px' }}>
         <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
           <Check size={40} style={{ color: '#22C55E', marginBottom: '14px' }} />
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>Interview Created!</h3>
@@ -103,7 +103,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '640px' }}>
+    <div className="sf-interview-creator" style={{ padding: '20px', maxWidth: '640px' }}>
       <div className="glass-card">
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}>
           <Video size={18} /> Create AI Interview
@@ -115,7 +115,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
               reads as see-through and the label becomes unreadable. */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Interview Format</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '10px' }}>
               <button
                 type="button"
                 onClick={() => setInterviewMode('avatar')}
@@ -165,7 +165,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
             <label htmlFor="iv-email" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Candidate Email *</label>
             <input id="iv-email" type="email" className="input" value={interviewEmail} onChange={e => setInterviewEmail(e.target.value)} placeholder="candidate@email.com" style={{ padding: '11px 14px' }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="sf-interview-fields" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label htmlFor="iv-role" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text3)' }}>Role</label>
               <input id="iv-role" type="text" className="input" value={interviewRole || selectedRole || focusCandidate?.predicted_role || ''} onChange={e => setInterviewRole(e.target.value)} placeholder="ML Engineer" style={{ padding: '11px 14px' }} />
@@ -186,7 +186,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
               <input type="checkbox" checked={sendInvite} onChange={e => setSendInvite(e.target.checked)} />
               Email the invitation to the candidate
             </label>
-            <button className="btn btn-primary" onClick={createInterview} disabled={!interviewEmail.trim() || interviewCreating} style={{ background: 'rgba(139,92,246,0.9)', padding: '12px 24px' }}>
+            <button className="btn btn-primary" onClick={createInterview} disabled={!interviewEmail.trim() || interviewCreating} style={{ background: 'var(--accent)', padding: '12px 24px' }}>
               {interviewCreating ? <Loader size={16} className="spin" /> : <Video size={16} />}
               <span>{interviewCreating ? 'Creating...' : 'Create Interview & Grant Access'}</span>
             </button>
