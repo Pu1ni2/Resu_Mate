@@ -810,7 +810,7 @@ Respond helpfully using **bold** for names and key points."""
             return {
                 "response": """**Welcome to ResuMate AI!** 👋
 
-I'm your resume analysis assistant powered by **GPT-5.2**.
+I'm your resume analysis assistant.
 
 **Important:** I can ONLY help with questions about uploaded resumes and candidates.
 
@@ -821,7 +821,7 @@ I'm your resume analysis assistant powered by **GPT-5.2**.
 - Experience and education details
 
 **To start:**
-1. Go to **Upload** tab
+1. Go to **Candidates**
 2. Upload resumes (PDF, DOCX, TXT - max 5MB)
 3. Select candidates
 4. Come back here to chat!""",
