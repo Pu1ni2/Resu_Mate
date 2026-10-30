@@ -19,6 +19,17 @@ import { read, rules, classesIn, selectorsIn, legacyClasses, tailwindUtility, fo
 const SHEETS = {
   'studio.css': { roots: ['studio'], keyframes: 'studio-' },
   'studio-auth.css': { roots: ['studio-auth'], keyframes: 'studio-auth-' },
+  'studio-workspace.css': {
+    roots: ['studio-workspace'],
+    keyframes: 'studio-workspace-',
+    restyles: [
+      'btn', 'btn-primary', 'btn-secondary', 'btn-ghost', 'btn-danger', 'input',
+      'glass-card', 'clean-card', 'card', 'clean-section-title', 'clean-stat-card', 'clean-stat-value',
+      'clean-stat-icon', 'clean-bar-track', 'clean-bar-fill', 'clean-pill', 'clean-list-row',
+      'chat-container', 'chat-header', 'chat-input-area', 'message', 'assistant', 'user',
+      'message-content', 'suggestion',
+    ],
+  },
 };
 
 /* Does a selector start at one of these roots: the class itself, not a longer

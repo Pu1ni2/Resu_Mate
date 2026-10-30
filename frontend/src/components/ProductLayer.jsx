@@ -45,6 +45,16 @@ export default function ProductLayer({ children }) {
   // ─── Keyboard shortcuts panel ───
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  // ─── The workspace frame ───
+  // WorkspaceShell registers while it is on screen: its top bar holds the bell
+  // and the shortcuts, so the floating toolbar steps aside.
+  const [frames, setFrames] = useState(0);
+  const registerFrame = useCallback(() => {
+    setFrames(n => n + 1);
+    return () => setFrames(n => n - 1);
+  }, []);
+  const framed = frames > 0;
+
   // ═══ THEME ═══
   // One light theme (theme.css). index.html sets it before the app runs; the
   // dark/light switch and the "t" shortcut are gone, and so is the choice a
@@ -179,7 +189,11 @@ export default function ProductLayer({ children }) {
   // ═══ CONTEXT VALUE ═══
   const contextValue = {
     addNotification, addToast,
-    showOnboarding: () => { setOnboardingStep(0); setShowOnboarding(true); }
+    showOnboarding: () => { setOnboardingStep(0); setShowOnboarding(true); },
+    // For the workspace frame's top bar.
+    registerFrame, unreadCount,
+    toggleNotifications: () => setShowNotifPanel(s => !s),
+    toggleShortcuts: () => setShowShortcuts(s => !s),
   };
 
   return (
@@ -187,12 +201,12 @@ export default function ProductLayer({ children }) {
       {children}
 
       {/* ═══ TOAST CONTAINER ═══
-          Top right, except on the public pages: there the top right holds the
-          way in or back (the homepage's "Sign in", the sign-in pages' "Back to
-          the homepage"), which the free server's wake-up notice covered for up
-          to a minute. The bottom right is free there, as the toolbar is
-          hidden. */}
-      <div className={`pl-toast-container${isPublicPage ? ' top-auto bottom-4' : ''}`} role="status" aria-live="polite">
+          Top right, except on the public pages and in the workspace frame:
+          there the top right holds the way in or back (the homepage's "Sign
+          in", the sign-in pages' "Back to the homepage"), which the free
+          server's wake-up notice covered for up to a minute, or the frame's
+          top bar. The bottom right is free there, as the toolbar is hidden. */}
+      <div className={`pl-toast-container${isPublicPage || framed ? ' top-auto bottom-4' : ''}`} role="status" aria-live="polite">
         {toasts.map(t => (
           <div key={t.id} className={`pl-toast pl-toast-${t.type}`}>
             {t.type === 'success' && <Check size={16} />}
@@ -207,8 +221,9 @@ export default function ProductLayer({ children }) {
       {/* ═══ FLOATING TOOLBAR (bottom-right) ═══
           Product chrome, so it is hidden on the public pages, with the panels
           below: on the public pages there is nothing to be notified about, and
-          a keyboard-shortcuts modal is noise. */}
-      {!isPublicPage && (
+          a keyboard-shortcuts modal is noise. Hidden in the workspace frame
+          too, whose top bar has the same two buttons. */}
+      {!isPublicPage && !framed && (
       <div className="pl-toolbar">
         {/* Notifications */}
         <button className="pl-toolbar-btn" onClick={() => setShowNotifPanel(s => !s)} title="Notifications (N)" aria-label="Notifications">
@@ -225,7 +240,7 @@ export default function ProductLayer({ children }) {
 
       {/* ═══ NOTIFICATION PANEL ═══ */}
       {!isPublicPage && showNotifPanel && (
-        <div className="pl-panel pl-notif-panel">
+        <div className={`pl-panel pl-notif-panel${framed ? ' pl-notif-panel--top' : ''}`}>
           <div className="pl-panel-header">
             <h3><Bell size={16} /> Notifications</h3>
             <div className="pl-panel-actions">

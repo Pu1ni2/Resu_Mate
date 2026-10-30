@@ -38,6 +38,13 @@
   --color-accent-press: #8b3022;
   --color-accent-wash: #f4e5dc;
   --color-accent-line: #dcb5a5;
+  /* The logo's own rust, the public pages' value, so the mark is the same
+     everywhere. For the mark only, not for text. */
+  --color-brand: #bf4a32;
+
+  /* ─── Forest: primary buttons and the current section, ink-dark green. ─── */
+  --color-forest: #30382f;
+  --color-forest-hover: #46513e;
 
   /* ─── Status: reserved, and always paired with an icon or a label, so
          meaning is never colour alone. ─── */
