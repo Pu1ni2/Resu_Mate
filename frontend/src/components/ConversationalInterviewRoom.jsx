@@ -387,6 +387,9 @@ export default function ConversationalInterviewRoom({
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
+  // The room is dark of its own, and the app's headings take the light
+  // theme's dark ink (design-system.css), so each heading here takes the
+  // room's colour instead.
   return (
     <div style={{
       minHeight: '100vh', background: 'linear-gradient(180deg, #0B0B12 0%, #14141F 100%)',
@@ -422,7 +425,7 @@ export default function ConversationalInterviewRoom({
           }}>
             <Mic size={36} color="#22C55E" />
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Ready when you are</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: 'inherit' }}>Ready when you are</h2>
           <p style={{ color: '#A1A1AA', fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
             You'll have a short voice conversation with Alex, an AI interviewer.
             Speak naturally — you can interrupt and ask Alex to repeat anything.
@@ -572,7 +575,7 @@ export default function ConversationalInterviewRoom({
       {/* Ended */}
       {phase === 'ended' && (
         <div style={{ maxWidth: 520, margin: '60px auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Thanks for talking with us</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: 'inherit' }}>Thanks for talking with us</h2>
           <p style={{ color: '#A1A1AA', fontSize: 14, marginBottom: 24 }}>
             Your interview has been recorded. The hiring team will follow up shortly.
           </p>

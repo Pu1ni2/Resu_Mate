@@ -314,6 +314,9 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   }, []);
 
   // ═══ RENDER ═══
+  // The room is dark of its own, and the app's headings take the light
+  // theme's dark ink (design-system.css), so each heading here takes the
+  // room's colour instead.
   return (
     <div ref={containerRef} style={{ background: '#0A0A0F', color: '#F4F4F5', position: 'fixed', inset: 0, zIndex: 9999, fontFamily: "'DM Sans', sans-serif" }}>
 
@@ -324,7 +327,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
             <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid rgba(59,130,246,0.3)' }}>
               <Bot size={40} color="#fff" />
             </div>
-            <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>Live AI Interview</h1>
+            <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px', color: 'inherit' }}>Live AI Interview</h1>
             <p style={{ color: '#71717A', marginBottom: '24px' }}>You'll be speaking with Alex, an AI interviewer with a live avatar.</p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -376,7 +379,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       {phase === 'connecting' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
           <Loader size={48} className="spin" style={{ color: '#3B82F6', marginBottom: '20px' }} />
-          <h2 style={{ fontSize: '22px', marginBottom: '8px' }}>Connecting to Interview Room...</h2>
+          <h2 style={{ fontSize: '22px', marginBottom: '8px', color: 'inherit' }}>Connecting to Interview Room...</h2>
           <p style={{ color: '#71717A' }}>Setting up camera, mic, and AI avatar</p>
         </div>
       )}
@@ -465,7 +468,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       {phase === 'ended' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
           <Loader size={40} className="spin" style={{ color: '#3B82F6', marginBottom: '16px' }} />
-          <h2>Generating Report...</h2>
+          <h2 style={{ color: 'inherit' }}>Generating Report...</h2>
           <p style={{ color: '#71717A', marginTop: '8px' }}>Returning to dashboard...</p>
         </div>
       )}
