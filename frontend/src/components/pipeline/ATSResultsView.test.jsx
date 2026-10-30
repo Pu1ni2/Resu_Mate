@@ -21,9 +21,9 @@ const run = extra => ({
   ...extra,
 });
 
-const open = pipelineResult => render(
+const open = (pipelineResult, props = {}) => render(
   <MemoryRouter>
-    <ATSResultsView pipelineResult={pipelineResult} onBack={vi.fn()} onRunAgain={vi.fn()} />
+    <ATSResultsView pipelineResult={pipelineResult} onBack={vi.fn()} onRunAgain={vi.fn()} {...props} />
   </MemoryRouter>,
 );
 
@@ -55,5 +55,28 @@ describe('the screening results', () => {
     open(run({}));
     expect(screen.queryByText(/Ranked by role only/)).toBeNull();
     expect(screen.queryByText(/left out/)).toBeNull();
+  });
+});
+
+describe('where the results sit', () => {
+  it("head the page on their own, and sit under the frame's heading in the workspace", () => {
+    const { unmount } = open(run({}));
+    expect(screen.getByRole('heading', { level: 1, name: 'Shortlist — Backend Engineer' })).toBeTruthy();
+    unmount();
+    open(run({}), { embedded: true });
+    expect(screen.getByRole('heading', { level: 2, name: 'Shortlist — Backend Engineer' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  });
+
+  it('set no text smaller than 11px, pills included', async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ statuses: { 'ada@x.com': { status: 'completed', mode: 'conversational' } } }),
+    });
+    const { container } = open(run({}), { embedded: true });
+    await screen.findByText('Done');
+    const sizes = [...container.querySelectorAll('[class]')].flatMap(el =>
+      [...el.getAttribute('class').matchAll(/\btext-\[(\d+(?:\.\d+)?)px\]/g)].map(m => Number(m[1])));
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(sizes.filter(size => size < 11)).toEqual([]);
   });
 });
