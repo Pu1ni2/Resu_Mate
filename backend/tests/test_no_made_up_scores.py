@@ -55,7 +55,7 @@ def test_with_nothing_scored_there_is_no_average():
 def test_a_failed_resume_analysis_has_no_confidence_score(model):
     model["reply"] = RuntimeError("model unavailable")
     intel = _run(technical_agent.analyze_resume_gaps(CANDIDATE))
-    assert intel["resume_confidence_score"] is None
+    assert "resume_confidence_score" not in intel
     assert intel["analysis_failed"] is True
 
 

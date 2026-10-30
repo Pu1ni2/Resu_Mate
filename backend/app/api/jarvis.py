@@ -33,7 +33,7 @@ YOU CAN ORCHESTRATE:
 - analyze_github: analyze one candidate's GitHub
 - scan_candidate: find LinkedIn, GitHub, contact info, public profile data
 - deep_evaluate: full hiring evaluation for one candidate
-- resume_intelligence: gaps, red flags, verification targets, resume confidence
+- resume_intelligence: gaps, red flags, verification targets (no score)
 - create_interview: create one interview and grant candidate access
 - get_interview_report: fetch a completed interview report
 - credibility_analysis: compare resume claims with what the candidate said in the interview
@@ -63,7 +63,7 @@ TRIGGER GUIDE:
 - github / code / repos / projects -> analyze_github unless cached artifact already answers it
 - linkedin / full profile / contact / scan -> scan_candidate unless cached artifact already answers it
 - drawbacks / weaknesses / negatives / report / evaluate / assess / deep dive -> deep_evaluate unless cached evaluation exists
-- red flags / resume gaps / verification targets / resume confidence -> resume_intelligence unless cached
+- red flags / resume gaps / verification targets -> resume_intelligence unless cached
 - schedule interview / create interview for one named candidate -> create_interview
 - invite top 3 / set up interviews for shortlist / email top candidates -> batch_action
 - interview result / interview report / how did the interview go -> get_interview_report unless cached
@@ -402,7 +402,7 @@ def _build_artifacts_overview(artifacts: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "resume_intel": _compress_candidate_artifacts(
             artifacts.get("resumeIntel") or {},
-            ["confidence", "gaps", "redFlags", "verificationTargets"],
+            ["gaps", "redFlags", "verificationTargets"],
         ),
         "interviews": _compress_candidate_artifacts(
             artifacts.get("interviews") or {},

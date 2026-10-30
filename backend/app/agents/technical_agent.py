@@ -91,9 +91,10 @@ Return ONLY valid JSON:
         {{"skill": "skill_name", "claim": "what resume says", "question_angle": "how to probe this in interview"}}
     ],
     "red_flags": ["any concerning patterns"],
-    "strong_points": ["genuinely impressive aspects"],
-    "resume_confidence_score": 0-100
-}}"""
+    "strong_points": ["genuinely impressive aspects"]
+}}
+
+Give no score or rating of any kind: the findings are the analysis."""
 
         try:
             content = await openai_tool.structured_call(prompt, "You are a senior technical recruiter analyzing resumes for verification targets. Be fair but thorough.")
@@ -103,13 +104,16 @@ Return ONLY valid JSON:
                     part = part.strip()
                     if part.startswith('json'): content = part[4:].strip(); break
                     elif part.startswith('{'): content = part; break
-            return json.loads(content)
+            result = json.loads(content)
+            # No score on a person, even if the model adds one.
+            result.pop("resume_confidence_score", None)
+            return result
         except Exception as e:
-            # No made-up verdict: this used to say 70/100 confidence for a
+            # No made-up finding: this used to say 70/100 confidence for a
             # résumé nobody had looked at.
             print(f"[WARN] resume gap analysis failed: {e}")
             return {"gaps": [], "verification_targets": [], "red_flags": [], "strong_points": [],
-                    "resume_confidence_score": None, "analysis_failed": True}
+                    "analysis_failed": True}
 
     async def generate_smart_questions(self, role: str, level: str, num_questions: int = 8,
                                         focus_areas: list = None, candidate_name: str = "Candidate",
