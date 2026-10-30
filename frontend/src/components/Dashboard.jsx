@@ -8,8 +8,8 @@ import InterviewReportView from './shared/InterviewReportView';
 import { 
   Users, BarChart2, Upload, Check, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2,
-  ChevronLeft, ChevronRight, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap
+  ChevronLeft, TrendingUp, Send, Bot, FileText, AlertCircle,
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap, Search, ArrowUpRight, ArrowRight
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 
@@ -260,6 +260,10 @@ export default function Dashboard() {
   const requested = searchParams.get('view');
   const tab = Object.keys(VIEWS).includes(requested) ? requested : 'upload';
   const setTab = view => setSearchParams({ view });
+  // The Candidates view's search and order. Each card keeps its place in the
+  // whole list, which numbers its file and its hidden name.
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [candidateSort, setCandidateSort] = useState('recent');
   const [input, setInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   // Delete All: asking, then deleting. Its own busy flag: the context's
@@ -310,13 +314,27 @@ export default function Dashboard() {
   
   const fileRef = useRef(null);
   const msgEndRef = useRef(null);
-  const sliderRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const currentAudioRef = useRef(null);
   const abortControllerRef = useRef(null);
 
   useEffect(() => { loadCandidates(); }, [loadCandidates]);
+
+  const resumeCandidates = candidates.filter(c => c.is_resume !== false);
+  // Ready to review: a résumé whose analysis didn't fail.
+  const readyCount = resumeCandidates.filter(c => !c.analysis_failed).length;
+  const query = candidateSearch.toLowerCase().trim();
+  const skillNames = c => (c.skills || []).map(s => (typeof s === 'string' ? s : s?.name));
+  const visibleCandidates = candidates
+    .map((candidate, index) => ({ candidate, index }))
+    .filter(({ candidate, index }) => [getDisplayName(candidate, index), candidate.predicted_role, ...skillNames(candidate)]
+      .join(' ').toLowerCase().includes(query))
+    .sort((a, b) => {
+      if (candidateSort === 'name') return getDisplayName(a.candidate, a.index).localeCompare(getDisplayName(b.candidate, b.index));
+      if (candidateSort === 'experience') return (b.candidate.total_experience_years || 0) - (a.candidate.total_experience_years || 0);
+      return a.index - b.index;
+    });
 
   useEffect(() => {
     if (tab === 'chat') initChat();
@@ -365,10 +383,6 @@ export default function Dashboard() {
       setPendingAutoSpeak(true);
       sendMessage(text.trim());
     }
-  };
-
-  const scrollSlider = (dir) => {
-    sliderRef.current?.scrollBy({ left: dir * 360, behavior: 'smooth' });
   };
 
   const getSkills = (c) => {
@@ -649,7 +663,25 @@ export default function Dashboard() {
       <div className="studio-dashboard">
           {/* UPLOAD TAB */}
           {tab === 'upload' && (
-            <div className="upload-tab">
+            <div className={`upload-tab${candidates.length ? ' has-candidates' : ''}`}>
+              <div className="sd-overview">
+                {[
+                  ['YOUR COLLECTION', candidates.length, 'candidate files'],
+                  ['READY TO REVIEW', readyCount, 'résumés in the collection'],
+                  ['IN YOUR SELECTION', selectedIds.length, 'for screening & comparison'],
+                ].map(([label, count, note]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{String(count).padStart(2, '0')}</strong>
+                    <small>{note}</small>
+                  </div>
+                ))}
+                <section className="sd-desk-note">
+                  <span aria-hidden="true">✳</span>
+                  <p>Good people.<br /><em>Great possibilities.</em></p>
+                </section>
+              </div>
+
               <div className="card upload-card">
                 <div className="card-body">
                   <div
@@ -686,26 +718,18 @@ export default function Dashboard() {
               {candidates.length > 0 && (
                 <div className="candidates-section">
                   <div className="candidates-header">
-                    <h2>Candidates ({candidates.length})</h2>
+                    <h2>The collection <span>{candidates.length}</span></h2>
                     <div className="candidates-actions">
                       {/* One screening action. There used to be two buttons here,
                           side by side, both with a Zap icon: "AutoHire" opened the
                           voice agent, "Rank" ran a different and weaker ranking
                           endpoint. Nothing in either label told you which was which. */}
-                      {candidates.filter(c => c.is_resume !== false).length >= 1 && (
+                      {resumeCandidates.length >= 1 && (
                         <button onClick={() => setTab('screening')} className="btn btn-primary btn-sm">
                           <Zap size={14} /> Screen candidates
                         </button>
                       )}
-                      {/* Jarvis keeps an entry point until it is docked as a
-                          persistent copilot; it is the only route to several
-                          capabilities, so it cannot be stranded in the meantime.
-                          Named for what it opens rather than for what it does. */}
-                      {candidates.filter(c => c.is_resume !== false).length >= 1 && (
-                        <button onClick={() => setShowPipeline(true)} className="btn btn-secondary btn-sm">
-                          <Sparkles size={14} /> Ask Jarvis
-                        </button>
-                      )}
+                      {/* Jarvis opens from the sidebar, on every view. */}
                       <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
                       <button onClick={clearSelection} className="btn btn-ghost btn-sm">Clear</button>
                       <button onClick={() => setConfirmingClearAll(true)} className="btn btn-danger btn-sm">
@@ -735,15 +759,39 @@ export default function Dashboard() {
                     </div>
                   </div>
 
+                  <div className="sd-filterbar">
+                    <label>
+                      <Search size={16} aria-hidden="true" />
+                      <input
+                        type="search"
+                        aria-label="Search candidates"
+                        placeholder="Search by name, role, or skill"
+                        value={candidateSearch}
+                        onChange={e => setCandidateSearch(e.target.value)}
+                      />
+                    </label>
+                    <div>
+                      <span aria-live="polite">{visibleCandidates.length} {visibleCandidates.length === 1 ? 'file' : 'files'}</span>
+                      <select aria-label="Sort candidates" value={candidateSort} onChange={e => setCandidateSort(e.target.value)}>
+                        <option value="recent">Original order</option>
+                        <option value="name">Name A–Z</option>
+                        <option value="experience">Most experience</option>
+                      </select>
+                    </div>
+                  </div>
+                  {visibleCandidates.length === 0 && (
+                    <div className="sd-no-results">
+                      No candidates match “{candidateSearch}”.{' '}
+                      <button type="button" onClick={() => setCandidateSearch('')}>Clear search</button>
+                    </div>
+                  )}
+
                   <div className="candidates-slider">
-                    <button className="slider-btn slider-btn-left" onClick={() => scrollSlider(-1)} aria-label="Scroll candidates left">
-                      <ChevronLeft size={20} />
-                    </button>
-                    <div className="slider-track" ref={sliderRef}>
-                      {candidates.map((c, i) => (
+                    <div className="slider-track">
+                      {visibleCandidates.map(({ candidate: c, index: i }) => (
                         <div
                           key={c.id}
-                          className={`candidate-card glass-card ${selectedIds.includes(c.id) ? 'selected' : ''} ${!c.is_resume ? 'not-resume' : ''}`}
+                          className={`candidate-card glass-card ${selectedIds.includes(c.id) ? 'selected' : ''} ${c.is_resume === false ? 'not-resume' : ''}`}
                           onClick={() => toggleSelection(c.id)}
                         >
                           {/* The mouse clicks the card. The keyboard and screen readers get a real
@@ -753,13 +801,14 @@ export default function Dashboard() {
                             onChange={() => toggleSelection(c.id)}
                             onClick={e => e.stopPropagation()}
                             aria-label={`Select ${getDisplayName(c, i)}`} />
-                          {!c.is_resume && (
+                          {c.is_resume === false && (
                             <div className="not-resume-banner">
                               <AlertCircle size={14} /> Not a Resume
                             </div>
                           )}
+                          <div className="sd-file-number" aria-hidden="true">CANDIDATE FILE <span>{String(i + 1).padStart(3, '0')}</span></div>
                           <div className="candidate-header">
-                            <div className="candidate-avatar" style={{ background: getAvatarGradient(c.name) }}>
+                            <div className="candidate-avatar" aria-hidden="true">
                               {getDisplayName(c, i)[0]?.toUpperCase()}
                             </div>
                             {selectedIds.includes(c.id) && (
@@ -798,39 +847,47 @@ export default function Dashboard() {
                               <span key={j} className="skill">{typeof s === 'string' ? s : s?.name}</span>
                             ))}
                           </div>
+                          <button
+                            type="button"
+                            className="sd-open-file"
+                            onClick={e => { e.stopPropagation(); navigate(`/hiring/focus?candidate=${c.id}`); }}
+                            aria-label={`Open candidate file for ${getDisplayName(c, i)}`}
+                          >
+                            Open candidate file<ArrowUpRight size={16} aria-hidden="true" />
+                          </button>
                         </div>
                       ))}
                     </div>
-                    <button className="slider-btn slider-btn-right" onClick={() => scrollSlider(1)} aria-label="Scroll candidates right">
-                      <ChevronRight size={20} />
-                    </button>
                   </div>
                 </div>
               )}
 
               {candidates.length === 0 && !loading && (
-                <div className="empty-state" style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
-                  <div className="empty-icon"><FileText size={40} /></div>
-                  <h3>Welcome to ResuMate 👋</h3>
-                  <p style={{ marginBottom: 20 }}>Three steps to your first AI-ranked shortlist:</p>
-                  <ol style={{
-                    textAlign: 'left', display: 'inline-block', margin: '0 auto 24px',
-                    color: 'var(--text2)', fontSize: 14, lineHeight: 1.9, paddingLeft: 20,
-                  }}>
-                    <li><strong>Upload resumes</strong> — drag-drop PDFs or DOCX above.</li>
-                    <li><strong>Run the pipeline</strong> — AI scores everyone against your role.</li>
-                    <li><strong>Interview the top picks</strong> — invite candidates with one click.</li>
-                  </ol>
+                <section className="sd-first-file">
+                  <div className="sd-paper-art" aria-hidden="true">
+                    <span className="sd-paper-back" />
+                    <span className="sd-paper-front">
+                      <i /><b>YOUR NEXT<br />GREAT HIRE.</b><em>Starts with a closer look.</em><u /><u /><u />
+                    </span>
+                    <span className="sd-paper-seal">POSSIBILITY<br />INSIDE</span>
+                  </div>
                   <div>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => fileRef.current?.click()}
-                      style={{ padding: '11px 24px', fontSize: 14, fontWeight: 600 }}
-                    >
-                      <Upload size={16} /> Upload your first resume
+                    <span className="sw-eyebrow">AN OPEN DESK. A FRESH START.</span>
+                    <h2>Your next great hire<br />starts <em>here.</em></h2>
+                    <p>Add a résumé to begin. We'll gather the details, so you can focus on what makes each person different.</p>
+                    <div className="sd-first-steps">
+                      <span>01 Gather</span><ArrowRight size={14} aria-hidden="true" />
+                      <span>02 Understand</span><ArrowRight size={14} aria-hidden="true" />
+                      <span>03 Connect</span>
+                    </div>
+                    <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>
+                      <Upload size={15} aria-hidden="true" />Upload your first resume
                     </button>
                   </div>
-                </div>
+                </section>
+              )}
+              {loading && candidates.length === 0 && (
+                <p role="status" className="sd-loading"><Loader size={18} className="spin" aria-hidden="true" />Opening your candidate collection…</p>
               )}
             </div>
           )}

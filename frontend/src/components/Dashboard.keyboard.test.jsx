@@ -31,6 +31,7 @@ function open(overrides = {}) {
       <Routes>
         <Route path="/" element={<p>The home page</p>} />
         <Route path="/hiring" element={<Dashboard />} />
+        <Route path="/hiring/focus" element={<p>The candidate file</p>} />
         <Route path="/hiring/sourcer" element={<p>The sourcer</p>} />
       </Routes>
     </MemoryRouter>,
@@ -124,10 +125,12 @@ describe('a candidate card', () => {
     expect(app.toggleSelection).not.toHaveBeenCalled();
   });
 
-  it('names the arrows that scroll the cards', () => {
-    open({ candidates: [ADA] });
-    expect(screen.getByRole('button', { name: 'Scroll candidates left' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Scroll candidates right' })).toBeTruthy();
+  // The cards are a grid now, with nothing to scroll; each opens its file.
+  it('opens the candidate file without changing the selection', () => {
+    const app = open({ candidates: [ADA] });
+    fireEvent.click(screen.getByRole('button', { name: 'Open candidate file for Ada' }));
+    expect(screen.getByText('The candidate file')).toBeTruthy();
+    expect(app.toggleSelection).not.toHaveBeenCalled();
   });
 });
 

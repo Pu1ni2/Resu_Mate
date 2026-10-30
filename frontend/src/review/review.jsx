@@ -21,6 +21,7 @@ import api from '../services/api';
 import ProductLayer from '../components/ProductLayer';
 import WorkspaceShell from '../components/studio/WorkspaceShell';
 import Home from '../components/home/Home';
+import Dashboard from '../components/Dashboard';
 import InterviewReportView from '../components/shared/InterviewReportView';
 import ATSResultsView from '../components/pipeline/ATSResultsView';
 import { candidates as sampleCandidates, pipeline, report, results, session, statuses } from './fixtures';
@@ -30,7 +31,9 @@ import { candidates as sampleCandidates, pipeline, report, results, session, sta
  * fixtures.js, and nothing sent anywhere. Pick a page in the bar at the top.
  * A page is added here once it has come over in the Studio design. */
 const PAGES = [
+  ['/hiring?view=upload', 'Candidates'],
   ['/review/results', 'Screening results'],
+  ['/hiring?view=interviews', 'Interviews'],
   ['/review/report', 'Interview report'],
   ['/', 'Homepage'],
 ];
@@ -112,6 +115,7 @@ export function Review() {
         <ProductLayer>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/hiring" element={<Dashboard />} />
             <Route
               path="/review/results"
               element={(

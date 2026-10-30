@@ -36,7 +36,14 @@ const SHEETS = {
   'studio-dashboard.css': {
     roots: ['studio-dashboard'],
     keyframes: 'studio-dashboard-',
-    restyles: ['clean-bar-track', 'clean-bar-fill'],
+    restyles: [
+      'clean-bar-track', 'clean-bar-fill',
+      'upload-tab', 'upload-card', 'card-body', 'upload-zone', 'active', 'upload-icon',
+      'candidates-header', 'candidates-actions', 'btn', 'candidates-slider', 'slider-track',
+      'candidate-card', 'selected', 'candidate-select', 'candidate-header', 'candidate-avatar',
+      'candidate-name', 'candidate-role', 'candidate-stats', 'candidate-location', 'candidate-skills',
+      'skill', 'candidate-badges', 'delete-btn', 'selected-check',
+    ],
   },
   'studio-conversation.css': { roots: ['sc-conversation'], keyframes: 'studio-conversation-', decorative: true },
 };
