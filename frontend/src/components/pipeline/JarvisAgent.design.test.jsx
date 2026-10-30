@@ -30,6 +30,8 @@ const COMPARISON = {
 let replies;
 
 beforeEach(() => {
+  // Jarvis keeps its conversation, and what it has fetched, for the session.
+  sessionStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
   replies = [];
   vi.spyOn(globalThis, 'fetch').mockImplementation(async url => {
