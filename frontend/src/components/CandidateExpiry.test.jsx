@@ -22,6 +22,10 @@ function server(me) {
   ));
 }
 
+// The portal and the sign-in page both load when first opened, which can take
+// more than findBy's one second while the whole suite runs.
+const LOADS = { timeout: 5000 };
+
 function openDashboard() {
   localStorage.setItem('resumate_candidate', JSON.stringify(SESSION));
   localStorage.setItem('resumate_candidate_token', 'cand-jwt');
@@ -48,7 +52,7 @@ describe("a candidate's expired sign-in", () => {
   it('sends them to sign in again, and says why', async () => {
     server({ ok: false, status: 401, json: async () => ({ detail: 'Token expired' }) });
     openDashboard();
-    expect(await screen.findByText('Your sign-in has expired. Please sign in again.')).toBeTruthy();
+    expect(await screen.findByText('Your sign-in has expired. Please sign in again.', {}, LOADS)).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Your next chapter.' })).toBeTruthy();
     expect(localStorage.getItem('resumate_candidate_token')).toBeNull();
   });
@@ -64,7 +68,7 @@ describe('a current sign-in', () => {
       }),
     });
     openDashboard();
-    expect(await screen.findByText('Interview')).toBeTruthy();
+    expect(await screen.findByText('Interview', {}, LOADS)).toBeTruthy();
     await waitFor(() => expect(JSON.parse(localStorage.getItem('resumate_candidate')).has_interview).toBe(true));
     expect(screen.queryByText(/your sign-in has expired/i)).toBeNull();
   });
