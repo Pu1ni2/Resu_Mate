@@ -74,32 +74,32 @@ export default function ProductLayer({ children }) {
 
   const onboardingSteps = [
     {
-      title: 'Welcome to ResuMate AI!',
-      desc: 'Your AI-powered hiring platform with 7 specialized agents. Let me show you around.',
+      title: 'Welcome to your hiring desk.',
+      desc: 'A place to see the whole person. Gather candidates, compare their experience, and start a conversation.',
       icon: <Cpu size={28} />,
       image: '🚀'
     },
     {
-      title: 'Upload Resumes',
+      title: 'Meet your candidates',
       desc: 'Start by uploading PDF, DOCX, or TXT resumes. AI will extract text, find embedded links, and analyze each candidate.',
       icon: <Upload size={28} />,
       image: '📄'
     },
     {
-      title: 'AI Chat',
+      title: 'Ask a better question',
       desc: 'Select candidates and chat with AI about them. Ask comparisons, strengths, fit analysis — AI only uses real resume data.',
       icon: <MessageSquare size={28} />,
       image: '💬'
     },
     {
-      title: 'Candidate Focus',
+      title: 'The full candidate file',
       desc: 'Deep-dive into one candidate. Scanner Agent finds their GitHub & LinkedIn. Hiring Agent evaluates fit. Create AI interviews.',
       icon: <Users size={28} />,
       image: '🎯'
     },
     {
-      title: 'Live AI Interview',
-      desc: 'Create interviews for candidates. They login with email, take a live video interview with AI, and you get a detailed report.',
+      title: 'Make room for a conversation',
+      desc: 'Create interviews for candidates. They sign in with a code sent to their email, talk with an AI interviewer by voice (or by video, with an avatar, where it is on), and you get a written report.',
       icon: <Video size={28} />,
       image: '🎥'
     }

@@ -15,7 +15,7 @@ import ProductLayer from './ProductLayer';
  * "Sign in". And the first-time walkthrough opened over the sign-in form. */
 
 const SIGN_IN = ['/hiring/login', '/hiring/register', '/hiring/forgot', '/hiring/reset', '/candidate/login'];
-const WALKTHROUGH = 'Welcome to ResuMate AI!';
+const WALKTHROUGH = 'Welcome to your hiring desk.';
 
 function renderAt(path) {
   return render(
