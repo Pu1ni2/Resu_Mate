@@ -1235,7 +1235,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         });
         setStatus('DONE');
         await handleSendMessageRef.current(
-          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'} scored ${artifact.avgScore ?? 'N/A'} on average.${artifact.eyeContact === null ? '' : ` Face in view ${artifact.eyeContact} percent of the time.`}${artifact.violations === null ? '' : ` Violations ${artifact.violations}.`} ${artifact.summary || ''}`
+          `[INTERVIEW_REPORT_RESULT] ${params.candidate_name || 'Candidate'}'s interview report is ready${isScore(artifact.avgScore) ? `, with an average answer score of ${artifact.avgScore}` : '; its answers were not scored'}.${artifact.eyeContact === null ? '' : ` Face in view ${artifact.eyeContact} percent of the time.`}${artifact.violations === null ? '' : ` Violations ${artifact.violations}.`} ${artifact.summary || ''}`
         );
       } catch (err) {
         setStatus('ERROR');
@@ -1830,19 +1830,30 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const scores = Array.isArray(report.scores) ? report.scores : [];
                 const textReport = typeof report.report === 'string' ? report.report : '';
                 const transcript = Array.isArray(report.transcript) ? report.transcript : [];
+                // Only what the interview has: answers aren't scored any more,
+                // so an average, or a count of scored questions, may not exist.
+                const average = isScore(report.avgScore) ? report.avgScore : averageScore(scores);
+                const stats = [
+                  ...(isScore(average) ? [['Avg Score', shownScore(average)]] : []),
+                  ...(isScore(report.eyeContact) ? [['Face in view', `${report.eyeContact}%`]] : []),
+                  ...(isScore(report.violations) ? [['Violations', report.violations]] : []),
+                  ...(scores.length > 0 ? [['Questions', scores.length]] : []),
+                ];
                 return (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(70,98,61)', marginBottom: 6 }}>INTERVIEW REPORT</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{rp.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#486563', marginBottom: 18 }}>{rp.candidateEmail}</div>
-                    <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
-                      {[['Avg Score', shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores))], ...(isScore(report.eyeContact) ? [['Face in view', `${report.eyeContact}%`]] : []), ...(isScore(report.violations) ? [['Violations', report.violations]] : []), ['Questions', scores.length]].map(([label, value]) => (
-                        <div key={label}>
-                          <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: '#2b3029' }}>{value}</div>
-                        </div>
-                      ))}
-                    </div>
+                    {stats.length > 0 && (
+                      <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+                        {stats.map(([label, value]) => (
+                          <div key={label}>
+                            <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: '#2b3029' }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {scores.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>QUESTION SCORES</div>
@@ -2451,7 +2462,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   const rp = msg.reportData;
                   const report = rp.report || {};
                   const scores = Array.isArray(report.scores) ? report.scores : [];
-                  const avgScore = shownScore(isScore(report.avgScore) ? report.avgScore : averageScore(scores));
+                  const average = isScore(report.avgScore) ? report.avgScore : averageScore(scores);
                   const summary = stripMarkdown(report.report || '');
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
@@ -2462,7 +2473,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 8 }}>{rp.candidateName}</div>
                         <div style={{ display: 'flex', gap: 18, marginBottom: summary ? 8 : 0, flexWrap: 'wrap' }}>
-                          {[{ label: 'AVG', val: avgScore }, ...(isScore(report.eyeContact) ? [{ label: 'FACE IN VIEW', val: `${report.eyeContact}%` }] : []), ...(isScore(report.violations) ? [{ label: 'VIOLATIONS', val: report.violations }] : [])].map(({ label, val }) => (
+                          {[...(isScore(average) ? [{ label: 'AVG', val: shownScore(average) }] : []), ...(isScore(report.eyeContact) ? [{ label: 'FACE IN VIEW', val: `${report.eyeContact}%` }] : []), ...(isScore(report.violations) ? [{ label: 'VIOLATIONS', val: report.violations }] : [])].map(({ label, val }) => (
                             <div key={label}>
                               <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 12, fontWeight: 800, color: '#2b3029' }}>{val}</div>
