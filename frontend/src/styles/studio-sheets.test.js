@@ -49,6 +49,10 @@ const SHEETS = {
   },
   'studio-conversation.css': { roots: ['sc-conversation'], keyframes: 'studio-conversation-', decorative: true },
   'studio-screening.css': { roots: ['studio-screening', 'studio-screening-results'], keyframes: 'studio-screening-' },
+  'studio-assistant.css': {
+    roots: ['studio-assistant', 'studio-assistant-detail', 'studio-assistant-results'],
+    keyframes: 'studio-assistant-',
+  },
   'studio-focus.css': {
     roots: ['studio-focus'],
     keyframes: 'studio-focus-',

@@ -49,6 +49,8 @@
 @import './studio-screening.css' layer(components);
 /* The candidate file, scoped to .studio-focus. */
 @import './studio-focus.css' layer(components);
+/* Jarvis, scoped to .studio-assistant and its detail and results overlays. */
+@import './studio-assistant.css' layer(components);
 /* The conversation sculpture, scoped to .sc-conversation. */
 @import './studio-conversation.css' layer(components);
 
