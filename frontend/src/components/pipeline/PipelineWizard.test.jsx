@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 
 import PipelineWizard from './PipelineWizard';
 
@@ -56,6 +56,29 @@ describe('what the screen offers', () => {
     setup();
     expect(screen.getByRole('button', { name: /screen 12 resumes/i })).toBeTruthy();
   });
+
+  it('says it will screen the selected candidates, and how many, when some are selected', () => {
+    setup({ candidateIds: [4, 9], candidateCount: 2 });
+    expect(screen.getByText(/only your selected candidates will be screened/i)).toBeTruthy();
+    const scope = screen.getByText('IN THIS RUN').parentElement;
+    expect(scope.querySelector('strong').textContent).toBe('02');
+    expect(within(scope).getByText('selected candidates')).toBeTruthy();
+  });
+
+  it('says it will screen every résumé, and how many, when none are', () => {
+    setup();
+    expect(screen.getByText(/all uploaded résumés will be screened/i)).toBeTruthy();
+    const scope = screen.getByText('IN THIS RUN').parentElement;
+    expect(scope.querySelector('strong').textContent).toBe('12');
+    expect(within(scope).getByText('uploaded résumés')).toBeTruthy();
+  });
+
+  it('keeps its drawing from a screen reader', () => {
+    setup();
+    for (const words of ['CANDIDATE FILE', 'ROLE BRIEF']) {
+      expect(screen.getByText(words).closest('[aria-hidden="true"]')).toBeTruthy();
+    }
+  });
 });
 
 describe('the role is required', () => {
@@ -78,6 +101,22 @@ describe('the role is required', () => {
 });
 
 describe('running it', () => {
+  it('shows activity only while the real screening request is pending', async () => {
+    let finishRun;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(resolve => { finishRun = resolve; }));
+    const onComplete = vi.fn();
+    setup({ onComplete });
+    expect(screen.getByRole('status').textContent).toMatch(/your criteria/i);
+    fireEvent.change(screen.getByPlaceholderText(/senior backend engineer/i), { target: { value: 'Engineer' } });
+    fireEvent.click(screen.getByRole('button', { name: /screen 12 resumes/i }));
+    expect(screen.getByRole('status').textContent).toMatch(/screening against your brief/i);
+    expect(screen.getByRole('button', { name: /screening 12 resumes/i }).disabled).toBe(true);
+    expect(onComplete).not.toHaveBeenCalled();
+    finishRun({ ok: true, json: async () => RESULT });
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(RESULT));
+    expect(screen.getByRole('status').textContent).toMatch(/your criteria/i);
+  });
+
   it('posts the four fields and hands the result to onComplete', async () => {
     const spy = mockRun();
     const onComplete = vi.fn();
