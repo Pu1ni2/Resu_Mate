@@ -795,7 +795,7 @@ async def save_transcript(
             interview.status = "completed"
     except Exception as exc:
         # Don't fail the transcript save if report generation hiccups.
-        print(f"[save-transcript] report generation failed: {exc}")
+        print(f"[save-transcript] report generation failed: {type(exc).__name__}")
 
     await db.commit()
     await _notify_manager_interview_complete(db, interview)
@@ -829,7 +829,7 @@ async def _notify_manager_interview_complete(db, interview) -> None:
         )
         await email_service.send(mgr.email, subject, body)
     except Exception as exc:
-        print(f"[WARN] manager completion notification failed: {exc}")
+        print(f"[WARN] manager completion notification failed: {type(exc).__name__}")
 
 
 # ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════
@@ -907,7 +907,7 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         manager_id=mgr, target_email=email,
         detail=f"role={req.role or 'General'} mode={mode}",
     )
-    print(f"[OK] Interview created for {email}")
+    print(f"[OK] Interview created for candidate {req.candidate_id}")
 
     # Nothing told the candidate before: the manager was told they "can now
     # log in", with no email sent and no link to pass on.

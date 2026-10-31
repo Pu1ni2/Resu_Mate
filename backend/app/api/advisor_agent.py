@@ -145,7 +145,7 @@ async def candidate_upload_resume(
         )
         metadata.update(json.loads(analysis.choices[0].message.content))
     except Exception as e:
-        print(f"Analysis failed: {e}")
+        print(f"Analysis failed: {type(e).__name__}")
         # Unknown, and marked so, rather than "Professional" at "Mid" level.
         metadata.update({"predicted_role": None, "experience_level": None, "total_experience_years": None,
                          "skills": [], "summary": "", "analysis_failed": True})

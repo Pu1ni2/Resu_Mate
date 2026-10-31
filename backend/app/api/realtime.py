@@ -378,7 +378,7 @@ async def finalize(
         if report:
             db_service.merge_interview_report(interview, {"report": report})
     except Exception as exc:
-        logger.warning("finalize: report generation failed: %s", exc)
+        logger.warning("finalize: report generation failed: %s", type(exc).__name__)
 
     interview.status = "completed"
     await db.commit()
@@ -388,7 +388,7 @@ async def finalize(
         from app.api.chat import _notify_manager_interview_complete
         await _notify_manager_interview_complete(db, interview)
     except Exception as exc:
-        logger.warning("finalize: manager notification failed: %s", exc)
+        logger.warning("finalize: manager notification failed: %s", type(exc).__name__)
 
     return {
         "saved": True,

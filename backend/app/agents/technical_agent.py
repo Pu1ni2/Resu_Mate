@@ -111,7 +111,7 @@ Give no score or rating of any kind: the findings are the analysis."""
         except Exception as e:
             # No made-up finding: this used to say 70/100 confidence for a
             # résumé nobody had looked at.
-            print(f"[WARN] resume gap analysis failed: {e}")
+            print(f"[WARN] resume gap analysis failed: {type(e).__name__}")
             return {"gaps": [], "verification_targets": [], "red_flags": [], "strong_points": [],
                     "analysis_failed": True}
 
@@ -268,7 +268,7 @@ Return ONLY valid JSON:
             return result
         except Exception as e:
             # No made-up finding when nothing was compared.
-            print(f"[WARN] credibility analysis failed: {e}")
+            print(f"[WARN] credibility analysis failed: {type(e).__name__}")
             return {
                 "analysis_failed": True,
                 "resume_vs_interview": {"confirmed_skills": [], "unverified_skills": [], "overrated_skills": [], "hidden_strengths": []},

@@ -141,7 +141,7 @@ def post_transcript(config: dict, transcript: list, room_name: str = ""):
                 timeout=10,
             )
             if resp.ok:
-                logger.info(f"Transcript saved ({len(transcript)} turns) for {candidate_email}")
+                logger.info(f"Transcript saved ({len(transcript)} turns)")
                 return
             logger.warning(f"Transcript POST to {url} returned {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
@@ -196,7 +196,7 @@ async def entrypoint(ctx: JobContext):
             role = "interviewer" if getattr(item, "role", "") == "assistant" else "candidate"
             transcript.append({"role": role, "text": text, "timestamp": time.time()})
         except Exception as e:
-            logger.warning(f"transcript capture failed: {e}")
+            logger.warning(f"transcript capture failed: {type(e).__name__}")
 
     if SIMLI_API_KEY and SIMLI_FACE_ID:
         try:

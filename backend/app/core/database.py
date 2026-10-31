@@ -33,7 +33,10 @@ def display_url(url: str) -> str:
 
 print(f"Database: {display_url(DATABASE_URL)}")
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+# hide_parameters: a database error's text held the statement's values, a
+# candidate's name, address and résumé among them, and the error went to
+# the log.
+engine = create_async_engine(DATABASE_URL, echo=False, hide_parameters=True)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

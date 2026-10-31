@@ -730,7 +730,8 @@ async def jarvis_chat(
         )
 
     except json.JSONDecodeError as exc:
-        logger.warning("Jarvis JSON parse error: %s -- raw: %s", exc, raw[:200])
+        # Not the reply itself: it is about the manager's candidates.
+        logger.warning("Jarvis JSON parse error: %s", exc)
         return JarvisChatResponse(reply=raw[:300] if raw else "Something went wrong. Try again.")
 
     except Exception as exc:

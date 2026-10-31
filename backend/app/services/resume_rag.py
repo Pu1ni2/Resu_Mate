@@ -227,7 +227,7 @@ class ResumeRAGService:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     return f.read()
         except Exception as e:
-            print(f"Error extracting text: {e}")
+            print(f"Error extracting text: {type(e).__name__}")
             return ""
     
     def _extract_embedded_links(self, file_path: str, file_name: str) -> dict:
@@ -256,7 +256,6 @@ class ResumeRAGService:
                         continue
                     
                     links["all_urls"].append(uri)
-                    print(f"📎 Found embedded link: {uri}")
                     
                     # Categorize the link
                     uri_lower = uri.lower()
@@ -277,7 +276,7 @@ class ResumeRAGService:
         except ImportError:
             print("[WARN] PyMuPDF not installed. Run: pip install PyMuPDF")
         except Exception as e:
-            print(f"[WARN] Error extracting PDF links: {e}")
+            print(f"[WARN] Error extracting PDF links: {type(e).__name__}")
         
         return links
     
@@ -469,7 +468,7 @@ BADGES (pick 2-3):
             return data
             
         except Exception as e:
-            print(f"Error analyzing resume: {e}")
+            print(f"Error analyzing resume: {type(e).__name__}")
             # Unknown, and marked so. This used to say "Professional",
             # "Entry" and 0 years, which the cards showed as fact.
             return {
@@ -565,7 +564,7 @@ BADGES (pick 2-3):
                         where={"$and": [{"candidate_id": candidate_id}, {"file_name": file_name}]}
                     )
                 except Exception as exc:
-                    print(f"ChromaDB delete failed for upload {file_name}: {exc}")
+                    print(f"ChromaDB delete failed for an upload: {type(exc).__name__}")
 
     def clear_all(self, manager_id=None):
         """Clear ONLY this manager's candidates + hashes.

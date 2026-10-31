@@ -54,7 +54,7 @@ class StorageService:
             self._client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
             return key
         except Exception as e:
-            logger.warning("S3 upload failed for %s: %s", key, e)
+            logger.warning("S3 upload failed: %s", e)
             return None
 
     def presigned_url(self, key: str, expires: int = 300) -> Optional[str]:
@@ -68,7 +68,7 @@ class StorageService:
                 ExpiresIn=expires,
             )
         except Exception as e:
-            logger.warning("S3 presign failed for %s: %s", key, e)
+            logger.warning("S3 presign failed: %s", e)
             return None
 
     def download(self, key: str) -> Optional[bytes]:
@@ -79,7 +79,7 @@ class StorageService:
             obj = self._client.get_object(Bucket=self.bucket, Key=key)
             return obj["Body"].read()
         except Exception as e:
-            logger.warning("S3 download failed for %s: %s", key, e)
+            logger.warning("S3 download failed: %s", e)
             return None
 
     def delete(self, key: str) -> bool:
@@ -89,7 +89,7 @@ class StorageService:
             self._client.delete_object(Bucket=self.bucket, Key=key)
             return True
         except Exception as e:
-            logger.warning("S3 delete failed for %s: %s", key, e)
+            logger.warning("S3 delete failed: %s", e)
             return False
 
 

@@ -625,7 +625,7 @@ class SourcerAgent:
         try:
             plan = _normalise_plan(_parse_json(raw))
         except (ValueError, TypeError) as e:
-            print(f"[WARN] sourcer plan unreadable: {e}")
+            print(f"[WARN] sourcer plan unreadable: {type(e).__name__}")
             plan = _normalise_plan({})
         if not plan["criteria"]:
             plan = _fallback_plan(description)
@@ -676,7 +676,7 @@ class SourcerAgent:
                 if parsed and not any(p["pid"] in read for p in people) and len(parsed) == len(people):
                     read = {p["pid"]: value for p, (_, value) in zip(people, parsed)}
             except (ValueError, TypeError) as e:
-                print(f"[WARN] sourcer judge reply unreadable: {e}")
+                print(f"[WARN] sourcer judge reply unreadable: {type(e).__name__}")
                 failure = "Could not be judged: the model's reply was unreadable."
             except Exception as e:
                 print(f"[WARN] sourcer judge failed: {e}")

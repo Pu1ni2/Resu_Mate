@@ -251,7 +251,10 @@ class BaseAgent:
         entry = AgentLog(step=step, msg=msg, status=status, duration=duration)
         self.logs.append(entry)
         emoji = {"success": "✅", "error": "❌", "warning": "⚠️"}.get(status, "🔄")
-        print(f"  [{self.name}] {emoji} {msg}")
+        # The step, not its message: messages name the candidate, their
+        # accounts and what was found, which the manager sees in the scan's
+        # steps and the log has no need of.
+        print(f"  [{self.name}] {emoji} {step}")
         return entry
 
     async def run(self, task: str, context: Dict = None, retry_count: int = 0) -> AgentResult:

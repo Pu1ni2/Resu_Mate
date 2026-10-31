@@ -33,7 +33,7 @@ class PDFTool:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     return f.read()
         except Exception as e:
-            print(f"Text extraction error: {e}")
+            print(f"Text extraction error: {type(e).__name__}")
             return ""
 
     def _extract_links(self, file_path: str, file_name: str = "") -> Dict:
@@ -65,7 +65,7 @@ class PDFTool:
         except ImportError:
             print("⚠️ PyMuPDF not installed")
         except Exception as e:
-            print(f"PDF link extraction error: {e}")
+            print(f"PDF link extraction error: {type(e).__name__}")
         return links
 
     def extract_contact_from_text(self, text: str) -> Dict:

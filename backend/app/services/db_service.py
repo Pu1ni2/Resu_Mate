@@ -31,7 +31,7 @@ async def log_event(
         await session.commit()
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] audit log_event failed: {e}")
+        print(f"[WARN] audit log_event failed: {type(e).__name__}")
 
 
 # ═══════ CANDIDATE ═══════
@@ -81,7 +81,7 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
         return candidate
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] DB create_candidate error: {e}")
+        print(f"[WARN] DB create_candidate error: {type(e).__name__}")
         return None
 
 
@@ -174,7 +174,7 @@ async def create_interview(session: AsyncSession, data: dict) -> Optional[Interv
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] DB create_interview error: {e}")
+        print(f"[WARN] DB create_interview error: {type(e).__name__}")
         return None
 
 
@@ -216,7 +216,7 @@ async def update_interview_status(
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] DB update_interview error: {e}")
+        print(f"[WARN] DB update_interview error: {type(e).__name__}")
         return None
 
 
@@ -315,7 +315,7 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] DB save_interview_result error: {e}")
+        print(f"[WARN] DB save_interview_result error: {type(e).__name__}")
         return None
 
 
@@ -376,7 +376,7 @@ async def save_proctoring(session: AsyncSession, email: str, data: dict) -> Opti
         return interview
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] DB save_proctoring error: {e}")
+        print(f"[WARN] DB save_proctoring error: {type(e).__name__}")
         return None
 
 
@@ -442,7 +442,7 @@ async def create_candidate_access(session: AsyncSession, email: str, name: str, 
         return access
     except Exception as e:
         await session.rollback()
-        print(f"[WARN] DB create_access error: {e}")
+        print(f"[WARN] DB create_access error: {type(e).__name__}")
         return None
 
 
