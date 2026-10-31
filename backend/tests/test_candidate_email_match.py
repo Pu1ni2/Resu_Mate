@@ -27,6 +27,17 @@ def _grants(email):
         return db.execute("select count(*) from candidate_access where email = ?", (email,)).fetchone()[0]
 
 
+def test_a_resumes_own_address_gets_no_portal_access_without_an_invitation(client):
+    """verify-email granted it to anyone who asked, under whichever company had
+    uploaded the resume. Only a manager's invitation grants it now."""
+    from app.services.resume_rag import resume_rag
+    _, mgr = register(client, "m6@co.com")
+    _seed(resume_rag, mgr["id"])
+    assert client.post("/api/chat/verify-email", json={"email": "john@x.com"}).status_code in (404, 405)
+    client.post("/api/auth/candidate/send-otp", json={"email": "john@x.com"})
+    assert _grants("john@x.com") == 0
+
+
 def _context(client, email):
     headers = {"Authorization": f"Bearer {create_candidate_token(email)}"}
     return client.get("/api/advisor/context", headers=headers).json()
