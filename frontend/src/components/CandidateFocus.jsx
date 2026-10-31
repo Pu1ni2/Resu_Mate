@@ -25,7 +25,7 @@ import WorkspaceShell from './studio/WorkspaceShell';
 
 export default function CandidateFocus() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { candidates, anonymize, getDisplayName } = useApp();
+  const { candidates, candidatesStatus, loadCandidates, anonymize, getDisplayName } = useApp();
 
   // A file opens at once, on the résumé alone; the online lookup waits until
   // the manager asks for it.
@@ -505,6 +505,10 @@ export default function CandidateFocus() {
                 </article>
               ))}
             </div>
+          ) : candidates.length === 0 && candidatesStatus === 'loading' ? (
+            <div className="sf-empty" role="status"><FileText size={34} strokeWidth={1.3} /><h3>Opening your candidate files…</h3></div>
+          ) : candidates.length === 0 && candidatesStatus === 'failed' ? (
+            <div className="sf-empty" role="alert"><FileText size={34} strokeWidth={1.3} /><h3>Your candidate files couldn't be loaded.</h3><p>Check your connection and try again.</p><button className="sf-button sf-button-primary" onClick={loadCandidates}>Try again</button></div>
           ) : (
             <div className="sf-empty"><FileText size={34} strokeWidth={1.3} /><h3>{pickerQuery ? 'No matching files.' : 'Your next great hire starts here.'}</h3><p>{pickerQuery ? 'Try another name, role or skill.' : 'Upload a résumé to bring a candidate into your workspace.'}</p>{pickerQuery ? <button className="sf-button" onClick={() => setPickerQuery('')}>Clear search</button> : <Link className="sf-button sf-button-primary" to="/hiring?view=upload">Add candidates <ArrowUpRight size={16} /></Link>}</div>
           )}

@@ -80,7 +80,7 @@ export function Review() {
 
   // Everything AppProvider offers, kept in this page.
   const value = {
-    candidates, setCandidates, selectedIds, selectedCandidates,
+    candidates, setCandidates, candidatesStatus: 'loaded', selectedIds, selectedCandidates,
     uploadProgress: {}, loading: false, deleting: false,
     loadCandidates: noOp,
     uploadResume: async () => {

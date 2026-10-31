@@ -36,6 +36,10 @@ export const AppProvider = ({ children }) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [loading, setLoading] = useState(false);
+  // 'loading' until the server has answered for the list, then 'loaded', or
+  // 'failed' when it couldn't be reached: an empty list means no candidates
+  // only once it is 'loaded'.
+  const [candidatesStatus, setCandidatesStatus] = useState('loading');
 
   const [messages, setMessages] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -65,33 +69,13 @@ export const AppProvider = ({ children }) => {
     clearSession();
     setHiringManager(null);
     setCandidates([]);
+    setCandidatesStatus('loading');
     setSelectedIds([]);
   }, []);
 
   useEffect(() => {
     storeCandidates(candidates);
   }, [candidates]);
-
-  // Fetch candidates from backend whenever a hiring manager session is active.
-  // Runs on mount (picks up persisted session) AND after login (hiringManager changes).
-  useEffect(() => {
-    if (!hiringManager) return; // not logged in
-
-    const syncWithBackend = async () => {
-      try {
-        const res = await candidatesAPI.getAll();
-        const backendCandidates = res.data.candidates || [];
-        setCandidates(backendCandidates);
-        if (backendCandidates.length === 0) {
-          setSelectedIds([]);
-          localStorage.removeItem('resumate_candidates');
-        }
-      } catch {
-        // Backend not reachable — keep whatever is cached
-      }
-    };
-    syncWithBackend();
-  }, [hiringManager]); // re-runs on login / logout
 
   const selectedCandidates = useMemo(
     () => candidates.filter(c => selectedIds.includes(c.id)),
@@ -105,20 +89,29 @@ export const AppProvider = ({ children }) => {
 
   const loadCandidates = useCallback(async () => {
     setLoading(true);
+    setCandidatesStatus('loading');
     try {
       const res = await candidatesAPI.getAll();
       const list = res?.data?.candidates || [];
       setCandidates(list);
+      setCandidatesStatus('loaded');
       if (list.length === 0) {
         setSelectedIds([]);
         localStorage.removeItem('resumate_candidates');
       }
     } catch (err) {
       console.warn('loadCandidates: backend fetch failed, keeping cached list:', err?.message);
+      setCandidatesStatus('failed');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Whenever a hiring manager is signed in: on mount, for a saved session, and
+  // after signing in.
+  useEffect(() => {
+    if (hiringManager) loadCandidates();
+  }, [hiringManager, loadCandidates]);
 
   const uploadResume = useCallback(async (file) => {
     const uploadId = `upload-${Date.now()}`;
@@ -299,7 +292,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      candidates, setCandidates, selectedIds, selectedCandidates, uploadProgress, loading, deleting,
+      candidates, setCandidates, candidatesStatus, selectedIds, selectedCandidates, uploadProgress, loading, deleting,
       loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
       anonymize, setAnonymize, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,

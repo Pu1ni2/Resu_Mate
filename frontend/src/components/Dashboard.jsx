@@ -217,16 +217,32 @@ const VIEWS = {
   },
 };
 
+/* In place of an empty list while the list is on its way, or when it couldn't
+ * be loaded: either would otherwise read as having no candidates. */
+function ListUnavailable({ pending, onRetry }) {
+  if (pending) {
+    return <p role="status" className="sd-loading"><Loader size={18} className="spin" aria-hidden="true" />Opening your candidate collection…</p>;
+  }
+  return (
+    <div className="sd-error" role="alert">
+      <p>Your candidates couldn't be loaded. Check your connection and try again.</p>
+      <button className="btn btn-secondary btn-sm" onClick={onRetry}>Try again</button>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
-    candidates, selectedIds, selectedCandidates, uploadProgress, loading,
+    candidates, candidatesStatus, selectedIds, selectedCandidates, uploadProgress, loading,
     loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
     anonymize, setAnonymize, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
     getDisplayName, getAvatarGradient,
     hiringManager, logoutHiringManager,
   } = useApp();
+  const listPending = loading || candidatesStatus === 'loading';
+  const listUnavailable = candidates.length === 0 && (listPending || candidatesStatus === 'failed');
 
   // The view is in the address, so the workspace's other pages can link to
   // one, and Back goes back to the one before.
@@ -841,7 +857,7 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {candidates.length === 0 && !loading && (
+              {candidates.length === 0 && !listUnavailable && (
                 <section className="sd-first-file">
                   <div className="sd-paper-art" aria-hidden="true">
                     <span className="sd-paper-back" />
@@ -865,9 +881,7 @@ export default function Dashboard() {
                   </div>
                 </section>
               )}
-              {loading && candidates.length === 0 && (
-                <p role="status" className="sd-loading"><Loader size={18} className="spin" aria-hidden="true" />Opening your candidate collection…</p>
-              )}
+              {listUnavailable && <ListUnavailable pending={listPending} onRetry={loadCandidates} />}
             </div>
           )}
 
@@ -879,7 +893,9 @@ export default function Dashboard() {
           {tab === 'screening' && (
             <div className="analytics-tab">
               {!pipelineResult ? (
-                screeningCandidates.length === 0 ? (
+                listUnavailable ? (
+                  <ListUnavailable pending={listPending} onRetry={loadCandidates} />
+                ) : screeningCandidates.length === 0 ? (
                   <div className="clean-empty">
                     <Zap size={32} style={{ color: 'var(--color-ink-faint)', marginBottom: 12 }} />
                     {selectedIds.length ? (
