@@ -53,6 +53,8 @@
 @import './studio-assistant.css' layer(components);
 /* Find Candidates, scoped to .studio-sourcer. */
 @import './studio-sourcer.css' layer(components);
+/* The candidate portal, scoped to .studio-candidate. */
+@import './studio-candidate.css' layer(components);
 /* The conversation sculpture, scoped to .sc-conversation. */
 @import './studio-conversation.css' layer(components);
 

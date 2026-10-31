@@ -321,16 +321,23 @@ export default function CandidateDashboard() {
   const showInterviewTab = hasInterview || interviewCompleted;
   const c = advisorCandidates[0]; // Current resume data
   const getSkills = (cand) => Array.isArray(cand?.skills) ? cand.skills : [];
+  const pageIntro = {
+    upload: ['Your next chapter', 'A little more you.', 'Bring your experience together. Your résumé is the starting point for everything that comes next.'],
+    analysis: ['The bigger picture', 'Your experience, in focus.', 'Explore the skills, strengths and experience found in your résumé.'],
+    chat: ['A space to prepare', 'A fresh perspective.', 'Work through your résumé, rehearse an interview, or think about your next move.'],
+    interview: ['Your interview', interviewCompleted ? 'The conversation, continued.' : 'Let your experience speak.', interviewCompleted ? 'Your interview and feedback, together in one place.' : 'A thoughtful conversation about what you know and how you work.'],
+  }[tab];
 
   return (
-    <div className="cd-layout">
+    <div className="cd-layout studio-candidate">
       {/* ═══ SIDEBAR ═══ */}
       <aside className="cd-sidebar">
         <div className="cd-sidebar-header">
           <div className="cd-sidebar-logo"><Logo size={24} tone="candidate" /> ResuMate</div>
+          <span className="cd-portal-label">Candidate studio</span>
         </div>
         <nav className="cd-sidebar-nav">
-          <div className="cd-nav-section-title">Dashboard</div>
+          <div className="cd-nav-section-title">Your workspace</div>
           {[
             { id: 'upload', icon: <Upload size={18} />, label: 'My Resume' },
             { id: 'analysis', icon: <BarChart2 size={18} />, label: 'Analysis' },
@@ -348,12 +355,17 @@ export default function CandidateDashboard() {
             </div>
           ))}
         </nav>
+        <div className="cd-sidebar-note" aria-hidden="true">
+          <span className="cd-note-orbit" />
+          <p>Your story.<br /><em>Your next chapter.</em></p>
+          <span>Make room for what comes next.</span>
+        </div>
         <div className="cd-sidebar-footer">
+          <div className="cd-account"><span className="cd-account-avatar">{(candidateSession.name || 'C').slice(0, 1).toUpperCase()}</span><div><strong>{candidateSession.name || 'Candidate'}</strong><span>{candidateSession.email}</span></div></div>
           <button className="cd-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
           <button
-            className="cd-logout"
+            className="cd-logout cd-delete-data"
             onClick={() => setConfirmingErase(true)}
-            style={{ marginTop: 8, color: '#F87171' }}
             title="Permanently delete all your data"
           >
             <Trash2 size={16} /> Delete my data
@@ -376,7 +388,7 @@ export default function CandidateDashboard() {
       {/* ═══ MAIN ═══ */}
       <main className="cd-main">
         <header className="cd-header">
-          <span className="cd-welcome">Welcome, {candidateSession.name || 'Candidate'}</span>
+          <span className="cd-welcome"><span className="cd-header-dot" /> Your personal workspace</span>
           {hasInterview && (
             <div className="cd-header-alert" {...pressable(() => setTab('interview'))}>
               <Camera size={14} /> Interview Ready
@@ -385,6 +397,22 @@ export default function CandidateDashboard() {
         </header>
 
         <div className="cd-body">
+          <div className={`cd-page-intro${tab === 'upload' ? ' cd-page-intro-welcome' : ''}`}>
+            <div><span className="cd-eyebrow">{pageIntro[0]}</span><h1>{pageIntro[1]}</h1><p>{pageIntro[2]}</p></div>
+            {tab === 'upload' ? (
+              <div className="cd-welcome-sculpture" aria-hidden="true">
+                <div className="cd-sculpture-scene">
+                  <span className="cd-sculpture-shadow" />
+                  <span className="cd-sculpture-plinth" />
+                  <span className="cd-sculpture-sun" />
+                  <span className="cd-sculpture-orbit"><i /></span>
+                  <span className="cd-sculpture-caption">ROOM TO GROW</span>
+                </div>
+              </div>
+            ) : (
+              <span className="cd-page-index" aria-hidden="true">0{['upload', 'analysis', 'chat', 'interview'].indexOf(tab) + 1}<span> / YOUR STUDIO</span></span>
+            )}
+          </div>
 
           {/* ═══ UPLOAD TAB ═══ */}
           {tab === 'upload' && (
@@ -402,11 +430,13 @@ export default function CandidateDashboard() {
                     <span className="cd-upload-formats">PDF, DOCX, or TXT (max 5MB)</span>
                     <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
                   </div>
+                  <div className="cd-upload-caption"><span>01 — Bring your experience</span><p>A résumé gives your advisor context for more useful, personal guidance.</p></div>
                 </div>
               ) : (
                 <div className="cd-resume-overview">
                   {/* Resume card */}
                   <div className="cd-card cd-resume-card">
+                    <div className="cd-document-heading"><span>YOUR CANDIDATE FILE</span><span><FileText size={13} /> Résumé</span></div>
                     <div className="cd-resume-card-top">
                       <div className="cd-resume-file-icon"><FileText size={24} /></div>
                       <div className="cd-resume-card-info">
@@ -484,7 +514,7 @@ export default function CandidateDashboard() {
                       {(c.name || 'C')[0].toUpperCase()}
                     </div>
                     <h2>{c.name || 'Candidate'}</h2>
-                    <p className="cd-analysis-subtitle">{c.predicted_role || 'Role'} · {c.experience_level || 'Level'} · {c.total_experience_years || 0}y experience</p>
+                    <p className="cd-analysis-subtitle">{[c.predicted_role, c.experience_level, c.total_experience_years != null ? `${c.total_experience_years}y experience` : null].filter(Boolean).join(' · ') || 'Your résumé profile'}</p>
                     {c.location && <p className="cd-analysis-location"><MapPin size={13} /> {c.location}</p>}
                   </div>
 
@@ -492,7 +522,7 @@ export default function CandidateDashboard() {
                   <div className="cd-analysis-stats-grid">
                     <div className="cd-card cd-mini-stat">
                       <Briefcase size={18} className="cd-mini-stat-icon" />
-                      <div className="cd-mini-stat-value">{c.total_experience_years || 0}y</div>
+                      <div className="cd-mini-stat-value">{c.total_experience_years != null ? `${c.total_experience_years}y` : '—'}</div>
                       <div className="cd-mini-stat-label">Experience</div>
                     </div>
                     <div className="cd-card cd-mini-stat">
@@ -599,7 +629,7 @@ export default function CandidateDashboard() {
                   { id: 'interview_prep', icon: <Target size={14} />, label: 'Interview Prep' },
                   { id: 'career_advisor', icon: <TrendingUp size={14} />, label: 'Career Advisor' },
                 ].map(mode => (
-                  <button key={mode.id} className={`cd-mode-tab ${advisorMode === mode.id ? 'active' : ''}`} onClick={() => setAdvisorMode(mode.id)}>
+                  <button key={mode.id} className={`cd-mode-tab ${advisorMode === mode.id ? 'active' : ''}`} aria-pressed={advisorMode === mode.id} onClick={() => setAdvisorMode(mode.id)}>
                     {mode.icon} {mode.label}
                     {(advisorChatMap[mode.id]?.length || 0) > 0 && <span className="cd-mode-dot" />}
                   </button>
@@ -739,17 +769,7 @@ export default function CandidateDashboard() {
                           </div>
                           <h3>
                             AI Interview Ready
-                            <span
-                              style={{
-                                marginLeft: 10, fontSize: 11, fontWeight: 600,
-                                padding: '3px 9px', borderRadius: 999,
-                                background: isVoice ? 'rgba(34,197,94,0.15)' : 'rgba(139,92,246,0.15)',
-                                color: isVoice ? '#22C55E' : '#8B5CF6',
-                                border: `1px solid ${isVoice ? 'rgba(34,197,94,0.4)' : 'rgba(139,92,246,0.4)'}`,
-                                textTransform: 'uppercase', letterSpacing: '0.04em',
-                                verticalAlign: 'middle',
-                              }}
-                            >
+                            <span className="cd-interview-mode">
                               {isVoice ? 'Voice' : 'Avatar'}
                             </span>
                           </h3>
