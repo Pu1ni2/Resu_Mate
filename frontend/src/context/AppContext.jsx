@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { candidatesAPI, chatAPI, messageForApiError } from '../services/api';
-import { saveSession, clearSession, readStoredUser } from '../services/session';
+import { saveSession, clearSession, readStoredUser, clearCandidateCache } from '../services/session';
 import { toast } from '../services/notify';
 import { computeAnalytics } from './analytics';
 
@@ -14,25 +14,11 @@ export const useApp = () => {
   return context;
 };
 
-const getStoredCandidates = () => {
-  try {
-    const stored = localStorage.getItem('resumate_candidates');
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-const storeCandidates = (candidates) => {
-  try {
-    localStorage.setItem('resumate_candidates', JSON.stringify(candidates));
-  } catch (e) {
-    console.error('Failed to store candidates:', e);
-  }
-};
-
 export const AppProvider = ({ children }) => {
-  const [candidates, setCandidates] = useState(() => getStoredCandidates());
+  // In memory only. The whole list, résumé text and all, used to be copied to
+  // the browser's storage, where it stayed for anyone at this browser after
+  // the manager had gone.
+  const [candidates, setCandidates] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [loading, setLoading] = useState(false);
@@ -73,9 +59,7 @@ export const AppProvider = ({ children }) => {
     setSelectedIds([]);
   }, []);
 
-  useEffect(() => {
-    storeCandidates(candidates);
-  }, [candidates]);
+  useEffect(() => { clearCandidateCache(); }, []);
 
   const selectedCandidates = useMemo(
     () => candidates.filter(c => selectedIds.includes(c.id)),
@@ -95,12 +79,9 @@ export const AppProvider = ({ children }) => {
       const list = res?.data?.candidates || [];
       setCandidates(list);
       setCandidatesStatus('loaded');
-      if (list.length === 0) {
-        setSelectedIds([]);
-        localStorage.removeItem('resumate_candidates');
-      }
+      if (list.length === 0) setSelectedIds([]);
     } catch (err) {
-      console.warn('loadCandidates: backend fetch failed, keeping cached list:', err?.message);
+      console.warn('loadCandidates: backend fetch failed, keeping the list as it was:', err?.message);
       setCandidatesStatus('failed');
     } finally {
       setLoading(false);
@@ -171,11 +152,7 @@ export const AppProvider = ({ children }) => {
       }
     }
     // Remove from state
-    setCandidates(prev => {
-      const updated = prev.filter(c => c.id !== id);
-      try { localStorage.setItem('resumate_candidates', JSON.stringify(updated)); } catch { /* storage full or blocked: the list just isn't cached */ }
-      return updated;
-    });
+    setCandidates(prev => prev.filter(c => c.id !== id));
     setSelectedIds(prev => prev.filter(x => x !== id));
     setMessages([]);
     setSuggestions([]);
@@ -200,7 +177,6 @@ export const AppProvider = ({ children }) => {
     setSelectedIds([]);
     setMessages([]);
     setSuggestions([]);
-    localStorage.removeItem('resumate_candidates');
     setDeleting(false);
     return true;
   }, []);

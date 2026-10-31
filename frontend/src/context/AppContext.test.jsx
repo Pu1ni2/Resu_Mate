@@ -27,12 +27,13 @@ function refusal(status, detail) {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
-  localStorage.setItem('resumate_candidates', JSON.stringify([ADA, GRACE]));
   toasts = [];
   window.addEventListener(TOAST_EVENT, onToast);
   render(<AppProvider><Probe /></AppProvider>);
+  vi.spyOn(candidatesAPI, 'getAll').mockResolvedValueOnce({ data: { candidates: [ADA, GRACE] } });
+  await act(async () => { await app.loadCandidates(); });
 });
 
 afterEach(() => {
@@ -58,7 +59,6 @@ describe('Delete All', () => {
     await act(async () => { result = await app.clearAllCandidates(); });
     expect(result).toBe(true);
     expect(app.candidates).toEqual([]);
-    expect(JSON.parse(localStorage.getItem('resumate_candidates') || '[]')).toEqual([]);
     expect(toasts).toEqual([]);
   });
 });
