@@ -15,7 +15,7 @@ from app.models.auth import HiringManager
 from app.models.candidate import CandidateAccess
 from app.services import db_service
 from app.services import interview_modes
-from app.services.codes import CODE_USED_UP, WRONG_CODE, Outcome, issue_code, redeem_code
+from app.services.codes import WRONG_CODE, issue_code, redeem_code
 from app.services.auth import (
     verify_password,
     get_password_hash,
@@ -258,43 +258,45 @@ async def get_me(current_user: HiringManager = Depends(get_current_user)):
 
 # ── Candidate OTP Auth ────────────────────────────────────────────────────────
 
-@router.post("/candidate/send-otp")
-@limiter.limit("3/minute")
-async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
-    """Send a 6-digit OTP to the candidate's email."""
-    email = req.email.lower().strip()
+SIGN_IN_CODE_SENT = "If this address has been invited to an interview, we've emailed it a sign-in code."
 
-    # Check if this email has been granted access by any hiring manager
-    result = await db.execute(
-        select(CandidateAccess).where(CandidateAccess.email == email)
-    )
-    access = result.scalars().first()
-    if not access:
-        raise HTTPException(status_code=404, detail="No interview access found for this email. Please check with your hiring manager.")
 
-    # Stored hashed, and the address's earlier codes stop working.
-    code = await issue_code(db, email)
-
-    # Send email. In dev we expose the OTP code in the response so the candidate
-    # portal works without SendGrid configured. In production a delivery failure
-    # is a 503 so the candidate isn't left wondering why no email arrived.
+async def _email_sign_in_code(email: str, code: str) -> None:
+    """After the response. A failure can't be told to the person asking, since
+    it would say the address had been invited, so it goes to the log."""
     from app.services.email_service import email_service
-    from app.core.config import settings as _settings
     try:
         delivered = await email_service.send_otp(email, code)
     except Exception as exc:
         delivered = False
-        print(f"[OTP] send error: {exc}")
+        print(f"[OTP] send error: {type(exc).__name__}")
+    if not delivered:
+        print("[OTP] a sign-in code could not be emailed")
 
-    if delivered:
-        return {"message": "OTP sent to your email", "email": email}
 
-    if _settings.debug:
-        # Dev convenience: include the code in the response so flows work without SendGrid.
-        print(f"[OTP] dev fallback for {email}: {code}")
-        return {"message": "OTP generated (dev mode)", "email": email, "debug_code": code}
+@router.post("/candidate/send-otp")
+@limiter.limit("3/minute")
+async def send_otp(request: Request, req: SendOTPRequest, background: BackgroundTasks,
+                   db: AsyncSession = Depends(get_db)):
+    """Email a 6-digit sign-in code to an address a hiring manager has invited.
 
-    raise HTTPException(status_code=503, detail="Could not send OTP email. Try again shortly.")
+    The answer is the same whether or not one has, and the email goes out after
+    the response, as with a deletion request's code. It used to say "No
+    interview access found" to an address no one had invited, so anyone could
+    find out whom a company was interviewing.
+    """
+    email = req.email.lower().strip()
+    answer = {"message": SIGN_IN_CODE_SENT, "email": email}
+    access = (await db.execute(select(CandidateAccess).where(CandidateAccess.email == email))).scalars().first()
+    if access:
+        from app.services.email_service import email_service
+        # Stored hashed, and the address's earlier codes stop working.
+        code = await issue_code(db, email)
+        background.add_task(_email_sign_in_code, email, code)
+        if settings.debug and not email_service.configured:
+            # Local development without email, as forgot-password's debug_reset_link.
+            answer["debug_code"] = code
+    return answer
 
 
 @router.post("/candidate/verify-otp")
@@ -304,12 +306,10 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
     email = req.email.lower().strip()
 
     # Five wrong guesses use the code up; there was no limit, so a code could be
-    # found by guessing from enough addresses. Saying so here gives nothing
-    # away: send-otp already says which addresses have access.
-    outcome = await redeem_code(db, email, req.code)
-    if outcome is Outcome.USED_UP:
-        raise HTTPException(status_code=400, detail=CODE_USED_UP)
-    if not outcome:
+    # found by guessing from enough addresses. One answer for any refused code,
+    # a used-up one too, as for a deletion request: "tried too many times"
+    # would say a code had been sent, so that the address was invited.
+    if not await redeem_code(db, email, req.code):
         raise HTTPException(status_code=400, detail=WRONG_CODE)
 
     # Grant, interview and profile all from one manager, and the profile only if

@@ -54,7 +54,7 @@ describe('the code step', () => {
     await screen.findByText(USED_UP);
 
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
-    expect(await screen.findByText('We sent a new code. The one before no longer works.')).toBeTruthy();
+    expect(await screen.findByText('If the address has been invited, a new code is on its way, and the one before no longer works.')).toBeTruthy();
     expect(sent).toEqual(['dana@x.com', 'dana@x.com']);
     expect(screen.getByRole('textbox', { name: 'Access code' }).value).toBe('');
     expect(screen.queryByText(USED_UP)).toBeNull();
@@ -62,7 +62,7 @@ describe('the code step', () => {
 
   it('says nothing about a new code the first time', async () => {
     await atTheCodeStep();
-    expect(screen.queryByText(/We sent a new code/)).toBeNull();
+    expect(screen.queryByText(/a new code is on its way/)).toBeNull();
   });
 
   it('says to wait when there were too many tries, not that the code is wrong', async () => {
@@ -123,7 +123,8 @@ describe('the code step, in the Studio design', () => {
     await atTheCodeStep();
     const heading = screen.getByRole('heading', { name: 'Check your inbox.' });
     expect(document.activeElement).toBe(heading);
-    expect(screen.getByText(/We sent it to/).textContent).toMatch('We sent it to dana@x.com.');
+    expect(screen.getByText(/has been invited to an interview/).textContent)
+      .toMatch('If dana@x.com has been invited to an interview, we’ve emailed it a code.');
   });
 
   it('wants all six digits before checking the code', async () => {

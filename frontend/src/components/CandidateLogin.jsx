@@ -43,7 +43,7 @@ export default function CandidateLogin() {
         body: JSON.stringify({ email: address }),
       });
       if (!resp.ok) {
-        setError(await responseError(resp, 'No access was found for this email. Contact your hiring manager.'));
+        setError(await responseError(resp, 'We couldn’t send a code just now. Please try again in a moment.'));
         return;
       }
       setResent(step === 2);
@@ -145,9 +145,14 @@ export default function CandidateLogin() {
           <FormHeading
             screen="code"
             focusKey={step}
-            intro={<>{form.intro} We sent it to <strong>{address}</strong>.</>}
+            intro={(
+              <>
+                {form.intro} If <strong>{address}</strong> has been invited to an interview, we’ve emailed it a
+                code. Nothing after a few minutes? Check the address, or ask your hiring manager.
+              </>
+            )}
           />
-          {resent && !problem && <AuthNotice kind="success">We sent a new code. The one before no longer works.</AuthNotice>}
+          {resent && !problem && <AuthNotice kind="success">If the address has been invited, a new code is on its way, and the one before no longer works.</AuthNotice>}
           {problem && <AuthNotice kind="error">{problem}</AuthNotice>}
           <form className="auth-form" noValidate aria-busy={loading} onSubmit={handleSubmit}>
             <div className="form-fields">

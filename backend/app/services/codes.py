@@ -19,8 +19,9 @@ CODE_MINUTES = 15
 # whenever the server restarted, and the free plan's server sleeps when idle.
 MAX_WRONG = 5
 
+# The answer to any refused code, a used-up one too: "tried too many times"
+# would say a code had been sent, and so that the address is known.
 WRONG_CODE = "That code is wrong or has expired. Ask for a new one."
-CODE_USED_UP = "That code was tried too many times, so it no longer works. Ask for a new one."
 
 
 class Outcome(Enum):

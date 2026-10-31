@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from conftest import auth_headers, register
 
-from app.services.codes import CODE_USED_UP, MAX_WRONG, WRONG_CODE, Outcome
+from app.services.codes import MAX_WRONG, WRONG_CODE, Outcome
 
 
 def _run(coro):
@@ -124,7 +124,8 @@ def test_five_wrong_sign_in_codes_use_the_code_up(client, no_email):
     code = send()
     answers = [verify(_other(code, n)) for n in range(1, MAX_WRONG + 1)]
     assert [a.status_code for a in answers] == [400] * MAX_WRONG
-    assert [a.json()["detail"] for a in answers] == [WRONG_CODE] * (MAX_WRONG - 1) + [CODE_USED_UP]
+    # The last too: "tried too many times" would say a code had been sent.
+    assert [a.json()["detail"] for a in answers] == [WRONG_CODE] * MAX_WRONG
     assert verify(code).status_code == 400
     assert verify(send()).status_code == 200  # a new code works
 

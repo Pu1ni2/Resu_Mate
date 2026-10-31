@@ -49,7 +49,7 @@ def test_otp_is_hashed_not_plaintext(client):
     from app.models.auth import OTPCode
     from sqlalchemy import select
 
-    # Grant access so send-otp doesn't 404, then request an OTP.
+    # Grant access so send-otp makes a code, then request one.
     async def grant():
         async with database.async_session() as db:
             db.add(CandidateAccess(email="cand@x.com", name="Cand", manager_id=None))
