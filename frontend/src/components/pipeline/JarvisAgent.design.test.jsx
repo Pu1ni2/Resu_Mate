@@ -74,6 +74,19 @@ describe('Jarvis in the Studio design', () => {
     expect(container.querySelector('.sa-wordmark').textContent).toBe('ResuMateYOUR HIRING ASSISTANT');
     expect(container.querySelector('.sa-heading').textContent).toBe('A little perspective.');
   });
+
+  it('sets no text smaller than 11px, on its screen or in a card and its detail', async () => {
+    // Inline sizes are the ones Jarvis sets; its stylesheet is guarded apart.
+    const tooSmall = () => [...document.querySelectorAll('[style]')]
+      .filter(el => el.style.fontSize && parseFloat(el.style.fontSize) < 11)
+      .map(el => `${el.style.fontSize} "${el.textContent.trim().slice(0, 30)}"`);
+    replies = [{ reply: 'Looking at it.', action: 'resume_intelligence', action_params: { candidate_id: 7, candidate_name: 'Dana' } }];
+    open();
+    expect(tooSmall()).toEqual([]);
+    say('What should I ask Dana?');
+    await cardAndDetail(/RESUME INTELLIGENCE · Dana/);
+    expect(tooSmall()).toEqual([]);
+  });
 });
 
 describe("its analyses of a person show no score on them, in the card or opened", () => {
