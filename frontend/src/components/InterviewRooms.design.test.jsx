@@ -103,6 +103,18 @@ describe('the voice interview room', () => {
     expect(inlineStyles(room)).toEqual([]);
   });
 
+  // The beta's address, /v1/realtime?model=, refuses an offer since OpenAI
+  // retired the beta, and no voice interview could start.
+  it("connects at OpenAI's current address, with the session's key", async () => {
+    await goLive();
+    const calls = fetch.mock.calls.filter(([url]) => String(url).includes('api.openai.com'));
+    expect(calls.map(([url]) => url)).toEqual(['https://api.openai.com/v1/realtime/calls']);
+    const [, sent] = calls[0];
+    expect(sent.method).toBe('POST');
+    expect(sent.body).toBe('offer');
+    expect(sent.headers).toEqual({ Authorization: 'Bearer secret', 'Content-Type': 'application/sdp' });
+  });
+
   it('says when the connection is lost, and while it is coming back', async () => {
     await goLive();
     const peer = FakePeer.last;
