@@ -2,6 +2,7 @@
 import asyncio
 from typing import Dict, Any, List
 from app.core.config import settings
+from app.core.errors import SLOW, friendly_error
 
 _TAVILY_TIMEOUT_S = 20.0
 
@@ -47,9 +48,9 @@ class TavilyTool:
                 ]
             }
         except asyncio.TimeoutError:
-            return {"error": "tavily timeout", "results": [], "answer": ""}
+            return {"error": f"The web search couldn’t be done. {SLOW}", "results": [], "answer": ""}
         except Exception as e:
-            return {"error": str(e), "results": [], "answer": ""}
+            return {"error": friendly_error(e, "The web search couldn’t be done."), "results": [], "answer": ""}
 
     async def search_person(self, name: str, platform: str = "") -> Dict:
         """Search for a person on a specific platform"""

@@ -23,9 +23,10 @@ def _status(exc: BaseException):
     return status
 
 
-def friendly_error(exc: BaseException, failed: str) -> str:
+def friendly_error(exc: BaseException, failed: str, again: str = AGAIN) -> str:
     """`failed`, what didn't happen, then why, when that is a busy, slow or
-    unreachable service, or else to try again."""
+    unreachable service, or else `again`: to try again, or nothing for a step
+    that is tried again by itself."""
     name = type(exc).__name__
     if name == "RateLimitError" or _status(exc) == 429:
         reason = BUSY
@@ -35,8 +36,8 @@ def friendly_error(exc: BaseException, failed: str) -> str:
     elif isinstance(exc, ConnectionError) or name in _UNREACHABLE:
         reason = UNREACHABLE
     else:
-        reason = AGAIN
-    return f"{failed} {reason}"
+        reason = again
+    return f"{failed} {reason}".strip()
 
 
 def friendly_status(status: int, failed: str) -> str:

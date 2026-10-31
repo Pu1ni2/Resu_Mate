@@ -215,7 +215,7 @@ class DataAgent(BaseAgent):
         gh_data = await github_tool.call({"username": username})
         
         if gh_data.get("error"):
-            self.log("gh_error", f"GitHub API: {gh_data['error']}", "error")
+            self.log("gh_error", gh_data["error"], "error")
             return {"github": None}
 
         # Extra verification: check if the GitHub user's name matches candidate name

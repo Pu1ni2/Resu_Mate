@@ -1,6 +1,7 @@
 """GitHub API Tool — Fetch user profiles, repos, activity"""
 from typing import Dict, Any
 from app.core.config import settings
+from app.core.errors import friendly_error
 
 
 class GitHubTool:
@@ -59,7 +60,7 @@ class GitHubTool:
             ]
             return {"total_count": data.get("total_count", 0), "items": items}
         except Exception as e:
-            return {"error": f"GitHub API error: {str(e)}", "total_count": 0, "items": []}
+            return {"error": friendly_error(e, "GitHub couldn’t be searched."), "total_count": 0, "items": []}
 
     async def call(self, params: Dict, context: Dict = None) -> Dict:
         """Fetch GitHub profile data"""
@@ -119,7 +120,7 @@ class GitHubTool:
                 "recent_prs": sum(1 for e in events if e.get("type") == "PullRequestEvent"),
             }
         except Exception as e:
-            return {"error": f"GitHub API error: {str(e)}"}
+            return {"error": friendly_error(e, "The GitHub profile couldn’t be read.")}
 
 
 github_tool = GitHubTool()
