@@ -1642,13 +1642,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const allRepos = profile.top_repos || [];
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 6 }}>GITHUB PROFILE</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 6 }}>GITHUB PROFILE</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{g.name}</div>
                     {profile.login && <div style={{ fontSize: 13, color: '#68705e', marginBottom: 16 }}>@{profile.login} · Member since {profile.created_at || '?'}</div>}
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
                       {[['Public Repos', g.repos], ['Total Stars', g.stars], ['Followers', profile.followers ?? '?'], ['Following', profile.following ?? '?']].map(([l, v]) => (
                         <div key={l}>
-                          <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{l.toUpperCase()}</div>
+                          <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{l.toUpperCase()}</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: '#2b3029' }}>{v}</div>
                         </div>
                       ))}
@@ -1658,7 +1658,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     {profile.blog     && <div style={{ fontSize: 13, color: '#68705e', marginBottom: 16 }}>🔗 {profile.blog}</div>}
                     {allLangs.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>LANGUAGES</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>LANGUAGES</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {allLangs.map(([lang, count]) => (
                             <span key={lang} style={{ fontSize: 12, fontWeight: 600, color: '#aa4933', background: 'rgba(183,70,48,0.1)', padding: '3px 10px', borderRadius: 100 }}>
@@ -1670,12 +1670,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {allRepos.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ALL PROJECTS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ALL PROJECTS</div>
                         {allRepos.map((r, i) => (
                           <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid rgba(76,87,61,0.04)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: '#2b3029' }}>{r.name}</span>
-                              {r.language && <span style={{ fontSize: 10, color: '#aa4933', background: 'rgba(183,70,48,0.1)', padding: '1px 7px', borderRadius: 100 }}>{r.language}</span>}
+                              {r.language && <span style={{ fontSize: 11, color: '#aa4933', background: 'rgba(183,70,48,0.1)', padding: '1px 7px', borderRadius: 100 }}>{r.language}</span>}
                               <span style={{ fontSize: 11, color: '#68705e', marginLeft: 'auto' }}>⭐ {r.stars || 0}  🍴 {r.forks || 0}</span>
                             </div>
                             {r.description && <div style={{ fontSize: 12, color: '#68705e', lineHeight: 1.5 }}>{r.description}</div>}
@@ -1685,7 +1685,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {g.analysis && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>AI ANALYSIS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>AI ANALYSIS</div>
                         <p style={{ margin: 0, fontSize: 13, color: '#596150', lineHeight: 1.7 }}>{g.analysis}</p>
                       </div>
                     )}
@@ -1702,7 +1702,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const verdict = verdictMatch ? stripMarkdown(verdictMatch[1].trim()).split('\n')[0] : null;
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(170,54,43)', marginBottom: 6 }}>EVALUATION REPORT</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(170,54,43)', marginBottom: 6 }}>EVALUATION REPORT</div>
                     <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
                       {score   && <span style={{ fontSize: 22, fontWeight: 900, color: '#46623d' }}>{score}<span style={{ fontSize: 13, color: '#68705e' }}>/100</span></span>}
                       {verdict && <span style={{ fontSize: 13, fontWeight: 700, color: '#8c5c23', background: 'rgba(140,92,35,0.1)', padding: '4px 14px', borderRadius: 100, alignSelf: 'center' }}>{verdict}</span>}
@@ -1715,12 +1715,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               {/* ── Web search expanded ── */}
               {s && (
                 <>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(72,101,99)', marginBottom: 6 }}>WEB SEARCH RESULTS</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(72,101,99)', marginBottom: 6 }}>WEB SEARCH RESULTS</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#2b3029', marginBottom: 16 }}>"{s.query}"</div>
                   <div style={{ fontSize: 13, color: '#596150', lineHeight: 1.75, marginBottom: 20, whiteSpace: 'pre-wrap' }}>{s.snippet}</div>
                   {(s.sources || []).length > 0 && (
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>SOURCES</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>SOURCES</div>
                       {s.sources.map((src, i) => (
                         <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(76,87,61,0.04)' }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#486563', marginBottom: 2 }}>{src.title}</div>
@@ -1741,7 +1741,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const field = { width: '100%', boxSizing: 'border-box', border: '1px solid rgba(76,87,61,0.25)', borderRadius: 4, background: '#fffef9', color: '#2b3029', font: 'inherit', padding: '9px 11px' };
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 14 }}>
                       {drafts.length > 1 ? `${drafts.length} EMAIL DRAFTS` : 'EMAIL DRAFT'}
                     </div>
                     {drafts.map((invite, i) => {
@@ -1783,30 +1783,30 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const ct  = sc.contact || {};
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 16 }}>FULL PROFILE SCAN</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(183,70,48)', marginBottom: 16 }}>FULL PROFILE SCAN</div>
                     {ghP && (
                       <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>GITHUB</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>GITHUB</div>
                         {ghP.username && <div style={{ fontSize: 13, color: '#596150', marginBottom: 3 }}>@{ghP.username}</div>}
                         {ghP.bio      && <div style={{ fontSize: 12, color: '#68705e', lineHeight: 1.5 }}>{ghP.bio}</div>}
                       </div>
                     )}
                     {liP && (
                       <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>LINKEDIN</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>LINKEDIN</div>
                         {liP.name      && <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 3 }}>{liP.name}</div>}
                         {liP.headline  && <div style={{ fontSize: 13, color: '#596150', marginBottom: 3 }}>{liP.headline}</div>}
                         {liP.about     && <div style={{ fontSize: 12, color: '#68705e', lineHeight: 1.5 }}>{liP.about.slice(0, 400)}</div>}
                       </div>
                     )}
                     <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>CONTACT</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>CONTACT</div>
                       {ct.email && <div style={{ fontSize: 13, color: '#596150', marginBottom: 3 }}>✉ {ct.email}</div>}
                       {ct.phone && <div style={{ fontSize: 13, color: '#596150', marginBottom: 3 }}>📞 {ct.phone}</div>}
                     </div>
                     {sc.summary && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>AI SUMMARY</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>AI SUMMARY</div>
                         <p style={{ margin: 0, fontSize: 13, color: '#596150', lineHeight: 1.7 }}>{sc.summary}</p>
                       </div>
                     )}
@@ -1823,11 +1823,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const redFlags = intel.red_flags || [];
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(102,90,114)', marginBottom: 6 }}>RESUME INTELLIGENCE</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(102,90,114)', marginBottom: 6 }}>RESUME INTELLIGENCE</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#2b3029', marginBottom: 6 }}>{ri.candidateName || 'Candidate'}</div>
                     {gaps.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>GAPS AND INCONSISTENCIES</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>GAPS AND INCONSISTENCIES</div>
                         {gaps.map((gap, i) => (
                           <div key={i} style={{ padding: '10px 0', borderBottom: i < gaps.length - 1 ? '1px solid rgba(76,87,61,0.04)' : 'none' }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: gap.severity === 'high' ? '#aa362b' : gap.severity === 'medium' ? '#8c5c23' : '#68705e', marginBottom: 4 }}>
@@ -1840,7 +1840,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {targets.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>VERIFICATION TARGETS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>VERIFICATION TARGETS</div>
                         {targets.map((target, i) => (
                           <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(76,87,61,0.03)', marginBottom: 8 }}>
                             <div style={{ fontSize: 13, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{target.skill || target.claim || `Target ${i + 1}`}</div>
@@ -1852,7 +1852,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {strengths.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>STRONG POINTS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>STRONG POINTS</div>
                         {strengths.map((point, i) => (
                           <div key={i} style={{ fontSize: 13, color: '#596150', lineHeight: 1.6, padding: '4px 0' }}>{point}</div>
                         ))}
@@ -1860,7 +1860,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {redFlags.length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>RED FLAGS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>RED FLAGS</div>
                         {redFlags.map((flag, i) => (
                           <div key={i} style={{ fontSize: 13, color: '#aa362b', lineHeight: 1.6, padding: '4px 0' }}>{flag}</div>
                         ))}
@@ -1877,20 +1877,20 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 const focusAreas = config.focus_areas || config.focusAreas || [];
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(72,101,99)', marginBottom: 6 }}>INTERVIEW CREATED</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(72,101,99)', marginBottom: 6 }}>INTERVIEW CREATED</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{iv.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#486563', marginBottom: 18 }}>{iv.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
                       {[['Role', config.role || 'General'], ['Level', config.level || 'Mid-Level'], ['Questions', config.num_questions || config.numQuestions || 0], ['Status', config.status || 'pending']].map(([label, value]) => (
                         <div key={label}>
-                          <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                          <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#2b3029' }}>{value}</div>
                         </div>
                       ))}
                     </div>
                     {focusAreas.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>FOCUS AREAS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>FOCUS AREAS</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {focusAreas.map((area, i) => (
                             <span key={i} style={{ fontSize: 12, fontWeight: 600, color: '#486563', background: 'rgba(72,101,99,0.1)', padding: '3px 10px', borderRadius: 100 }}>
@@ -1902,7 +1902,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {intel && Object.keys(intel).length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ATTACHED RESUME INTELLIGENCE</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ATTACHED RESUME INTELLIGENCE</div>
                         <div style={{ fontSize: 13, color: '#596150', lineHeight: 1.7, marginBottom: 8 }}>
                           Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
                         </div>
@@ -1934,14 +1934,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 ];
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(70,98,61)', marginBottom: 6 }}>INTERVIEW REPORT</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(70,98,61)', marginBottom: 6 }}>INTERVIEW REPORT</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{rp.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#486563', marginBottom: 18 }}>{rp.candidateEmail}</div>
                     {stats.length > 0 && (
                       <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
                         {stats.map(([label, value]) => (
                           <div key={label}>
-                            <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                            <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                             <div style={{ fontSize: 16, fontWeight: 800, color: '#2b3029' }}>{value}</div>
                           </div>
                         ))}
@@ -1949,7 +1949,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {scores.length > 0 && (
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>QUESTION SCORES</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>QUESTION SCORES</div>
                         {scores.map((item, i) => (
                           <div key={i} style={{ padding: '10px 0', borderBottom: i < scores.length - 1 ? '1px solid rgba(76,87,61,0.04)' : 'none' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
@@ -1963,17 +1963,17 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {textReport && (
                       <div style={{ marginBottom: transcript.length > 0 ? 20 : 0 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ASSESSMENT SUMMARY</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ASSESSMENT SUMMARY</div>
                         <div>{renderMarkdown(textReport)}</div>
                       </div>
                     )}
                     {transcript.length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>TRANSCRIPT</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>TRANSCRIPT</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {transcript.slice(0, 12).map((turn, i) => (
                             <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: turn.role === 'interviewer' ? 'rgba(72,101,99,0.09)' : 'rgba(76,87,61,0.03)' }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 4 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 4 }}>
                                 {(turn.role || 'speaker').toUpperCase()}
                               </div>
                               <div style={{ fontSize: 12, color: '#596150', lineHeight: 1.6 }}>{turn.text}</div>
@@ -1999,20 +1999,20 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 ];
                 return (
                   <>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(102,90,114)', marginBottom: 6 }}>RÉSUMÉ AND INTERVIEW</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: 'rgb(102,90,114)', marginBottom: 6 }}>RÉSUMÉ AND INTERVIEW</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{cr.candidateName}</div>
                     <div style={{ fontSize: 13, color: '#486563', marginBottom: 18 }}>{cr.candidateEmail}</div>
                     <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
                       {[['Interview covered', credibility.confidence_in_assessment || 'N/A']].map(([label, value]) => (
                         <div key={label}>
-                          <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+                          <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: '#2b3029' }}>{value}</div>
                         </div>
                       ))}
                     </div>
                     {groups.filter(group => group.items.length > 0).map(group => (
                       <div key={group.label} style={{ marginBottom: 18 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>{group.label.toUpperCase()}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>{group.label.toUpperCase()}</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {group.items.map((item, i) => (
                             <span key={i} style={{ fontSize: 12, fontWeight: 600, color: group.color, background: `${group.color}15`, padding: '3px 10px', borderRadius: 100 }}>
@@ -2024,7 +2024,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     ))}
                     {(levelAssessment.resume_claims || levelAssessment.interview_suggests || levelAssessment.explanation) && (
                       <div style={{ marginBottom: 18 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>LEVEL ASSESSMENT</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>LEVEL ASSESSMENT</div>
                         <div style={{ fontSize: 13, color: '#596150', lineHeight: 1.7 }}>
                           Resume claims: {levelAssessment.resume_claims || 'N/A'}. Interview suggests: {levelAssessment.interview_suggests || 'N/A'}.
                           {levelAssessment.explanation ? ` ${levelAssessment.explanation}` : ''}
@@ -2033,7 +2033,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     )}
                     {(credibility.key_insights || []).length > 0 && (
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>KEY INSIGHTS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 8 }}>KEY INSIGHTS</div>
                         {(credibility.key_insights || []).map((insight, i) => (
                           <div key={i} style={{ fontSize: 13, color: '#596150', lineHeight: 1.6, padding: '4px 0' }}>{insight}</div>
                         ))}
@@ -2191,7 +2191,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
             role="status"
             aria-live="polite"
             style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: '0.12em',
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.12em',
               color: ['thinking', 'listening'].includes(orbMode) ? '#aa4933' : '#68705e',
               animation: ['thinking', 'listening'].includes(orbMode) ? 'jStatusFade 1.4s ease-in-out infinite' : 'none',
               minHeight: 14,
@@ -2273,7 +2273,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         boxShadow: '0 0 0 1px rgba(76,87,61,0.08) inset',
                       }}>
                         <div style={{
-                          fontSize: 9, fontWeight: 800, letterSpacing: '0.16em',
+                          fontSize: 11, fontWeight: 800, letterSpacing: '0.16em',
                           color: 'rgb(183,70,48)', marginBottom: 12,
                         }}>
                           {(d.role || '').toUpperCase()} · {d.total_screened || 0} SCREENED
@@ -2327,24 +2327,24 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(76,87,61,0.08)', borderRadius: 5, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)' }}>GITHUB · {g.name}</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)' }}>GITHUB · {g.name}</div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ display: 'flex', gap: 20, marginBottom: 10, flexWrap: 'wrap' }}>
                           {[{ label: 'REPOS', val: g.repos }, { label: 'STARS', val: g.stars }, { label: 'LANGUAGES', val: g.langs }].map(({ label, val }) => (
                             <div key={label}>
-                              <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: '#2b3029', marginTop: 2 }}>{val}</div>
                             </div>
                           ))}
                         </div>
                         {g.topRepos?.length > 0 && (
                           <div style={{ marginBottom: 8 }}>
-                            <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em', marginBottom: 5 }}>TOP PROJECTS</div>
+                            <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em', marginBottom: 5 }}>TOP PROJECTS</div>
                             {g.topRepos.slice(0, 3).map((r, i) => (
                               <div key={i} style={{ fontSize: 12, color: '#596150', marginBottom: 3, display: 'flex', gap: 8, alignItems: 'baseline' }}>
                                 <span style={{ color: '#2b3029', fontWeight: 600 }}>{r.name}</span>
-                                {r.language && <span style={{ fontSize: 10, color: '#68705e' }}>{r.language}</span>}
+                                {r.language && <span style={{ fontSize: 11, color: '#68705e' }}>{r.language}</span>}
                                 {r.description && <span style={{ fontSize: 11, color: '#68705e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{r.description}</span>}
                               </div>
                             ))}
@@ -2368,7 +2368,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div role="group" aria-label={msg.content} style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(183,70,48,0.24)', borderRadius: 5, padding: '12px 16px' }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)', marginBottom: 8 }}>WAITING FOR YOUR OK</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)', marginBottom: 8 }}>WAITING FOR YOUR OK</div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 6 }}>
                           {c.names.length === 1 ? `An interview for ${c.names[0]}` : `Interviews for ${c.names.join(', ')}`}{c.email ? ` (${c.email})` : ''}
                         </div>
@@ -2403,7 +2403,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(183,70,48,0.2)', borderRadius: 5, padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)' }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)' }}>
                             EMAIL DRAFT · TO: {e.to}{e.count > 1 ? ` (+${e.count - 1} more, each with their own draft)` : ''}
                           </div>
                           {expandBtn(msg)}
@@ -2441,12 +2441,12 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(76,87,61,0.06)', borderRadius: 10, padding: '10px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(72,101,99)' }}>WEB SEARCH · {s.query}</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(72,101,99)' }}>WEB SEARCH · {s.query}</div>
                           {expandBtn(msg)}
                         </div>
                         {s.snippet && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#68705e', lineHeight: 1.5 }}>{s.snippet.slice(0, 160)}…</p>}
                         {(s.sources || []).slice(0, 2).map((src, i) => (
-                          <div key={i} style={{ fontSize: 10, color: '#486563', marginTop: 2 }}>· {src.title}</div>
+                          <div key={i} style={{ fontSize: 11, color: '#486563', marginTop: 2 }}>· {src.title}</div>
                         ))}
                       </div>
                     </div>
@@ -2469,22 +2469,22 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 20 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(170,54,43,0.18)', borderRadius: 5, padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(170,54,43)' }}>EVALUATION REPORT</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(170,54,43)' }}>EVALUATION REPORT</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             {score && <span style={{ fontSize: 13, fontWeight: 900, color: '#46623d' }}>{score}/100</span>}
-                            {verdict && <span style={{ fontSize: 10, fontWeight: 700, color: '#8c5c23', background: 'rgba(140,92,35,0.1)', padding: '2px 8px', borderRadius: 100 }}>{verdict}</span>}
+                            {verdict && <span style={{ fontSize: 11, fontWeight: 700, color: '#8c5c23', background: 'rgba(140,92,35,0.1)', padding: '2px 8px', borderRadius: 100 }}>{verdict}</span>}
                             {expandBtn(msg)}
                           </div>
                         </div>
                         {strengthText && (
                           <div style={{ marginBottom: 10 }}>
-                            <div style={{ fontSize: 9, color: '#46623d', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>STRENGTHS</div>
+                            <div style={{ fontSize: 11, color: '#46623d', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>STRENGTHS</div>
                             <div style={{ fontSize: 12, color: '#596150', lineHeight: 1.65 }}>{strengthText.slice(0, 250)}{strengthText.length > 250 ? '…' : ''}</div>
                           </div>
                         )}
                         {weakText && (
                           <div style={{ marginBottom: 10 }}>
-                            <div style={{ fontSize: 9, color: '#aa362b', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
+                            <div style={{ fontSize: 11, color: '#aa362b', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>WEAKNESSES / GAPS</div>
                             <div style={{ fontSize: 12, color: '#596150', lineHeight: 1.65 }}>{weakText.slice(0, 250)}{weakText.length > 250 ? '…' : ''}</div>
                           </div>
                         )}
@@ -2493,7 +2493,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                             {plain.slice(0, 320)}{plain.length > 320 ? '…' : ''}
                           </div>
                         )}
-                        <div style={{ marginTop: 8, fontSize: 10, color: '#68705e', cursor: 'pointer' }}
+                        <div style={{ marginTop: 8, fontSize: 11, color: '#68705e', cursor: 'pointer' }}
                           {...pressable(() => setExpandedCard(msg))}>
                           Tap ↗ for full report
                         </div>
@@ -2512,7 +2512,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(76,87,61,0.07)', borderRadius: 10, padding: '10px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)' }}>PROFILE SCAN</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(183,70,48)' }}>PROFILE SCAN</div>
                           {expandBtn(msg)}
                         </div>
                         {gh?.username && <div style={{ fontSize: 12, color: '#68705e', marginBottom: 3 }}>GitHub: github.com/{gh.username}</div>}
@@ -2536,7 +2536,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(102,90,114,0.2)', borderRadius: 5, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)' }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)' }}>
                             RESUME INTELLIGENCE {ri.candidateName ? `· ${ri.candidateName}` : ''}
                           </div>
                           {expandBtn(msg)}
@@ -2544,7 +2544,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         <div style={{ display: 'flex', gap: 18, marginBottom: 10, flexWrap: 'wrap' }}>
                           {[{ label: 'GAPS', val: gaps.length }, { label: 'TARGETS', val: targets.length }, { label: 'RED FLAGS', val: redFlags.length }].map(({ label, val }) => (
                             <div key={label}>
-                              <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 13, fontWeight: 800, color: '#2b3029' }}>{val}</div>
                             </div>
                           ))}
@@ -2567,7 +2567,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(72,101,99,0.22)', borderRadius: 5, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(72,101,99)' }}>INTERVIEW CREATED</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(72,101,99)' }}>INTERVIEW CREATED</div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 4 }}>{iv.candidateName}</div>
@@ -2575,7 +2575,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         <div style={{ display: 'flex', gap: 18, marginBottom: focusAreas.length > 0 ? 10 : 0, flexWrap: 'wrap' }}>
                           {[{ label: 'ROLE', val: config.role || 'General' }, { label: 'LEVEL', val: config.level || 'Mid-Level' }, { label: 'QUESTIONS', val: config.num_questions || config.numQuestions || 0 }].map(({ label, val }) => (
                             <div key={label}>
-                              <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: '#2b3029' }}>{val}</div>
                             </div>
                           ))}
@@ -2605,14 +2605,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(70,98,61,0.18)', borderRadius: 5, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(70,98,61)' }}>INTERVIEW REPORT</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(70,98,61)' }}>INTERVIEW REPORT</div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 8 }}>{rp.candidateName}</div>
                         <div style={{ display: 'flex', gap: 18, marginBottom: summary ? 8 : 0, flexWrap: 'wrap' }}>
                           {[...(isScore(average) ? [{ label: 'AVG', val: shownScore(average) }] : []), ...(isScore(report.eyeContact) ? [{ label: 'FACE IN VIEW', val: `${report.eyeContact}%` }] : []), ...(isScore(report.violations) ? [{ label: 'VIOLATIONS', val: report.violations }] : [])].map(({ label, val }) => (
                             <div key={label}>
-                              <div style={{ fontSize: 9, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
+                              <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.1em' }}>{label}</div>
                               <div style={{ fontSize: 12, fontWeight: 800, color: '#2b3029' }}>{val}</div>
                             </div>
                           ))}
@@ -2635,7 +2635,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(102,90,114,0.22)', borderRadius: 5, padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)' }}>RÉSUMÉ AND INTERVIEW</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)' }}>RÉSUMÉ AND INTERVIEW</div>
                           {expandBtn(msg)}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#2b3029', marginBottom: 8 }}>{cr.candidateName}</div>
@@ -2652,7 +2652,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   return (
                     <div key={msg.id} className="j-msg" style={{ marginBottom: 18 }}>
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(102,90,114,0.25)', borderRadius: 10, padding: '12px 14px' }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)', marginBottom: 8 }}>CALENDLY SCHEDULING LINK</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)', marginBottom: 8 }}>CALENDLY SCHEDULING LINK</div>
                         {ca.url && <a href={ca.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#665a72', wordBreak: 'break-all', display: 'block', marginBottom: 6 }}>{ca.url}</a>}
                         {ca.eventTypes && <div style={{ fontSize: 11, color: '#68705e' }}>{ca.eventTypes}</div>}
                       </div>
@@ -2798,7 +2798,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           </div>
 
           {/* Caption */}
-          <div style={{ fontSize: 10, color: '#68705e', letterSpacing: '0.06em', userSelect: 'none' }}>
+          <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.06em', userSelect: 'none' }}>
             {voice.isRecording
               ? 'RECORDING · PAUSE TO SEND AUTOMATICALLY'
               : voice.speakingMsgIndex !== null
