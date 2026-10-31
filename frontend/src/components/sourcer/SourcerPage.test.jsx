@@ -321,6 +321,29 @@ describe('past searches', () => {
   });
 });
 
+describe('in the Studio design', () => {
+  it('sits in the workspace frame, the brief with a guide beside it', () => {
+    renderPage();
+    expect(screen.getByRole('navigation', { name: 'Hiring workspace' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Find candidates' })).toBeTruthy();
+    const guide = screen.getByRole('complementary', { name: 'How this search works' });
+    expect(within(guide).getByRole('heading', { level: 2 }).textContent).toBe('Look beyondthe obvious.');
+    expect(within(guide).getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'Candidate library' }).getAttribute('href')).toBe('/hiring?view=upload');
+  });
+
+  it("heads a search under the frame's heading, with its counts on the dark tiles", async () => {
+    fakeServer();
+    const { container } = renderPage();
+    await search();
+    await screen.findByText('Every person found has been read');
+    expect(screen.getByRole('heading', { level: 2, name: /Every person\..*A closer look\./ })).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect([...container.querySelectorAll('.sourcer-stat-strong')].map(tile => tile.firstChild.textContent))
+      .toEqual(['Screened', 'Judgements written']);
+  });
+});
+
 async function waitForGone(query) {
   for (let i = 0; i < 20 && query(); i += 1) await new Promise(r => setTimeout(r, 25));
   expect(query()).toBeNull();
