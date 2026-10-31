@@ -757,26 +757,22 @@ Respond helpfully using **bold** for names and key points."""
                 messages_list.append((role, content))
         
         messages_list.append(("human", message))
-        
-        try:
-            prompt = ChatPromptTemplate.from_messages(messages_list)
-            response = await self.llm.ainvoke(prompt.format_messages())
-            response_text = response.content
-            
-            # If anonymize is ON, ensure no real names leak through
-            if anonymize:
-                response_text = self._replace_names(response_text, real_to_anon)
-                # Double check - remove any names not in our mapping
-                for name in all_real_names - selected_real_names:
-                    if name.lower() in response_text.lower():
-                        pattern = re.compile(re.escape(name), re.IGNORECASE)
-                        response_text = pattern.sub("[Candidate]", response_text)
-            
-        except Exception as e:
-            from app.core.errors import friendly_error
-            print(f"[WARN] candidate chat failed: {type(e).__name__}")
-            response_text = f"**Error:** {friendly_error(e, 'The answer couldn’t be written.')}"
-        
+
+        # Not caught: /api/chat/send answers a failure with a plain message, as
+        # the other chat endpoints do. This answered it as the reply instead.
+        prompt = ChatPromptTemplate.from_messages(messages_list)
+        response = await self.llm.ainvoke(prompt.format_messages())
+        response_text = response.content
+
+        # If anonymize is ON, ensure no real names leak through
+        if anonymize:
+            response_text = self._replace_names(response_text, real_to_anon)
+            # Double check - remove any names not in our mapping
+            for name in all_real_names - selected_real_names:
+                if name.lower() in response_text.lower():
+                    pattern = re.compile(re.escape(name), re.IGNORECASE)
+                    response_text = pattern.sub("[Candidate]", response_text)
+
         suggestions = self._generate_suggestions(resume_candidates, anonymize, candidate_ids)
         
         return {"response": response_text, "suggestions": suggestions}
