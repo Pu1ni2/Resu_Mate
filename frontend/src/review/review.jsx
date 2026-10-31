@@ -21,6 +21,7 @@ import api from '../services/api';
 import ProductLayer from '../components/ProductLayer';
 import WorkspaceShell from '../components/studio/WorkspaceShell';
 import Home from '../components/home/Home';
+import HowItWorks from '../components/HowItWorks';
 import Dashboard from '../components/Dashboard';
 import CandidateFocus from '../components/CandidateFocus';
 import SourcerPage from '../components/sourcer/SourcerPage';
@@ -48,6 +49,7 @@ const PAGES = [
   ['/candidate/dashboard', 'Candidate portal'],
   ['/review/voice-interview', 'Voice interview room'],
   ['/review/video-interview', 'Video interview room'],
+  ['/how-it-works', 'How it works'],
   ['/', 'Homepage'],
 ];
 
@@ -128,6 +130,7 @@ export function Review() {
         <ProductLayer>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/hiring" element={<Dashboard />} />
             <Route path="/hiring/focus" element={<CandidateFocus />} />
             <Route path="/hiring/sourcer" element={<SourcerPage />} />
