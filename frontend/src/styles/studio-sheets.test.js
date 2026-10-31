@@ -32,6 +32,7 @@ const SHEETS = {
       'message-content', 'suggestion',
     ],
   },
+  'studio-explainer.css': { roots: ['studio-explainer'], keyframes: 'studio-explainer-' },
   'studio-interview.css': {
     roots: ['studio-interview', 'studio-interview-consent', 'studio-interview-report'],
     keyframes: 'studio-interview-',

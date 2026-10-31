@@ -12,7 +12,8 @@ import { wakeServer } from './services/wake';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
 import RequestDeletion from './components/RequestDeletion';
 import NotFound from './components/NotFound';
-// Lazy: a page of its own, only loaded by managers who open it.
+// Lazy: pages of their own, only loaded by those who open them.
+const HowItWorks = lazy(() => import('./components/HowItWorks'));
 const SourcerPage = lazy(() => import('./components/sourcer/SourcerPage'));
 // Lazy: the dashboards are most of the app, and the landing page downloaded
 // all of them, Jarvis and the interview rooms included.
@@ -88,6 +89,7 @@ export default function App() {
     <Suspense fallback={<PageLoading />}>
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/how-it-works" element={<HowItWorks />} />
 
       {/* Legal — public */}
       <Route path="/terms" element={<TermsPage />} />
