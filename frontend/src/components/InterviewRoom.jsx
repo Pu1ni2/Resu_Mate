@@ -13,6 +13,7 @@ import {
   Phone, PhoneOff
 } from 'lucide-react';
 import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
+import { deviceStep, reaching, shownFailure, startFailed } from './shared/startFailure';
 import InterviewConsent from './shared/InterviewConsent';
 
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
@@ -185,11 +186,16 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
     try {
       // 1. Get camera
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
+      } catch (err) {
+        throw startFailed(deviceStep(err, 'cameraBlocked', 'cameraUnavailable'));
+      }
       localStreamRef.current = stream;
 
       // 2. Create LiveKit room via our backend
-      const roomResp = await fetch(`${API_BASE}/api/livekit/create-room`, {
+      const roomResp = await reaching('unreachable', () => fetch(`${API_BASE}/api/livekit/create-room`, {
         method: 'POST',
         headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -198,17 +204,16 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
           interview_config: config || {},
           consent: true,
         })
-      });
+      }));
       const roomData = await roomResp.json().catch(() => ({}));
       // The server's reason, such as a finished interview: every refusal
       // read as missing LiveKit credentials.
       if (!roomResp.ok) {
-        throw new Error(typeof roomData.detail === 'string' ? roomData.detail : `The interview room could not be created (${roomResp.status}).`);
+        throw startFailed('refused', typeof roomData.detail === 'string' ? roomData.detail : 'The interview room couldn’t be created.');
       }
 
-      if (!roomData.token || !roomData.livekit_url) {
-        throw new Error('Failed to create LiveKit room. Check backend LiveKit credentials.');
-      }
+      // A room with no way in: the server isn't set up for video.
+      if (!roomData.token || !roomData.livekit_url) throw startFailed('notReady');
 
       // 3. Connect to LiveKit room
       const { Room, RoomEvent, Track } = await import('livekit-client');
@@ -239,7 +244,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       });
 
       // Connect
-      await room.connect(roomData.livekit_url, roomData.token);
+      await reaching('connect', () => room.connect(roomData.livekit_url, roomData.token));
 
       // Publish local camera + mic
       await room.localParticipant.setCameraEnabled(true);
@@ -258,18 +263,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
     } catch (e) {
       console.error('Failed to start interview:', e);
-      // Inline error UI — no alert() so the user can copy/paste the message
-      // and the page stays interactive.
-      const msg = e?.message || 'Could not connect to the interview server.';
-      let hint = 'Try again in a moment, or contact your hiring manager if the issue persists.';
-      if (/livekit/i.test(msg)) {
-        hint = 'LiveKit room could not be created. The server is missing LiveKit credentials — contact your hiring manager.';
-      } else if (/mic|microphone|permission/i.test(msg)) {
-        hint = 'Please allow microphone access in your browser settings and reload.';
-      } else if (/network|fetch/i.test(msg)) {
-        hint = 'Network error reaching the interview server. Check your connection and try again.';
-      }
-      setSetupError({ message: msg, hint });
+      // Inline, not alert(): the page stays usable, and the words can be copied.
+      setSetupError(shownFailure(e));
       setPhase('setup');
     }
   };
@@ -365,8 +360,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
               <div role="alert" className="si-error">
                 <AlertTriangle size={18} aria-hidden="true" />
                 <div>
-                  <strong>Could not start interview</strong>
-                  <p>{setupError.message}</p>
+                  <strong>{setupError.message}</strong>
                   {setupError.hint && <p>{setupError.hint}</p>}
                 </div>
               </div>

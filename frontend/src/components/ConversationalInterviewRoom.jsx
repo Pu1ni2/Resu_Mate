@@ -15,7 +15,8 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, PhoneOff, Loader, AlertCircle } from 'lucide-react';
-import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
+import { API_BASE, interviewAuthHeaders, responseError } from '../services/authFetch';
+import { deviceStep, reaching, shownFailure, startFailed } from './shared/startFailure';
 import InterviewConsent from './shared/InterviewConsent';
 import ConversationSculpture from './studio/ConversationSculpture';
 
@@ -244,20 +245,15 @@ export default function ConversationalInterviewRoom({
           video: false,
         });
       } catch (err) {
-        // Surface a specific message — generic "could not connect" hides the
-        // real cause (almost always permission denied).
-        throw new Error(
-          err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
-            ? 'Microphone permission denied'
-            : `Microphone unavailable: ${err?.message || 'unknown error'}`,
-          { cause: err },
-        );
+        // Which it was: "could not connect" hid the real cause, most often a
+        // blocked microphone.
+        throw startFailed(deviceStep(err, 'micBlocked', 'micUnavailable'));
       }
       micStreamRef.current = micStream;
       startAudioMeter(micStream);
 
       // 2) Mint OpenAI ephemeral client secret via our backend.
-      const tokenResp = await fetch(`${API_BASE}/api/realtime/session`, {
+      const tokenResp = await reaching('unreachable', () => fetch(`${API_BASE}/api/realtime/session`, {
         method: 'POST',
         headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -265,10 +261,9 @@ export default function ConversationalInterviewRoom({
           candidate_email: candidateEmail,
           consent: true,
         }),
-      });
+      }));
       if (!tokenResp.ok) {
-        const errText = await tokenResp.text();
-        throw new Error(`Session mint failed (${tokenResp.status}): ${errText.slice(0, 200)}`);
+        throw startFailed('refused', await responseError(tokenResp, 'The interview couldn’t be started.'));
       }
       const sessionData = await tokenResp.json();
       const clientSecret = sessionData.client_secret;
@@ -334,18 +329,15 @@ export default function ConversationalInterviewRoom({
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpResp = await fetch(`${OPENAI_REALTIME_URL}?model=${encodeURIComponent(model)}`, {
+      const sdpResp = await reaching('connect', () => fetch(`${OPENAI_REALTIME_URL}?model=${encodeURIComponent(model)}`, {
         method: 'POST',
         body: offer.sdp,
         headers: {
           Authorization: `Bearer ${clientSecret}`,
           'Content-Type': 'application/sdp',
         },
-      });
-      if (!sdpResp.ok) {
-        const errText = await sdpResp.text();
-        throw new Error(`OpenAI SDP exchange failed (${sdpResp.status}): ${errText.slice(0, 200)}`);
-      }
+      }));
+      if (!sdpResp.ok) throw startFailed('connect');
       const answerSdp = await sdpResp.text();
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
@@ -358,16 +350,7 @@ export default function ConversationalInterviewRoom({
       setPhase('live');
     } catch (e) {
       console.error('Failed to start conversational interview:', e);
-      let hint = 'Try again in a moment, or contact your hiring manager if it persists.';
-      const msg = e?.message || 'Could not connect to the interview.';
-      if (/permission|denied|microphone/i.test(msg)) {
-        hint = 'Allow microphone access in your browser settings and reload.';
-      } else if (/session mint/i.test(msg)) {
-        hint = 'The interview session could not be created on the server. Your link may be expired — contact your hiring manager.';
-      } else if (/sdp|webrtc|realtime/i.test(msg)) {
-        hint = "Couldn't reach OpenAI Realtime. Check your connection and try again.";
-      }
-      setError({ message: msg, hint });
+      setError(shownFailure(e));
       setPhase('setup');
       cleanup();
     }
