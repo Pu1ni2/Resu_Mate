@@ -7,10 +7,10 @@ import { AppProvider } from '../context/AppContext';
 import CandidateLogin from './CandidateLogin';
 
 /* Five wrong guesses use a sign-in code up, and the server says to ask for a new
- * one. The code step had no way to: only "Use a different email", which went
- * back to the start. */
+ * one, in the words it uses for any refused code. The code step had no way to:
+ * only "Use a different email", which went back to the start. */
 
-const USED_UP = 'That code was tried too many times, so it no longer works. Ask for a new one.';
+const REFUSED = 'That code is wrong or has expired. Ask for a new one.';
 
 let sent;
 
@@ -23,7 +23,7 @@ beforeEach(() => {
       return { ok: true, status: 200, json: async () => ({ message: 'OTP sent to your email' }) };
     }
     if (String(url).endsWith('/api/auth/candidate/verify-otp')) {
-      return { ok: false, status: 400, json: async () => ({ detail: USED_UP }) };
+      return { ok: false, status: 400, json: async () => ({ detail: REFUSED }) };
     }
     return { ok: true, status: 200, json: async () => ({}) };
   });
@@ -44,20 +44,20 @@ describe('the code step', () => {
   it('shows why a code was refused', async () => {
     fireEvent.change(await atTheCodeStep(), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-    expect(await screen.findByText(USED_UP)).toBeTruthy();
+    expect(await screen.findByText(REFUSED)).toBeTruthy();
   });
 
   it('sends a new code to the same address, and says so', async () => {
     const box = await atTheCodeStep();
     fireEvent.change(box, { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-    await screen.findByText(USED_UP);
+    await screen.findByText(REFUSED);
 
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
     expect(await screen.findByText('If the address has been invited, a new code is on its way, and the one before no longer works.')).toBeTruthy();
     expect(sent).toEqual(['dana@x.com', 'dana@x.com']);
     expect(screen.getByRole('textbox', { name: 'Access code' }).value).toBe('');
-    expect(screen.queryByText(USED_UP)).toBeNull();
+    expect(screen.queryByText(REFUSED)).toBeNull();
   });
 
   it('says nothing about a new code the first time', async () => {
@@ -101,15 +101,24 @@ describe('the email step', () => {
     expect(sent).toEqual([]);
   });
 
-  it("announces the server's answer for an address it doesn't know", async () => {
-    globalThis.fetch.mockResolvedValueOnce({
-      ok: false, status: 404,
-      json: async () => ({ detail: 'No interview access found for this email. Please check with your hiring manager.' }),
-    });
+  // The server answers an address nobody invited as it does any other, so as
+  // not to say whom a company is interviewing.
+  it('goes on to the code step for any address, saying the code comes only if it was invited', async () => {
     render1();
     fireEvent.change(emailBox(), { target: { value: 'nobody@x.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send access code' }));
-    expect((await screen.findByRole('alert')).textContent).toMatch(/No interview access found for this email/);
+    expect(await screen.findByRole('textbox', { name: 'Access code' })).toBeTruthy();
+    expect(screen.getByText(/has been invited to an interview/).textContent)
+      .toMatch('If nobody@x.com has been invited to an interview, we’ve emailed it a code. Nothing after a few minutes? Check the address, or ask your hiring manager.');
+  });
+
+  it("says it couldn't send a code when the server fails, without blaming the address", async () => {
+    globalThis.fetch.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
+    render1();
+    fireEvent.change(emailBox(), { target: { value: 'dana@x.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send access code' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch('We couldn’t send a code just now. Please try again in a moment.');
+    expect(screen.queryByText(/no access/i)).toBeNull();
   });
 
   it('offers a way to ask for data to be deleted', () => {
