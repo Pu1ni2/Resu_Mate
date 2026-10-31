@@ -17,6 +17,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, PhoneOff, Loader, AlertCircle } from 'lucide-react';
 import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
 import InterviewConsent from './shared/InterviewConsent';
+import ConversationSculpture from './studio/ConversationSculpture';
 
 const OPENAI_REALTIME_URL = 'https://api.openai.com/v1/realtime';
 
@@ -387,207 +388,129 @@ export default function ConversationalInterviewRoom({
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
-  // The room is dark of its own, and the app's headings take the light
-  // theme's dark ink (design-system.css), so each heading here takes the
-  // room's colour instead.
+  // A page of its own over the rest of the app (studio-interview.css).
   return (
-    <div style={{
-      minHeight: '100vh', background: 'linear-gradient(180deg, #0B0B12 0%, #14141F 100%)',
-      color: '#E4E4E7', display: 'flex', flexDirection: 'column', padding: '24px',
-    }}>
+    <div className="studio-interview studio-voice-room" data-phase={phase}>
       <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 13, color: '#A1A1AA' }}>Voice interview</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>
-            {candidateName ? `Hi ${candidateName}` : 'Voice interview'}
+      <header className="si-room-header">
+        <div className="si-room-brand">
+          <span className="si-brand-mark" aria-hidden="true">r.</span>
+          <div>
+            <span className="si-eyebrow">ResuMate · Voice interview</span>
+            <strong>{candidateName ? `Hi ${candidateName}` : 'Your interview'}</strong>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          {phase === 'live' && (
-            <span style={{ fontSize: 13, color: '#A1A1AA' }}>{fmtTime(timer)}</span>
-          )}
-          {remainingMinutes != null && phase === 'live' && (
-            <span style={{ fontSize: 12, color: '#71717A' }}>up to {remainingMinutes} min</span>
-          )}
+        <div className="si-room-timing">
+          {phase === 'live' && <span className="si-timer">{fmtTime(timer)}</span>}
+          {remainingMinutes != null && phase === 'live' && <span>up to {remainingMinutes} min</span>}
+          {phase === 'setup' && <span className="si-status-tag">A space to be heard</span>}
         </div>
-      </div>
+      </header>
 
-      {/* Setup screen */}
       {phase === 'setup' && (
-        <div style={{ maxWidth: 520, margin: '40px auto', textAlign: 'center' }}>
-          <div style={{
-            width: 96, height: 96, borderRadius: '50%', margin: '0 auto 20px',
-            background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid rgba(34,197,94,0.4)',
-          }}>
-            <Mic size={36} color="#22C55E" />
-          </div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: 'inherit' }}>Ready when you are</h2>
-          <p style={{ color: '#A1A1AA', fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
-            You'll have a short voice conversation with Alex, an AI interviewer.
-            Speak naturally — you can interrupt and ask Alex to repeat anything.
-            Make sure you're in a quiet space.
-          </p>
-          {error && (
-            <div style={{
-              marginBottom: 20, padding: '12px 16px', borderRadius: 8,
-              background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
-              display: 'flex', gap: 10, textAlign: 'left',
-            }}>
-              <AlertCircle size={18} color="#F87171" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#FCA5A5' }}>{error.message}</div>
-                <div style={{ fontSize: 12, color: '#A1A1AA', marginTop: 4 }}>{error.hint}</div>
-              </div>
-            </div>
-          )}
-          <InterviewConsent checked={consented} onChange={setConsented} />
-          <button
-            onClick={start}
-            disabled={!consented}
-            className="btn btn-primary"
-            style={{
-              padding: '14px 32px', borderRadius: 8, fontSize: 15, fontWeight: 600,
-              background: '#22C55E', color: '#0B0B12', border: 'none',
-              cursor: consented ? 'pointer' : 'not-allowed', opacity: consented ? 1 : 0.5,
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            <Mic size={18} /> Start interview
-          </button>
-          <button
-            onClick={() => onExit?.()}
-            style={{
-              display: 'block', margin: '16px auto 0', background: 'transparent',
-              border: 'none', color: '#71717A', cursor: 'pointer', fontSize: 13,
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Connecting state */}
-      {phase === 'connecting' && (
-        <div style={{ maxWidth: 520, margin: '60px auto', textAlign: 'center' }}>
-          <Loader size={32} className="spin" style={{ marginBottom: 16 }} />
-          <p style={{ color: '#A1A1AA' }}>Connecting to the interviewer…</p>
-        </div>
-      )}
-
-      {/* Live conversation */}
-      {phase === 'live' && (
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr', gap: 24, maxWidth: 720, margin: '0 auto', width: '100%' }}>
-          {/* Connection-lost banner. We do not auto-reconnect — the OpenAI
-              realtime token is single-use and short-lived, so re-establishing
-              cleanly means ending and restarting the interview. The banner
-              just tells the candidate they should stop talking. */}
-          {connState !== 'connected' && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: connState === 'lost' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
-              border: `1px solid ${connState === 'lost' ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)'}`,
-              color: connState === 'lost' ? '#FCA5A5' : '#FCD34D',
-              borderRadius: 10, padding: '10px 14px', fontSize: 13,
-            }}>
-              <AlertCircle size={16} />
-              {connState === 'lost'
-                ? 'Connection to the interviewer was lost. End the interview and start again from the dashboard.'
-                : 'Reconnecting to the interviewer…'}
-            </div>
-          )}
-          {/* Big mic / speaking indicator */}
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <div style={{
-              width: 140, height: 140, borderRadius: '50%', margin: '0 auto 12px',
-              background: aiSpeaking
-                ? 'radial-gradient(circle, rgba(34,197,94,0.4) 0%, rgba(34,197,94,0.1) 70%, transparent 100%)'
-                : 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(59,130,246,0.05) 70%, transparent 100%)',
-              border: `2px solid ${aiSpeaking ? '#22C55E' : 'rgba(59,130,246,0.5)'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transform: `scale(${1 + (aiSpeaking ? 0.05 : audioLevel * 0.15)})`,
-              transition: 'transform 80ms, border-color 200ms, background 200ms',
-            }}>
-              <Mic size={48} color={aiSpeaking ? '#22C55E' : '#3B82F6'} />
-            </div>
-            <div style={{ fontSize: 13, color: '#A1A1AA' }}>
-              {aiSpeaking ? 'Alex is speaking…' : (muted ? 'You are muted' : 'Listening…')}
+        <main className="si-setup-shell">
+          <div className="si-setup-intro">
+            <span className="si-eyebrow">The next conversation</span>
+            <h1>Your experience.<br /><em>In your own words.</em></h1>
+            <p>Take a breath. Find a quiet space. This is your time to share how you think and what you bring.</p>
+            <ConversationSculpture variant="welcome" />
+            <div className="si-setup-details">
+              <span><Mic size={15} aria-hidden="true" /> Audio only</span>
+              <span>Speak naturally</span>
+              <span>Take your time</span>
             </div>
           </div>
-
-          {/* Transcript scroll */}
-          <div ref={transcriptScrollRef} style={{
-            flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 20,
-            border: '1px solid rgba(255,255,255,0.08)', maxHeight: 360, overflowY: 'auto',
-          }}>
-            {turns.length === 0 ? (
-              <div style={{ color: '#71717A', fontSize: 13, fontStyle: 'italic' }}>
-                Conversation will appear here as you talk…
+          <div className="si-setup-card">
+            <div className="si-setup-icon" aria-hidden="true"><Mic size={28} /></div>
+            <span className="si-eyebrow">Before we begin</span>
+            <h2>Ready when you are</h2>
+            <p className="si-lead">
+              You'll have a short voice conversation with Alex, an AI interviewer.
+              Speak naturally — you can interrupt and ask Alex to repeat anything.
+              Make sure you're in a quiet space.
+            </p>
+            {error && (
+              <div className="si-error" role="alert">
+                <AlertCircle size={18} aria-hidden="true" />
+                <div><strong>{error.message}</strong><p>{error.hint}</p></div>
               </div>
-            ) : (
-              turns.map((t, i) => (
-                <div key={i} style={{ marginBottom: 12 }}>
-                  <div style={{
-                    fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
-                    color: t.role === 'interviewer' ? '#22C55E' : '#3B82F6',
-                    marginBottom: 4,
-                  }}>
-                    {t.role === 'interviewer' ? 'Alex' : 'You'}
-                  </div>
-                  <div style={{ fontSize: 14, lineHeight: 1.6, color: '#E4E4E7' }}>{t.text}</div>
-                </div>
-              ))
             )}
+            <InterviewConsent checked={consented} onChange={setConsented} />
+            <div className="si-setup-actions">
+              <button className="si-button si-button-secondary" onClick={() => onExit?.()}>Cancel</button>
+              <button className="si-button si-button-primary" onClick={start} disabled={!consented}>
+                <Mic size={17} aria-hidden="true" /> Start interview
+              </button>
+            </div>
           </div>
+        </main>
+      )}
 
-          {/* Controls */}
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', paddingBottom: 24 }}>
-            <button
-              onClick={toggleMute}
-              style={{
-                padding: '12px 20px', borderRadius: 8, cursor: 'pointer',
-                background: muted ? '#EF4444' : 'rgba(255,255,255,0.08)',
-                color: muted ? '#fff' : '#E4E4E7',
-                border: `1px solid ${muted ? '#EF4444' : 'rgba(255,255,255,0.15)'}`,
-                display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14,
-              }}
-            >
-              {muted ? <MicOff size={16} /> : <Mic size={16} />}
+      {phase === 'connecting' && (
+        <div className="si-state" role="status">
+          <div className="si-state-icon" aria-hidden="true"><Loader size={30} className="spin" /></div>
+          <h2>Making the connection.</h2>
+          <p>Connecting to the interviewer…</p>
+        </div>
+      )}
+
+      {phase === 'live' && (
+        <main className="si-voice-live">
+          {/* No reconnecting by itself: the realtime token is single-use and
+              short-lived, so a clean restart means ending the interview and
+              starting it again. This just tells the candidate to stop talking. */}
+          {connState !== 'connected' && (
+            <div className={`si-error${connState === 'lost' ? '' : ' si-notice'}`} role="alert">
+              <AlertCircle size={18} aria-hidden="true" />
+              <span>
+                {connState === 'lost'
+                  ? 'Connection to the interviewer was lost. End the interview and start again from the dashboard.'
+                  : 'Reconnecting to the interviewer…'}
+              </span>
+            </div>
+          )}
+          <section className="si-listening-panel" aria-label="Conversation status">
+            <span className="si-eyebrow">In conversation with Alex</span>
+            <ConversationSculpture variant="live" live={connState === 'connected'} level={audioLevel} speaking={aiSpeaking} muted={muted} />
+            <h2>{aiSpeaking ? 'Alex is speaking…' : (muted ? 'You are muted' : 'Listening…')}</h2>
+            <p>Your words matter. Take the time you need.</p>
+          </section>
+          <section className="si-transcript-panel" aria-label="Live transcript">
+            <header>
+              <span className="si-eyebrow">The conversation</span>
+              <span className="si-transcript-label">Live transcript</span>
+            </header>
+            <div className="si-transcript-scroll" ref={transcriptScrollRef}>
+              {turns.length === 0 ? (
+                <p className="si-transcript-placeholder">Conversation will appear here as you talk…</p>
+              ) : turns.map((t, i) => (
+                <div key={i} className={`si-transcript-turn ${t.role === 'interviewer' ? 'interviewer' : 'candidate'}`}>
+                  <span>{t.role === 'interviewer' ? 'Alex' : 'You'}</span>
+                  <p>{t.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+          <div className="si-live-controls">
+            <button className={`si-button si-button-secondary${muted ? ' is-muted' : ''}`} onClick={toggleMute}>
+              {muted ? <MicOff size={17} aria-hidden="true" /> : <Mic size={17} aria-hidden="true" />}
               {muted ? 'Unmute' : 'Mute'}
             </button>
-            <button
-              onClick={endInterview}
-              style={{
-                padding: '12px 20px', borderRadius: 8, cursor: 'pointer',
-                background: '#EF4444', color: '#fff', border: 'none',
-                display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600,
-              }}
-            >
-              <PhoneOff size={16} /> End interview
+            <button className="si-button si-button-end" onClick={endInterview}>
+              <PhoneOff size={17} aria-hidden="true" /> End interview
             </button>
           </div>
-        </div>
+        </main>
       )}
 
-      {/* Ended */}
       {phase === 'ended' && (
-        <div style={{ maxWidth: 520, margin: '60px auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: 'inherit' }}>Thanks for talking with us</h2>
-          <p style={{ color: '#A1A1AA', fontSize: 14, marginBottom: 24 }}>
-            Your interview has been recorded. The hiring team will follow up shortly.
-          </p>
-          <button
-            onClick={() => onExit?.()}
-            style={{
-              padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
-              background: '#3B82F6', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600,
-            }}
-          >
-            Done
-          </button>
+        <div className="si-state">
+          <div className="si-state-icon" aria-hidden="true"><Mic size={30} /></div>
+          <span className="si-eyebrow">Conversation complete</span>
+          <h2>Thanks for talking with us</h2>
+          <p>Your interview has been saved. The hiring team will follow up shortly.</p>
+          <button className="si-button si-button-primary" onClick={() => onExit?.()}>Done</button>
         </div>
       )}
     </div>

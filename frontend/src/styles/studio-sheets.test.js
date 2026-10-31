@@ -32,7 +32,10 @@ const SHEETS = {
       'message-content', 'suggestion',
     ],
   },
-  'studio-interview.css': { roots: ['studio-interview-report'], keyframes: 'studio-interview-' },
+  'studio-interview.css': {
+    roots: ['studio-interview', 'studio-interview-consent', 'studio-interview-report'],
+    keyframes: 'studio-interview-',
+  },
   'studio-dashboard.css': {
     roots: ['studio-dashboard'],
     keyframes: 'studio-dashboard-',

@@ -41,7 +41,8 @@
 @import './studio-auth.css' layer(components);
 /* The hiring workspace's frame, scoped to .studio-workspace. */
 @import './studio-workspace.css' layer(components);
-/* The interview report, scoped to .studio-interview-report. */
+/* The interview rooms, their consent box and the report, scoped to
+   .studio-interview, .studio-interview-consent and .studio-interview-report. */
 @import './studio-interview.css' layer(components);
 /* The hiring dashboard's views, scoped to .studio-dashboard. */
 @import './studio-dashboard.css' layer(components);

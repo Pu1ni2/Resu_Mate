@@ -18,6 +18,14 @@ import InterviewConsent from './shared/InterviewConsent';
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
 const MAX_VIOLATIONS = 3;
+// What the room watches and counts, as its setup screen lists it.
+const PROCTORING = [
+  'Camera and microphone required',
+  'Alex, an AI avatar, interviews you live',
+  'Your face is checked to stay in view',
+  'The interview runs full screen',
+  'Switching tabs or windows, or leaving full screen, is a violation',
+];
 
 export default function InterviewRoom({ config, candidateName, candidateEmail, onComplete, onExit }) {
   const [phase, setPhase] = useState('setup'); // setup | connecting | live | ended
@@ -314,162 +322,151 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   }, []);
 
   // ═══ RENDER ═══
-  // The room is dark of its own, and the app's headings take the light
-  // theme's dark ink (design-system.css), so each heading here takes the
-  // room's colour instead.
+  // A page of its own over the rest of the app (studio-interview.css), and
+  // the element that goes full screen.
   return (
-    <div ref={containerRef} style={{ background: '#0A0A0F', color: '#F4F4F5', position: 'fixed', inset: 0, zIndex: 9999, fontFamily: "'DM Sans', sans-serif" }}>
+    <div ref={containerRef} className="studio-interview studio-avatar-room" data-phase={phase}>
 
       {/* ═══ SETUP ═══ */}
-      {phase === 'setup' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', background: 'linear-gradient(135deg, #0A0A0F, #111128)' }}>
-          <div style={{ maxWidth: '560px', width: '100%', padding: '48px', background: 'rgba(14,14,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', textAlign: 'center' }}>
-            <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid rgba(59,130,246,0.3)' }}>
-              <Bot size={40} color="#fff" />
+      {phase === 'setup' && <>
+        <header className="si-room-header">
+          <div className="si-room-brand">
+            <span className="si-brand-mark" aria-hidden="true">r.</span>
+            <div>
+              <span className="si-eyebrow">ResuMate · Video interview</span>
+              <strong>{candidateName ? `Hi ${candidateName}` : 'Your interview'}</strong>
             </div>
-            <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px', color: 'inherit' }}>Live AI Interview</h1>
-            <p style={{ color: '#71717A', marginBottom: '24px' }}>You'll be speaking with Alex, an AI interviewer with a live avatar.</p>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
-              {config?.role && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Briefcase size={14} /> {config.role}</span>}
-              {config?.num_questions && <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', fontSize: '13px', color: '#A1A1AA' }}><Clock size={14} /> {config.num_questions} Qs</span>}
+          </div>
+          <span className="si-status-tag">A space to be heard</span>
+        </header>
+        <main className="si-setup-shell">
+          <div className="si-setup-intro">
+            <span className="si-eyebrow">Meet your next opportunity</span>
+            <h1>More than a résumé.<br /><em>A real conversation.</em></h1>
+            <p>Meet Alex, your AI interviewer. Bring your experience, your curiosity, and a little room to think.</p>
+            <div className="si-proctoring">
+              <strong><Shield size={15} aria-hidden="true" /> Proctored: {MAX_VIOLATIONS} violations end the interview</strong>
+              {PROCTORING.map(rule => <span key={rule}><Shield size={12} aria-hidden="true" /> {rule}</span>)}
             </div>
-
-            <div style={{ textAlign: 'left', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '24px' }}>
-              <p style={{ fontSize: '13px', color: '#F59E0B', fontWeight: '600', marginBottom: '10px' }}>Strict Proctoring — {MAX_VIOLATIONS} violations = auto-termination</p>
-              {['Camera + mic required', 'AI avatar interviews you live', 'Face & eye tracking active', 'Tab switching = violation', 'Fullscreen enforced'].map(rule => (
-                <span key={rule} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#71717A', padding: '4px 0' }}><Shield size={12} /> {rule}</span>
-              ))}
-            </div>
-
+          </div>
+          <div className="si-setup-card">
+            <div className="si-setup-icon" aria-hidden="true"><Bot size={30} /></div>
+            <span className="si-eyebrow">Before we begin</span>
+            <h2>Live AI Interview</h2>
+            <p className="si-lead">You'll be speaking with Alex, an AI interviewer with a live avatar.</p>
+            {(config?.role || config?.num_questions) && (
+              <div className="si-interview-details">
+                {config?.role && <span><Briefcase size={14} aria-hidden="true" /> {config.role}</span>}
+                {config?.num_questions && <span><Clock size={14} aria-hidden="true" /> {config.num_questions} Qs</span>}
+              </div>
+            )}
             <InterviewConsent video checked={consented} onChange={setConsented} />
-
             {setupError && (
-              <div
-                role="alert"
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: '10px',
-                  padding: '14px 16px', marginBottom: '20px',
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
-                  borderRadius: '12px', textAlign: 'left',
-                }}
-              >
-                <AlertTriangle size={18} style={{ color: '#F87171', flexShrink: 0, marginTop: 2 }} />
-                <div style={{ fontSize: '13px', color: '#FCA5A5', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Could not start interview</div>
-                  <div style={{ color: '#FECACA' }}>{setupError.message}</div>
-                  {setupError.hint && (
-                    <div style={{ color: '#A1A1AA', marginTop: 6, fontSize: '12px' }}>{setupError.hint}</div>
-                  )}
+              <div role="alert" className="si-error">
+                <AlertTriangle size={18} aria-hidden="true" />
+                <div>
+                  <strong>Could not start interview</strong>
+                  <p>{setupError.message}</p>
+                  {setupError.hint && <p>{setupError.hint}</p>}
                 </div>
               </div>
             )}
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button onClick={onExit} style={{ padding: '14px 24px', background: 'none', color: '#71717A', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={() => { setSetupError(null); startInterview(); }} disabled={!consented} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: 'linear-gradient(135deg, #3B82F6, #2563EB)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: consented ? 'pointer' : 'not-allowed', opacity: consented ? 1 : 0.5, fontFamily: 'inherit' }}>
-                <Phone size={18} /> {setupError ? 'Try again' : 'Join Interview'}
+            <div className="si-setup-actions">
+              <button onClick={onExit} className="si-button si-button-secondary">Cancel</button>
+              <button onClick={() => { setSetupError(null); startInterview(); }} disabled={!consented} className="si-button si-button-primary">
+                <Phone size={17} aria-hidden="true" /> {setupError ? 'Try again' : 'Join Interview'}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </main>
+      </>}
 
       {/* ═══ CONNECTING ═══ */}
       {phase === 'connecting' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-          <Loader size={48} className="spin" style={{ color: '#3B82F6', marginBottom: '20px' }} />
-          <h2 style={{ fontSize: '22px', marginBottom: '8px', color: 'inherit' }}>Connecting to Interview Room...</h2>
-          <p style={{ color: '#71717A' }}>Setting up camera, mic, and AI avatar</p>
+        <div className="si-state" role="status">
+          <div className="si-state-icon" aria-hidden="true"><Loader size={32} className="spin" /></div>
+          <span className="si-eyebrow">Getting ready</span>
+          <h2>Connecting to Interview Room...</h2>
+          <p>Setting up camera, mic, and AI avatar</p>
         </div>
       )}
 
       {/* ═══ LIVE ═══ */}
       {phase === 'live' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-          {/* Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ background: '#EF4444', color: '#fff', padding: '4px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700' }}>● LIVE</span>
-              <span style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace' }}>{formatTime(timer)}</span>
+        <div className="si-video-live">
+          <header className="si-video-topbar">
+            <div className="si-video-session">
+              <span className="si-live-badge">● LIVE</span>
+              <span className="si-timer">{formatTime(timer)}</span>
+              <span className="si-session-title">Your conversation with Alex</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '600', background: faceDetected ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: faceDetected ? '#22C55E' : '#EF4444' }}>
-                {faceDetected ? <Eye size={12} /> : <EyeOff size={12} />} {faceDetected ? `In view ${eyeContact}%` : 'No face'}
+            <div className="si-video-status">
+              <span className={`si-tracking ${faceDetected ? 'is-present' : 'has-warning'}`}>
+                {faceDetected ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
+                {faceDetected ? `In view ${eyeContact}%` : 'No face'}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: violations > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)', color: violations > 0 ? '#F87171' : '#71717A' }}>
-                <Shield size={11} /> {violations}/{MAX_VIOLATIONS}
+              <span className={`si-tracking${violations > 0 ? ' has-warning' : ''}`}>
+                <Shield size={12} aria-hidden="true" /> {violations}/{MAX_VIOLATIONS}
               </span>
               {!agentJoined && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)' }}>
-                  <Loader size={11} className="spin" /> AI joining...
-                </span>
+                <span className="si-tracking"><Loader size={12} className="spin" aria-hidden="true" /> AI joining...</span>
               )}
             </div>
-          </div>
+          </header>
 
-          {/* Video area */}
-          <div style={{ flex: 1, display: 'flex', gap: '2px', background: '#000', position: 'relative' }}>
+          <div className="si-video-stage">
             {/* Candidate (left) */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-              <video ref={candidateVideoCallback} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-              <canvas ref={candidateCanvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600' }}>
-                {candidateName || 'You'}
-              </div>
+            <div className="si-video-tile">
+              <video ref={candidateVideoCallback} autoPlay muted playsInline className="si-candidate-video" />
+              <canvas ref={candidateCanvasRef} className="si-face-overlay" />
+              <div className="si-video-label">{candidateName || 'You'}</div>
             </div>
 
             {/* Avatar (right) */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#111' }}>
-              <video ref={avatarVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-
-              {/* Waiting for agent */}
+            <div className="si-video-tile">
+              <video ref={avatarVideoRef} autoPlay playsInline />
               {!agentJoined && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0F172A, #1E293B)' }}>
-                  <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                    <Bot size={44} color="#fff" />
-                  </div>
-                  <p style={{ fontSize: '14px', color: '#94A3B8' }}>Waiting for AI interviewer...</p>
-                  <Loader size={16} className="spin" style={{ color: '#3B82F6', marginTop: '8px' }} />
+                <div className="si-avatar-waiting">
+                  <div aria-hidden="true"><Bot size={42} /></div>
+                  <p>Waiting for AI interviewer...</p>
+                  <Loader size={16} className="spin" aria-hidden="true" />
                 </div>
               )}
-
-              <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Bot size={12} /> Alex (AI Interviewer)
-                {agentJoined && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22C55E' }} />}
+              <div className="si-video-label">
+                <Bot size={13} aria-hidden="true" /> Alex (AI Interviewer)
+                {agentJoined && <span className="si-participant-online" />}
               </div>
             </div>
 
-            {/* Warnings */}
             {warnings.length > 0 && (
-              <div style={{ position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {warnings.map((w, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600' }}>
-                    <AlertTriangle size={14} /> {w.msg}
-                  </div>
-                ))}
+              <div className="si-video-warnings" role="alert">
+                {warnings.map((w, i) => <div key={i}><AlertTriangle size={15} aria-hidden="true" /> {w.msg}</div>)}
               </div>
             )}
           </div>
 
-          {/* Bottom controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '16px 24px', background: '#111118', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <button onClick={toggleMic} aria-label="Mute microphone" aria-pressed={muted} style={{ width: '52px', height: '52px', borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: muted ? '#EF4444' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
-              {muted ? <MicOff size={22} /> : <Mic size={22} />}
-            </button>
-            <button onClick={() => endInterview(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 28px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '30px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-              <PhoneOff size={18} /> End Interview
-            </button>
+          <div className="si-video-controls">
+            <span className="si-video-footer-note"><Shield size={14} aria-hidden="true" /> Interview in progress</span>
+            <div className="si-control-buttons">
+              <button onClick={toggleMic} aria-label="Mute microphone" aria-pressed={muted} className={`si-mic-control${muted ? ' is-muted' : ''}`}>
+                {muted ? <MicOff size={21} /> : <Mic size={21} />}
+              </button>
+              <button onClick={() => endInterview(false)} className="si-button si-button-end">
+                <PhoneOff size={17} aria-hidden="true" /> End Interview
+              </button>
+            </div>
+            <span className="si-video-footer-note">ResuMate interview studio</span>
           </div>
         </div>
       )}
 
       {/* ═══ ENDED ═══ */}
       {phase === 'ended' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-          <Loader size={40} className="spin" style={{ color: '#3B82F6', marginBottom: '16px' }} />
-          <h2 style={{ color: 'inherit' }}>Generating Report...</h2>
-          <p style={{ color: '#71717A', marginTop: '8px' }}>Returning to dashboard...</p>
+        <div className="si-state" role="status">
+          <div className="si-state-icon" aria-hidden="true"><Loader size={30} className="spin" /></div>
+          <span className="si-eyebrow">Conversation complete</span>
+          <h2>Generating Report...</h2>
+          <p>Returning to dashboard...</p>
         </div>
       )}
     </div>
