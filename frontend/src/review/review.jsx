@@ -25,6 +25,8 @@ import Dashboard from '../components/Dashboard';
 import CandidateFocus from '../components/CandidateFocus';
 import SourcerPage from '../components/sourcer/SourcerPage';
 import CandidateDashboard from '../components/CandidateDashboard';
+import ConversationalInterviewRoom from '../components/ConversationalInterviewRoom';
+import InterviewRoom from '../components/InterviewRoom';
 import InterviewReportView from '../components/shared/InterviewReportView';
 import ATSResultsView from '../components/pipeline/ATSResultsView';
 import { candidates as sampleCandidates, pipeline, report, results, session, statuses } from './fixtures';
@@ -44,6 +46,8 @@ const PAGES = [
   ['/hiring?view=chat', 'Candidate chat'],
   ['/hiring/sourcer', 'Find candidates'],
   ['/candidate/dashboard', 'Candidate portal'],
+  ['/review/voice-interview', 'Voice interview room'],
+  ['/review/video-interview', 'Video interview room'],
   ['/', 'Homepage'],
 ];
 
@@ -128,6 +132,22 @@ export function Review() {
             <Route path="/hiring/focus" element={<CandidateFocus />} />
             <Route path="/hiring/sourcer" element={<SourcerPage />} />
             <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
+            <Route
+              path="/review/voice-interview"
+              element={(
+                <div className="review-room">
+                  <ConversationalInterviewRoom interviewId={1} candidateName={session.name} candidateEmail={session.email} onComplete={noOp} onExit={reload} />
+                </div>
+              )}
+            />
+            <Route
+              path="/review/video-interview"
+              element={(
+                <div className="review-room">
+                  <InterviewRoom config={session.interview_config} candidateName={session.name} candidateEmail={session.email} onComplete={noOp} onExit={reload} />
+                </div>
+              )}
+            />
             <Route
               path="/review/results"
               element={(
@@ -229,6 +249,9 @@ export function startReview() {
 
   // No camera or microphone, no saved sessions of the real app, and no
   // request leaves the page: fetch and the API client both answer from here.
+  // The video room's face detector, which it would load from a CDN: a
+  // stand-in, so nothing is loaded. The room never gets as far as using it.
+  window.faceapi = {};
   if (navigator.mediaDevices) {
     navigator.mediaDevices.getUserMedia = async () => {
       throw new Error('Recording is disabled in design review. Open the live app for an interview.');

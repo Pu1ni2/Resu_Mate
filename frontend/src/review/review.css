@@ -17,6 +17,10 @@
 }
 .review-bar a { color: #e6ccac; font-size: 11px; text-decoration: none; }
 
+/* The interview rooms cover the screen in the app; here they sit under the
+   bar, so it can still pick another page. */
+.review-room > .studio-interview { position: relative; inset: auto; z-index: auto; min-height: 100dvh; }
+
 .review-unavailable { padding: 70px 30px; text-align: center; color: #30382f; }
 .review-unavailable h1 { font: 48px 'Instrument Serif', serif; }
 
