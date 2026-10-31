@@ -40,6 +40,11 @@ async def lifespan(app: FastAPI):
     # ignored, and the app came up without a working database.
     await init_db()
 
+    # Not caught either: production can't sign anyone in, invite anyone or
+    # reset a password without email.
+    from app.services.email_service import email_service
+    email_service.require_in_production()
+
     from app.agents.orchestrator import orchestrator
     from app.agents.data_agent import data_agent
     from app.agents.hr_agent import hr_agent

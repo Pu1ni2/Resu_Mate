@@ -1,4 +1,4 @@
-"""Email Service — SendGrid with graceful console fallback"""
+"""Email Service: SendGrid, and nothing sent without it."""
 import asyncio
 import html
 import logging
@@ -22,15 +22,35 @@ class EmailService:
         """True only when SendGrid is set up and emails will actually be delivered."""
         return self._sg is not None
 
+    def require_in_production(self) -> None:
+        """Production doesn't start without email.
+
+        Without it no sign-in code, interview invitation, password reset or
+        deletion code reaches anyone, and the codes used to go to the log
+        instead. The server checks when it starts (main.py), not when the
+        settings load, so migrations and CI's checks run without email. Local
+        development (DEBUG) works without it, showing the codes instead.
+        """
+        if settings.debug or self.configured:
+            return
+        raise RuntimeError(
+            "Email isn't set up, and production needs it: without it no sign-in code, "
+            "interview invitation, password reset or deletion code can be sent. Set "
+            "SENDGRID_API_KEY, and FROM_EMAIL to a sender SendGrid has verified."
+        )
+
     async def send(self, to_email: str, subject: str, html_body: str) -> bool:
         """Send an email. Returns True only if SendGrid accepted it.
 
-        When SendGrid is not configured (local dev), prints to console and returns
-        False so callers can detect the no-op and decide how to respond (e.g. include
-        the OTP code in the dev response, or fail loudly in production).
+        Without SendGrid (local development: production doesn't start without
+        it), it says so in the log and returns False, so callers can tell and
+        answer accordingly, e.g. with the code in a DEBUG response.
         """
         if not self._sg:
-            print(f"\n[EMAIL STUB] To: {to_email}\nSubject: {subject}\n{html_body}\n")
+            # Not the message itself, nor who it was for: it can hold a sign-in
+            # code or a password-reset link, and more people read a server's
+            # log than the mailbox.
+            print("[EMAIL] not sent: email isn't set up on this server")
             return False
         try:
             from sendgrid.helpers.mail import Mail

@@ -320,7 +320,7 @@ The ones that matter most:
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | The AI agents, and the model they use |
 | `FRONTEND_URL` | Where invitation and password-reset links point |
 | `CORS_ORIGINS` | The frontend addresses allowed to call the API, comma-separated |
-| `SENDGRID_API_KEY`, `FROM_EMAIL` | Email: sign-in codes, invitations, password resets, deletion codes |
+| `SENDGRID_API_KEY`, `FROM_EMAIL` | Email: sign-in codes, invitations, password resets, deletion codes. Production doesn't start without it |
 | `TAVILY_API_KEY`, `GITHUB_TOKEN` | Web search, and GitHub lookups and sourcing |
 | `CALENDLY_TOKEN` | The scheduling link Jarvis and the dashboard share |
 | `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `AGENT_SHARED_SECRET` | Avatar interviews; the secret lets the worker report back. `SIMLI_*` are the worker's own |
