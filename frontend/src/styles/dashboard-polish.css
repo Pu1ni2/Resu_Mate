@@ -121,11 +121,7 @@ code, pre, .font-mono { font-family: var(--font-mono); }
 }
 
 
-/* ─── Scanner terminal polish ─── */
-.scanner-terminal {
-  font-family: var(--font-mono);
-  border-radius: var(--radius-xl);
-}
+/* ─── Scanner log ─── */
 .scanner-log { font-size: var(--text-sm); line-height: var(--leading-normal); }
 
 /* ─── Proper empty states ─── */
@@ -264,9 +260,7 @@ kbd {
   .scanner-bar-status { max-width: 200px; }
   .scanner-bar-expandable { padding: 12px 16px; }
 
-  /* Mobile scanner (legacy) */
-  .scanner-fullscreen { min-height: auto; padding: var(--space-3); }
-  .scanner-terminal { max-width: 100%; }
+  /* Mobile scanner results */
   .scanner-result-card { flex-wrap: wrap; }
 
   /* Mobile agent */
@@ -353,7 +347,7 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
    ═══════════════════════════════════════ */
 @media print {
   .sidebar, .cd-sidebar, .main-header, .cd-header, .chat-input-area, .focus-tabs,
-  .scanner-fullscreen, .cursor-glow, .btn { display: none !important; }
+  .cursor-glow, .btn { display: none !important; }
   .main, .cd-main { margin-left: 0 !important; }
   .glass-card { border: 1px solid #ccc; background: #fff; color: #000; }
   body { background: #fff; color: #000; }
