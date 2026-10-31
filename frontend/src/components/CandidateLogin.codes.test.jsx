@@ -65,6 +65,23 @@ describe('the code step', () => {
     expect(screen.queryByText(/a new code is on its way/)).toBeNull();
   });
 
+  // The server's log no longer holds codes, and this is how local testing
+  // without email gets one, as on the deletion page.
+  it('shows the code a development server without email sends back', async () => {
+    globalThis.fetch.mockImplementationOnce(async () => ({
+      ok: true, status: 200, json: async () => ({ message: 'If invited, sent.', debug_code: '424242' }),
+    }));
+    await atTheCodeStep();
+    expect(screen.getByText(/Development code:/).textContent).toBe('Development code: 424242');
+    fireEvent.click(screen.getByRole('button', { name: /use a different email/i }));
+    expect(screen.queryByText(/Development code/)).toBeNull();
+  });
+
+  it('shows no code when the server emailed it', async () => {
+    await atTheCodeStep();
+    expect(screen.queryByText(/Development code/)).toBeNull();
+  });
+
   it('says to wait when there were too many tries, not that the code is wrong', async () => {
     const box = await atTheCodeStep();
     globalThis.fetch.mockResolvedValueOnce({
