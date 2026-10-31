@@ -1,9 +1,10 @@
-"""Candidate-side auth: /verify-email must not leak PII, and candidate data
-must be reachable only with a candidate session token.
+"""Candidate-side auth: candidate data is reachable only with a candidate
+session token.
 
-Regression guard for the disclosure where POST /api/chat/verify-email returned
-the candidate's name, candidate_id, interview config, and the FULL interview
-report + transcript to any unauthenticated caller who knew the email address.
+Regression guard for the disclosure where POST /api/chat/verify-email, since
+removed, returned the candidate's name, candidate_id, interview config, and the
+FULL interview report + transcript to any unauthenticated caller who knew the
+email address.
 """
 from conftest import register, auth_headers
 
@@ -51,31 +52,6 @@ def _grant_access(client, manager_token, email, name="Cand"):
     )
     assert r.status_code == 200, r.text
     return r
-
-
-# ── /verify-email must return existence only ──────────────────────────────────
-
-def test_verify_email_returns_no_pii(client):
-    tok, _ = register(client, "mgr@co.com")
-    _grant_access(client, tok, "cand@x.com", name="Jane Doe")
-
-    r = client.post("/api/chat/verify-email", json={"email": "cand@x.com"})
-    assert r.status_code == 200, r.text
-    body = r.json()
-
-    # Existence is fine to disclose; anything identifying is not.
-    assert body.get("access") is True
-    for leaked in ("name", "candidate_id", "interview_config", "interview_report"):
-        assert leaked not in body, f"/verify-email leaked '{leaked}': {body}"
-
-    # Belt and braces: the candidate's name must not appear anywhere in the body.
-    assert "jane" not in r.text.lower()
-
-
-def test_verify_email_unknown_is_false(client):
-    r = client.post("/api/chat/verify-email", json={"email": "nobody@x.com"})
-    assert r.status_code == 200
-    assert r.json().get("access") is False
 
 
 # ── Candidate endpoints require a candidate token ─────────────────────────────

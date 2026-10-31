@@ -5,8 +5,9 @@ The portal used scalar_one_or_none() on them and returned 500s, and it loaded
 a profile by bare candidate_id with no owner or identity check.
 """
 import asyncio
+import sqlite3
 
-from conftest import register, auth_headers
+from conftest import register, auth_headers, _TMP_DB
 
 from app.services.auth import create_candidate_token
 
@@ -15,6 +16,12 @@ EMAIL = "maya@x.com"
 
 def _run(coro):
     return asyncio.get_event_loop().run_until_complete(coro)
+
+
+def _grants(email):
+    """How many companies have given `email` portal access."""
+    with sqlite3.connect(_TMP_DB) as db:
+        return db.execute("select count(*) from candidate_access where email = ?", (email,)).fetchone()[0]
 
 
 async def _invite(manager_id, email, name, role, candidate_email=None, candidate_name=None):
@@ -48,7 +55,7 @@ def test_two_companies_inviting_one_person_works_end_to_end(client):
     _run(_invite(a["id"], EMAIL, "Maya (A)", "Backend Engineer"))
     _run(_invite(b["id"], EMAIL, "Maya (B)", "Data Engineer"))
 
-    assert client.post("/api/chat/verify-email", json={"email": EMAIL}).json()["access"] is True
+    assert _grants(EMAIL) == 2
 
     data = _sign_in(client, EMAIL)
     # Name, interview and profile all from the same company: B, the newest.
@@ -90,7 +97,7 @@ def test_create_interview_refuses_another_managers_candidate(client):
     })
     assert r.status_code == 404
     # Nothing was written: the attacker's address has no grant to sign in with.
-    assert client.post("/api/chat/verify-email", json={"email": "attacker@x.com"}).json()["access"] is False
+    assert _grants("attacker@x.com") == 0
 
 
 def test_create_interview_works_for_the_managers_own_candidate(client):
@@ -111,7 +118,7 @@ def test_create_interview_works_for_the_managers_own_candidate(client):
         "candidate_id": 3, "candidate_email": "own@x.com", "candidate_name": "Own", "role": "Dev",
     })
     assert r.status_code == 200, r.text
-    assert client.post("/api/chat/verify-email", json={"email": "own@x.com"}).json()["access"] is True
+    assert _grants("own@x.com") == 1
 
 
 def test_create_interview_says_so_when_the_interview_is_not_saved(client):

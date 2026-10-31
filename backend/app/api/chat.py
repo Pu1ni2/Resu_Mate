@@ -121,9 +121,6 @@ class CreateInterviewRequest(BaseModel):
     # the batch actions' send_emails.
     send_invite: bool = False
 
-class VerifyEmailRequest(BaseModel):
-    email: str
-
 class SaveTranscriptRequest(BaseModel):
     candidate_email: str = Field(..., max_length=320)
     # The LiveKit room the interview ran in, which identifies the exact
@@ -931,49 +928,12 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         "portal_link": settings.candidate_login_url,
     }
 
-@router.post("/verify-email")
-@limiter.limit("10/minute")
-async def verify_email(request: Request, req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
-    """Pre-auth existence check ONLY — does this email have portal access?
-
-    SECURITY: this endpoint is unauthenticated by necessity (the candidate has no
-    token yet), so it must never return personal data. An email address is not a
-    secret; it is enumerable and frequently public. This route previously
-    returned the candidate's name, candidate_id, interview config, and the FULL
-    interview report + transcript to anyone who posted a known address.
-
-    It now returns a bare boolean. The candidate proves possession of the address
-    via the OTP flow (POST /api/auth/candidate/send-otp -> verify-otp), and every
-    piece of real data is served from token-authenticated routes:
-      - GET /api/chat/candidate/me         -> profile + pending interview config
-      - GET /api/chat/candidate/my-report  -> completed report + transcript
-    """
-    email = req.email.strip().lower()
-
-    access = await db_service.get_candidate_access(db, email)
-    if access:
-        return {"access": True}
-
-    # Fallback: the candidate may have been uploaded by a manager but never
-    # explicitly granted portal access. Auto-grant under the OWNING manager for
-    # a resume whose own contact address is exactly this one. This is
-    # deliberately cross-tenant, since the candidate is the data subject. It
-    # used to match `email in text`, so a look-alike address (hn@x.com inside
-    # john@x.com) or a reference's address unlocked someone else's resume.
-    for c in resume_rag.candidates_with_email(email):
-        owner = c.get('manager_id') or None
-        await db_service.create_candidate_access(db, email, c.get('name', ''), c.get('id'), manager_id=owner)
-        return {"access": True}
-
-    return {"access": False, "message": "No access found for this email. Please contact your hiring manager."}
-
-
 @router.get("/candidate/me")
 async def candidate_me(
     candidate_email: str = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    """Authenticated replacement for the data /verify-email used to hand out.
+    """The signed-in candidate's own profile and pending interview.
 
     Identity comes from the candidate's own session token, so a candidate can
     only ever read their own profile and pending interview.

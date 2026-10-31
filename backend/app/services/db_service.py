@@ -455,8 +455,7 @@ async def get_candidate_access(session: AsyncSession, email: str, manager_id: in
 
     Grants are unique per (email, manager), so one person invited by two
     companies has two rows. This used scalar_one_or_none(), which raised
-    MultipleResultsFound for them and turned verify-email and the candidate
-    portal into 500s.
+    MultipleResultsFound for them and turned the candidate portal into 500s.
     """
     stmt = select(CandidateAccess).where(CandidateAccess.email == email.strip().lower())
     if manager_id is not None:
