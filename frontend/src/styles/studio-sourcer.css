@@ -1,0 +1,128 @@
+/* ═══════════════════════════════════════════════════════════
+   STUDIO SOURCER: Find Candidates
+
+   components/sourcer/SourcerPage.jsx in the workspace frame: the brief and
+   the guide beside it, then a search's header, counts and panels. Every rule
+   is scoped to .studio-sourcer, and index.css loads it in the components
+   layer. The colours are theme.css's, apart from the page's olive lines and
+   paper tints. The page is built from the shared Card, Button, Label and
+   Textarea, whose Tailwind classes, and the spacing classes around them,
+   come in a later layer: the !important ones are what the design changes of
+   those.
+   ═══════════════════════════════════════════════════════════ */
+
+.studio-sourcer { min-width: 0; padding-bottom: 30px; }
+.studio-sourcer .sourcer-back { display: inline-flex !important; align-items: center; gap: 9px !important; min-height: 36px; margin-bottom: 24px; color: var(--color-ink-subtle) !important; font-size: 12px !important; text-decoration: none; }
+.studio-sourcer .sourcer-back:hover { color: var(--color-brand) !important; }
+
+/* ── the brief, and the guide beside it ── */
+.studio-sourcer .sourcer-start-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.8fr); align-items: start; gap: 34px; }
+.studio-sourcer .sourcer-brief { position: relative; padding: 29px !important; border: 1px solid #d1d6c5 !important; border-radius: 4px !important; background: var(--color-surface) !important; box-shadow: 0 9px 25px #30382f06 !important; }
+/* The brief's rust bar, over the line the shared Card draws in the same place. */
+.studio-sourcer .sourcer-brief::before { content: ''; position: absolute; top: -1px !important; right: auto !important; left: 29px !important; width: 45px; height: 3px !important; border-radius: 0 !important; background: var(--color-brand) !important; }
+.studio-sourcer .sourcer-section-mark { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 25px !important; color: #8b5140; font: 500 11px/1.5 var(--font-sans); letter-spacing: 0.13em; }
+.studio-sourcer .sourcer-brief label[for='sourcer-description'] { display: block; margin-bottom: 17px !important; color: var(--color-forest) !important; font: 34px/1.1 var(--font-serif) !important; letter-spacing: -0.5px; }
+.studio-sourcer .sourcer-brief textarea { min-height: 190px; padding: 17px !important; border-color: #cbd1c0 !important; border-radius: 3px !important; background: #f9f8f1 !important; box-shadow: none !important; font-size: 15px !important; line-height: 1.8 !important; resize: vertical !important; }
+.studio-sourcer .sourcer-brief textarea::placeholder { color: var(--color-ink-faint); }
+.studio-sourcer .sourcer-brief fieldset { margin-top: 23px !important; }
+.studio-sourcer .sourcer-brief legend { font-size: 11px !important; font-weight: 500 !important; letter-spacing: 0.05em; }
+.studio-sourcer .sourcer-source { min-height: 43px; padding: 9px 12px !important; border-radius: 3px !important; font-size: 12px !important; }
+.studio-sourcer .sourcer-source:has(input:checked) { border-color: #b6bfa8 !important; background: #e9ebdf !important; }
+.studio-sourcer .sourcer-source:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.studio-sourcer .sourcer-source input { width: 14px; height: 14px; margin: 0; accent-color: #68745a !important; }
+.studio-sourcer .sourcer-brief-bottom { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 25px !important; padding-top: 22px; border-top: 1px solid #dde0d4; }
+.studio-sourcer .sourcer-brief-bottom p { margin: 0; font: 23px/1.1 var(--font-serif); }
+.studio-sourcer .sourcer-brief-bottom p span { color: var(--color-ink-subtle); font: 11px/1.8 var(--font-sans); }
+.studio-sourcer .sourcer-brief-bottom button { min-height: 45px; padding: 12px 17px !important; border-color: var(--color-forest) !important; border-radius: 3px !important; background: var(--color-forest) !important; color: var(--color-ink-inverse) !important; font-size: 12px !important; }
+.studio-sourcer .sourcer-brief-bottom button:hover { background: var(--color-forest-hover) !important; }
+.studio-sourcer .sourcer-guide { padding: 0 16px 17px; }
+.studio-sourcer .sourcer-guide-art { max-width: 290px; margin: -7px auto 10px; transform: perspective(800px) rotateY(-7deg); }
+.studio-sourcer .sourcer-guide-art svg { display: block; width: 100%; height: auto; }
+.studio-sourcer .sourcer-guide h2 { margin: 0 0 25px; font: 43px/1.03 var(--font-serif); letter-spacing: -0.5px; }
+.studio-sourcer :is(.sourcer-guide, .sourcer-run-header) h2 em { color: var(--color-brand); font-weight: 400; }
+.studio-sourcer .sourcer-guide ol { display: grid; gap: 21px; margin: 0; padding: 0; list-style: none; }
+.studio-sourcer .sourcer-guide li { display: grid; grid-template-columns: 23px 1fr; gap: 10px; }
+.studio-sourcer .sourcer-guide li > span { padding-top: 3px; color: var(--color-brand); font-size: 11px; }
+.studio-sourcer .sourcer-guide strong { font-size: 13px; font-weight: 500; }
+.studio-sourcer .sourcer-guide li p { margin: 4px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
+.studio-sourcer .sourcer-guide-note { margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd1bf; color: var(--color-ink-subtle); font-size: 11px; line-height: 1.8; }
+
+/* Past searches, under the brief. */
+.studio-sourcer .sourcer-history { margin-top: 35px; border: 0 !important; border-top: 1px solid #cbd1c0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.studio-sourcer .sourcer-history h2 { padding: 21px 0 16px !important; color: var(--color-forest) !important; font: 29px/1.15 var(--font-serif) !important; }
+.studio-sourcer .sourcer-history li { padding: 17px 0 !important; }
+.studio-sourcer .sourcer-history li button > span:first-child { margin-bottom: 5px; }
+
+/* ── a search: its header, counts and panels ── */
+.studio-sourcer .sourcer-run-header { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid #d1d6c5; }
+.studio-sourcer .sourcer-run-header .sourcer-section-mark { margin-bottom: 14px !important; }
+.studio-sourcer .sourcer-run-header h2 { margin: 0 0 15px; font: 43px/1.03 var(--font-serif); letter-spacing: -0.5px; }
+.studio-sourcer .sourcer-run-header > div:last-child { flex-wrap: wrap !important; min-width: 0; }
+.studio-sourcer .sourcer-run-header > div:last-child > span { border-radius: 3px !important; background: #e9ebdf !important; white-space: normal !important; }
+.studio-sourcer .sourcer-run-header > div:last-child > span > span:last-child { white-space: normal !important; }
+.studio-sourcer .sourcer-stats { overflow: hidden; gap: 0 !important; margin: 24px 0; border: 1px solid #cbd1c0; border-radius: 4px; }
+.studio-sourcer .sourcer-stat { min-width: 0; padding: 18px 20px !important; border: 0 !important; border-right: 1px solid #d1d6c5 !important; border-radius: 0 !important; box-shadow: none; }
+.studio-sourcer .sourcer-stat:last-child { border-right: 0 !important; }
+.studio-sourcer .sourcer-stat-strong { border-right-color: #59634f !important; background: var(--color-forest) !important; color: var(--color-ink-inverse) !important; }
+.studio-sourcer .sourcer-stat-value { font: 36px/1.15 var(--font-serif) !important; letter-spacing: -0.5px; }
+.studio-sourcer .sourcer-results-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.studio-sourcer .sourcer-results-grid > div { min-width: 0; }
+.studio-sourcer .sourcer-panel { min-width: 0; border-color: #d1d6c5 !important; border-radius: 4px !important; background: var(--color-surface) !important; box-shadow: 0 5px 16px #30382f03 !important; }
+.studio-sourcer .sourcer-panel-heading { padding: 19px 20px 15px !important; border-bottom: 1px solid #e0e2d7; }
+.studio-sourcer .sourcer-panel-heading h3 { color: var(--color-forest) !important; font: 24px/1.15 var(--font-serif) !important; }
+.studio-sourcer .sourcer-panel-heading + div { padding: 20px !important; }
+.studio-sourcer .sourcer-population { padding: 17px; border: 1px solid #e0e2d7; border-radius: 3px; background: #f1f2e9; }
+.studio-sourcer .sourcer-population > * { box-shadow: 0 1px 1px #30382f12; }
+.studio-sourcer .sourcer-person-evidence { grid-template-columns: 80px minmax(0, 1fr) !important; }
+/* The photo or initials: its size is set inline, so it takes !important too;
+   its letters keep the size the avatar gives them. */
+.studio-sourcer .sourcer-person-evidence > div:first-child > :first-child { width: 80px !important; height: 95px !important; border-radius: 40px 40px 3px 3px !important; font-family: var(--font-serif); font-weight: 400 !important; object-fit: cover; }
+.studio-sourcer .sourcer-criterion { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 5px 12px !important; padding: 10px 0; border-bottom: 1px solid #eceee3; }
+.studio-sourcer .sourcer-criterion :is(dt, dd) { overflow-wrap: anywhere; white-space: normal !important; }
+.studio-sourcer .sourcer-criterion > dd:last-child { grid-column: 1 / -1; }
+.studio-sourcer [role='dialog'] { border-radius: 4px !important; background: var(--color-surface) !important; }
+.studio-sourcer [role='dialog'] h2 { font: 32px/1.1 var(--font-serif) !important; }
+.studio-sourcer [role='dialog'] :is(input, textarea) { border-radius: 3px !important; background: #f9f8f1 !important; }
+
+@media (max-width: 1250px) {
+  .studio-sourcer .sourcer-start-grid { grid-template-columns: minmax(0, 1fr) 270px; gap: 24px; }
+  .studio-sourcer .sourcer-brief { padding: 23px !important; }
+  .studio-sourcer .sourcer-brief-bottom p { display: none; }
+  .studio-sourcer .sourcer-brief-bottom button { width: 100%; }
+  .studio-sourcer .sourcer-results-grid { grid-template-columns: minmax(0, 1fr); }
+  .studio-sourcer .sourcer-stat { padding: 16px !important; }
+}
+
+/* One column: the guide's steps beside its heading, under the brief. */
+@media (max-width: 950px) {
+  .studio-sourcer .sourcer-start-grid { grid-template-columns: minmax(0, 1fr); }
+  .studio-sourcer .sourcer-guide { display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; padding: 20px 4px 0; }
+  .studio-sourcer .sourcer-guide-art { display: none; }
+  .studio-sourcer .sourcer-guide-note { grid-column: 1 / -1; margin-top: 4px; }
+  .studio-sourcer .sourcer-run-header > div:last-child { width: 100%; }
+  .studio-sourcer .sourcer-stat { border-bottom: 1px solid #d1d6c5 !important; }
+}
+
+/* A phone. The brief's 16px keeps iOS from zooming into it. */
+@media (max-width: 600px) {
+  .studio-sourcer .sourcer-brief { padding: 20px !important; }
+  .studio-sourcer .sourcer-brief label[for='sourcer-description'] { font-size: 31px !important; }
+  .studio-sourcer .sourcer-brief textarea { font-size: 16px !important; }
+  .studio-sourcer .sourcer-source { padding: 9px 10px !important; }
+  .studio-sourcer .sourcer-source svg { display: none; }
+  .studio-sourcer .sourcer-guide { display: block; padding: 15px 4px 0; }
+  .studio-sourcer .sourcer-guide h2 { font-size: 36px; }
+  .studio-sourcer .sourcer-guide-note { margin-top: 23px; }
+  .studio-sourcer .sourcer-run-header h2 { font-size: 37px; }
+  .studio-sourcer .sourcer-panel-heading h3 { font-size: 23px !important; }
+  .studio-sourcer :is(.sourcer-panel-heading, .sourcer-panel-heading + div) { padding: 16px !important; }
+  .studio-sourcer .sourcer-person-evidence { grid-template-columns: minmax(0, 1fr) !important; }
+  .studio-sourcer .sourcer-person-evidence > div:first-child { display: grid; grid-template-columns: 70px 1fr; align-content: center; gap: 2px 15px; }
+  .studio-sourcer .sourcer-person-evidence > div:first-child > :first-child { grid-row: 1 / 4; width: 70px !important; height: 82px !important; }
+  .studio-sourcer .sourcer-stat-value { font-size: 32px !important; }
+  .studio-sourcer .sourcer-history li { flex-wrap: wrap !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-sourcer .sourcer-guide-art { transform: none; }
+}

@@ -53,6 +53,7 @@ const SHEETS = {
     roots: ['studio-assistant', 'studio-assistant-detail', 'studio-assistant-results'],
     keyframes: 'studio-assistant-',
   },
+  'studio-sourcer.css': { roots: ['studio-sourcer'], keyframes: 'studio-sourcer-' },
   'studio-focus.css': {
     roots: ['studio-focus'],
     keyframes: 'studio-focus-',

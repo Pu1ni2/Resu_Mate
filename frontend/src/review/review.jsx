@@ -23,6 +23,7 @@ import WorkspaceShell from '../components/studio/WorkspaceShell';
 import Home from '../components/home/Home';
 import Dashboard from '../components/Dashboard';
 import CandidateFocus from '../components/CandidateFocus';
+import SourcerPage from '../components/sourcer/SourcerPage';
 import InterviewReportView from '../components/shared/InterviewReportView';
 import ATSResultsView from '../components/pipeline/ATSResultsView';
 import { candidates as sampleCandidates, pipeline, report, results, session, statuses } from './fixtures';
@@ -40,6 +41,7 @@ const PAGES = [
   ['/review/report', 'Interview report'],
   ['/hiring?view=analytics', 'Insights'],
   ['/hiring?view=chat', 'Candidate chat'],
+  ['/hiring/sourcer', 'Find candidates'],
   ['/', 'Homepage'],
 ];
 
@@ -122,6 +124,7 @@ export function Review() {
             <Route path="/" element={<Home />} />
             <Route path="/hiring" element={<Dashboard />} />
             <Route path="/hiring/focus" element={<CandidateFocus />} />
+            <Route path="/hiring/sourcer" element={<SourcerPage />} />
             <Route
               path="/review/results"
               element={(

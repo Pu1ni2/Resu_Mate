@@ -20,7 +20,7 @@ export default function RunHistory({ runs, onOpen, onDelete }) {
   const [confirming, setConfirming] = useState(null);
   if (!runs.length) return null;
   return (
-    <Card as="section" aria-label="Past searches" className="divide-y divide-line">
+    <Card as="section" aria-label="Past searches" className="sourcer-history divide-y divide-line">
       <h2 className="px-4 py-3 text-[12px] font-semibold text-ink-subtle">Past searches</h2>
       <ul className="m-0 list-none divide-y divide-line p-0">
         {runs.map(run => (
