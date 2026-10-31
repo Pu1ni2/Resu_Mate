@@ -20,7 +20,10 @@ import { deviceStep, reaching, shownFailure, startFailed } from './shared/startF
 import InterviewConsent from './shared/InterviewConsent';
 import ConversationSculpture from './studio/ConversationSculpture';
 
-const OPENAI_REALTIME_URL = 'https://api.openai.com/v1/realtime';
+// Where the browser's offer goes, with the session's key; the model and voice
+// were set when the server got the key. The beta's address, /v1/realtime?model=,
+// refuses an offer since OpenAI retired its beta, so no interview could start.
+const OPENAI_REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
 
 // How many user turns before we POST a checkpoint. Low number so a disconnect
 // mid-interview still leaves a useful transcript on the server.
@@ -267,7 +270,6 @@ export default function ConversationalInterviewRoom({
       }
       const sessionData = await tokenResp.json();
       const clientSecret = sessionData.client_secret;
-      const model = sessionData.model || 'gpt-realtime-2';
       setRemainingMinutes(sessionData.remaining_minutes ?? null);
 
       // 3) Build the peer connection. The remote audio track plays Alex's voice.
@@ -324,12 +326,12 @@ export default function ConversationalInterviewRoom({
         }
       };
 
-      // 5) SDP offer/answer with OpenAI. The model and Authorization headers
-      //    are the contract documented by OpenAI Realtime API.
+      // 5) SDP offer/answer with OpenAI, as its Realtime API documents for a
+      //    browser holding a session key.
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpResp = await reaching('connect', () => fetch(`${OPENAI_REALTIME_URL}?model=${encodeURIComponent(model)}`, {
+      const sdpResp = await reaching('connect', () => fetch(OPENAI_REALTIME_CALLS_URL, {
         method: 'POST',
         body: offer.sdp,
         headers: {
