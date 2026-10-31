@@ -91,7 +91,8 @@ describe('the links', () => {
     renderHome();
     expect(href('ResuMate home')).toBe('#top');
     expect(document.getElementById('top').classList.contains('studio')).toBe(true);
-    expect(screen.getAllByRole('link', { name: 'How it works' }).map(a => a.getAttribute('href'))).toEqual(['#how', '#how']);
+    // The menu's opens the page; the hero's scrolls to the three steps.
+    expect(screen.getAllByRole('link', { name: 'How it works' }).map(a => a.getAttribute('href'))).toEqual(['/how-it-works', '#how']);
     expect(href('Meet the next sample candidate')).toBe('#candidate-file');
   });
 });

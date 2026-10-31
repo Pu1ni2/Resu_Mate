@@ -96,7 +96,10 @@ export default function WorkspaceShell({
           <small>Good decisions start<br />with a closer look.</small>
         </div>
 
-        {footer && <div className="sw-sidebar-bottom">{footer}</div>}
+        <div className="sw-sidebar-bottom">
+          <Link to="/how-it-works">How it works <ArrowUpRight size={14} aria-hidden="true" /></Link>
+          {footer}
+        </div>
       </header>
 
       <div className="sw-main">

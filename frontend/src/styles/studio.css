@@ -151,6 +151,7 @@ html:has(.studio.motion-paused) { scroll-behavior: auto; }
 .studio .feature-icon { width: 24px; height: 24px; stroke: #60734b; fill: none; stroke-width: 1.2; }
 .studio .feature h3 { font: 34px/1.15 var(--serif); font-weight: 400; letter-spacing: -.4px; margin: 22px 0 12px; }
 .studio .feature p { font-size: 15px; line-height: 1.75; color: var(--sage-ink); max-width: 320px; margin: 0; }
+.studio .story-more { margin-top: 48px; }
 
 /* ── the product, in Studio's dark chapter ── */
 .studio .workflow { background: var(--forest); color: #f4f0e6; padding: 88px 0 94px; }

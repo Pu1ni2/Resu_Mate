@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const STEPS = [
   {
@@ -15,7 +16,9 @@ const STEPS = [
   },
 ];
 
-/* How it works, in three steps. The menu's "How it works" scrolls here. */
+/* How it works, in three steps, and the way to the whole page. The hero's
+ * "How it works" scrolls here: on a phone, where the menu is hidden, it is the
+ * homepage's way to that page. */
 export default function Steps() {
   return (
     <section className="story" id="how" aria-labelledby="how-title">
@@ -36,6 +39,9 @@ export default function Steps() {
             </article>
           ))}
         </div>
+        <Link className="secondary story-more" to="/how-it-works">
+          See how it works, step by step <span aria-hidden="true">↗</span>
+        </Link>
       </div>
     </section>
   );
