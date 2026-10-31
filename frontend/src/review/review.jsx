@@ -180,6 +180,14 @@ function respond(path, body = {}) {
     };
   }
   if (path.includes('candidate/my-report')) return { interview_completed: true, interview_report: report };
+  // The signed-in candidate's own résumé, as the portal asks for it, without
+  // its text, as the server sends it.
+  if (path.includes('advisor/context')) {
+    const own = { ...sampleCandidates.find(c => c.id === session.candidate_id) };
+    delete own.text;
+    delete own.raw_text;
+    return { found: true, ...own };
+  }
   if (path.includes('scan-resume')) {
     return {
       logs: [{ step: 'resume', status: 'success', msg: 'Sample résumé details ready.' }],

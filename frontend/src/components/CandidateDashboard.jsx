@@ -38,10 +38,29 @@ const ADVISOR_TEXT = { lineHeight: '1.7', color: 'var(--text2)' };
 
 export default function CandidateDashboard() {
   const navigate = useNavigate();
-  const { candidates, candidateSession, setCandidateSession } = useApp();
+  const { candidateSession, setCandidateSession } = useApp();
 
+  // The candidate's own résumé, from the server. It used to be the app's
+  // candidate list, which is the hiring manager's: on a browser a manager had
+  // used, a candidate saw someone else's résumé as theirs.
   const [advisorCandidates, setAdvisorCandidates] = useState([]);
-  useEffect(() => { if (candidates?.length > 0) setAdvisorCandidates(candidates); }, [candidates]);
+  useEffect(() => {
+    if (!candidateSession?.email) return undefined;
+    let live = true;
+    (async () => {
+      try {
+        const resp = await candidateFetch(`${API_BASE}/api/advisor/context`);
+        if (!resp.ok) return;
+        const context = await resp.json();
+        if (!live || !context?.found) return;
+        const resume = { ...context, predicted_role: context.predicted_role || context.role };
+        delete resume.found;
+        // One uploaded while this was on its way is newer.
+        setAdvisorCandidates(prev => (prev.length ? prev : [resume]));
+      } catch { /* offline: the résumé tab offers an upload */ }
+    })();
+    return () => { live = false; };
+  }, [candidateSession?.email]);
 
   const [tab, setTab] = useState('upload');
   const [input, setInput] = useState('');
