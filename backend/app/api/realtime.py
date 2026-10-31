@@ -25,6 +25,7 @@ from sqlalchemy.orm import selectinload
 from app.core.rate_limit import limiter
 
 from app.core.config import settings
+from app.core.errors import friendly_error, friendly_status
 from app.core.database import get_db
 from app.models.candidate import CandidateAccess, Interview
 from app.services import db_service
@@ -53,6 +54,10 @@ ALLOWED_VOICES = {
     "alloy", "ash", "ballad", "coral", "echo", "marin",
     "sage", "shimmer", "verse", "breeze", "cinnamon", "ember", "juniper",
 }
+
+
+# What the candidate is told when OpenAI won't open their session.
+INTERVIEW_NOT_STARTED = "The interview couldn't be started."
 
 
 class RealtimeSessionRequest(BaseModel):
@@ -257,14 +262,12 @@ async def create_realtime_session(
             )
     except Exception as exc:
         logger.exception("realtime client_secrets request failed")
-        raise HTTPException(status_code=502, detail=f"OpenAI realtime request failed: {exc}")
+        raise HTTPException(status_code=502, detail=friendly_error(exc, INTERVIEW_NOT_STARTED))
 
     if resp.status_code >= 400:
+        # OpenAI's own words, for us; the candidate saw them too.
         logger.warning("realtime client_secrets returned %s: %s", resp.status_code, resp.text[:300])
-        raise HTTPException(
-            status_code=502,
-            detail=f"OpenAI {resp.status_code}: {resp.text[:300]}",
-        )
+        raise HTTPException(status_code=502, detail=friendly_status(resp.status_code, INTERVIEW_NOT_STARTED))
     data = resp.json()
 
     # Tolerate both response shapes documented by OpenAI today.

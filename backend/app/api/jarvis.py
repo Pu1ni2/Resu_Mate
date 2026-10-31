@@ -736,5 +736,6 @@ async def jarvis_chat(
 
     except Exception as exc:
         import traceback
+        from app.core.errors import friendly_error
         logger.error("Jarvis error: %s\n%s", exc, traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Jarvis error ({type(exc).__name__}): {str(exc)}")
+        raise HTTPException(status_code=500, detail=friendly_error(exc, "Jarvis couldn't answer."))

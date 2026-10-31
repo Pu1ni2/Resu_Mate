@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 
 from app.core.config import settings
+from app.core.errors import friendly_error
 from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
@@ -217,8 +218,9 @@ async def batch_action(
             result["interview_id"] = interview.id
             result["mode"] = interview.mode
         except Exception as e:
+            print(f"[WARN] batch interview not created: {type(e).__name__}")
             result["interview_created"] = False
-            result["interview_error"] = str(e)
+            result["interview_error"] = friendly_error(e, "The interview couldn't be created.")
 
         # ── Draft email via HR Agent ──────────────────────────────────────────
         try:
@@ -235,7 +237,7 @@ async def batch_action(
             result["email_drafted"] = True
         except Exception as e:
             result["email_drafted"] = False
-            result["email_error"] = str(e)
+            result["email_error"] = friendly_error(e, "The email couldn't be drafted, so a standard one is here instead.")
             subject = f"Interview Invitation — {req.role}"
             body = (
                 f"Dear {name},\n\n"
@@ -262,7 +264,8 @@ async def batch_action(
                     if not sent:
                         result["email_send_error"] = "The email service didn't accept this invite."
                 except Exception as e:
-                    result["email_send_error"] = str(e)
+                    print(f"[WARN] batch invite not sent: {type(e).__name__}")
+                    result["email_send_error"] = friendly_error(e, "The email couldn't be sent.")
 
         outcomes.append(result)
 

@@ -773,7 +773,9 @@ Respond helpfully using **bold** for names and key points."""
                         response_text = pattern.sub("[Candidate]", response_text)
             
         except Exception as e:
-            response_text = f"**Error:** {str(e)}"
+            from app.core.errors import friendly_error
+            print(f"[WARN] candidate chat failed: {type(e).__name__}")
+            response_text = f"**Error:** {friendly_error(e, 'The answer couldn’t be written.')}"
         
         suggestions = self._generate_suggestions(resume_candidates, anonymize, candidate_ids)
         
