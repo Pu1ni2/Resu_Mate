@@ -31,9 +31,9 @@ class BrowserTool:
         try:
             return await _in_thread(self._scrape_sync, url, selectors)
         except asyncio.TimeoutError:
-            return {"error": f"The page couldn’t be opened. {SLOW}"}
+            return {"error": f"The page couldn't be opened. {SLOW}"}
         except Exception as e:
-            return {"error": friendly_error(e, "The page couldn’t be opened.")}
+            return {"error": friendly_error(e, "The page couldn't be opened.")}
 
     def _scrape_sync(self, url: str, selectors: Dict) -> Dict:
         """Run Playwright sync API in thread"""
@@ -70,7 +70,7 @@ class BrowserTool:
                     return {"title": title, "text": text, "url": url}
             except Exception as e:
                 browser.close()
-                return {"error": friendly_error(e, "The page couldn’t be read.")}
+                return {"error": friendly_error(e, "The page couldn't be read.")}
 
     async def scrape_github(self, username: str) -> Dict:
         """Scrape GitHub profile page"""
@@ -105,9 +105,9 @@ class BrowserTool:
             
             return await _in_thread(_scrape)
         except asyncio.TimeoutError:
-            return {"error": f"The page couldn’t be read. {SLOW}"}
+            return {"error": f"The page couldn't be read. {SLOW}"}
         except Exception as e:
-            return {"error": friendly_error(e, "The page couldn’t be read.")}
+            return {"error": friendly_error(e, "The page couldn't be read.")}
 
 
 browser_tool = BrowserTool()

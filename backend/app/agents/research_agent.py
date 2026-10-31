@@ -67,7 +67,7 @@ class ResearchAgent(BaseAgent):
                 return 'YES' in resp.upper()
             except Exception as exc:
                 print(f"[WARN] search gating failed: {type(exc).__name__}")
-                self.log("should_search_error", "Couldn’t tell whether a web search would help, so none was done.")
+                self.log("should_search_error", "Couldn't tell whether a web search would help, so none was done.")
         return False
 
     async def search_for_chat(self, query: str, candidate_name: str = "") -> Dict:

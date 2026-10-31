@@ -42,7 +42,7 @@ async def test_a_coding_error_is_not_retried(error):
     agent = _Flaky(error)
     result = await agent.run("task")
     assert agent.calls == 1
-    assert any("won’t be tried again" in log.msg for log in result.logs)
+    assert any("won't be tried again" in log.msg for log in result.logs)
     assert any("failed after 1 attempt" in log.msg for log in result.logs)
 
 

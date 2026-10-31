@@ -48,9 +48,9 @@ class TavilyTool:
                 ]
             }
         except asyncio.TimeoutError:
-            return {"error": f"The web search couldn’t be done. {SLOW}", "results": [], "answer": ""}
+            return {"error": f"The web search couldn't be done. {SLOW}", "results": [], "answer": ""}
         except Exception as e:
-            return {"error": friendly_error(e, "The web search couldn’t be done."), "results": [], "answer": ""}
+            return {"error": friendly_error(e, "The web search couldn't be done."), "results": [], "answer": ""}
 
     async def search_person(self, name: str, platform: str = "") -> Dict:
         """Search for a person on a specific platform"""

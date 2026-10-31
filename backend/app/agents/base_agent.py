@@ -320,7 +320,7 @@ class BaseAgent:
             self.metrics.total_duration = time.time() - start
             err = str(e)
             # The scan's steps show this: plain words, not the exception's.
-            self.log("error", friendly_error(e, "The work couldn’t be finished."), "error")
+            self.log("error", friendly_error(e, "The work couldn't be finished."), "error")
             traceback.print_exc()
             memory_store.add(self.name, {"task": task[:200], "success": False, "error": err[:200]})
             return AgentResult(output=None, logs=list(self.logs), steps=list(self.steps), metrics=self.metrics, success=False, error=err, agent_name=self.name, task=task[:200])
@@ -360,7 +360,7 @@ class BaseAgent:
                 # backoff sleeps (about 4s) and hides the traceback. This is how an
                 # undefined name in hr_agent's prompt went unnoticed.
                 last_err = f"{type(e).__name__}: {e}"[:150]
-                self.log(f"step_{idx}_bug", "This step failed, and won’t be tried again.", "error")
+                self.log(f"step_{idx}_bug", "This step failed, and won't be tried again.", "error")
                 traceback.print_exc()
                 break
             except Exception as e:
