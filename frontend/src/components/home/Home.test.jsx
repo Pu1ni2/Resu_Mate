@@ -95,6 +95,12 @@ describe('the links', () => {
     expect(screen.getAllByRole('link', { name: 'How it works' }).map(a => a.getAttribute('href'))).toEqual(['/how-it-works', '#how']);
     expect(href('Meet the next sample candidate')).toBe('#candidate-file');
   });
+
+  it('lead from the three steps to the whole How it works, the way there on a phone, without the menu', () => {
+    renderHome();
+    const steps = within(document.getElementById('how'));
+    expect(steps.getByRole('link', { name: 'See how it works, step by step' }).getAttribute('href')).toBe('/how-it-works');
+  });
 });
 
 describe('the candidate file and the preview', () => {

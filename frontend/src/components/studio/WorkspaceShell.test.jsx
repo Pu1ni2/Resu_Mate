@@ -127,6 +127,18 @@ describe('the workspace frame', () => {
     expect(screen.getByRole('main').contains(account)).toBe(false);
   });
 
+  it("leads to How it works from the sidebar's foot, above the account", () => {
+    renderShell({ footer: <div>Jamie Parker</div> });
+    const link = screen.getByRole('link', { name: 'How it works' });
+    expect(link.getAttribute('href')).toBe('/how-it-works');
+    expect(link.closest('.sw-sidebar-bottom').textContent).toMatch(/^How it works\s*Jamie Parker$/);
+  });
+
+  it('leads to How it works on a page with no account to show, too', () => {
+    renderShell();
+    expect(href('How it works')).toBe('/how-it-works');
+  });
+
   it('shows no bell or shortcuts without ProductLayer to open them', () => {
     renderShell();
     expect(screen.queryByRole('button', { name: /Notifications/ })).toBeNull();
