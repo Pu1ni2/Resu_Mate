@@ -16,7 +16,7 @@ import { toast } from '../services/notify';
 import { clearCandidateSession } from '../services/session';
 import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
 import { pressable } from './ui/pressable';
-import { measured } from '../services/scores';
+import { averageScore, isScore, measured } from '../services/scores';
 import Logo from './ui/Logo';
 
 // Loaded when the interview starts: the video room brings LiveKit with it.
@@ -35,6 +35,20 @@ const NO_MESSAGES = [];
 // Advisor replies are built from the candidate's resume, so they are rendered
 // through the sanitising Markdown component.
 const ADVISOR_TEXT = { lineHeight: '1.7', color: 'var(--text2)' };
+
+/* The line under "Interview Completed": the average score and the camera's
+ * readings, each only when there is one, and the time taken. A report with no
+ * scored answer used to say "Score: —/10". */
+function reportSummary(report) {
+  const average = isScore(report.avgScore) ? report.avgScore : averageScore(report.scores);
+  const seconds = report.timer || 0;
+  return [
+    isScore(average) && `Score: ${average}/10`,
+    measured(report.eyeContact) !== null && `Face in view: ${report.eyeContact}%`,
+    measured(report.violations) !== null && `Violations: ${report.violations}`,
+    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`,
+  ].filter(Boolean).join(' · ');
+}
 
 export default function CandidateDashboard() {
   const navigate = useNavigate();
@@ -730,12 +744,7 @@ export default function CandidateDashboard() {
                       <div className="cd-interview-done-badge"><CheckCircle size={20} /></div>
                       <div className="cd-interview-done-info">
                         <h3>Interview Completed</h3>
-                        <p>
-                          Score: {interviewReport.avgScore ?? '—'}/10
-                          {measured(interviewReport.eyeContact) !== null && ` · Face in view: ${interviewReport.eyeContact}%`}
-                          {measured(interviewReport.violations) !== null && ` · Violations: ${interviewReport.violations}`}
-                          {' · '}{Math.floor((interviewReport.timer || 0) / 60)}:{String((interviewReport.timer || 0) % 60).padStart(2, '0')}
-                        </p>
+                        <p>{reportSummary(interviewReport)}</p>
                       </div>
                       <button className="cd-report-toggle" onClick={() => setShowFullReport(prev => !prev)}>
                         {showFullReport ? <EyeOff size={13} /> : <Eye size={13} />}
