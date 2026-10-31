@@ -36,13 +36,14 @@ voice (or with a lip-synced video avatar), and Jarvis drives them all from one c
   <img src="screenshots/homepage.png" alt="The ResuMate homepage: the headline “See the person. Find the fit.” beside a sample candidate's résumé" width="800" />
 </p>
 
-The sign-in pages, and the legal, data-deletion and 404 pages, share the homepage's design. The dashboards
-move to it next.
+Every page shares the homepage's design: the sign-in pages, the hiring workspace and the candidate file,
+Find Candidates, Jarvis, the candidate portal, the interview rooms, How it works, and the legal,
+data-deletion and 404 pages.
 
 ---
 
-> The recordings below are from April 2026. The dashboards still look like this, but the recordings
-> predate Screening, Find Candidates and Jarvis.
+> The recordings below are from April 2026, before the new design, Screening, Find Candidates and
+> Jarvis. The flows are the same; the pages look different now.
 
 ### Hiring Manager Dashboard
 
@@ -133,9 +134,9 @@ Talk to Jarvis like a colleague:
 - *"Check his GitHub"* → repos, languages, top projects, and a technical impression
 - *"Give me his drawbacks"* → an evaluation with growth areas, fit and strengths
 - *"Show me her resume red flags"* → gaps, verification targets and red flags
-- *"Set up interviews for the top 3"* → creates the interviews, with an invitation draft for each
-  (the card shows the first); *"send it"* emails those drafts
-- *"Create an interview for Maya"* → one interview, with the sign-in link to send
+- *"Set up interviews for the top 3"* → once you confirm, creates the interviews, with an invitation
+  draft for each that you can read and edit; the card's Send button emails them
+- *"Create an interview for Maya"* → once you confirm, one interview, with the sign-in link to send
 - *"How did his interview go?"* → the report: the AI-written summary and, for video, proctoring
 - *"Did he exaggerate on the resume?"* → compares the résumé's claims with the interview report
 - *"Download the PDF report"* → the assessment report as a PDF
@@ -143,8 +144,11 @@ Talk to Jarvis like a colleague:
 - *"Share the Calendly link"* → the scheduling link set for the server (`CALENDLY_TOKEN`)
 
 Jarvis keeps track of the active role, candidate and shortlist, so follow-ups like *"check his GitHub"*
-or *"send it"* resolve without restating anything. Results appear as cards, most of which expand for
-the detail.
+or *"give me his drawbacks"* resolve without restating anything. Results appear as cards, most of which
+expand for the detail.
+
+Jarvis asks before it acts: interviews wait for you to confirm them on screen, and no email goes out until
+you press Send. It listens only when you ask it to, and hands-free listening is off until you turn it on.
 
 ---
 
@@ -169,11 +173,13 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 ### Hiring Manager Portal
 - **Résumé upload**: PDF, DOCX and TXT up to 5 MB, duplicates refused; each résumé becomes a structured
   profile (skills, experience, roles)
-- **Screening**: ranks every candidate against a role on fixed, inspectable weights (skills, experience,
-  role, education), with the breakdown shown
+- **Screening**: ranks the candidates against a role on fixed, inspectable weights (skills, experience,
+  role, education), with the breakdown shown; all of them, or the ones you select, leaving out résumés
+  that couldn't be analysed
 - **Résumé intelligence**: gaps, skills to verify, red flags
 - **Scanner Agent**: finds the candidate's GitHub from the PDF's links or by web search, and LinkedIn from
-  a link in the PDF
+  a link in the PDF, when you ask it to (*Look them up online* on the candidate file), and not while names
+  are hidden
 - **AI chat**: multi-candidate comparison over their profiles, voice in and out, anonymized mode
 - **Hiring Agent**: evaluation against a role or job description
 - **Credibility analysis**: the résumé's claims against the interview report
@@ -214,8 +220,8 @@ by web search) and writes a judgement on every person, instead of keyword-filter
 - **Candidates**: skills, experience, roles and levels for the selected candidates
 - **Interviews**: how many are completed, by role, and the recent ones, each opening its report
 
-Interview answers are not scored: per-answer scoring was removed on 2026-10-10, so score fields in
-reports and analytics show "—".
+Interview answers are not scored: per-answer scoring was removed on 2026-10-10. Where there is no
+score, reports and analytics leave it out or show "—"; none is made up.
 
 ---
 
@@ -256,6 +262,9 @@ Sourcer can use its own cheaper model (`SOURCER_MODEL`).
 
 ## How It Works
 
+The app has its own How it works page, at `/how-it-works`, which walks through hiring with ResuMate in
+five steps.
+
 ### Hiring Manager Flow
 
 **On the dashboard:**
@@ -264,7 +273,7 @@ Upload résumés → each becomes a structured profile
      ↓
 Screen → candidates ranked for the role
      ↓
-Scan and résumé intelligence → GitHub and LinkedIn; gaps, verification targets, red flags
+Look them up online, and résumé intelligence → GitHub and LinkedIn; gaps, verification targets, red flags
      ↓
 Hiring Agent → evaluation against the job description
      ↓
@@ -279,8 +288,8 @@ After the interview → report, credibility analysis, PDF export
 ```
 "Screen everyone for a Python Developer"     → ranks them, names the top candidates
 "Check his GitHub" / "Give me his drawbacks" → works on the candidate in focus
-"Set up interviews for the top 3"            → interviews made, invitation drafts shown
-"Send it"                                    → the drafts are emailed
+"Set up interviews for the top 3"            → once confirmed, interviews and invitation drafts made
+Send, on the drafts' card                    → the drafts are emailed
 ```
 
 ### Candidate Flow
@@ -328,13 +337,15 @@ The ones that matter most:
   reveals whether anything was held. It finds data by email address, and people a search found are
   usually kept without one; a manager removes them by deleting the search. Managers can delete their
   account and all its data.
-- **Separation**: each manager sees only their own candidates and interviews.
+- **Separation**: each manager sees only their own candidates and interviews, and the candidate portal
+  shows a candidate only their own résumé and report.
+- **Nothing left in the browser**: the manager's candidate list is held in the page's memory only, so it
+  doesn't stay behind on a shared computer.
 - **Backups** hold personal data: they are git-ignored, and never CI artifacts (the repository is public).
 
 ## Status and Roadmap
 
-- **The new design**: the homepage, the sign-in pages, and the legal, data-deletion and 404 pages are in
-  it. The hiring and candidate dashboards are next.
+- **The new design**: every page is in it.
 - **Legal text**: the Terms of Service and Privacy Policy pages hold placeholder text, marked as such,
   until reviewed legal text replaces it.
 
