@@ -23,6 +23,9 @@ export default function CandidateLogin() {
   const [loading, setLoading] = useState(false);
   // A new code went out from the code step; the one before stopped working.
   const [resent, setResent] = useState(false);
+  // The code itself, which only a development server without email sends
+  // back, as the deletion page shows it. It went to the server's log.
+  const [devCode, setDevCode] = useState('');
 
   // Its saved copy is already gone (candidateFetch); forget it here too, so
   // the dashboard doesn't come back with it.
@@ -46,6 +49,8 @@ export default function CandidateLogin() {
         setError(await responseError(resp, 'We couldn’t send a code just now. Please try again in a moment.'));
         return;
       }
+      const sent = await resp.json().catch(() => ({}));
+      setDevCode(typeof sent?.debug_code === 'string' ? sent.debug_code : '');
       setResent(step === 2);
       setStep(2);
     } catch {
@@ -112,6 +117,7 @@ export default function CandidateLogin() {
     setFieldError('');
     setError('');
     setResent(false);
+    setDevCode('');
   };
 
   const problem = error || fieldError;
@@ -156,6 +162,7 @@ export default function CandidateLogin() {
           {problem && <AuthNotice kind="error">{problem}</AuthNotice>}
           <form className="auth-form" noValidate aria-busy={loading} onSubmit={handleSubmit}>
             <div className="form-fields">
+              {devCode && <p className="form-note">Development code: <strong>{devCode}</strong></p>}
               <CodeField
                 id="candidate-code" name="code" label="Access code" placeholder="000000"
                 help="Enter all 6 digits. Codes expire after 15 minutes."
