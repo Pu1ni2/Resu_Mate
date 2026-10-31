@@ -316,8 +316,11 @@ export default function ConversationalInterviewRoom({
             const text = msg.transcript || '';
             if (text.trim()) appendTurn('candidate', text.trim());
           }
-          // AI transcript: response.audio_transcript.done delivers the assistant turn.
-          if (msg.type === 'response.audio_transcript.done') {
+          // The interviewer's line, once said. OpenAI's current API calls it
+          // response.output_audio_transcript.done; listening only for the
+          // beta's response.audio_transcript.done kept none of the
+          // interviewer's questions in the transcript or the report.
+          if (msg.type === 'response.output_audio_transcript.done' || msg.type === 'response.audio_transcript.done') {
             const text = msg.transcript || '';
             if (text.trim()) appendTurn('interviewer', text.trim());
           }
