@@ -115,6 +115,18 @@ describe('the voice interview room', () => {
     expect(sent.headers).toEqual({ Authorization: 'Bearer secret', 'Content-Type': 'application/sdp' });
   });
 
+  // The current API's name for the event; listening only for the beta's kept
+  // none of the interviewer's questions.
+  it("keeps the interviewer's lines under the current API's name for them, and the beta's", async () => {
+    await goLive();
+    const transcript = within(screen.getByRole('region', { name: 'Live transcript' }));
+    say({ type: 'response.output_audio_transcript.done', transcript: 'What drew you to this role?' });
+    expect(transcript.getByText('What drew you to this role?')).toBeTruthy();
+    say({ type: 'response.audio_transcript.done', transcript: 'And what would you change first?' });
+    expect(transcript.getByText('And what would you change first?')).toBeTruthy();
+    expect(transcript.getAllByText('Alex')).toHaveLength(2);
+  });
+
   it('says when the connection is lost, and while it is coming back', async () => {
     await goLive();
     const peer = FakePeer.last;
