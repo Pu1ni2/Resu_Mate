@@ -98,16 +98,18 @@ describe('an interview ended for violations', () => {
     });
     // jsdom has no media playback.
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
     const onComplete = vi.fn();
     render(<InterviewRoom config={{ role: 'Dev' }} candidateName="Dana" candidateEmail="dana@x.com" onComplete={onComplete} onExit={vi.fn()} />);
     fireEvent.click(screen.getByLabelText(/i understand and want to start/i));
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /join interview/i })); });
     await act(async () => { await vi.advanceTimersByTimeAsync(7000); });
     await act(async () => {
-      fireEvent.blur(window);
-      fireEvent.blur(window);
-      fireEvent.blur(window);
+      // Three departures, seconds apart: the clock moves, the room's timer doesn't.
+      for (let i = 0; i < 3; i += 1) {
+        vi.setSystemTime(Date.now() + 2000);
+        fireEvent.blur(window);
+      }
     });
     expect(onComplete).toHaveBeenCalledTimes(1);
     const reported = onComplete.mock.calls[0][0];

@@ -20,6 +20,12 @@ import InterviewConsent from './shared/InterviewConsent';
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
 const MAX_VIOLATIONS = 3;
+// One departure reaches the room as two or three signals at once: the window
+// losing focus, the tab hidden and, from full screen, full screen left. Each
+// was counted, so one tab switch made two of the three violations that end
+// the interview, or all three. A signal this soon after a counted one is the
+// same departure.
+const SAME_DEPARTURE_MS = 1500;
 // What the room watches and counts, as its setup screen lists it.
 const PROCTORING = [
   'Camera and microphone required',
@@ -59,6 +65,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const faceDetectionRef = useRef(null);
   const containerRef = useRef(null);
   const violationCountRef = useRef(0);
+  const lastViolationAtRef = useRef(-Infinity);
   const roomRef = useRef(null);
   // What endInterview reports, as of now. It is also called from addViolation,
   // a callback made once, so reading state there gave the values from the
@@ -89,6 +96,9 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
   // ═══ VIOLATION HANDLER ═══
   const addViolation = useCallback((msg) => {
+    const now = Date.now();
+    if (now - lastViolationAtRef.current < SAME_DEPARTURE_MS) return;
+    lastViolationAtRef.current = now;
     violationCountRef.current += 1;
     const count = violationCountRef.current;
     setViolations(count);
