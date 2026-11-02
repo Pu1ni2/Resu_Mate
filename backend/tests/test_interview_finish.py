@@ -110,3 +110,38 @@ def test_a_video_interview_finishes_though_its_report_cannot_be_written(client, 
     status, finished, seconds = _run(_read(iid))
     assert (status, seconds) == ("completed", 300)
     assert finished is not None
+
+
+# ── the video interview's transcript, as it goes ──────────────────────────────
+
+SO_FAR = [{"role": "interviewer", "text": "Tell me about a project you led."},
+          {"role": "candidate", "text": "I moved our billing service to events."}]
+
+
+async def _transcript(iid):
+    from app.core import database
+    from app.models.candidate import Interview
+    async with database.async_session() as db:
+        iv = await db.get(Interview, iid)
+        return iv.status, iv.transcript, iv.report
+
+
+def test_a_checkpoint_keeps_the_transcript_and_the_interview_going(client):
+    # A worker that stopped mid-interview took everything said with it.
+    _, m = register(client, "f5@co.com")
+    iid = _run(_interview(m["id"], "f5@x.com", status="in_progress", mode="avatar", room_name="interview-f5"))
+    r = client.post("/api/chat/transcript-checkpoint", headers=AGENT,
+                    json={"candidate_email": "f5@x.com", "room_name": "interview-f5", "transcript": SO_FAR})
+    assert r.status_code == 200 and r.json()["saved"] is True
+    assert _run(_transcript(iid)) == ("in_progress", SO_FAR, None)
+
+
+def test_a_checkpoint_needs_the_workers_token_and_leaves_a_finished_interview(client):
+    _, m = register(client, "f6@co.com")
+    done = _run(_interview(m["id"], "f6@x.com", status="completed", mode="avatar", room_name="interview-f6",
+                           transcript=[{"role": "candidate", "text": "Final."}]))
+    body = {"candidate_email": "f6@x.com", "room_name": "interview-f6", "transcript": SO_FAR}
+    assert client.post("/api/chat/transcript-checkpoint", json=body,
+                       headers={"X-Agent-Token": "wrong"}).status_code == 401
+    assert client.post("/api/chat/transcript-checkpoint", json=body, headers=AGENT).json()["saved"] is False
+    assert _run(_transcript(done))[1] == [{"role": "candidate", "text": "Final."}]
