@@ -111,3 +111,14 @@ describe('selecting from the screening results', () => {
     expect(count()).toBe('2 selected, 2 on other tabs');
   });
 });
+
+describe("a screened candidate's file", () => {
+  // Each result named the person in plain text, with no way to their file.
+  it('opens from their name, in a new tab so the results stay', () => {
+    open(run({ assessed: ['role'], excluded: 0 }));
+    const link = screen.getByRole('link', { name: 'Open Ada’s file (new tab)' });
+    expect(link.getAttribute('href')).toBe('/hiring/focus?candidate=1');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+});
