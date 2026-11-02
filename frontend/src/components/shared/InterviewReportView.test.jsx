@@ -205,3 +205,12 @@ describe('no colour literals survive', () => {
     expect(literals).toEqual([]);
   });
 });
+
+describe('the proctoring summary', () => {
+  // The room sees where the face is in the picture, not where anyone looks.
+  it('says the face was out of view, never "gaze"', () => {
+    const { container } = render(<InterviewReportView report={{ ...report, violations: 1, lookAwayCount: 12 }} />);
+    expect(screen.getByText(/face out of view: 12 times/i)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/gaze/i);
+  });
+});
