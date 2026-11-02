@@ -214,3 +214,30 @@ describe('the proctoring summary', () => {
     expect(container.textContent).not.toMatch(/gaze/i);
   });
 });
+
+describe('which interview the manager acts on', () => {
+  // By address alone the server took the candidate's newest interview, a
+  // later round still waiting, not the one whose report is open.
+  const props = { candidateId: 1, candidateEmail: 'jane@co.com', interviewId: 7, viewer: 'manager' };
+
+  it('exports the PDF of the interview whose report is open', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, blob: async () => new Blob(['%PDF']) });
+    URL.createObjectURL = vi.fn(() => 'blob:report');
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    renderReport(props);
+    fireEvent.click(screen.getByRole('button', { name: /export pdf report/i }));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/chat\/export-report\/jane%40co\.com\?interview_id=7$/);
+  });
+
+  it('compares the résumé with that interview', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ credibility: {} }) });
+    renderReport(props);
+    fireEvent.click(screen.getByRole('button', { name: /compare résumé and interview/i }));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [url, sent] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/api\/chat\/credibility-analysis$/);
+    expect(JSON.parse(sent.body)).toEqual({ candidate_id: 1, candidate_email: 'jane@co.com', interview_id: 7 });
+  });
+});
