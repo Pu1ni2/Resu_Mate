@@ -214,3 +214,33 @@ def test_the_worker_opens_the_interview(monkeypatch):
     assert "greet the candidate" in opening and "first question" in opening
     # A refused request leaves the interview running.
     worker.open_interview(_Session(refuse=True))
+
+
+def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, monkeypatch):
+    # LiveKit's own turn-taking, at medium eagerness, cut Alex off; the voice
+    # interview's session is set for a calmer conversation.
+    import json
+    import dotenv
+    import httpx
+    from app.core.config import settings
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "openai_api_key", "sk-test")
+    monkeypatch.setattr(settings, "realtime_model", "gpt-realtime-2")
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content)["session"])
+        return httpx.Response(200, json={"value": "ek_test", "expires_at": 1})
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+
+    tok, _ = register(client, "q7@co.com")
+    _create(client, tok, "q7@x.com")
+    r = client.post("/api/realtime/session", headers={"Authorization": f"Bearer {create_candidate_token('q7@x.com')}"},
+                    json={"interview_id": _interview("q7@x.com").id, "candidate_email": "q7@x.com", "consent": True})
+    assert r.status_code == 200, r.text
+    voice = sent[0]
+    worker = importlib.import_module("interview_agent").REALTIME_SETTINGS
+    assert worker["turn_detection"].model_dump(exclude_none=True) == voice["audio"]["input"]["turn_detection"]
+    assert worker["input_audio_transcription"].model_dump(exclude_none=True) == voice["audio"]["input"]["transcription"]
+    assert worker["reasoning"].model_dump(exclude_none=True) == voice["reasoning"]
