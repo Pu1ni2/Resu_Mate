@@ -122,6 +122,16 @@ describe("the candidate's report after an interview", () => {
     expect(saved[0].report).toEqual({ violations: 1, eyeContact: 80, timer: 125, terminated: false, lookAwayCount: 2 });
   });
 
+  // By address alone, the server took the newest interview, a later round
+  // if one had been made.
+  it('saves them on the interview the room ran', async () => {
+    reportAnswers = [REPORT];
+    renderDashboard({ ...SESSION, interview_config: { ...SESSION.interview_config, mode: 'avatar' } });
+    await sitTheInterview('finish avatar');
+    await screen.findByText(/Score: 7.5\/10/);
+    expect(saved[0].interview_id).toBe(5);
+  });
+
   it('fetches the report when signing in after a finished interview', async () => {
     reportAnswers = [REPORT];
     renderDashboard({ ...SESSION, has_interview: false, interview_completed: true });
