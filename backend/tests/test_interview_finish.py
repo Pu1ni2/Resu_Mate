@@ -90,3 +90,23 @@ def test_the_list_is_newest_first_with_undated_ones_by_when_they_were_made(clien
     assert [r["email"] for r in results] == ["today@x.com", "undated@x.com", "yesterday@x.com"]
     # No finish date is made up for it.
     assert results[1]["timestamp"] is None
+
+
+def test_a_video_interview_finishes_though_its_report_cannot_be_written(client, monkeypatch):
+    # It stayed "in progress" for good, though its transcript was saved.
+    from app.tools.openai_tool import openai_tool
+
+    async def unreachable(prompt, system="", json_mode=False):
+        raise ConnectionError("the AI is unreachable")
+    monkeypatch.setattr(openai_tool, "structured_call", unreachable)
+    _, m = register(client, "f4@co.com")
+    iid = _run(_interview(m["id"], "f4@x.com", status="in_progress", mode="avatar", room_name="interview-f4"))
+    transcript = [{"role": "interviewer", "text": "Tell me about a project you led."},
+                  {"role": "candidate", "text": "I led the move of our billing service to events " * 6}]
+    r = client.post("/api/chat/save-transcript", headers=AGENT, json={
+        "candidate_email": "f4@x.com", "room_name": "interview-f4", "duration": 300, "transcript": transcript,
+    })
+    assert r.status_code == 200 and r.json()["report_generated"] is False
+    status, finished, seconds = _run(_read(iid))
+    assert (status, seconds) == ("completed", 300)
+    assert finished is not None
