@@ -24,6 +24,19 @@ AGENT_SHARED_SECRET = os.getenv("AGENT_SHARED_SECRET", "")
 # Import LiveKit at module level
 from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, WorkerType, cli
 from livekit.plugins import openai as lk_openai, simli as lk_simli
+from openai.types.realtime import AudioTranscription, RealtimeReasoning
+from openai.types.realtime.realtime_audio_input_turn_detection import SemanticVad
+
+# The model's settings, as the voice interview's session sets them
+# (app/api/realtime.py). LiveKit's own turn-taking, at medium eagerness, cut
+# Alex off mid-word on a short noise; at low eagerness the candidate also gets
+# time to think before their turn is taken as over.
+REALTIME_SETTINGS = {
+    "turn_detection": SemanticVad(type="semantic_vad", eagerness="low",
+                                  create_response=True, interrupt_response=True),
+    "reasoning": RealtimeReasoning(effort="low"),
+    "input_audio_transcription": AudioTranscription(model="gpt-4o-transcribe", language="en"),
+}
 
 
 def get_interview_config(room_name):
@@ -199,8 +212,8 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         llm=lk_openai.realtime.RealtimeModel(
             voice=OPENAI_VOICE,
-            temperature=0.7,
             model="gpt-realtime-2",
+            **REALTIME_SETTINGS,
         ),
     )
 
