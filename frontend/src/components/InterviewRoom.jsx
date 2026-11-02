@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { API_BASE, interviewAuthHeaders } from '../services/authFetch';
 import { deviceStep, reaching, shownFailure, startFailed } from './shared/startFailure';
+import { NO_CHECKS, faceInView, recordCheck, shareInView } from './shared/faceInView';
 import InterviewConsent from './shared/InterviewConsent';
 
 const FACE_API_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
@@ -42,8 +43,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const [faceDetected, setFaceDetected] = useState(false);
   const [eyeContact, setEyeContact] = useState(0);
   const [faceApiReady, setFaceApiReady] = useState(false);
-  const [lookAwayCount, setLookAwayCount] = useState(0);
-  const eyeContactSamples = useRef([]);
+  // The whole interview's checks: what's reported when it ends.
+  const faceRecordRef = useRef(NO_CHECKS);
 
   // Proctoring
   const [violations, setViolations] = useState(0);
@@ -63,9 +64,9 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   // a callback made once, so reading state there gave the values from the
   // first render: an interview ended for violations reported 0 time and 0%
   // face in view.
-  const latestRef = useRef({ eyeContact: 0, timer: 0, lookAwayCount: 0, onComplete, onExit });
+  const latestRef = useRef({ timer: 0, onComplete, onExit });
   useEffect(() => {
-    latestRef.current = { eyeContact, timer, lookAwayCount, onComplete, onExit };
+    latestRef.current = { timer, onComplete, onExit };
   });
 
   const formatTime =(s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -146,11 +147,16 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         const detections = await window.faceapi
           .detectAllFaces(video, new window.faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
           .withFaceLandmarks(true);
+        const dw = video.clientWidth || 640, dh = video.clientHeight || 480;
+        // The faces in the on-screen picture's size, as dw is. detections are
+        // in the camera's own, larger one.
+        const resized = window.faceapi.resizeResults(detections, { width: dw, height: dh });
+        setFaceDetected(detections.length > 0);
+        faceRecordRef.current = recordCheck(faceRecordRef.current, faceInView(resized[0]?.detection.box, dw));
+        setEyeContact(shareInView(faceRecordRef.current));
         const canvas = candidateCanvasRef.current;
         if (canvas) {
-          const dw = video.clientWidth || 640, dh = video.clientHeight || 480;
           canvas.width = dw; canvas.height = dh;
-          const resized = window.faceapi.resizeResults(detections, { width: dw, height: dh });
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, dw, dh);
           resized.forEach(det => {
@@ -163,16 +169,6 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
               ctx.closePath(); ctx.strokeStyle = '#3B82F6'; ctx.lineWidth = 1.5; ctx.stroke();
             });
           });
-          if (detections.length > 0) {
-            setFaceDetected(true);
-            const face = detections[0].detection.box;
-            const offset = Math.abs((face.x + face.width / 2) - dw / 2) / (dw / 2);
-            const contact = Math.max(0, 1 - offset * 2);
-            eyeContactSamples.current.push(contact > 0.4 ? 1 : 0);
-            if (eyeContactSamples.current.length > 60) eyeContactSamples.current.shift();
-            setEyeContact(Math.round(eyeContactSamples.current.reduce((a, b) => a + b, 0) / eyeContactSamples.current.length * 100));
-            if (contact < 0.2) setLookAwayCount(prev => prev + 1);
-          } else { setFaceDetected(false); }
         }
       } catch { /* a frame that couldn't be read: the next check is 600 ms away */ }
     };
@@ -286,13 +282,15 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
     // then ask the manager-only results endpoint, which refuses a candidate's
     // token, so the made-up one was what the candidate saw.
     const latest = latestRef.current;
+    const faces = faceRecordRef.current;
     const proctoring = {
       violations: violationCountRef.current,
-      // No face reading taken (the detector didn't load) is not 0%.
-      eyeContact: eyeContactSamples.current.length ? latest.eyeContact : null,
+      // The whole interview's share; none when no check was made.
+      eyeContact: shareInView(faces),
       timer: latest.timer,
       terminated,
-      lookAwayCount: latest.lookAwayCount,
+      // The times the face left the picture.
+      lookAwayCount: faces.left,
     };
 
     if (latest.onComplete) latest.onComplete(proctoring);
