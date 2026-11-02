@@ -241,6 +241,14 @@
 .studio-focus .sf-interview-creator button[aria-pressed="false"] { border-color: #d5d9c9 !important; background: #f5f5ed !important; }
 .studio-focus .sf-interview-creator button[aria-pressed] { padding: 20px !important; }
 .studio-focus .sf-interview-creator button[aria-pressed] > span:last-child { margin-top: 4px; font-size: 12px !important; line-height: 1.7 !important; }
+
+/* The candidate's interviews, newest first (focus/InterviewHistory.jsx). */
+.studio-focus .sf-interview-history { max-width: 880px; margin: 0 auto; padding: 30px; }
+.studio-focus .sf-interview-history > .sf-button { margin-bottom: 20px; }
+.studio-focus .sf-interview-history ol { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--color-line); }
+.studio-focus .sf-interview-history li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--color-line); }
+.studio-focus .sf-interview-history li strong { display: block; margin-bottom: 4px; color: var(--color-ink); font-size: 14px; }
+.studio-focus .sf-interview-history li span { color: var(--color-ink-subtle); font-size: 12px; }
 .studio-focus .sf-intel-panel h3 { font: 32px var(--font-serif) !important; }
 .studio-focus .sf-intel-panel h4 { font-size: 13px !important; }
 .studio-focus .sf-intel-panel p { font-size: 13px !important; line-height: 1.8; }
