@@ -19,7 +19,11 @@ class FakePeer {
   }
   addTrack() {}
   createDataChannel() {
-    this.channel = { close() {} };
+    this.channel = {
+      sent: [],
+      send(data) { this.sent.push(JSON.parse(data)); },
+      close() {},
+    };
     return this.channel;
   }
   async createOffer() { return { type: 'offer', sdp: 'offer' }; }
@@ -125,6 +129,22 @@ describe('the voice interview room', () => {
     say({ type: 'response.audio_transcript.done', transcript: 'And what would you change first?' });
     expect(transcript.getByText('And what would you change first?')).toBeTruthy();
     expect(transcript.getAllByText('Alex')).toHaveLength(2);
+  });
+
+  // The model answers only when asked: with nothing sent, the candidate
+  // heard silence until they spoke.
+  it('asks the interviewer to begin once the line is open, and only once', async () => {
+    await goLive();
+    const channel = FakePeer.last.channel;
+    expect(channel.sent).toEqual([]);
+    channel.onopen();
+    expect(channel.sent).toEqual([{ type: 'response.create' }]);
+  });
+
+  it("writes what OpenAI refused to the console, by its code and words", async () => {
+    await goLive();
+    say({ type: 'error', error: { type: 'invalid_request_error', code: 'invalid_value', message: 'Unknown parameter' } });
+    expect(console.warn).toHaveBeenCalledWith('interviewer error:', 'invalid_value', 'Unknown parameter');
   });
 
   it('says when the connection is lost, and while it is coming back', async () => {
