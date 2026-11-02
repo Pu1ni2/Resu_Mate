@@ -140,6 +140,21 @@ def test_the_room_is_set_up_from_the_saved_interview_not_the_request(client, gen
     assert config["questions"][1] == "How do you size partitions?"
 
 
+def test_the_room_carries_the_voice_interviews_script(client, generator, livekit):
+    # The worker's own script had none of the voice script's rules: every
+    # question in order, no stalling, a proper close.
+    from app.services.interview_script import load_prompt
+    tok, _ = register(client, "q6@co.com")
+    _create(client, tok, "q6@x.com", mode="avatar")
+    r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q6@x.com')}"},
+                    json={"candidate_email": "q6@x.com", "consent": True})
+    assert r.status_code == 200, r.text
+    instructions = _interview("q6@x.com").room_config["instructions"]
+    assert instructions.startswith(load_prompt())
+    assert "How do you size partitions?" in instructions
+    assert "Ask about partitioning" in instructions  # the résumé check saved with the interview
+
+
 # ── the avatar worker ─────────────────────────────────────────────────────────
 
 def test_the_worker_asks_the_saved_questions(monkeypatch):
@@ -162,3 +177,14 @@ def test_the_worker_does_not_pass_as_human(monkeypatch):
     prompt = worker.build_system_prompt({"role": "Data Engineer", "num_questions": 5, "candidate_name": "Ada"})
     assert "Stay in character as Alex." in prompt
     assert "human" not in prompt.lower()
+
+
+def test_the_worker_interviews_by_the_servers_script(monkeypatch):
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    room = {"role": "Data Engineer", "num_questions": 5, "candidate_name": "Ada"}
+    assert worker.instructions_for({**room, "instructions": "The voice interview's script."}) == "The voice interview's script."
+    # A room made before the server sent one.
+    assert worker.instructions_for(room) == worker.build_system_prompt(room)
+    assert worker.instructions_for({**room, "instructions": "  "}) == worker.build_system_prompt(room)
