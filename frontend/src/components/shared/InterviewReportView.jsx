@@ -26,7 +26,7 @@ function SkillTag({ skill, type }) {
   );
 }
 
-function CredibilitySection({ candidateId, candidateEmail }) {
+function CredibilitySection({ candidateId, candidateEmail, interviewId }) {
   const [credibility, setCredibility] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -39,7 +39,8 @@ function CredibilitySection({ candidateId, candidateEmail }) {
       const resp = await authFetch(`${API_BASE}/api/chat/credibility-analysis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidate_id: candidateId, candidate_email: candidateEmail }),
+        // This interview's: the candidate may have had others since.
+        body: JSON.stringify({ candidate_id: candidateId, candidate_email: candidateEmail, interview_id: interviewId }),
       });
       if (!resp.ok) throw new Error('Analysis unavailable');
       const data = await resp.json();
@@ -209,8 +210,12 @@ function TranscriptSection({ transcript }) {
  * So they render for viewer="manager" only. Candidate-side PDF export is a
  * reasonable feature, but it needs a candidate-scoped endpoint that does not
  * exist yet; a button that always fails is worse than no button.
+ *
+ * `interviewId` is the interview this report is of. Both actions name it:
+ * by address alone they took the candidate's newest interview, a later round
+ * still waiting, not this one.
  */
-export default function InterviewReportView({ report, candidateId, candidateEmail, viewer = 'candidate' }) {
+export default function InterviewReportView({ report, candidateId, candidateEmail, interviewId, viewer = 'candidate' }) {
   const isManager = viewer === 'manager';
   if (!report) return <p style={{ color: 'var(--color-ink-muted)', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
@@ -256,7 +261,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             // can't carry an Authorization header).
             try {
               const resp = await authFetch(
-                `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`
+                `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}${interviewId ? `?interview_id=${encodeURIComponent(interviewId)}` : ''}`
               );
               if (!resp.ok) { toast('Could not export report (you may not have access).', 'error'); return; }
               const blob = await resp.blob();
@@ -335,7 +340,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       <TranscriptSection transcript={r.transcript} />
 
       {/* Résumé and interview */}
-      {isManager && <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} />}
+      {isManager && <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} interviewId={interviewId} />}
 
       {/* Proctoring */}
       {(violations > 0 || (r.lookAwayCount || 0) > 10) && (

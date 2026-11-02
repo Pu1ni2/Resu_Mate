@@ -125,6 +125,7 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
           report={r}
           candidateId={openReport.candidate_id}
           candidateEmail={openReport.email}
+          interviewId={openReport.interview_id}
         />
       </div>
     );
