@@ -120,3 +120,20 @@ def test_no_one_else_can_interrupt_it(client):
                     json={"interview_id": iid, "transcript": SO_FAR})
     assert r.status_code == 404
     assert _run(_read(iid))[0] == "in_progress"
+
+
+def test_an_interview_that_has_had_its_time_is_completed_not_reopened(client, openai):
+    from datetime import datetime
+    from app.api.realtime import TIME_USED_UP
+    from app.services.interview_report import NOT_ENOUGH
+    _, m = register(client, "i6@co.com")
+    iid = _run(_interview(m["id"], "i6@x.com", status="interrupted", transcript=SO_FAR, duration=8 * 60,
+                          consented_at=datetime.utcnow()))
+    r = client.post("/api/realtime/session", headers=_cand("i6@x.com"),
+                    json={"interview_id": iid, "candidate_email": "i6@x.com", "consent": True})
+    assert r.status_code == 409
+    assert r.json()["detail"] == TIME_USED_UP
+    assert openai == []  # no session paid for
+    status, transcript, duration, report = _run(_read(iid))
+    assert (status, transcript, duration) == ("completed", SO_FAR, 8 * 60)
+    assert json.loads(report)["report"] == NOT_ENOUGH  # written from what was said: too little here

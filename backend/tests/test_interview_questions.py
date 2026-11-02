@@ -278,3 +278,17 @@ def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, 
     assert worker["turn_detection"].model_dump(exclude_none=True) == voice["audio"]["input"]["turn_detection"]
     assert worker["input_audio_transcription"].model_dump(exclude_none=True) == voice["audio"]["input"]["transcription"]
     assert worker["reasoning"].model_dump(exclude_none=True) == voice["reasoning"]
+
+
+def test_the_room_carries_the_interviews_time_limit(client, generator, livekit, monkeypatch):
+    # Video had none, and is billed by the minute.
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "realtime_max_total_minutes", 12)
+    tok, _ = register(client, "q9@co.com")
+    _create(client, tok, "q9@x.com", mode="avatar")
+    r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q9@x.com')}"},
+                    json={"candidate_email": "q9@x.com", "consent": True})
+    assert r.status_code == 200, r.text
+    config = _interview("q9@x.com").room_config
+    assert config["max_minutes"] == 12
+    assert '"remaining_minutes": 12' in config["instructions"]
