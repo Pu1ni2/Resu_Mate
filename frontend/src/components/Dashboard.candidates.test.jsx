@@ -150,3 +150,15 @@ describe('selecting from the collection', () => {
     expect(names()).toEqual(['Ada', 'Grace']);
   });
 });
+
+describe('a candidate card', () => {
+  // It showed a tick once selected and nothing before.
+  it('shows the box its tick goes in before it is selected', () => {
+    open({ selectedIds: [ADA.id] });
+    const box = name => screen.getByRole('heading', { name }).closest('.candidate-card').querySelector('.selected-check');
+    expect(box('Ada').classList.contains('is-empty')).toBe(false);
+    expect(box('Ada').querySelector('svg')).toBeTruthy();
+    expect(box('Grace').classList.contains('is-empty')).toBe(true);
+    expect(box('Grace').querySelector('svg')).toBeNull();
+  });
+});
