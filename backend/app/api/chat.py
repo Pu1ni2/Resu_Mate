@@ -737,6 +737,39 @@ async def interview_report(request: Request, req: InterviewReportRequest, user=D
     return {"report": report}
 
 
+class TranscriptCheckpoint(BaseModel):
+    candidate_email: str = Field(..., max_length=320)
+    room_name: str = Field(..., max_length=200)
+    transcript: list = Field(default_factory=list, max_length=2000)
+
+
+@router.post("/transcript-checkpoint")
+async def transcript_checkpoint(
+    req: TranscriptCheckpoint,
+    db: AsyncSession = Depends(get_db),
+    x_agent_token: Optional[str] = Header(default=None, alias="X-Agent-Token"),
+):
+    """A video interview's transcript so far, sent by the worker as it goes.
+
+    The worker sent the transcript only as it shut down, so one that stopped
+    mid-interview took everything said with it. This keeps the interview
+    going; the transcript at the end, through /save-transcript, finishes it.
+    Agent-token only, as /save-transcript is, and by the interview's room.
+    """
+    verify_agent_token(x_agent_token)
+
+    from sqlalchemy import select
+    from app.models.candidate import Interview
+    interview = (await db.execute(select(Interview).where(
+        Interview.room_name == req.room_name, Interview.candidate_email == req.candidate_email.strip().lower(),
+    ))).scalars().first()
+    if not interview or interview.status == "completed" or not req.transcript:
+        return {"saved": False}
+    interview.transcript = req.transcript
+    await db.commit()
+    return {"saved": True, "turns": len(req.transcript)}
+
+
 @router.post("/save-transcript")
 async def save_transcript(
     req: SaveTranscriptRequest,
