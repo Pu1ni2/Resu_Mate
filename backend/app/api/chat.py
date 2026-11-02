@@ -25,7 +25,7 @@ from app.services import interview_modes, interview_setup
 from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
-from app.agents.technical_agent import technical_agent
+from app.agents.technical_agent import clean_questions, technical_agent
 from app.agents.research_agent import research_agent
 from app.tools.openai_tool import openai_tool
 from app.tools.voice_tool import voice_tool
@@ -864,6 +864,9 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         "status": "pending",
         "mode": mode,
         "resume_intelligence": resume_intel,
+        # What the interviewer will ask, for the manager to see and edit.
+        "interview_id": interview.id,
+        "questions": interview.questions or [],
     }
     await db_service.log_event(
         db, action="interview.create", actor="manager",
@@ -1101,6 +1104,33 @@ async def rewrite_report(request: Request, interview_id: int, user=Depends(get_c
     db_service.merge_interview_report(interview, {"report": report})
     await db.commit()
     return {"interview_id": interview.id, "report": db_service.candidate_report(interview)}
+
+
+class QuestionsEdit(BaseModel):
+    questions: List[str] = Field(..., min_length=1, max_length=20)
+
+
+@router.put("/interviews/{interview_id}/questions")
+@limiter.limit("60/hour")
+async def edit_questions(request: Request, interview_id: int, req: QuestionsEdit,
+                         user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The questions an interview not yet started will ask, as the manager edits them.
+
+    They were made with the interview and kept on it, and the manager could
+    neither see them nor change one.
+    """
+    interview = await _managers_interview(db, user.id, interview_id)
+    if interview.status != "pending":
+        raise HTTPException(409, "This interview has started, so its questions can't change.")
+    questions = clean_questions(req.questions)
+    if not questions:
+        raise HTTPException(422, "Give at least one question.")
+    if any(len(q) > 600 for q in questions):
+        raise HTTPException(422, "Keep each question under 600 characters.")
+    interview.questions = questions
+    interview.num_questions = len(questions)
+    await db.commit()
+    return {"interview_id": interview.id, "questions": questions}
 
 
 @router.post("/interviews/{interview_id}/reissue")
