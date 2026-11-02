@@ -188,3 +188,29 @@ def test_the_worker_interviews_by_the_servers_script(monkeypatch):
     # A room made before the server sent one.
     assert worker.instructions_for(room) == worker.build_system_prompt(room)
     assert worker.instructions_for({**room, "instructions": "  "}) == worker.build_system_prompt(room)
+
+
+class _Session:
+    """The agent session, as far as opening the interview uses it."""
+
+    def __init__(self, refuse=False):
+        self.asked, self.refuse = [], refuse
+
+    def generate_reply(self, **kwargs):
+        if self.refuse:
+            raise RuntimeError("not ready")
+        self.asked.append(kwargs)
+
+
+def test_the_worker_opens_the_interview(monkeypatch):
+    # The realtime model answers only when asked: the candidate sat in silence.
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    session = _Session()
+    worker.open_interview(session)
+    assert len(session.asked) == 1
+    opening = session.asked[0]["instructions"].lower()
+    assert "greet the candidate" in opening and "first question" in opening
+    # A refused request leaves the interview running.
+    worker.open_interview(_Session(refuse=True))
