@@ -93,7 +93,11 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
     ...fromAtsResult(r),
     status: interviewStatuses[(r.email || '').toLowerCase()],
     // Each person's file, from their result: there was no way to open it.
-    fileHref: `/hiring/focus?candidate=${encodeURIComponent(r.candidate_id)}`,
+    // With the run, when it's kept, as the file's way back to these results.
+    fileHref: `/hiring/focus?${new URLSearchParams({
+      candidate: r.candidate_id,
+      ...(pipelineResult.run_id != null ? { run: pipelineResult.run_id } : {}),
+    })}`,
   }));
 
   const leadBucket = Math.max(stats?.strong_fit ?? 0, stats?.good_fit ?? 0, stats?.consider ?? 0, stats?.no_match ?? 0);

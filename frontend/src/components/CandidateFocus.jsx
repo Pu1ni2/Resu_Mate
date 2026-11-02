@@ -28,6 +28,10 @@ import WorkspaceShell from './studio/WorkspaceShell';
 export default function CandidateFocus() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { candidates, candidatesStatus, loadCandidates, anonymize, getDisplayName } = useApp();
+  // The screening run this file was opened from, when it was: its results
+  // are a way back. It stays in the address as the file changes.
+  const [fromRun] = useState(() => searchParams.get('run'));
+  const withRun = params => (fromRun ? { ...params, run: fromRun } : params);
 
   // A file opens at once, on the résumé alone; the online lookup waits until
   // the manager asks for it.
@@ -266,7 +270,7 @@ export default function CandidateFocus() {
     setCalData(null); setCalError(''); setCalLoading(false);
     // Also a lookup still running for the last file: its answer is dropped.
     setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanDone(false); setScanRunning(false);
-    setSearchParams({ candidate: String(candidate.id) }, { replace: true });
+    setSearchParams(withRun({ candidate: String(candidate.id) }), { replace: true });
     const cached = restoreFromCache(candidate.id);
     if (cached) {
       setScanProfiles(cached.scanProfiles || null);
@@ -304,7 +308,7 @@ export default function CandidateFocus() {
         searchResults, searchHistory,
       });
     }
-    setSearchParams({}, { replace: true });
+    setSearchParams(withRun({}), { replace: true });
     setFocusCandidate(null);
     setPhase('select');
   };
@@ -483,9 +487,16 @@ export default function CandidateFocus() {
     return !query || [candidateName(candidate), candidate.predicted_role, ...getSkills(candidate).map(skillLabel)].join(' ').toLowerCase().includes(query);
   });
 
+  // Back to the screening results this file was opened from.
+  const toResults = fromRun && (
+    <Link className="btn btn-secondary" to={`/hiring?${new URLSearchParams({ view: 'screening', run: fromRun })}`}>
+      <ArrowLeft size={16} aria-hidden="true" /> Screening results
+    </Link>
+  );
+
   if (phase === 'select' || !focusCandidate) {
     return (
-      <WorkspaceShell active="candidates" eyebrow="THE CANDIDATE FILE" title="A closer look." subtitle="Behind every résumé, a person worth understanding.">
+      <WorkspaceShell active="candidates" eyebrow="THE CANDIDATE FILE" title="A closer look." subtitle="Behind every résumé, a person worth understanding." actions={toResults || undefined}>
         <div className="studio-focus studio-focus-picker">
           <div className="sf-picker-intro">
             <div><span className="sf-kicker">YOUR PEOPLE, IN PERSPECTIVE</span><h2>Open a file. See the whole story.</h2><p>Bring their experience, research and next conversation together in one place.</p></div>
@@ -537,7 +548,7 @@ export default function CandidateFocus() {
   };
 
   return (
-    <WorkspaceShell active="candidates" eyebrow="PEOPLE IN PERSPECTIVE" title="The candidate file." actions={<button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button>}>
+    <WorkspaceShell active="candidates" eyebrow="PEOPLE IN PERSPECTIVE" title="The candidate file." actions={<>{toResults}<button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button></>}>
       <div className="studio-focus sf-file-open">
         <div className="sf-file-cover">
         <header className="sf-identity">
