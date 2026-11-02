@@ -57,6 +57,8 @@ ALLOWED_VOICES = {
 
 # What the candidate is told when OpenAI won't open their session.
 INTERVIEW_NOT_STARTED = "The interview couldn't be started."
+# And when their interview has used all the time it had.
+TIME_USED_UP = "This interview has used all its time, so it's now complete."
 
 
 class RealtimeSessionRequest(BaseModel):
@@ -177,6 +179,11 @@ async def create_realtime_session(
     so_far = [t for t in (interview.transcript or []) if isinstance(t, dict)]
     elapsed = int(interview.duration or 0) if so_far else 0
     max_total_minutes = int(settings.realtime_max_total_minutes or 8)
+    # One that has had all its time ends here, on what was said, rather than
+    # opening again: every new session gave it more.
+    if elapsed >= max_total_minutes * 60:
+        await _complete(db, interview, so_far, elapsed)
+        raise HTTPException(status_code=409, detail=TIME_USED_UP)
     remaining_minutes = max(1, max_total_minutes - elapsed // 60)
     instructions = build_instructions(interview, candidate_name, remaining_minutes, so_far=so_far)
 
@@ -347,16 +354,27 @@ async def finalize(
             "report_generated": bool(interview.report),
         }
 
-    interview.transcript = req.transcript
+    await _complete(db, interview, req.transcript, req.duration)
+    return {
+        "saved": True,
+        "turns": len(req.transcript),
+        "report_generated": bool(interview.report),
+    }
+
+
+async def _complete(db: AsyncSession, interview: Interview, transcript: list, duration: int) -> None:
+    """Finish a voice interview: its transcript, its report and its finish
+    date saved, and its manager told."""
+    interview.transcript = transcript
 
     try:
-        report = await write_report(req.transcript, interview.role)
+        report = await write_report(transcript, interview.role)
         if report:
             db_service.merge_interview_report(interview, {"report": report})
     except Exception as exc:
         logger.warning("finalize: report generation failed: %s", type(exc).__name__)
 
-    db_service.finish_interview(interview, req.duration)
+    db_service.finish_interview(interview, duration)
     await db.commit()
 
     # Notify the owning manager (best-effort, shared helper with /save-transcript).
@@ -365,9 +383,3 @@ async def finalize(
         await _notify_manager_interview_complete(db, interview)
     except Exception as exc:
         logger.warning("finalize: manager notification failed: %s", type(exc).__name__)
-
-    return {
-        "saved": True,
-        "turns": len(req.transcript),
-        "report_generated": bool(interview.report),
-    }

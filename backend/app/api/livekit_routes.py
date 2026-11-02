@@ -175,6 +175,8 @@ async def create_room(
     # checks saved with it (create-interview), never the request's copy.
     saved = interview.room_config if isinstance(interview.room_config, dict) else {}
     resume_intel = saved.get("resume_intelligence") if isinstance(saved.get("resume_intelligence"), dict) else None
+    # The same limit as a voice interview's.
+    max_minutes = int(settings.realtime_max_total_minutes or 8)
 
     config = {
         "interview_id": interview.id,
@@ -192,7 +194,10 @@ async def create_room(
         # was shorter, without the rules to ask every question in order, never
         # stall and close properly. Made before room_config is replaced below,
         # as it reads the résumé checks saved there.
-        "instructions": build_instructions(interview, candidate_name, int(settings.realtime_max_total_minutes or 8)),
+        "instructions": build_instructions(interview, candidate_name, max_minutes),
+        # How long the worker lets it run: video had no limit, and is billed
+        # by the minute.
+        "max_minutes": max_minutes,
     }
 
     interview.room_name = room_name
