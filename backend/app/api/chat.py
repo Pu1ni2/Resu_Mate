@@ -792,7 +792,7 @@ async def save_transcript(
         if report_text:
             # Merged, so the proctoring numbers the candidate's browser saved stay.
             db_service.merge_interview_report(interview, {"report": report_text})
-            interview.status = "completed"
+            db_service.finish_interview(interview, req.duration)
     except Exception as exc:
         # Don't fail the transcript save if report generation hiccups.
         print(f"[save-transcript] report generation failed: {type(exc).__name__}")

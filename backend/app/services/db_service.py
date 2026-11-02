@@ -285,6 +285,20 @@ def merge_interview_report(interview: Interview, updates: dict) -> dict:
     return merged
 
 
+def finish_interview(interview: Interview, duration=None) -> None:
+    """Mark an interview finished: completed, when, and how long it took.
+
+    Voice's finalize and video's save-transcript set only the status, so most
+    finished interviews had no finish date: the manager's list showed "—"
+    for them and sorted them wrongly, ahead of all the others on Postgres. A
+    length of 0, or none, keeps what's saved.
+    """
+    interview.status = "completed"
+    interview.completed_at = datetime.utcnow()
+    if duration:
+        interview.duration = int(duration)
+
+
 async def save_interview_result(session: AsyncSession, email: str, report_data: dict,
                                 manager_id: int = None) -> Optional[Interview]:
     """Save a scored interview result and mark the interview completed.
@@ -300,12 +314,9 @@ async def save_interview_result(session: AsyncSession, email: str, report_data: 
     if not interview:
         return None
     merge_interview_report(interview, report_data)
-    interview.status = "completed"
-    interview.completed_at = datetime.utcnow()
+    finish_interview(interview, report_data.get("timer"))
     if report_data.get("scores"):
         interview.scores = report_data["scores"]
-    if report_data.get("timer"):
-        interview.duration = report_data["timer"]
     if report_data.get("transcript") is not None:
         interview.transcript = report_data["transcript"]
 
@@ -368,8 +379,7 @@ async def save_proctoring(session: AsyncSession, email: str, data: dict) -> Opti
     if numbers.get("terminated") and interview.status != "completed":
         if not merged.get("report"):
             merge_interview_report(interview, {"report": TERMINATED_REPORT})
-        interview.status = "completed"
-        interview.completed_at = datetime.utcnow()
+        finish_interview(interview, numbers.get("timer"))
     try:
         await session.commit()
         await session.refresh(interview)
@@ -390,7 +400,9 @@ async def get_all_completed_interviews(session: AsyncSession, manager_id: int = 
     )
     if manager_id is not None:
         stmt = stmt.where(Interview.manager_id == manager_id)
-    stmt = stmt.order_by(Interview.completed_at.desc())
+    # Newest first. Interviews finished before every ending recorded a finish
+    # date have none, and sort by when they were made rather than all at one end.
+    stmt = stmt.order_by(func.coalesce(Interview.completed_at, Interview.created_at).desc())
     result = await session.execute(stmt)
     interviews = result.scalars().all()
     out = []

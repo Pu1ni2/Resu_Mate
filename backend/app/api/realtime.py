@@ -305,7 +305,6 @@ async def finalize(
         }
 
     interview.transcript = req.transcript
-    interview.duration = req.duration
 
     try:
         joined = "\n".join(
@@ -330,7 +329,7 @@ async def finalize(
     except Exception as exc:
         logger.warning("finalize: report generation failed: %s", type(exc).__name__)
 
-    interview.status = "completed"
+    db_service.finish_interview(interview, req.duration)
     await db.commit()
 
     # Notify the owning manager (best-effort, shared helper with /save-transcript).
