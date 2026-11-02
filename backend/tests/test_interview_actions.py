@@ -108,3 +108,43 @@ def test_a_finished_interview_can_be_reissued(client, ai):
     # And it's the one the candidate's portal offers.
     me = client.get("/api/chat/candidate/me", headers={"Authorization": f"Bearer {create_candidate_token('a4@x.com')}"})
     assert me.json()["interview_config"]["interview_id"] == second
+
+
+# ── the questions, seen and edited ────────────────────────────────────────────
+
+def test_a_new_interview_shows_its_questions(client, ai):
+    # The manager couldn't see what the interviewer would ask.
+    tok, m = register(client, "a5@co.com")
+    _, cid = _run(_interview(m["id"], "a5@x.com", status="completed"))
+    r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
+        "candidate_id": cid, "candidate_email": "a5@x.com", "candidate_name": "Ada", "role": "Data Engineer",
+        "num_questions": 2,
+    })
+    assert r.status_code == 200, r.text
+    config = r.json()["interview_config"]
+    assert config["questions"] == ["How do you size partitions?", "Tell me about a hard bug."]
+    assert config["interview_id"] == _run(_interviews_of("a5@x.com"))[-1][0]
+
+
+def test_the_questions_can_be_edited_before_it_starts(client, ai):
+    tok, m = register(client, "a6@co.com")
+    iid, _ = _run(_interview(m["id"], "a6@x.com", status="pending", questions=["Old question?"]))
+    r = client.put(f"/api/chat/interviews/{iid}/questions", headers=auth_headers(tok),
+                   json={"questions": ["1. What's a tool you rely on?", "  ", "- Why that one?"]})
+    assert r.status_code == 200, r.text
+    assert r.json()["questions"] == ["What's a tool you rely on?", "Why that one?"]
+    assert _run(_interviews_of("a6@x.com"))[0][3] == ["What's a tool you rely on?", "Why that one?"]
+
+
+def test_the_questions_cannot_be_edited_once_started_or_by_another_manager(client, ai):
+    tok, m = register(client, "a7@co.com")
+    tok_b, _ = register(client, "a8@co.com")
+    started, _ = _run(_interview(m["id"], "a7@x.com", status="in_progress", questions=["Kept?"]))
+    waiting, _ = _run(_interview(m["id"], "a7b@x.com", status="pending", questions=["Kept?"]))
+    edit = {"questions": ["Changed?"]}
+    assert client.put(f"/api/chat/interviews/{started}/questions", headers=auth_headers(tok), json=edit).status_code == 409
+    assert client.put(f"/api/chat/interviews/{waiting}/questions", headers=auth_headers(tok_b), json=edit).status_code == 404
+    assert client.put(f"/api/chat/interviews/{waiting}/questions", headers=auth_headers(tok),
+                      json={"questions": [" ", "-"]}).status_code == 422
+    assert _run(_interviews_of("a7@x.com"))[0][3] == ["Kept?"]
+    assert _run(_interviews_of("a7b@x.com"))[0][3] == ["Kept?"]
