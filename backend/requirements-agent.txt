@@ -1,5 +1,8 @@
-livekit-agents>=1.0.0
-livekit-plugins-openai>=1.0.0
-livekit-plugins-simli>=0.3.0
+# One version for all three, as in requirements.txt. Before 1.5.12 the agent
+# played only the first part of a reply gpt-realtime-2 sends in parts, so the
+# interviewer's question was dropped.
+livekit-agents==1.8.6
+livekit-plugins-openai==1.8.6
+livekit-plugins-simli==1.8.6
 python-dotenv>=1.0.0
 requests>=2.31.0
