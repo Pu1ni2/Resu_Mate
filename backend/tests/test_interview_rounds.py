@@ -183,3 +183,22 @@ def test_the_room_opens_the_interview_named(client, livekit):
     assert r.status_code == 200, r.text
     assert _run(_row(first))[2] == r.json()["room_name"]
     assert _run(_row(second))[2] is None
+
+
+# ── a candidate's history ─────────────────────────────────────────────────────
+
+def test_every_interview_of_a_candidate_is_listed_newest_first(client):
+    # Only the newest was shown anywhere.
+    tok, m = register(client, "r11@co.com")
+    first, second, cid = _run(_rounds(m["id"], "two11@x.com"))
+    history = client.get(f"/api/chat/candidates/{cid}/interviews", headers=auth_headers(tok)).json()["interviews"]
+    assert [(h["interview_id"], h["status"]) for h in history] == [(second, "pending"), (first, "completed")]
+    assert history[1]["report"]["report"] == FIRST_REPORT
+    assert history[0]["report"] is None  # not taken yet
+
+
+def test_another_managers_interviews_are_not_in_the_history(client):
+    _, a = register(client, "r12@co.com")
+    tok_b, _ = register(client, "r13@co.com")
+    _, _, cid = _run(_rounds(a["id"], "two12@x.com"))
+    assert client.get(f"/api/chat/candidates/{cid}/interviews", headers=auth_headers(tok_b)).json()["interviews"] == []
