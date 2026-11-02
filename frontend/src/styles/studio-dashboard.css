@@ -82,6 +82,8 @@
 .studio-dashboard .delete-btn { border: 0; background: none; color: #8b8f80; opacity: 1; }
 .studio-dashboard .delete-btn:hover { background: #f4e5dc; color: #a13e2e; }
 .studio-dashboard .selected-check { background: #60734d; color: var(--color-ink-inverse); }
+/* The box a card's tick goes in, before it is selected. */
+.studio-dashboard .selected-check.is-empty { border: 1.5px solid #aab494; background: var(--color-surface); }
 .studio-dashboard .sd-open-file {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-top: auto; padding: 14px 0;

@@ -819,9 +819,12 @@ export default function Dashboard() {
                             <div className="candidate-avatar" aria-hidden="true">
                               {getDisplayName(c, i)[0]?.toUpperCase()}
                             </div>
-                            {selectedIds.includes(c.id) && (
-                              <div className="selected-check"><Check size={14} /></div>
-                            )}
+                            {/* Ticked when selected, and an empty box when not, so a card
+                                shows it can be selected before it is. The checkbox above
+                                is what keyboards and screen readers use. */}
+                            <div className={`selected-check${selectedIds.includes(c.id) ? '' : ' is-empty'}`} aria-hidden="true">
+                              {selectedIds.includes(c.id) && <Check size={14} />}
+                            </div>
                             <button className="delete-btn" onClick={e => { e.stopPropagation(); deleteCandidate(c.id); }} aria-label={`Delete ${getDisplayName(c, i)}`}>
                               <Trash2 size={14} />
                             </button>
