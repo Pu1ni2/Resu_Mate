@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services import db_service
 from app.services import interview_modes
+from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
 from app.agents.technical_agent import clean_questions, technical_agent
@@ -773,22 +774,7 @@ async def save_transcript(
     # The full per-question scoring path runs via /interview-report when the
     # frontend can provide question/answer pairs.
     try:
-        joined = "\n".join(
-            f"[{t.get('role', '?')}] {t.get('text', '')}" for t in (req.transcript or [])
-        )[:8000]
-        report_prompt = (
-            f"You're reviewing a recorded interview transcript for {req.candidate_name} "
-            f"applying for {req.role}. Produce a short hiring report in markdown:\n\n"
-            "## Interview Summary (2-3 sentences)\n"
-            "## Strengths (2-3 bullets, evidence-backed)\n"
-            "## Concerns (2-3 bullets, kind tone)\n"
-            "## Recommendation (Strong Hire / Hire / Consider / Pass)\n\n"
-            f"Transcript:\n{joined}"
-        )
-        report_text = await openai_tool.structured_call(
-            prompt=report_prompt,
-            system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
-        )
+        report_text = await write_report(req.transcript, interview.role or req.role)
         if report_text:
             # Merged, so the proctoring numbers the candidate's browser saved stay.
             db_service.merge_interview_report(interview, {"report": report_text})

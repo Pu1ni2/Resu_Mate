@@ -139,13 +139,15 @@ def test_the_worker_writes_the_interview_in_its_room_and_keeps_proctoring(client
     in_room = _run(_interview(a["id"], "both@x.com", room_name="interview-a", report=json.dumps({"violations": 1})))
     newer = _run(_interview(b["id"], "both@x.com", room_name="interview-b"))
 
+    # Enough of an interview to be reported on.
+    transcript = [{"role": "interviewer", "text": "Tell me about a project you led."},
+                  {"role": "candidate", "text": "I led the move of our billing service to events " * 6}]
     r = client.post("/api/chat/save-transcript", headers=AGENT, json={
-        "candidate_email": "both@x.com", "room_name": "interview-a",
-        "transcript": [{"role": "user", "text": "hello"}],
+        "candidate_email": "both@x.com", "room_name": "interview-a", "transcript": transcript,
     })
     assert r.status_code == 200 and r.json()["saved"] is True
     saved = _run(_read(in_room))
-    assert saved["transcript"] == [{"role": "user", "text": "hello"}]
+    assert saved["transcript"] == transcript
     assert saved["report"] == {"violations": 1, "report": "## Agent report"}
     assert _run(_read(newer))["transcript"] is None  # the other company's newer interview is untouched
 

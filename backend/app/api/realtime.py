@@ -29,6 +29,7 @@ from app.models.candidate import CandidateAccess, Interview
 from app.services import db_service
 from app.services.consent import require_consent
 from app.services.auth import Actor, get_current_actor
+from app.services.interview_report import write_report
 from app.services.interview_script import build_instructions
 
 logger = logging.getLogger("resumate.realtime")
@@ -284,14 +285,11 @@ async def finalize(
 ):
     """End the conversational interview, generate a report, mark completed.
 
-    Reuses the same lightweight report flow as the avatar interview's
-    /save-transcript endpoint — one OpenAI call over the joined transcript
-    produces a short markdown report stored on interview.report. The hiring
-    manager's existing get_interview_report path then just works for both
-    modes.
+    The report is written as the avatar interview's /save-transcript writes
+    it (app/services/interview_report.py) and stored on interview.report. The
+    hiring manager's existing get_interview_report path then just works for
+    both modes.
     """
-    from app.tools.openai_tool import openai_tool
-
     interview = await _authorized_interview(db, actor, req.interview_id)
 
     # Finalising twice (a retry after a dropped response) returns what was
@@ -307,23 +305,7 @@ async def finalize(
     interview.transcript = req.transcript
 
     try:
-        joined = "\n".join(
-            f"[{t.get('role', '?')}] {t.get('text', '')}"
-            for t in (req.transcript or [])
-        )[:8000]
-        prompt = (
-            f"You're reviewing a recorded voice interview for the {interview.role or 'role'} position. "
-            "Produce a short hiring report in markdown:\n\n"
-            "## Interview Summary (2-3 sentences)\n"
-            "## Strengths (2-3 bullets, evidence-backed)\n"
-            "## Concerns (2-3 bullets, kind tone)\n"
-            "## Recommendation (Strong Hire / Hire / Consider / Pass)\n\n"
-            f"Transcript:\n{joined}"
-        )
-        report = await openai_tool.structured_call(
-            prompt=prompt,
-            system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
-        )
+        report = await write_report(req.transcript, interview.role)
         if report:
             db_service.merge_interview_report(interview, {"report": report})
     except Exception as exc:
