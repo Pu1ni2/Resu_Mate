@@ -4,6 +4,7 @@ import BatchActionConfirm from './BatchActionConfirm';
 import RankedCandidates, { RankedSummary } from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { cn } from '../ui/cn';
+import { whenOf } from '../sourcer/RunHistory';
 import { API_BASE, authFetch } from '../../services/authFetch';
 
 const TABS = ['All', 'Strong Fit', 'Good Fit', 'Consider', 'No Match'];
@@ -134,6 +135,11 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           <BucketTile label="No match"   count={stats?.no_match}   lead={stats?.no_match === leadBucket} />
         </div>
 
+        {/* A run opened again says when it ran: its scores are from then, and
+            who each person is, from their file now. */}
+        {pipelineResult.created_at && (
+          <p className="mb-3 text-[12px] text-ink-subtle">Screened {whenOf(pipelineResult.created_at)}.</p>
+        )}
         {/* What the scores are made of, when that is less than it looks: a run
             given only a role compares roles. And the files it left out. */}
         {pipelineResult.assessed?.length === 1 && pipelineResult.assessed[0] === 'role' && (

@@ -232,6 +232,28 @@ function ListUnavailable({ pending, onRetry }) {
   );
 }
 
+/* A screening run named in the address that isn't in hand: opening it, not
+ * kept (a workspace keeps its newest 20), or not reached. */
+function RunUnavailable({ status, onRetry, onNew }) {
+  if (status === 'loading') {
+    return <p role="status" className="sd-loading"><Loader size={18} className="spin" aria-hidden="true" />Opening the screening run…</p>;
+  }
+  if (status === 'missing') {
+    return (
+      <div className="sd-error" role="alert">
+        <p>This screening run isn&apos;t kept any more. Your 20 most recent runs are kept.</p>
+        <button className="btn btn-secondary btn-sm" onClick={onNew}>Start a new run</button>
+      </div>
+    );
+  }
+  return (
+    <div className="sd-error" role="alert">
+      <p>The screening run couldn&apos;t be opened. Check your connection and try again.</p>
+      <button className="btn btn-secondary btn-sm" onClick={onRetry}>Try again</button>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
@@ -367,7 +389,48 @@ export default function Dashboard() {
   };
 
   const [showPipeline, setShowPipeline] = useState(false);
+  // The screening run open, as /pipeline/run answers it. It lived only in the
+  // page, so a refresh, or Back from another page, meant screening again. Its
+  // id is in the address now (?view=screening&run=ID), and a run named there
+  // that isn't in hand is opened from the server. A run the server couldn't
+  // keep has no id, and shows until it's left.
   const [pipelineResult, setPipelineResult] = useState(null);
+  const runParam = tab === 'screening' ? searchParams.get('run') : null;
+  const runInHand = runParam != null && String(pipelineResult?.run_id) === runParam;
+  const [runOpening, setRunOpening] = useState({ id: null, status: 'loading' });
+  const [runAttempt, setRunAttempt] = useState(0);
+  useEffect(() => {
+    if (runParam == null || runInHand) return undefined;
+    if (!/^\d+$/.test(runParam)) { setRunOpening({ id: runParam, status: 'missing' }); return undefined; }
+    let cancelled = false;
+    setRunOpening({ id: runParam, status: 'loading' });
+    authFetch(`${API_BASE}/api/pipeline/runs/${runParam}`)
+      .then(async res => {
+        if (res.status === 404) { if (!cancelled) setRunOpening({ id: runParam, status: 'missing' }); return; }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setPipelineResult(data);
+      })
+      .catch(() => { if (!cancelled) setRunOpening({ id: runParam, status: 'failed' }); });
+    return () => { cancelled = true; };
+  }, [runParam, runInHand, runAttempt]);
+  const shownRun = runParam != null
+    ? (runInHand ? pipelineResult : null)
+    : (pipelineResult && pipelineResult.run_id == null ? pipelineResult : null);
+  const runStatus = runOpening.id === runParam ? runOpening.status : 'loading';
+  const openRun = data => {
+    setPipelineResult(data);
+    if (data?.run_id != null) setSearchParams({ view: 'screening', run: String(data.run_id) });
+  };
+  const leaveRun = () => {
+    setPipelineResult(null);
+    setSearchParams({ view: 'screening' });
+  };
+  // Screening, from another view, opens the run left there, as it did when
+  // the run lived only in the page.
+  const navigateTo = view => (view === 'screening' && pipelineResult?.run_id != null
+    ? setSearchParams({ view, run: String(pipelineResult.run_id) })
+    : setTab(view));
 
   const handleSend = (msg) => {
     const m = msg || input.trim();
@@ -586,7 +649,7 @@ export default function Dashboard() {
       eyebrow={view.eyebrow}
       title={view.title}
       subtitle={view.subtitle}
-      onNavigate={setTab}
+      onNavigate={navigateTo}
       onChat={() => setTab('chat')}
       onAssistant={() => setShowPipeline(true)}
       actions={(
@@ -915,7 +978,17 @@ export default function Dashboard() {
               opened by Jarvis. */}
           {tab === 'screening' && (
             <div className="analytics-tab">
-              {!pipelineResult ? (
+              {shownRun ? (
+                <ATSResultsView
+                  key={shownRun.run_id ?? 'not kept'}
+                  embedded
+                  pipelineResult={shownRun}
+                  onBack={leaveRun}
+                  onRunAgain={leaveRun}
+                />
+              ) : runParam != null ? (
+                <RunUnavailable status={runStatus} onRetry={() => setRunAttempt(n => n + 1)} onNew={leaveRun} />
+              ) : (
                 listUnavailable ? (
                   <ListUnavailable pending={listPending} onRetry={loadCandidates} />
                 ) : screeningCandidates.length === 0 ? (
@@ -944,17 +1017,10 @@ export default function Dashboard() {
                     <PipelineWizard
                       candidateCount={screeningCandidates.length}
                       candidateIds={selectedIds.length ? screeningCandidates.map(c => c.id) : undefined}
-                      onComplete={data => setPipelineResult(data)}
+                      onComplete={openRun}
                     />
                   </Suspense>
                 )
-              ) : (
-                <ATSResultsView
-                  embedded
-                  pipelineResult={pipelineResult}
-                  onBack={() => setPipelineResult(null)}
-                  onRunAgain={() => setPipelineResult(null)}
-                />
               )}
             </div>
           )}
