@@ -72,3 +72,33 @@ describe('the candidate file, from a link', () => {
     expect(theList()).toBeTruthy();
   });
 });
+
+describe('the candidate file, from screening results', () => {
+  // A screened person's file opens in a new tab, which had no way back.
+  const toResults = () => screen.queryByRole('link', { name: 'Screening results' });
+  const address = () => screen.getByTestId('address').textContent;
+
+  it('leads back to the run it was opened from', () => {
+    render(page('/hiring/focus?candidate=2&run=7'));
+    expect(screen.getByRole('heading', { name: 'Grace' })).toBeTruthy();
+    expect(toResults().getAttribute('href')).toBe('/hiring?view=screening&run=7');
+    expect(address()).toBe('/hiring/focus?candidate=2&run=7');
+  });
+
+  it('keeps the way back in the list of files, and for the next file', () => {
+    render(page('/hiring/focus?candidate=2&run=7'));
+    fireEvent.click(screen.getByRole('button', { name: 'All candidate files' }));
+    expect(theList()).toBeTruthy();
+    expect(address()).toBe('/hiring/focus?run=7');
+    expect(toResults()).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Open file for Ada' }));
+    expect(address()).toBe('/hiring/focus?candidate=1&run=7');
+    expect(toResults().getAttribute('href')).toBe('/hiring?view=screening&run=7');
+  });
+
+  it('offers none for a file not opened from a run', () => {
+    render(page('/hiring/focus?candidate=2'));
+    expect(screen.getByRole('heading', { name: 'Grace' })).toBeTruthy();
+    expect(toResults()).toBeNull();
+  });
+});

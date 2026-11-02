@@ -121,4 +121,10 @@ describe("a screened candidate's file", () => {
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
   });
+
+  it('carries a kept run, as the way back to these results', () => {
+    open(run({ run_id: 7 }));
+    const link = screen.getByRole('link', { name: 'Open Ada’s file (new tab)' });
+    expect(link.getAttribute('href')).toBe('/hiring/focus?candidate=1&run=7');
+  });
 });
