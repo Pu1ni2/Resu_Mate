@@ -172,6 +172,53 @@ describe('the voice interview room', () => {
     expect(screen.getByRole('alert').classList.contains('si-notice')).toBe(true);
   });
 
+  // Ending it finished it: a report on part of it, and the new start refused.
+  it('keeps an interview ended with the connection down, to be continued', async () => {
+    await goLive();
+    say({ type: 'response.output_audio_transcript.done', transcript: 'Tell me about a project you led.' });
+    const peer = FakePeer.last;
+    act(() => { peer.iceConnectionState = 'disconnected'; peer.oniceconnectionstatechange(); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'End interview' })); });
+    const paths = fetch.mock.calls.map(([url]) => String(url));
+    expect(paths.some(p => p.endsWith('/api/realtime/finalize'))).toBe(false);
+    const [, sent] = fetch.mock.calls.find(([url]) => String(url).endsWith('/api/realtime/interrupt'));
+    const body = JSON.parse(sent.body);
+    expect(body.interview_id).toBe(5);
+    expect(body.transcript.map(t => t.text)).toEqual(['Tell me about a project you led.']);
+    expect(screen.getByRole('heading', { name: 'You can pick up where you left off' })).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('continues an interrupted interview from its conversation and time so far', async () => {
+    fetch.mockImplementation(async url => {
+      const path = String(url);
+      if (path.endsWith('/api/realtime/session')) {
+        return reply({ client_secret: 'secret', model: 'gpt-realtime', remaining_minutes: 6, elapsed_seconds: 150,
+          transcript: [{ role: 'interviewer', text: 'What drew you to this role?' }, { role: 'candidate', text: 'The team.' }] });
+      }
+      if (path.includes('api.openai.com')) return reply('answer');
+      return reply({});
+    });
+    await goLive();
+    const transcript = within(screen.getByRole('region', { name: 'Live transcript' }));
+    expect(transcript.getByText('What drew you to this role?')).toBeTruthy();
+    expect(transcript.getByText('The team.')).toBeTruthy();
+    expect(screen.getByText('02:30')).toBeTruthy();
+  });
+
+  it('keeps a closed page’s interview, once the page really goes', async () => {
+    await goLive();
+    say({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'I led a migration.' });
+    const interrupts = () => fetch.mock.calls.filter(([url]) => String(url).endsWith('/api/realtime/interrupt'));
+    // The "Leave site?" prompt: the candidate may still stay.
+    act(() => { window.dispatchEvent(new Event('beforeunload')); });
+    expect(interrupts()).toHaveLength(0);
+    act(() => { window.dispatchEvent(new Event('pagehide')); });
+    expect(interrupts()).toHaveLength(1);
+    expect(interrupts()[0][1].keepalive).toBe(true);
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/api/realtime/finalize'))).toBe(false);
+  });
+
   it('says the interview has been saved, not recorded, once it ends', async () => {
     const room = await goLive();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'End interview' })); });
