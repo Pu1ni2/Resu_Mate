@@ -94,6 +94,20 @@ def test_a_failed_analysis_is_not_kept(client, generator):
     assert not (iv.room_config or {}).get("resume_intelligence")
 
 
+def test_a_batch_interview_gets_the_candidates_own_questions(client, generator):
+    # The batch invite saved none: five generic questions, whatever number was chosen.
+    tok, _ = register(client, "q8@co.com")
+    cid = _own_candidate(client, tok, "q8@x.com")
+    r = client.post("/api/pipeline/batch-action", headers=auth_headers(tok), json={
+        "candidate_ids": [cid], "role": "Data Engineer", "num_questions": 2, "focus_areas": ["Kafka"],
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["interviews_created"] == 1
+    iv = _interview("q8@x.com")
+    assert iv.questions == ["Walk me through your Kafka work.", "How do you size partitions?"]
+    assert iv.room_config["resume_intelligence"]["verification_targets"] == TARGETS
+
+
 def test_the_interview_stands_when_the_questions_cannot_be_made(client, generator):
     generator["reply"] = RuntimeError("model unavailable")
     tok, _ = register(client, "q3@co.com")
