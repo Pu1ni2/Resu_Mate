@@ -138,6 +138,40 @@ def open_interview(session):
         logger.warning(f"Could not open the interview: {type(e).__name__}")
 
 
+# What ends the interview as its time runs out, a minute early so it fits.
+TIME_NEARLY_UP = "Time is nearly up: close the interview now, as your closing contract says, without another question."
+CLOSING_WARNING_SECONDS = 60
+
+
+def time_limit_seconds(config):
+    """The interview's time limit, from its room config; rooms made before
+    the server sent one get its default, 8 minutes."""
+    try:
+        minutes = int(config.get("max_minutes") or 8)
+    except (TypeError, ValueError):
+        minutes = 8
+    return max(1, minutes) * 60
+
+
+async def keep_to_time(session, ctx, limit_seconds, sleep=asyncio.sleep):
+    """End the interview at its time limit: video had none, and is billed by
+    the minute. A minute before, Alex is asked to close; at the limit the
+    room is closed for everyone, which ends this job, and the shutdown
+    callback posts the transcript as when the candidate leaves."""
+    await sleep(max(0, limit_seconds - CLOSING_WARNING_SECONDS))
+    try:
+        session.generate_reply(instructions=TIME_NEARLY_UP)
+    except Exception as e:
+        logger.warning(f"Could not ask for the close: {type(e).__name__}")
+    await sleep(min(limit_seconds, CLOSING_WARNING_SECONDS))
+    logger.info("Time limit reached; closing the room.")
+    try:
+        await ctx.delete_room()
+    except Exception as e:
+        logger.warning(f"Could not close the room: {type(e).__name__}")
+        ctx.shutdown("time limit")
+
+
 def post_transcript(config: dict, transcript: list, room_name: str = "", duration: int = 0):
     """POST accumulated transcript to the backend interview-report endpoint.
 
@@ -276,6 +310,13 @@ async def entrypoint(ctx: JobContext):
     ctx.add_shutdown_callback(_on_shutdown)
 
     open_interview(session)
+    timekeeper = asyncio.create_task(keep_to_time(session, ctx, time_limit_seconds(config)))
+
+    # An interview that ends early, as the candidate leaves, stops the clock.
+    async def _stop_timekeeper():
+        timekeeper.cancel()
+
+    ctx.add_shutdown_callback(_stop_timekeeper)
 
     # Hold the entrypoint open until the framework shuts the worker down. Without
     # this the function returns, the job ends, and the agent leaves the room.
