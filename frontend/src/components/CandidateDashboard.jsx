@@ -302,11 +302,15 @@ export default function CandidateDashboard() {
     }
     // What the avatar room measured (violations, face reading, time). The
     // server keeps only those numbers from this, and writes the report itself.
+    // Named by the interview taken, not left to "the newest".
     try {
       await candidateFetch(`${API_BASE}/api/chat/save-interview-result`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidate_email: candidateSession?.email, candidate_name: candidateSession?.name, report: measured })
+        body: JSON.stringify({
+          candidate_email: candidateSession?.email, candidate_name: candidateSession?.name,
+          interview_id: candidateSession?.interview_config?.interview_id, report: measured,
+        })
       });
     } catch { /* offline: the report request below shows it */ }
     await waitForReport();

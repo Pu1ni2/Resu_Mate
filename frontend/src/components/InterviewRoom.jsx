@@ -208,6 +208,9 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
           candidate_email: candidateEmail,
           candidate_name: candidateName,
           interview_config: config || {},
+          // This interview: by address alone the server took the newest, a
+          // later round if one had been made.
+          interview_id: config?.interview_id,
           consent: true,
         })
       }));
