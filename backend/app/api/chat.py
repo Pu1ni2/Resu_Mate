@@ -1108,6 +1108,34 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
             out[key] = {"status": status, "mode": shown, "id": iv_id}
     return {"statuses": out, "count": len(out)}
 
+@router.get("/candidates/{candidate_id}/interviews")
+async def candidate_interviews(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Every interview of one of this manager's candidates, newest first.
+
+    Only the newest was shown anywhere: an earlier round's report could be
+    read only from the list of all finished interviews, and an interview
+    waiting or interrupted behind a newer one not at all.
+    """
+    from sqlalchemy import select
+    from app.models.candidate import Interview
+    rows = (await db.execute(
+        select(Interview)
+        .where(Interview.candidate_id == candidate_id, Interview.manager_id == user.id)
+        .order_by(Interview.created_at.desc())
+    )).scalars().all()
+    return {"interviews": [{
+        "interview_id": iv.id,
+        "role": iv.role,
+        "level": iv.level,
+        "status": iv.status,
+        "mode": iv.mode or "avatar",
+        "email": iv.candidate_email,
+        "created_at": iv.created_at.isoformat() if iv.created_at else None,
+        "completed_at": iv.completed_at.isoformat() if iv.completed_at else None,
+        "report": db_service.candidate_report(iv) if iv.status == "completed" else None,
+    } for iv in rows]}
+
+
 # ═══════ ONE INTERVIEW: ITS REPORT AGAIN, OR ANOTHER ═══════
 
 async def _managers_interview(db: AsyncSession, manager_id: int, interview_id: int):
