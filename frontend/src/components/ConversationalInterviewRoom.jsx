@@ -299,6 +299,16 @@ export default function ConversationalInterviewRoom({
       // 4) Data channel for transcript + control events.
       const dc = pc.createDataChannel('oai-events');
       dcRef.current = dc;
+      // Alex speaks first. The model answers only when asked, and nothing
+      // asked: the candidate heard silence until they spoke. Its instructions'
+      // opening turn greets the candidate and asks the first question.
+      dc.onopen = () => {
+        try {
+          dc.send(JSON.stringify({ type: 'response.create' }));
+        } catch (e) {
+          console.warn('could not start the interviewer:', e?.message);
+        }
+      };
       dc.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
@@ -323,6 +333,11 @@ export default function ConversationalInterviewRoom({
           if (msg.type === 'response.output_audio_transcript.done' || msg.type === 'response.audio_transcript.done') {
             const text = msg.transcript || '';
             if (text.trim()) appendTurn('interviewer', text.trim());
+          }
+          // What OpenAI refused, for whoever looks into a silent interviewer:
+          // its code and words, which name a setting, never what was said.
+          if (msg.type === 'error') {
+            console.warn('interviewer error:', msg.error?.code || msg.error?.type, msg.error?.message);
           }
         } catch (_) {
           // Non-JSON or unknown event — ignore.
