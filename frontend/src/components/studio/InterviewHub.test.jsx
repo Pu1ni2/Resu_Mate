@@ -59,6 +59,17 @@ describe('the Interviews view', () => {
     expect(counts).toBe('Invitations01In progress00Completed01');
   });
 
+  // It had no label, and was in no count or filter.
+  it('shows an interrupted interview as interrupted, and counts it in progress', async () => {
+    answer({ statuses: { ...STATUSES.statuses, 'lin@example.com': { id: 3, status: 'interrupted', mode: 'conversational' } } });
+    open();
+    expect(await screen.findByText('Interrupted')).toBeTruthy();
+    expect(document.querySelector('.sd-interview-counts').textContent).toBe('Invitations01In progress01Completed01');
+    fireEvent.click(screen.getByRole('button', { name: 'In progress' }));
+    expect(screen.getByRole('heading', { name: 'lin@example.com' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Ada' })).toBeNull();
+  });
+
   it('shows no score on a row, even for an interview that was scored, but says what kind it was', async () => {
     answer();
     open();

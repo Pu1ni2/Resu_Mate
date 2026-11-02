@@ -10,9 +10,15 @@ import CandidateDashboard from './CandidateDashboard';
  * the avatar room made up, or only a transcript, so "Score: —/10" until they
  * signed in again. Now the dashboard waits for the server's report. */
 
-// The rooms are stand-ins that finish at once with what a room would measure.
+// The rooms are stand-ins that finish at once with what a room would measure,
+// or, the voice one, leave without finishing.
 vi.mock('./ConversationalInterviewRoom', () => ({
-  default: ({ onComplete }) => <button onClick={() => onComplete({ transcript: [] })}>finish voice</button>,
+  default: ({ onComplete, onExit }) => (
+    <>
+      <button onClick={() => onComplete({ transcript: [] })}>finish voice</button>
+      <button onClick={onExit}>leave voice</button>
+    </>
+  ),
 }));
 vi.mock('./InterviewRoom', () => ({
   default: ({ onComplete }) => (
@@ -30,9 +36,13 @@ const REPORT = { report: '## Strong answers', avgScore: 7.5, scores: [], timer: 
 
 let reportAnswers;
 let saved;
+let me; // what /candidate/me answers, when set
 
 function server() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
+    if (me && String(url).endsWith('/api/chat/candidate/me')) {
+      return { ok: true, status: 200, json: async () => me };
+    }
     if (String(url).endsWith('/api/chat/save-interview-result')) {
       saved.push(JSON.parse(options.body));
       return { ok: true, status: 200, json: async () => ({}) };
@@ -73,6 +83,7 @@ beforeEach(() => {
   localStorage.clear();
   reportAnswers = [];
   saved = [];
+  me = null;
   server();
 });
 
@@ -137,5 +148,25 @@ describe("the candidate's report after an interview", () => {
     renderDashboard({ ...SESSION, has_interview: false, interview_completed: true });
     fireEvent.click(await screen.findByText('Interview Report'));
     expect(await screen.findByText(/Score: 7.5\/10/)).toBeTruthy();
+  });
+});
+
+describe('an interrupted interview', () => {
+  const INTERRUPTED = { ...SESSION.interview_config, status: 'interrupted' };
+
+  it('is offered to be continued', () => {
+    renderDashboard({ ...SESSION, interview_config: INTERRUPTED });
+    fireEvent.click(screen.getByText('Interview'));
+    expect(screen.getByText(/your interview was interrupted/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /continue interview/i })).toBeTruthy();
+  });
+
+  // The portal kept the status it was signed in with.
+  it('is known as interrupted on coming back from the room', async () => {
+    renderDashboard();
+    const leave = await enterTheRoom('leave voice');
+    me = { access: true, name: 'Dana', has_interview: true, interview_completed: false, interview_config: INTERRUPTED };
+    await act(async () => { fireEvent.click(leave); });
+    expect(await screen.findByRole('button', { name: /continue interview/i })).toBeTruthy();
   });
 });

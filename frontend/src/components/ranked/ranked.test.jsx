@@ -121,6 +121,12 @@ describe('RankedCandidates', () => {
     expect(onToggle).toHaveBeenCalledWith(7);
   });
 
+  // An interrupted interview had no pill: it seemed never to have started.
+  it('shows an interrupted interview as interrupted', () => {
+    render(<RankedCandidates rows={[{ ...rows[0], status: { status: 'interrupted', mode: 'conversational' } }]} />);
+    expect(screen.getByText('Interrupted')).toBeTruthy();
+  });
+
   it('says "Not asked for" for a part the run left out', () => {
     const row = fromAtsResult({ ...atsPayload, experience_match: null, education_match: null });
     render(<RankedCandidates rows={[row]} />);
