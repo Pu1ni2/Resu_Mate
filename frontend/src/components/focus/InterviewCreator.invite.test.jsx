@@ -102,3 +102,39 @@ describe('creating an interview', () => {
     expect(screen.queryByText(/interview created!/i)).toBeNull();
   });
 });
+
+describe("the new interview's questions", () => {
+  // The interview was created without saying what would be asked.
+  const QUESTIONS = ['How do you size partitions?', 'Tell me about a hard bug.'];
+  let edited;
+
+  const questionsServer = () => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
+    const path = String(url);
+    if (path.endsWith('/api/features')) return { ok: true, status: 200, json: async () => ({ avatar_interviews: false }) };
+    if (path.endsWith('/api/chat/interviews/7/questions')) {
+      edited = JSON.parse(options.body);
+      return { ok: true, status: 200, json: async () => ({ interview_id: 7, questions: edited.questions }) };
+    }
+    return { ok: true, status: 200, json: async () => created({ interview_config: { mode: 'conversational', interview_id: 7, questions: QUESTIONS } }) };
+  });
+
+  beforeEach(() => { edited = null; });
+
+  it('lists what the interviewer will ask', async () => {
+    questionsServer();
+    await create({ untick: true });
+    const questions = screen.getByRole('region', { name: 'Interview questions' });
+    expect([...questions.querySelectorAll('li')].map(li => li.textContent)).toEqual(QUESTIONS);
+  });
+
+  it('saves the questions as the manager edits them, one a line', async () => {
+    questionsServer();
+    await create({ untick: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit questions' }));
+    fireEvent.change(screen.getByLabelText(/one question a line/i), { target: { value: 'What do you rely on?\n\n  Why that?  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save questions' }));
+    await waitFor(() => expect(edited).toEqual({ questions: ['What do you rely on?', 'Why that?'] }));
+    const questions = screen.getByRole('region', { name: 'Interview questions' });
+    await waitFor(() => expect([...questions.querySelectorAll('li')].map(li => li.textContent)).toEqual(['What do you rely on?', 'Why that?']));
+  });
+});
