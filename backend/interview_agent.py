@@ -138,11 +138,12 @@ def open_interview(session):
         logger.warning(f"Could not open the interview: {type(e).__name__}")
 
 
-def post_transcript(config: dict, transcript: list, room_name: str = ""):
+def post_transcript(config: dict, transcript: list, room_name: str = "", duration: int = 0):
     """POST accumulated transcript to the backend interview-report endpoint.
 
     room_name identifies the exact interview; without it the backend has to
-    guess "the latest interview for this email".
+    guess "the latest interview for this email". duration is the interview's
+    length in seconds: it was always sent as 0.
     """
     candidate_email = config.get("candidate_email", "")
     candidate_name = config.get("candidate_name", "Candidate")
@@ -159,7 +160,7 @@ def post_transcript(config: dict, transcript: list, room_name: str = ""):
         "questions": [],
         "answers": [],
         "scores": [],
-        "duration": 0,
+        "duration": max(0, int(duration)),
         "transcript": transcript,
     }
 
@@ -255,11 +256,19 @@ async def entrypoint(ctx: JobContext):
         room=ctx.room,
     )
     logger.info("Interview agent running!")
+    started, ended = time.time(), []
+
+    # The conversation ends when the session closes, as the candidate leaves.
+    # The worker shuts down some time after that, so it isn't the end.
+    @session.on("close")
+    def on_close(ev):
+        ended.append(time.time())
 
     # POST the transcript when the worker tears down (room ends or candidate leaves).
     async def _on_shutdown():
         try:
-            post_transcript(config, transcript, room_name=ctx.room.name)
+            length = (ended[0] if ended else time.time()) - started
+            post_transcript(config, transcript, room_name=ctx.room.name, duration=length)
             logger.info("Interview session ended, transcript posted.")
         except Exception as e:
             logger.warning(f"Transcript post on shutdown failed: {e}")
