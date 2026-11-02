@@ -193,6 +193,27 @@ async def get_interview_by_email(session: AsyncSession, email: str, manager_id: 
     return result.scalar_one_or_none()
 
 
+async def finished_interview(session: AsyncSession, email: str, manager_id: int = None,
+                             interview_id: int = None) -> Optional[Interview]:
+    """The finished interview a report is read from.
+
+    By its id when one is given, for this address and, when given, this
+    manager; otherwise the address's latest interview that finished with a
+    report. "The newest interview for this email" was a new, pending round
+    as soon as one was made, and the earlier round's report could no longer
+    be read, exported or compared with the résumé.
+    """
+    stmt = select(Interview).where(Interview.candidate_email == email.strip().lower())
+    if manager_id is not None:
+        stmt = stmt.where(Interview.manager_id == manager_id)
+    if interview_id is not None:
+        stmt = stmt.where(Interview.id == interview_id)
+    else:
+        stmt = stmt.where(Interview.status == "completed", Interview.report.isnot(None))
+    stmt = stmt.order_by(func.coalesce(Interview.completed_at, Interview.created_at).desc()).limit(1)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def update_interview_status(
     session: AsyncSession, email: str, status: str,
     report: str = None, scores: list = None, duration: int = None
@@ -413,6 +434,9 @@ async def get_all_completed_interviews(session: AsyncSession, manager_id: int = 
         # neither, and 0:00.
         report = candidate_report(iv)
         out.append({
+            # Which interview this is: a candidate may have had several, and
+            # its report, PDF and résumé comparison are asked for by this.
+            "interview_id": iv.id,
             "email": iv.candidate_email,
             # candidate_id is needed by the manager-side report view to run
             # credibility analysis; without it that section stays hidden.

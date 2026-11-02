@@ -591,6 +591,8 @@ class ResumeIntelRequest(BaseModel):
 class CredibilityRequest(BaseModel):
     candidate_id: int
     candidate_email: str
+    # The interview to compare; without it, the latest finished one.
+    interview_id: Optional[int] = None
 
 @router.post("/resume-intelligence")
 @limiter.limit("10/minute")
@@ -610,7 +612,8 @@ async def credibility_analysis(request: Request, req: CredibilityRequest, user=D
     if not candidate:
         raise HTTPException(404, "Candidate not found in memory")
 
-    interview = await db_service.get_interview_by_email(db, req.candidate_email, manager_id=user.id)
+    interview = await db_service.finished_interview(db, req.candidate_email, manager_id=user.id,
+                                                    interview_id=req.interview_id)
     if not interview or not interview.report:
         raise HTTPException(404, "No completed interview found for this candidate")
 
@@ -931,7 +934,8 @@ async def candidate_my_report(
     db: AsyncSession = Depends(get_db),
 ):
     """A candidate's own completed interview report + transcript (token-scoped)."""
-    interview = await db_service.get_interview_by_email(db, candidate_email)
+    # Their latest finished one: a new interview waiting to be taken hid it.
+    interview = await db_service.finished_interview(db, candidate_email)
     if not interview or interview.status != "completed" or not interview.report:
         raise HTTPException(404, "No completed interview report found")
 
@@ -1016,7 +1020,8 @@ async def candidate_delete_my_data(
 async def get_interview_results(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Get interview results for one of this manager's candidates."""
     email = email.strip().lower()
-    interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
+    # The latest finished one, not a newer interview still waiting.
+    interview = await db_service.finished_interview(db, email, manager_id=user.id)
     if interview and interview.report:
         report = interview.report
         try:
@@ -1066,11 +1071,14 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
 
 @router.get("/export-report/{email}")
 @limiter.limit("20/minute")
-async def export_report_pdf(request: Request, email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def export_report_pdf(request: Request, email: str, interview_id: Optional[int] = None,
+                            user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Generate a branded PDF report for one of THIS manager's candidates.
 
     Auth + ownership required — previously this was public and any email could
     be guessed to download a candidate's full report (resume + interview).
+    interview_id is the interview the manager has open; without it, the
+    latest finished one.
     """
     from app.services.pdf_safe import ReportPDF, ascii_filename
     from app.services.resume_rag import primary_email
@@ -1078,7 +1086,7 @@ async def export_report_pdf(request: Request, email: str, user=Depends(get_curre
     import re as re_mod
 
     email = email.strip().lower()
-    interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
+    interview = await db_service.finished_interview(db, email, manager_id=user.id, interview_id=interview_id)
 
     # Find candidate data within THIS manager's drawer only, by the résumé's
     # own address. "The address appears in the text" picked john@x.com's
