@@ -62,6 +62,26 @@ def assessed_parts(requirements: dict, role: str = "") -> list:
     return parts
 
 
+def candidate_fields(candidate: dict) -> dict:
+    """What a screening result says of who the candidate is, from their record.
+
+    A saved run keeps only what it worked out about each candidate, and these
+    are read from the record again when it's opened (screening_runs.py).
+    """
+    return {
+        "name": candidate.get("name", "Unknown"),
+        # The résumé's own address, as the batch actions invite. An upload
+        # rarely sets candidate["email"], so most showed "no email".
+        "email": primary_email(candidate),
+        "predicted_role": candidate.get("predicted_role", ""),
+        "experience_level": candidate.get("experience_level", ""),
+        "total_experience_years": float(candidate.get("total_experience_years", 0) or 0),
+        "location": candidate.get("location", ""),
+        "summary": candidate.get("summary", ""),
+        "skills": (candidate.get("skills") or [])[:15],
+    }
+
+
 class ATSService:
 
     # ── JD Parsing ────────────────────────────────────────────────────────────
@@ -248,10 +268,7 @@ Return only valid JSON."""
 
         return {
             "candidate_id": candidate.get("id"),
-            "name": candidate.get("name", "Unknown"),
-            # The résumé's own address, as the batch actions invite. An upload
-            # rarely sets candidate["email"], so most showed "no email".
-            "email": primary_email(candidate),
+            **candidate_fields(candidate),
             "ats_score": ats_score,
             # A part the run didn't ask for has no score (None), not 100.
             "assessed": parts,
@@ -264,12 +281,6 @@ Return only valid JSON."""
             "verdict": verdict,
             "auto_reject": auto_reject,
             "rejection_reason": rejection_reason,
-            "predicted_role": candidate.get("predicted_role", ""),
-            "experience_level": candidate.get("experience_level", ""),
-            "total_experience_years": candidate_years,
-            "location": candidate.get("location", ""),
-            "summary": candidate.get("summary", ""),
-            "skills": candidate_skills[:15],
         }
 
     # ── Batch Pipeline ────────────────────────────────────────────────────────

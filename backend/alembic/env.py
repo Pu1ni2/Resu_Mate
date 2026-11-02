@@ -22,6 +22,7 @@ from app.models.candidate import Candidate, Interview, CandidateAccess  # noqa: 
 from app.models.auth import HiringManager, OTPCode  # noqa: F401
 from app.models.state import ChatHistory, AdvisorSession  # noqa: F401
 from app.models.sourcing import SourcingRun, SourcedProfile  # noqa: F401
+from app.models.screening import ScreeningRun  # noqa: F401
 
 # ── resolve DATABASE_URL ──────────────────────────────────────────────────────
 def get_database_url() -> str:

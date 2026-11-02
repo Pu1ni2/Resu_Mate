@@ -17,10 +17,11 @@ from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag, primary_email
-from app.services import interview_modes, interview_setup
+from app.services import interview_modes, interview_setup, screening_runs
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
 from app.models.candidate import Interview
+from app.models.screening import ScreeningRun
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -64,10 +65,12 @@ class SendInvitesRequest(BaseModel):
 
 @router.post("/run")
 @limiter.limit("10/hour")
-async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(get_current_user)):
+async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
     """
     Main screening pipeline.
     Scores all (or specified) candidates via the ATS engine and returns ranked results.
+    The run is kept, to be opened again by its run_id (GET /pipeline/runs/{id}).
     """
     # 1. Resolve candidate pool — only THIS manager's candidates.
     all_candidates = resume_rag.get_all_candidates(manager_id=user.id)
@@ -142,7 +145,7 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
     # 5. Auto shortlist = top N non-rejected
     shortlist = [r for r in results if not r["auto_reject"]][:req.auto_shortlist_count]
 
-    return {
+    response = {
         "role": req.role,
         "total_screened": len(results),
         "elapsed_ms": elapsed_ms,
@@ -155,6 +158,34 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
         "shortlist": shortlist,
         "stats": stats,
     }
+    # Kept, so leaving the results or refreshing doesn't mean screening again.
+    # A run that can't be kept is still answered.
+    try:
+        response["run_id"] = await screening_runs.save(db, user.id, response)
+    except Exception as exc:
+        await db.rollback()
+        print(f"[WARN] screening run not kept: {type(exc).__name__}")
+        response["run_id"] = None
+    return response
+
+
+@router.get("/runs")
+async def list_runs(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """This manager's kept screening runs, newest first."""
+    rows = (await db.execute(
+        select(ScreeningRun).where(ScreeningRun.manager_id == user.id)
+        .order_by(ScreeningRun.created_at.desc(), ScreeningRun.id.desc())
+    )).scalars().all()
+    return {"runs": [screening_runs.summary(run) for run in rows]}
+
+
+@router.get("/runs/{run_id}")
+async def open_run(run_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A kept screening run, as /run answered it, with today's candidates."""
+    run = await db.get(ScreeningRun, run_id)
+    if not run or run.manager_id != user.id:
+        raise HTTPException(404, "Screening run not found")
+    return screening_runs.opened(run, user.id)
 
 
 @router.post("/batch-action")

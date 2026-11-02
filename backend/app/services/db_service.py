@@ -100,13 +100,14 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     files, to remove from object storage once this has committed. Commits.
     """
     from app.models.auth import HiringManager
+    from app.models.screening import ScreeningRun
     from app.models.sourcing import SourcedProfile, SourcingRun
     from app.models.state import ChatHistory
     files = await stored_file_keys(session, Candidate.manager_id == manager_id)
     for model in (Interview, CandidateAccess):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await delete_candidates(session, Candidate.manager_id == manager_id)
-    for model in (SourcedProfile, SourcingRun, ChatHistory, AuditLog):
+    for model in (SourcedProfile, SourcingRun, ScreeningRun, ChatHistory, AuditLog):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await session.execute(delete(HiringManager).where(HiringManager.id == manager_id))
     await session.commit()
