@@ -162,3 +162,17 @@ describe('a candidate card', () => {
     expect(box('Grace').querySelector('svg')).toBeNull();
   });
 });
+
+describe('deleting the whole collection', () => {
+  // A red Delete All sat among the everyday buttons, a slip away from Clear.
+  it('is in the More menu, and still asks first', () => {
+    const app = open();
+    const actions = document.querySelector('.candidates-actions');
+    expect(within(actions).queryByRole('button', { name: /^delete all$/i })).toBeNull();
+    const menu = actions.querySelector('details.sd-collection-menu');
+    expect(menu.querySelector('summary').textContent).toBe('More');
+    fireEvent.click(within(menu).getByRole('button', { name: 'Delete all candidates…' }));
+    expect(screen.getByRole('alertdialog', { name: 'Delete all 2 candidates?' })).toBeTruthy();
+    expect(app.clearAllCandidates).not.toHaveBeenCalled();
+  });
+});
