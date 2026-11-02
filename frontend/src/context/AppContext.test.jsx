@@ -91,3 +91,12 @@ describe('deleting one candidate', () => {
     expect(toasts[0].message).toBe('Could not reach the server. Please check your connection.');
   });
 });
+
+describe('Select All', () => {
+  // Selecting every candidate picked people a search had hidden.
+  it('adds the candidates it is given to the selection, once each', () => {
+    act(() => { app.toggleSelection(GRACE.id); });
+    act(() => { app.selectAll([ADA.id, GRACE.id]); });
+    expect(app.selectedIds).toEqual([GRACE.id, ADA.id]);
+  });
+});

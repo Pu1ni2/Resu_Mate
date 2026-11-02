@@ -128,3 +128,25 @@ describe('before there are candidates', () => {
     expect(screen.queryByRole('heading', { name: 'Your next great hire starts here.' })).toBeNull();
   });
 });
+
+describe('selecting from the collection', () => {
+  // Select All picked everyone, the ones a search hid and the files that
+  // aren't résumés too, so a bulk action could reach people never seen.
+  it('selects the résumés the search shows, and only them', () => {
+    const app = open({ candidates: [ADA, GRACE, NOTE] });
+    fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
+    expect(app.selectAll).toHaveBeenLastCalledWith([ADA.id, GRACE.id]);
+    search('python');
+    fireEvent.click(screen.getByRole('button', { name: 'Select all shown (1)' }));
+    expect(app.selectAll).toHaveBeenLastCalledWith([ADA.id]);
+  });
+
+  it('says when a search hides selected candidates, and shows them again', () => {
+    open({ selectedIds: [GRACE.id] });
+    expect(screen.queryByText(/isn’t shown by this search/)).toBeNull();
+    search('python');
+    expect(screen.getByText('1 selected candidate isn’t shown by this search.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(names()).toEqual(['Ada', 'Grace']);
+  });
+});
