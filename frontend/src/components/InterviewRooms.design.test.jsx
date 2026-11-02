@@ -54,6 +54,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -204,6 +205,27 @@ describe('the voice interview room', () => {
     expect(transcript.getByText('What drew you to this role?')).toBeTruthy();
     expect(transcript.getByText('The team.')).toBeTruthy();
     expect(screen.getByText('02:30')).toBeTruthy();
+  });
+
+  // The call runs between the page and OpenAI: nothing else could stop it.
+  it('ends the interview when its time is up', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    fetch.mockImplementation(async url => {
+      const path = String(url);
+      if (path.endsWith('/api/realtime/session')) {
+        return reply({ client_secret: 'secret', model: 'gpt-realtime', remaining_minutes: 1, max_total_minutes: 1,
+          elapsed_seconds: 55, transcript: [{ role: 'interviewer', text: 'One last question?' }] });
+      }
+      if (path.includes('api.openai.com')) return reply('answer');
+      return reply({});
+    });
+    await goLive();
+    const finalized = () => fetch.mock.calls.some(([url]) => String(url).endsWith('/api/realtime/finalize'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(finalized()).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(finalized()).toBe(true);
+    expect(screen.getByRole('heading', { name: 'Thanks for talking with us' })).toBeTruthy();
   });
 
   it('keeps a closed page’s interview, once the page really goes', async () => {
