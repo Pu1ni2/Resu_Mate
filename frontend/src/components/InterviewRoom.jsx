@@ -66,6 +66,8 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
   const containerRef = useRef(null);
   const violationCountRef = useRef(0);
   const lastViolationAtRef = useRef(-Infinity);
+  const wentLiveRef = useRef(false);
+  const endedRef = useRef(false);
   const roomRef = useRef(null);
   // What endInterview reports, as of now. It is also called from addViolation,
   // a callback made once, so reading state there gave the values from the
@@ -252,6 +254,13 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
         }
       });
 
+      // The room closed under the candidate: the interviewer closes it at the
+      // interview's time limit. The page finishes as if they had ended it,
+      // rather than showing a stilled interviewer.
+      room.on(RoomEvent.Disconnected, () => {
+        if (wentLiveRef.current) endInterview(false);
+      });
+
       // Connect
       await reaching('connect', () => room.connect(roomData.livekit_url, roomData.token));
 
@@ -262,6 +271,7 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
       // Enter fullscreen + go live
       await enterFullscreen();
       setPhase('live');
+      wentLiveRef.current = true;
       setTimer(0);
 
       // Update candidate video with local stream
@@ -280,6 +290,9 @@ export default function InterviewRoom({ config, candidateName, candidateEmail, o
 
   // ═══ END INTERVIEW ═══
   const endInterview = async (terminated = false) => {
+    // Once: leaving disconnects the room, which reports the disconnection too.
+    if (endedRef.current) return;
+    endedRef.current = true;
     // Stop everything
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch { /* already disconnected */ } }
