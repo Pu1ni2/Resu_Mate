@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import ATSResultsView from './ATSResultsView';
@@ -78,5 +78,36 @@ describe('where the results sit', () => {
       [...el.getAttribute('class').matchAll(/\btext-\[(\d+(?:\.\d+)?)px\]/g)].map(m => Number(m[1])));
     expect(sizes.length).toBeGreaterThan(0);
     expect(sizes.filter(size => size < 11)).toEqual([]);
+  });
+});
+
+describe('selecting from the screening results', () => {
+  // Compared by counts, a tab with as many rows as there were picks on
+  // another offered "Deselect all", and pressing it cleared those picks.
+  const person = (id, name, verdict, score) => ({ ...RESULT, candidate_id: id, name, email: `${name.toLowerCase()}@x.com`, verdict, ats_score: score });
+  const FOUR = [person(1, 'Ada', 'Strong Fit', 92), person(2, 'Ben', 'Strong Fit', 90),
+    person(3, 'Cy', 'Good Fit', 70), person(4, 'Di', 'Good Fit', 65)];
+  const tab = name => fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
+  const selectAllButton = () => screen.getByRole('button', { name: /^(Select all|Deselect all)$/ });
+  // The count beside it (the action bar below has one of its own).
+  const count = () => selectAllButton().parentElement.querySelector('span').textContent.trim();
+
+  it('says whether the rows shown are selected by who is selected, and keeps other tabs\' picks', () => {
+    // Nothing shortlisted, so nothing is selected to begin with.
+    open(run({ results: FOUR, shortlist: [], stats: { strong_fit: 2, good_fit: 2, consider: 0, no_match: 0 } }));
+    tab('Strong Fit');
+    fireEvent.click(selectAllButton());
+    expect(count()).toBe('2 selected');
+    tab('Good Fit');
+    // As many rows as picks, but none of these is picked.
+    expect(selectAllButton().textContent).toBe('Select all');
+    expect(count()).toBe('2 selected, 2 on other tabs');
+    fireEvent.click(selectAllButton());
+    expect(count()).toBe('4 selected, 2 on other tabs');
+    tab('Strong Fit');
+    expect(selectAllButton().textContent).toBe('Deselect all');
+    fireEvent.click(selectAllButton());
+    // Only this tab's rows were let go.
+    expect(count()).toBe('2 selected, 2 on other tabs');
   });
 });
