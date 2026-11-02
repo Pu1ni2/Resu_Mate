@@ -292,3 +292,29 @@ def test_the_room_carries_the_interviews_time_limit(client, generator, livekit, 
     config = _interview("q9@x.com").room_config
     assert config["max_minutes"] == 12
     assert '"remaining_minutes": 12' in config["instructions"]
+
+
+def test_the_worker_ends_the_interview_at_its_time_limit(monkeypatch):
+    # Video ran until the candidate left, and is billed by the minute.
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    slept, closed = [], []
+
+    async def sleep(seconds):
+        slept.append(seconds)
+
+    class _Ctx:
+        async def delete_room(self):
+            closed.append("room")
+
+        def shutdown(self, reason=""):
+            closed.append(reason)
+
+    session = _Session()
+    _run(worker.keep_to_time(session, _Ctx(), worker.time_limit_seconds({"max_minutes": 8}), sleep=sleep))
+    assert slept == [7 * 60, 60]  # asked to close a minute early, then the room closes
+    assert "close the interview" in session.asked[0]["instructions"]
+    assert closed == ["room"]
+    # A room made before the server sent a limit gets its default.
+    assert worker.time_limit_seconds({}) == 8 * 60
