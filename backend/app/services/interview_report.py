@@ -6,7 +6,11 @@ first 8,000 characters of the transcript, called it a recording, and asked
 the AI for a verdict however little had been captured: from a few stray words
 and none of the questions, one report recommended "Pass".
 """
+import logging
+
 from app.tools.openai_tool import openai_tool
+
+logger = logging.getLogger("resumate.interview_report")
 
 # Fewer of the candidate's words than this, or none of the interviewer's, is
 # too little to judge anyone on.
@@ -57,3 +61,23 @@ async def write_report(transcript, role) -> str:
         prompt=prompt,
         system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
     )
+
+
+async def finish_abandoned(manager_id: int) -> int:
+    """Finish a manager's interviews that were started and left, each on what
+    was said (db_service.abandoned_interviews): they stayed "in progress" or
+    "interrupted" for good, with no report. Run after a response, in a
+    session of its own. Returns how many it finished."""
+    from app.core import database
+    from app.services import db_service
+    async with database.async_session() as db:
+        left = await db_service.abandoned_interviews(db, manager_id)
+        for interview in left:
+            try:
+                report = await write_report(interview.transcript or [], interview.role)
+                db_service.merge_interview_report(interview, {"report": report})
+            except Exception as exc:
+                logger.warning("a left interview's report failed: %s", type(exc).__name__)
+            db_service.finish_interview(interview)
+        await db.commit()
+        return len(left)

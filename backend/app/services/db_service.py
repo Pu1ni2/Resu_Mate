@@ -1,6 +1,6 @@
 """Database CRUD operations for candidates, interviews, and access control."""
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -304,6 +304,34 @@ def merge_interview_report(interview: Interview, updates: dict) -> dict:
     merged.update(updates)
     interview.report = json.dumps(merged)
     return merged
+
+
+# A started interview with nothing said in this long has been left: it
+# finishes, on what was said, rather than staying open for good. Long enough
+# for a candidate to come back to an interrupted one.
+ABANDONED_AFTER = timedelta(hours=48)
+
+
+def last_activity(interview: Interview) -> datetime:
+    """When anything last happened in an interview: its transcript's last
+    line, or else when it was made or started."""
+    times = [t for t in (interview.created_at, interview.consented_at) if t]
+    turns = [t for t in (interview.transcript or []) if isinstance(t, dict)]
+    stamp = (turns[-1].get("ts") or turns[-1].get("timestamp")) if turns else None
+    if isinstance(stamp, (int, float)) and stamp > 0:
+        # The browser's lines are stamped in milliseconds, the worker's in seconds.
+        seconds = stamp / 1000 if stamp > 1e11 else stamp
+        times.append(datetime.fromtimestamp(seconds, timezone.utc).replace(tzinfo=None))
+    return max(times) if times else datetime.utcnow()
+
+
+async def abandoned_interviews(session: AsyncSession, manager_id: int) -> list:
+    """This manager's started interviews that nothing has happened in since ABANDONED_AFTER."""
+    rows = (await session.execute(select(Interview).where(
+        Interview.manager_id == manager_id, Interview.status.in_(("in_progress", "interrupted")),
+    ))).scalars().all()
+    cutoff = datetime.utcnow() - ABANDONED_AFTER
+    return [iv for iv in rows if last_activity(iv) < cutoff]
 
 
 def finish_interview(interview: Interview, duration=None) -> None:
