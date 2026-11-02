@@ -49,6 +49,8 @@ export default function ConversationalInterviewRoom({
   // "lost" — drives a small reconnect-style banner when the candidate's
   // network blips so they don't keep talking to nothing.
   const [connState, setConnState] = useState('connected');
+  // Ended by a lost connection: kept to be continued, not finished.
+  const [interrupted, setInterrupted] = useState(false);
 
   const pcRef = useRef(null);
   const dcRef = useRef(null);
@@ -57,6 +59,7 @@ export default function ConversationalInterviewRoom({
   const analyserRef = useRef(null);
   const animRef = useRef(0);
   const timerRef = useRef(null);
+  const secondsRef = useRef(0); // the timer, for the page-closing handler
   const userTurnCountRef = useRef(0);
   const turnsRef = useRef([]);
   const phaseRef = useRef('setup');
@@ -133,13 +136,34 @@ export default function ConversationalInterviewRoom({
     }
   }, [interviewId, onComplete, timer]);
 
-  // Auto-finalize when the tab is closed mid-interview. Uses `keepalive: true`
-  // so the request survives unload — sendBeacon would too, but it can't carry
-  // the Authorization header. Without this the transcript is lost when the
-  // candidate closes the tab.
+  // ─── Interrupt ────────────────────────────────────────────────────────────
+  // Ended with the connection lost: what was said is kept, and the interview
+  // carries on next time (POST /realtime/interrupt). Finishing it here
+  // completed it, with a report on part of it, and refused the new start the
+  // banner asked the candidate to make.
+  const interrupt = useCallback(async () => {
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
+    try {
+      await fetch(`${API_BASE}/api/realtime/interrupt`, {
+        method: 'POST',
+        headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ interview_id: interviewId, transcript: turnsRef.current, duration: secondsRef.current }),
+      });
+    } catch (e) {
+      console.warn('interrupt failed:', e?.message);
+    }
+  }, [interviewId]);
+
+  // A page closed mid-interview keeps it to be continued, as above. It's sent
+  // on pagehide, when the page really goes, with `keepalive: true` so the
+  // request outlives it — sendBeacon would too, but it can't carry the
+  // Authorization header. It used to finish the interview, and on
+  // beforeunload, before the candidate answered the "Leave site?" prompt, so
+  // one who chose to stay had their interview finished under them.
   //
-  // We also trigger the browser's native "Leave site?" prompt during a live
-  // interview so an accidental Cmd/Ctrl+R doesn't silently destroy the session.
+  // The prompt itself stays, so an accidental Cmd/Ctrl+R doesn't silently
+  // end the session.
   useEffect(() => {
     const onBeforeUnload = (event) => {
       if (phaseRef.current === 'live' && !finalizedRef.current) {
@@ -148,20 +172,17 @@ export default function ConversationalInterviewRoom({
         event.preventDefault();
         event.returnValue = '';
       }
-      if (finalizedRef.current) return;
-      if (phaseRef.current !== 'live') return;
+    };
+    const onPageHide = () => {
+      if (finalizedRef.current || phaseRef.current !== 'live') return;
       const ivId = interviewIdRef.current;
       if (!ivId || turnsRef.current.length === 0) return;
       finalizedRef.current = true;
       try {
-        fetch(`${API_BASE}/api/realtime/finalize`, {
+        fetch(`${API_BASE}/api/realtime/interrupt`, {
           method: 'POST',
           headers: interviewAuthHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({
-            interview_id: ivId,
-            transcript: turnsRef.current,
-            duration: 0,
-          }),
+          body: JSON.stringify({ interview_id: ivId, transcript: turnsRef.current, duration: secondsRef.current }),
           keepalive: true,
         });
       } catch (_) {
@@ -169,10 +190,10 @@ export default function ConversationalInterviewRoom({
       }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
-    window.addEventListener('pagehide', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
-      window.removeEventListener('pagehide', onBeforeUnload);
+      window.removeEventListener('pagehide', onPageHide);
     };
   }, []);
 
@@ -272,6 +293,12 @@ export default function ConversationalInterviewRoom({
       const sessionData = await tokenResp.json();
       const clientSecret = sessionData.client_secret;
       setRemainingMinutes(sessionData.remaining_minutes ?? null);
+      // An interrupted interview carries on from its conversation and its
+      // time so far; a fresh one has neither.
+      const soFar = Array.isArray(sessionData.transcript) ? sessionData.transcript : [];
+      turnsRef.current = soFar;
+      setTurns(soFar);
+      const elapsed = Number(sessionData.elapsed_seconds) || 0;
 
       // 3) Build the peer connection. The remote audio track plays Alex's voice.
       const pc = new RTCPeerConnection();
@@ -364,10 +391,13 @@ export default function ConversationalInterviewRoom({
       const answerSdp = await sdpResp.text();
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
-      // 6) Live timer + go.
-      const startedAt = Date.now();
+      // 6) Live timer + go. It counts on from the time already taken.
+      const startedAt = Date.now() - elapsed * 1000;
+      secondsRef.current = elapsed;
+      setTimer(elapsed);
       timerRef.current = setInterval(() => {
-        setTimer(Math.floor((Date.now() - startedAt) / 1000));
+        secondsRef.current = Math.floor((Date.now() - startedAt) / 1000);
+        setTimer(secondsRef.current);
       }, 1000);
 
       setPhase('live');
@@ -388,9 +418,17 @@ export default function ConversationalInterviewRoom({
 
   // ─── End interview ────────────────────────────────────────────────────────
   const endInterview = async () => {
+    // With the connection down, the interview is kept to be continued, not
+    // finished on what got through.
+    const dropped = connState !== 'connected';
     setPhase('ended');
     cleanup();
-    await finalize();
+    if (dropped) {
+      setInterrupted(true);
+      await interrupt();
+    } else {
+      await finalize();
+    }
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -471,7 +509,7 @@ export default function ConversationalInterviewRoom({
               <AlertCircle size={18} aria-hidden="true" />
               <span>
                 {connState === 'lost'
-                  ? 'Connection to the interviewer was lost. End the interview and start again from the dashboard.'
+                  ? 'Connection to the interviewer was lost. End the interview here: what you’ve said is saved, and you can continue from your dashboard.'
                   : connState === 'connecting'
                     ? 'Connecting to the interviewer…'
                     : 'Reconnecting to the interviewer…'}
@@ -515,10 +553,21 @@ export default function ConversationalInterviewRoom({
       {phase === 'ended' && (
         <div className="si-state">
           <div className="si-state-icon" aria-hidden="true"><Mic size={30} /></div>
-          <span className="si-eyebrow">Conversation complete</span>
-          <h2>Thanks for talking with us</h2>
-          <p>Your interview has been saved. The hiring team will follow up shortly.</p>
-          <button className="si-button si-button-primary" onClick={() => onExit?.()}>Done</button>
+          {interrupted ? (
+            <>
+              <span className="si-eyebrow">Interview interrupted</span>
+              <h2>You can pick up where you left off</h2>
+              <p>What you’ve said so far is saved. Continue the interview from your dashboard when you’re ready.</p>
+              <button className="si-button si-button-primary" onClick={() => onExit?.()}>Back to dashboard</button>
+            </>
+          ) : (
+            <>
+              <span className="si-eyebrow">Conversation complete</span>
+              <h2>Thanks for talking with us</h2>
+              <p>Your interview has been saved. The hiring team will follow up shortly.</p>
+              <button className="si-button si-button-primary" onClick={() => onExit?.()}>Done</button>
+            </>
+          )}
         </div>
       )}
     </div>
