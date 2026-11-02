@@ -216,6 +216,26 @@ def test_the_worker_opens_the_interview(monkeypatch):
     worker.open_interview(_Session(refuse=True))
 
 
+def test_the_worker_sends_the_interviews_length(monkeypatch):
+    # It was always 0.
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    sent = []
+
+    class _Reply:
+        ok = True
+
+    def post(url, json=None, headers=None, timeout=None):
+        sent.append(json)
+        return _Reply()
+    monkeypatch.setattr(worker.requests, "post", post)
+    worker.post_transcript({"candidate_email": "ada@x.com"}, [{"role": "candidate", "text": "Hello"}],
+                           room_name="interview-a", duration=143.7)
+    assert len(sent) == 1
+    assert (sent[0]["duration"], sent[0]["room_name"]) == (143, "interview-a")
+
+
 def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, monkeypatch):
     # LiveKit's own turn-taking, at medium eagerness, cut Alex off; the voice
     # interview's session is set for a calmer conversation.
