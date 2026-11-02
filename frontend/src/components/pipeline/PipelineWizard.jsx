@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Zap, Loader, FileText, SlidersHorizontal } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
+import RecentRuns from './RecentRuns';
 
 /* Screening: four fields, then the ranked shortlist.
  *
@@ -32,8 +33,11 @@ import { toast, notify } from '../../services/notify';
  * nothing; the nav is how you leave.
  *
  * candidateIds: the candidates chosen on the Candidates page, when some are.
- * Only they are screened; without it, every résumé is. */
-export default function PipelineWizard({ candidateCount = 0, candidateIds, onComplete }) {
+ * Only they are screened; without it, every résumé is.
+ *
+ * onOpenRun: opens a kept run by its id. Given it, the brief lists the
+ * earlier runs under the button. */
+export default function PipelineWizard({ candidateCount = 0, candidateIds, onComplete, onOpenRun }) {
   const [formData, setFormData] = useState({ role: '', jdText: '', skills: '', minExp: '' });
   const [formRunning, setFormRunning] = useState(false);
 
@@ -126,8 +130,9 @@ export default function PipelineWizard({ candidateCount = 0, candidateIds, onCom
           {formRunning ? <><Loader size={16} className="spin" /> Screening {candidateCount} resumes...</> : <><Zap size={16} /> Screen {candidateCount} resumes</>}
         </button>
         <p className="ss-run-note">
-          {candidateIds?.length ? 'Only your selected candidates will be screened.' : 'All uploaded résumés will be screened.'} Results belong to this run.
+          {candidateIds?.length ? 'Only your selected candidates will be screened.' : 'All uploaded résumés will be screened.'} Recent runs are kept, to open again.
         </p>
+        {onOpenRun && <RecentRuns onOpen={onOpenRun} />}
       </div>
 
       {/* Beside the brief: one brief for every person, drawn, the three steps,

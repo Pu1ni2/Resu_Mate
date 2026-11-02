@@ -1018,6 +1018,7 @@ export default function Dashboard() {
                       candidateCount={screeningCandidates.length}
                       candidateIds={selectedIds.length ? screeningCandidates.map(c => c.id) : undefined}
                       onComplete={openRun}
+                      onOpenRun={id => setSearchParams({ view: 'screening', run: String(id) })}
                     />
                   </Suspense>
                 )

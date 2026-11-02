@@ -22,6 +22,18 @@
 .studio-screening .ss-run:hover:not(:disabled) { background: var(--color-forest-hover); }
 .studio-screening .ss-run-note { margin: 14px 0 0; color: var(--color-ink-subtle); font-size: 11px; line-height: 1.6; text-align: center; }
 
+/* ── under the button: the earlier runs, to open again (RecentRuns.jsx) ── */
+.studio-screening .ss-runs { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-line); }
+.studio-screening .ss-runs h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; color: var(--color-ink-subtle); font: 11px/1.5 var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
+.studio-screening .ss-runs ul { margin: 0; padding: 0; list-style: none; }
+.studio-screening .ss-runs li + li { border-top: 1px solid var(--color-line); }
+.studio-screening .ss-runs li button { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; width: 100%; padding: 10px 6px; border: 0; border-radius: var(--radius-control); background: none; color: var(--color-ink); font: inherit; text-align: left; cursor: pointer; }
+.studio-screening .ss-runs li button:hover { background: var(--color-surface-hover); }
+.studio-screening .ss-runs li strong { font-size: 13px; font-weight: 600; }
+.studio-screening .ss-runs li span { color: var(--color-ink-subtle); font-size: 12px; }
+.studio-screening .ss-runs-more { margin-top: 6px; padding: 4px 6px; border: 0; background: none; color: var(--color-accent); font-size: 12px; cursor: pointer; }
+.studio-screening .ss-runs :is(li button, .ss-runs-more):focus-visible { outline: 2px solid #839370; outline-offset: 2px; }
+
 /* ── beside it: one brief for every person ── */
 .studio-screening .ss-process { padding: 27px 22px; }
 .studio-screening .ss-process h2 { margin: 0 0 30px; color: var(--color-forest); font: 43px/1.05 var(--font-serif); letter-spacing: -1px; }

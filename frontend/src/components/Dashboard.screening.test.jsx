@@ -39,7 +39,8 @@ function open(overrides = {}) {
 
 let fetchSpy;
 const runBody = () => {
-  const call = fetchSpy.mock.calls.find(([url]) => String(url).includes('/api/pipeline/run'));
+  // The run itself, not the list of earlier runs under the brief.
+  const call = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/api/pipeline/run'));
   return call && JSON.parse(call[1].body);
 };
 
@@ -53,7 +54,7 @@ async function runFor(role, button) {
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async url => ({
-    ok: true, status: 200, json: async () => (String(url).includes('/api/pipeline/run') ? RUN : {}),
+    ok: true, status: 200, json: async () => (String(url).endsWith('/api/pipeline/run') ? RUN : {}),
   }));
 });
 

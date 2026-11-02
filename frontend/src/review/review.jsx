@@ -187,6 +187,12 @@ export function Review() {
   );
 }
 
+// Screening runs kept from before, as GET /pipeline/runs lists them.
+const KEPT_RUNS = [
+  { run_id: 2, role: 'Product Designer', created_at: '2026-10-30T15:20:00' },
+  { run_id: 1, role: 'UX Researcher', created_at: '2026-10-28T10:05:00' },
+];
+
 /* What the backend would answer, in its own shapes (fixtures.js), or null for
  * an action the review page doesn't do. */
 function respond(path, body = {}) {
@@ -219,6 +225,13 @@ function respond(path, body = {}) {
       contact: {},
     };
   }
+  // Two kept screening runs, listed under the brief, each opening as the
+  // sample run for its role.
+  if (path.endsWith('/pipeline/runs')) {
+    return { runs: KEPT_RUNS.map(run => ({ ...run, total_screened: pipeline(undefined, run.role).total_screened })) };
+  }
+  const kept = KEPT_RUNS.find(run => path.endsWith(`/pipeline/runs/${run.run_id}`));
+  if (kept) return { ...pipeline(undefined, kept.role), ...kept };
   if (path.includes('pipeline/run')) return pipeline(body.candidate_ids, body.role);
   if (path.includes('hiring-agent')) {
     return {
