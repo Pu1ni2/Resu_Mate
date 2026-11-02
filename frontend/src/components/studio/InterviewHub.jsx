@@ -6,9 +6,13 @@ import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import InterviewReportView from '../shared/InterviewReportView';
 import ConversationSculpture from './ConversationSculpture';
 
-const STATUS_LABELS = { pending: 'Invitation ready', in_progress: 'In progress', completed: 'Completed' };
+const STATUS_LABELS = { pending: 'Invitation ready', in_progress: 'In progress', interrupted: 'Interrupted', completed: 'Completed' };
 const KIND_LABELS = { conversational: 'Voice interview', avatar: 'Avatar interview' };
 const FILTERS = [['all', 'All interviews'], ['pending', 'Invitations'], ['in_progress', 'In progress'], ['completed', 'Completed']];
+// Started and not finished: an interrupted interview, waiting for the
+// candidate to continue it, counts and filters as in progress.
+const STAGE = { interrupted: 'in_progress' };
+const stageOf = status => STAGE[status] || status;
 
 /* The dashboard's Interviews view (styles/studio-dashboard.css): the latest
  * interview for each candidate, from its invitation to its report, which
@@ -62,8 +66,8 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
       : candidate?.name || result?.candidate_name || email;
     return { ...interview, email, candidate, result, name };
   });
-  const visible = interviews.filter(row => filter === 'all' || row.status === filter);
-  const count = status => (loading || error ? '—' : String(interviews.filter(r => r.status === status).length).padStart(2, '0'));
+  const visible = interviews.filter(row => filter === 'all' || stageOf(row.status) === filter);
+  const count = status => (loading || error ? '—' : String(interviews.filter(r => stageOf(r.status) === status).length).padStart(2, '0'));
 
   return (
     <div className="sd-interviews">

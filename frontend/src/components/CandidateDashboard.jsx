@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
@@ -119,28 +119,37 @@ export default function CandidateDashboard() {
   // The saved session can be a day old: check the sign-in, which sends an
   // expired one back to sign in (candidateFetch), and refresh the interview,
   // which the manager may have set up or changed since.
+  const refreshSession = useCallback(async () => {
+    try {
+      const resp = await candidateFetch(`${API_BASE}/api/chat/candidate/me`);
+      if (!resp.ok) return;
+      const me = await resp.json();
+      if (!me?.access || !aliveRef.current) return;
+      setCandidateSession(prev => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev, name: me.name || prev.name, has_interview: me.has_interview,
+          interview_config: me.interview_config, interview_completed: me.interview_completed,
+        };
+        try { localStorage.setItem('resumate_candidate', JSON.stringify(updated)); } catch { /* storage unavailable */ }
+        return updated;
+      });
+    } catch { /* offline: keep the saved session */ }
+  }, [setCandidateSession]);
+
   useEffect(() => {
     if (!candidateSession?.email) return;
-    (async () => {
-      try {
-        const resp = await candidateFetch(`${API_BASE}/api/chat/candidate/me`);
-        if (!resp.ok) return;
-        const me = await resp.json();
-        if (!me?.access || !aliveRef.current) return;
-        setCandidateSession(prev => {
-          if (!prev) return prev;
-          const updated = {
-            ...prev, name: me.name || prev.name, has_interview: me.has_interview,
-            interview_config: me.interview_config, interview_completed: me.interview_completed,
-          };
-          try { localStorage.setItem('resumate_candidate', JSON.stringify(updated)); } catch { /* storage unavailable */ }
-          return updated;
-        });
-      } catch { /* offline: keep the saved session */ }
-    })();
+    refreshSession();
     // Once per signed-in candidate.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateSession?.email]);
+
+  // Back from an interview room without finishing: the interview may have
+  // been interrupted since, to be continued.
+  const leaveInterviewRoom = () => {
+    setShowInterviewRoom(false);
+    refreshSession();
+  };
 
   // Advisor chat
   const [advisorMode, setAdvisorMode] = useState('general');
@@ -335,7 +344,7 @@ export default function CandidateDashboard() {
             candidateName={candidateSession.name || 'Candidate'}
             candidateEmail={candidateSession.email}
             onComplete={handleInterviewComplete}
-            onExit={() => setShowInterviewRoom(false)}
+            onExit={leaveInterviewRoom}
           />
         </Suspense>
       );
@@ -347,7 +356,7 @@ export default function CandidateDashboard() {
           candidateName={candidateSession.name || 'Candidate'}
           candidateEmail={candidateSession.email}
           onComplete={handleInterviewComplete}
-          onExit={() => setShowInterviewRoom(false)}
+          onExit={leaveInterviewRoom}
         />
       </Suspense>
     );
@@ -794,6 +803,8 @@ export default function CandidateDashboard() {
                     {(() => {
                       const ivMode = (candidateSession.interview_config?.mode || 'avatar').toLowerCase();
                       const isVoice = ivMode === 'conversational';
+                      // Started and cut off: it carries on from what was said.
+                      const resuming = candidateSession.interview_config?.status === 'interrupted';
                       return (
                         <>
                           <div className="cd-interview-ready-icon">
@@ -808,6 +819,9 @@ export default function CandidateDashboard() {
                           <p className="cd-interview-meta">
                             {candidateSession.interview_config?.role || 'General'} · {candidateSession.interview_config?.num_questions || 8} questions · {candidateSession.interview_config?.level || 'Mid-Level'}
                           </p>
+                          {resuming && (
+                            <p className="cd-interview-meta">Your interview was interrupted. What you said is saved, and it continues from there.</p>
+                          )}
                           <div className="cd-interview-rules">
                             {isVoice ? (
                               <>
@@ -826,7 +840,7 @@ export default function CandidateDashboard() {
                           </div>
                           <button className="cd-start-interview" onClick={() => setShowInterviewRoom(true)}>
                             {isVoice ? <Mic size={18} /> : <Camera size={18} />}
-                            {isVoice ? ' Start Voice Interview' : ' Enter Interview Room'}
+                            {resuming ? ' Continue Interview' : isVoice ? ' Start Voice Interview' : ' Enter Interview Room'}
                           </button>
                         </>
                       );

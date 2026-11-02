@@ -29,13 +29,13 @@ const verdictTone = {
 /* Optional interview-state pill. Distinct from the verdict pill: the verdict is
  * a judgement about the resume, this is a fact about a process. Shown as an
  * outline rather than a filled tone so the two do not compete. */
-const STATUS_LABEL = { pending: 'Invited', in_progress: 'In progress', completed: 'Done' };
+const STATUS_LABEL = { pending: 'Invited', in_progress: 'In progress', interrupted: 'Interrupted', completed: 'Done' };
 
 function StatusPill({ status }) {
   const label = STATUS_LABEL[status?.status];
   if (!label) return null;
   const isVoice = status.mode === 'conversational';
-  const Icon = status.status === 'in_progress' ? Clock : isVoice ? Mic : Video;
+  const Icon = ['in_progress', 'interrupted'].includes(status.status) ? Clock : isVoice ? Mic : Video;
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-subtle"
