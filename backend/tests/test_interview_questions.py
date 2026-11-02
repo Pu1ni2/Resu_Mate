@@ -318,3 +318,28 @@ def test_the_worker_ends_the_interview_at_its_time_limit(monkeypatch):
     assert closed == ["room"]
     # A room made before the server sent a limit gets its default.
     assert worker.time_limit_seconds({}) == 8 * 60
+
+
+def test_the_worker_sends_the_transcript_so_far(monkeypatch):
+    # It was sent only as the worker shut down.
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    sent = []
+
+    class _Reply:
+        ok = True
+
+    def post(url, json=None, headers=None, timeout=None):
+        sent.append((url, json, headers))
+        return _Reply()
+    monkeypatch.setattr(worker.requests, "post", post)
+    so_far = [{"role": "interviewer", "text": "Tell me about a project you led."}]
+    worker.post_checkpoint({"candidate_email": "ada@x.com"}, so_far, "interview-a")
+    url, body, headers = sent[0]
+    assert url.endswith("/api/chat/transcript-checkpoint")
+    assert body == {"candidate_email": "ada@x.com", "room_name": "interview-a", "transcript": so_far}
+    assert headers == {"X-Agent-Token": worker.AGENT_SHARED_SECRET}
+    # Nothing to send, nothing sent.
+    worker.post_checkpoint({"candidate_email": "ada@x.com"}, [], "interview-a")
+    assert len(sent) == 1
