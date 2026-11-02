@@ -45,8 +45,9 @@ export default function ConversationalInterviewRoom({
   const [audioLevel, setAudioLevel] = useState(0);
   const [timer, setTimer] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState(null);
-  // "connected" | "checking" | "lost" — drives a small reconnect-style banner
-  // when the candidate's network blips so they don't keep talking to nothing.
+  // "connecting" (the first time) | "connected" | "checking" (coming back) |
+  // "lost" — drives a small reconnect-style banner when the candidate's
+  // network blips so they don't keep talking to nothing.
   const [connState, setConnState] = useState('connected');
 
   const pcRef = useRef(null);
@@ -233,7 +234,7 @@ export default function ConversationalInterviewRoom({
     setPhase('connecting');
     setError(null);
     setTurns([]);
-    setConnState('checking');
+    setConnState('connecting');
     userTurnCountRef.current = 0;
 
     try {
@@ -289,7 +290,9 @@ export default function ConversationalInterviewRoom({
       pc.oniceconnectionstatechange = () => {
         const s = pc.iceConnectionState;
         if (s === 'connected' || s === 'completed') setConnState('connected');
-        else if (s === 'checking' || s === 'new') setConnState('checking');
+        // Still the first connection until it has connected once: the
+        // candidate was told "Reconnecting" before anything had connected.
+        else if (s === 'checking' || s === 'new') setConnState((was) => (was === 'connecting' ? was : 'checking'));
         else if (s === 'disconnected') setConnState('lost');
         else if (s === 'failed' || s === 'closed') setConnState('lost');
       };
@@ -469,7 +472,9 @@ export default function ConversationalInterviewRoom({
               <span>
                 {connState === 'lost'
                   ? 'Connection to the interviewer was lost. End the interview and start again from the dashboard.'
-                  : 'Reconnecting to the interviewer…'}
+                  : connState === 'connecting'
+                    ? 'Connecting to the interviewer…'
+                    : 'Reconnecting to the interviewer…'}
               </span>
             </div>
           )}
