@@ -82,6 +82,12 @@
 .studio-dashboard .delete-btn { border: 0; background: none; color: #8b8f80; opacity: 1; }
 .studio-dashboard .delete-btn:hover { background: #f4e5dc; color: #a13e2e; }
 .studio-dashboard .selected-check { background: #60734d; color: var(--color-ink-inverse); }
+/* Deleting the whole collection, in a menu of its own. */
+.studio-dashboard .sd-collection-menu { position: relative; }
+.studio-dashboard .sd-collection-menu > summary { list-style: none; cursor: pointer; }
+.studio-dashboard .sd-collection-menu > summary::-webkit-details-marker { display: none; }
+.studio-dashboard .sd-collection-menu-items { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; padding: 8px; border: 1px solid var(--color-line); background: var(--color-surface); box-shadow: 0 12px 20px -12px #30382f2e; white-space: nowrap; }
+
 /* The box a card's tick goes in, before it is selected. */
 .studio-dashboard .selected-check.is-empty { border: 1.5px solid #aab494; background: var(--color-surface); }
 .studio-dashboard .sd-open-file {

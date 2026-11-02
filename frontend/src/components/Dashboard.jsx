@@ -734,9 +734,16 @@ export default function Dashboard() {
                         {query ? `Select all shown (${shownResumeIds.length})` : 'Select All'}
                       </button>
                       <button onClick={clearSelection} className="btn btn-ghost btn-sm">Clear</button>
-                      <button onClick={() => setConfirmingClearAll(true)} className="btn btn-danger btn-sm">
-                        Delete All
-                      </button>
+                      {/* Deleting the whole collection, in a menu: it sat beside the
+                          everyday buttons, a slip away from Clear. */}
+                      <details className="sd-collection-menu">
+                        <summary className="btn btn-ghost btn-sm">More</summary>
+                        <div className="sd-collection-menu-items">
+                          <button onClick={() => setConfirmingClearAll(true)} className="btn btn-danger btn-sm">
+                            Delete all candidates…
+                          </button>
+                        </div>
+                      </details>
                       <ConfirmDialog
                         open={confirmingClearAll}
                         title={candidates.length === 1 ? 'Delete 1 candidate?' : `Delete all ${candidates.length} candidates?`}
