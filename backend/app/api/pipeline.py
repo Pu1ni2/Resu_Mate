@@ -17,8 +17,7 @@ from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag, primary_email
-from app.services import db_service
-from app.services import interview_modes
+from app.services import interview_modes, interview_setup
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
 from app.models.candidate import Interview
@@ -197,23 +196,19 @@ async def batch_action(
             outcomes.append(result)
             continue
 
-        # ── Create interview record (owned by this manager) ───────────────────
+        # ── Create the interview (owned by this manager) ──────────────────────
+        # With the candidate's own questions, at the chosen number, as the
+        # candidate file makes them (app/services/interview_setup.py).
         try:
-            interview = await db_service.create_interview(db, {
-                "candidate_id": cid,
-                "manager_id": mgr,
-                "candidate_email": email,
-                "role": req.role,
-                "level": req.level,
-                "num_questions": req.num_questions,
-                "focus_areas": req.focus_areas,
+            interview, _ = await interview_setup.create_interview(
+                db, manager_id=mgr, candidate=candidate, candidate_id=cid, email=email, name=name,
+                role=req.role, level=req.level, num_questions=req.num_questions,
+                focus_areas=req.focus_areas,
                 # Voice when avatar interviews aren't set up here.
-                "mode": interview_modes.effective_mode(req.mode),
-            })
+                mode=interview_modes.effective_mode(req.mode),
+            )
             if interview is None:
                 raise RuntimeError("the interview could not be saved")
-            # Grant portal access (owned by this manager)
-            await db_service.create_candidate_access(db, email, name, cid, manager_id=mgr)
             result["interview_created"] = True
             result["interview_id"] = interview.id
             result["mode"] = interview.mode

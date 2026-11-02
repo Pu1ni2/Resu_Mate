@@ -21,11 +21,11 @@ from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import db_service
-from app.services import interview_modes
+from app.services import interview_modes, interview_setup
 from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
-from app.agents.technical_agent import clean_questions, technical_agent
+from app.agents.technical_agent import technical_agent
 from app.agents.research_agent import research_agent
 from app.tools.openai_tool import openai_tool
 from app.tools.voice_tool import voice_tool
@@ -834,51 +834,22 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
     if not candidate:
         raise HTTPException(404, "Candidate not found")
 
-    # Grant portal access (owned by this manager)
-    await db_service.create_candidate_access(db, email, req.candidate_name or "", req.candidate_id, manager_id=mgr)
-
     # The kind it will actually run as: voice when avatar interviews aren't
     # set up here (see app/services/interview_modes.py).
     mode = interview_modes.effective_mode(req.mode)
 
-    # Create interview record (owned by this manager)
-    interview = await db_service.create_interview(db, {
-        "candidate_id": req.candidate_id,
-        "manager_id": mgr,
-        "candidate_email": email,
-        "role": req.role or "General",
-        "level": req.level or "Mid-Level",
-        "experience_required": req.experience_required,
-        "num_questions": req.num_questions,
-        "focus_areas": req.focus_areas or [],
-        "mode": mode,
-    })
-    # create_interview reports a failed insert as None. It was ignored, so a
-    # manager was told the interview was created, and the invitation went out,
-    # when nothing had been saved: a refused foreign key, for one.
+    # Portal access, the interview and its questions, as every other place
+    # that creates an interview does (app/services/interview_setup.py).
+    interview, resume_intel = await interview_setup.create_interview(
+        db, manager_id=mgr, candidate=candidate, candidate_id=req.candidate_id, email=email,
+        name=req.candidate_name, role=req.role, level=req.level, num_questions=req.num_questions,
+        focus_areas=req.focus_areas, mode=mode, experience_required=req.experience_required,
+    )
+    # A failed insert used to be ignored, so a manager was told the interview
+    # was created, and the invitation went out, when nothing had been saved: a
+    # refused foreign key, for one.
     if interview is None:
         raise HTTPException(500, "Could not save the interview. Please try again.")
-
-    # Questions for this candidate and role, and what in the résumé to check,
-    # kept on the interview. The analysis used to be made and thrown away: the
-    # voice interview reads interview.questions and room_config, both empty, so
-    # every voice interview asked the same five generic questions.
-    resume_intel = None
-    try:
-        generated = await technical_agent.generate_smart_questions(
-            interview.role, interview.level, req.num_questions, req.focus_areas or [],
-            req.candidate_name or candidate.get("name") or "the candidate", candidate,
-        )
-        resume_intel = generated.get("resume_intelligence")
-        questions = clean_questions(generated.get("questions"))[:req.num_questions]
-        if questions:
-            interview.questions = questions
-        if isinstance(resume_intel, dict) and not resume_intel.get("analysis_failed"):
-            interview.room_config = {**(interview.room_config or {}), "resume_intelligence": resume_intel}
-        await db.commit()
-    except Exception as e:
-        # The interview stands: the voice interview falls back to its own questions.
-        logger.warning("interview questions could not be generated: %s", e)
 
     config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",
