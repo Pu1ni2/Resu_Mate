@@ -331,6 +331,10 @@ export default function Dashboard() {
       if (candidateSort === 'experience') return (b.candidate.total_experience_years || 0) - (a.candidate.total_experience_years || 0);
       return a.index - b.index;
     });
+  // What "Select all" picks: the résumés the search shows. And the selected
+  // ones it hides, which a bulk action would still reach.
+  const shownResumeIds = visibleCandidates.filter(({ candidate }) => candidate.is_resume !== false).map(({ candidate }) => candidate.id);
+  const hiddenSelected = selectedIds.filter(id => !visibleCandidates.some(({ candidate }) => candidate.id === id)).length;
 
   useEffect(() => {
     if (tab === 'chat') initChat();
@@ -726,7 +730,9 @@ export default function Dashboard() {
                         </button>
                       )}
                       {/* Jarvis opens from the sidebar, on every view. */}
-                      <button onClick={selectAll} className="btn btn-secondary btn-sm">Select All</button>
+                      <button onClick={() => selectAll(shownResumeIds)} className="btn btn-secondary btn-sm">
+                        {query ? `Select all shown (${shownResumeIds.length})` : 'Select All'}
+                      </button>
                       <button onClick={clearSelection} className="btn btn-ghost btn-sm">Clear</button>
                       <button onClick={() => setConfirmingClearAll(true)} className="btn btn-danger btn-sm">
                         Delete All
@@ -775,6 +781,12 @@ export default function Dashboard() {
                       </select>
                     </div>
                   </div>
+                  {hiddenSelected > 0 && (
+                    <p className="sd-selection-note" role="status">
+                      {hiddenSelected === 1 ? '1 selected candidate isn’t shown by this search.' : `${hiddenSelected} selected candidates aren’t shown by this search.`}{' '}
+                      <button type="button" onClick={() => setCandidateSearch('')}>Show all</button>
+                    </p>
+                  )}
                   {visibleCandidates.length === 0 && (
                     <div className="sd-no-results">
                       No candidates match “{candidateSearch}”.{' '}

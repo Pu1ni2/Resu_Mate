@@ -175,6 +175,9 @@
 .studio-dashboard .sd-loading { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .studio-dashboard .sd-error { border-left: 3px solid var(--color-critical); }
 .studio-dashboard .sd-no-results button { border: 0; background: none; color: #a13e2e; text-decoration: underline; cursor: pointer; }
+/* Selected candidates a search hides: said, so a bulk action doesn't reach them unseen. */
+.studio-dashboard .sd-selection-note { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink-subtle); font-size: 13px; }
+.studio-dashboard .sd-selection-note button { border: 0; background: none; color: #a13e2e; text-decoration: underline; cursor: pointer; }
 
 /* ── the Interviews view (components/studio/InterviewHub.jsx) ── */
 .studio-dashboard .sd-interview-intro {

@@ -193,9 +193,12 @@ export const AppProvider = ({ children }) => {
     });
   }, []);
   
-  const selectAll = useCallback(() => {
-    setSelectedIds(candidates.map(c => c.id));
-  }, [candidates]);
+  // The given candidates, added to the selection: the ones a list shows.
+  // Selecting every candidate picked people a search had hidden, and files
+  // that aren't résumés, so a bulk invite reached people never seen.
+  const selectAll = useCallback((ids) => {
+    setSelectedIds(prev => [...new Set([...prev, ...ids])]);
+  }, []);
   
   const clearSelection = useCallback(() => setSelectedIds([]), []);
 

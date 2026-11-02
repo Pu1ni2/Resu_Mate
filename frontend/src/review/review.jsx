@@ -101,7 +101,7 @@ export function Review() {
       setSelectedIds([]);
     },
     toggleSelection: id => setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])),
-    selectAll: () => setSelectedIds(candidates.map(c => c.id)),
+    selectAll: ids => setSelectedIds(prev => [...new Set([...prev, ...ids])]),
     clearSelection: () => setSelectedIds([]),
     anonymize, setAnonymize,
     analytics: computeAnalytics(selectedCandidates),
