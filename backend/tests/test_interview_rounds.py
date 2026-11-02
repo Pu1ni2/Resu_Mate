@@ -1,8 +1,10 @@
-"""A candidate's earlier interview stays readable once another is made.
+"""A candidate's interviews, kept apart once there's more than one.
 
 The candidate's report, Jarvis's report lookup, the PDF export and the résumé
 comparison took the newest interview for the address, so a second round,
-still pending, hid the first round's report from all of them.
+still pending, hid the first round's report from all of them. The video room
+opened the newest too, and saved what it measured there, not on the
+interview being taken.
 """
 import asyncio
 import io
@@ -10,6 +12,7 @@ import json
 from datetime import datetime, timedelta
 
 import pypdf
+import pytest
 
 from conftest import auth_headers, register
 
@@ -103,3 +106,80 @@ def test_the_comparison_is_with_the_interview_asked_for(client, monkeypatch):
                     json={"candidate_id": cid, "candidate_email": "two7@x.com", "interview_id": first})
     assert r.status_code == 200, r.text
     assert compared == [FIRST_REPORT]
+
+
+# ── the video room's interview ────────────────────────────────────────────────
+
+async def _interviews(manager_id, email, *fields):
+    """Interviews for one candidate, made in this order with these fields: their ids."""
+    from app.core import database
+    from app.models.candidate import Candidate, Interview
+    now = datetime.utcnow()
+    async with database.async_session() as db:
+        cand = Candidate(manager_id=manager_id, name="Cand", email=email)
+        db.add(cand)
+        await db.flush()
+        rows = [Interview(candidate_id=cand.id, manager_id=manager_id, candidate_email=email, role="Dev",
+                          created_at=now - timedelta(hours=len(fields) - i), **f) for i, f in enumerate(fields)]
+        db.add_all(rows)
+        await db.commit()
+        return [row.id for row in rows]
+
+
+async def _row(iid):
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services.db_service import report_dict
+    async with database.async_session() as db:
+        iv = await db.get(Interview, iid)
+        return iv.status, report_dict(iv.report), iv.room_name
+
+
+def _cand(email):
+    return {"Authorization": f"Bearer {create_candidate_token(email)}"}
+
+
+def test_the_numbers_go_on_the_interview_the_room_ran(client):
+    _, m = register(client, "r8@co.com")
+    # The first round being taken, and a second made meanwhile.
+    taken, newer = _run(_interviews(m["id"], "two8@x.com", {"status": "in_progress"}, {"status": "pending"}))
+    r = client.post("/api/chat/save-interview-result", headers=_cand("two8@x.com"), json={
+        "candidate_email": "two8@x.com", "interview_id": taken,
+        "report": {"violations": 3, "terminated": True, "timer": 90},
+    })
+    assert r.status_code == 200, r.text
+    status, report, _ = _run(_row(taken))
+    assert status == "completed" and report["violations"] == 3
+    assert _run(_row(newer))[:2] == ("pending", {})
+
+
+def test_no_one_elses_interview_can_be_named(client):
+    _, m = register(client, "r9@co.com")
+    (theirs,) = _run(_interviews(m["id"], "other9@x.com", {"status": "in_progress"}))
+    _run(_interviews(m["id"], "two9@x.com", {"status": "in_progress"}))
+    r = client.post("/api/chat/save-interview-result", headers=_cand("two9@x.com"), json={
+        "candidate_email": "two9@x.com", "interview_id": theirs, "report": {"violations": 3, "terminated": True},
+    })
+    assert r.json()["status"] == "no interview"
+    assert _run(_row(theirs))[:2] == ("in_progress", {})
+
+
+@pytest.fixture()
+def livekit(monkeypatch):
+    from app.api import livekit_routes
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "avatar_interviews", True)
+    for key in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"):
+        monkeypatch.setenv(key, "set")
+        monkeypatch.setattr(livekit_routes, key, f"test-{key.lower()}-long-enough-for-hs256")
+
+
+def test_the_room_opens_the_interview_named(client, livekit):
+    _, m = register(client, "r10@co.com")
+    first, second = _run(_interviews(m["id"], "two10@x.com", {"status": "pending", "mode": "avatar"},
+                                     {"status": "pending", "mode": "avatar"}))
+    r = client.post("/api/livekit/create-room", headers=_cand("two10@x.com"),
+                    json={"candidate_email": "two10@x.com", "interview_id": first, "consent": True})
+    assert r.status_code == 200, r.text
+    assert _run(_row(first))[2] == r.json()["room_name"]
+    assert _run(_row(second))[2] is None
