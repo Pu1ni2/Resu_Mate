@@ -104,10 +104,10 @@ def test_the_interview_stands_when_the_questions_cannot_be_made(client, generato
 # ── the voice interview ───────────────────────────────────────────────────────
 
 def test_the_voice_interview_asks_the_saved_questions(client, generator):
-    from app.api.realtime import _build_instructions
+    from app.services.interview_script import build_instructions
     tok, _ = register(client, "q4@co.com")
     _create(client, tok, "q4@x.com")
-    instructions = _build_instructions(_interview("q4@x.com"), "Ada", 8)
+    instructions = build_instructions(_interview("q4@x.com"), "Ada", 8)
     assert "How do you size partitions?" in instructions
     assert "Ask about partitioning" in instructions
     assert "Walk me through your background" not in instructions  # the generic fallback

@@ -11,9 +11,7 @@ Stripped: topic-advance tool, multi-format scopes, resume-from-prior, cohort
 resolver. ResuMate's interview shape is simpler — one fixed question list per
 interview, ordered.
 """
-import json
 import logging
-from pathlib import Path
 from typing import List, Optional
 
 import httpx
@@ -31,12 +29,12 @@ from app.models.candidate import CandidateAccess, Interview
 from app.services import db_service
 from app.services.consent import require_consent
 from app.services.auth import Actor, get_current_actor
+from app.services.interview_script import build_instructions
 
 logger = logging.getLogger("resumate.realtime")
 
 router = APIRouter(prefix="/realtime", tags=["Realtime"])
 
-PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 OPENAI_REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets"
 
 # Allowlist so a typo in env vars surfaces as a clean 400 instead of an opaque
@@ -76,57 +74,6 @@ class RealtimeSessionResponse(BaseModel):
     max_total_minutes: int
     remaining_minutes: int
     interview_id: int
-
-
-def _load_prompt() -> str:
-    with open(PROMPTS_DIR / "realtime_interview.txt", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def _build_instructions(interview: Interview, candidate_name: str, max_total_minutes: int) -> str:
-    """Concatenate base prompt + a JSON context block.
-
-    The model reads the JSON literally, so field names must stay stable —
-    realtime_interview.txt references them by name (questions, num_questions,
-    role, level, candidate_name, tone, verification_targets, remaining_minutes).
-    """
-    base = _load_prompt()
-    questions = interview.questions or []
-    # If the hiring manager never pre-generated questions, fall back to a
-    # default 5-question role-aware list. The realtime model copes fine with
-    # generic prompts; the report flow is the same shape regardless.
-    if not questions:
-        questions = [
-            f"Walk me through your background and what drew you to {interview.role or 'this role'}.",
-            "Tell me about a recent project you're proud of and your specific role in it.",
-            "What's a technical challenge you hit recently, and how did you work through it?",
-            "How do you stay current with new tools and approaches in your field?",
-            "What kind of team and feedback style helps you do your best work?",
-        ]
-
-    # Resume-intelligence verification targets travel inside room_config so the
-    # avatar interview's prompt builder can read the same shape. For the
-    # conversational path we just surface them verbatim and let the prompt
-    # decide whether to probe.
-    verification_targets: List[dict] = []
-    config = interview.room_config or {}
-    if isinstance(config, dict):
-        ri = config.get("resume_intelligence") or {}
-        if isinstance(ri, dict):
-            verification_targets = ri.get("verification_targets") or []
-
-    context = {
-        "candidate_name": candidate_name or "the candidate",
-        "role": interview.role or "the role",
-        "level": interview.level or "Mid-Level",
-        "focus_areas": interview.focus_areas or [],
-        "questions": questions,
-        "num_questions": len(questions),
-        "verification_targets": verification_targets[:4],
-        "tone": "warm, sharp, direct, professional",
-        "remaining_minutes": max_total_minutes,
-    }
-    return base + "\n\n```json\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n```\n"
 
 
 async def _authorized_interview(db: AsyncSession, actor: Actor, interview_id: int) -> Interview:
@@ -221,7 +168,7 @@ async def create_realtime_session(
 
     max_total_minutes = int(settings.realtime_max_total_minutes or 8)
     remaining_minutes = max_total_minutes  # MVP: no rolling budget across sessions
-    instructions = _build_instructions(interview, candidate_name, remaining_minutes)
+    instructions = build_instructions(interview, candidate_name, remaining_minutes)
 
     session_cfg = {
         "type": "realtime",

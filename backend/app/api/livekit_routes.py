@@ -22,12 +22,14 @@ load_dotenv(os.environ.get("RESUMATE_ENV_FILE") or find_dotenv())
 
 import jwt  # PyJWT
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.models.candidate import Interview
 from app.services.auth import Actor, get_current_actor, verify_agent_token
 from app.services import interview_modes
 from app.services.consent import require_consent
+from app.services.interview_script import build_instructions
 
 router = APIRouter(prefix="/api/livekit", tags=["livekit"])
 
@@ -178,6 +180,11 @@ async def create_room(
         "candidate_name": candidate_name,
         "candidate_email": candidate_email,
         "created_at": time.time(),
+        # The voice interview's script, for the worker to interview by. Its own
+        # was shorter, without the rules to ask every question in order, never
+        # stall and close properly. Made before room_config is replaced below,
+        # as it reads the résumé checks saved there.
+        "instructions": build_instructions(interview, candidate_name, int(settings.realtime_max_total_minutes or 8)),
     }
 
     interview.room_name = room_name

@@ -100,6 +100,16 @@ STRUCTURE: 1. IMMEDIATELY greet: "Hi {candidate}! I'm Alex, interviewing you for
 VOICE: Conversational, medium pace, friendly but professional. No emojis or markdown."""
 
 
+def instructions_for(config):
+    """The script Alex interviews by: the server's, which is the voice
+    interview's too (app/services/interview_script.py). Rooms made before
+    the server sent one get the worker's own, build_system_prompt."""
+    instructions = config.get("instructions")
+    if isinstance(instructions, str) and instructions.strip():
+        return instructions
+    return build_system_prompt(config)
+
+
 def post_transcript(config: dict, transcript: list, room_name: str = ""):
     """POST accumulated transcript to the backend interview-report endpoint.
 
@@ -213,7 +223,7 @@ async def entrypoint(ctx: JobContext):
             logger.warning(f"Simli failed: {e}")
 
     await session.start(
-        agent=Agent(instructions=build_system_prompt(config)),
+        agent=Agent(instructions=instructions_for(config)),
         room=ctx.room,
     )
     logger.info("Interview agent running!")
