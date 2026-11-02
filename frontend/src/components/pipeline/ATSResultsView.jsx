@@ -70,12 +70,18 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
     );
   };
 
+  // Whether every row shown is selected: by who is selected, not how many.
+  // Comparing counts, a tab with as many rows as there were picks on another
+  // showed "Deselect all", and pressing it cleared those other picks.
+  const shownIds = filtered.map(r => r.candidate_id);
+  const allShownSelected = shownIds.length > 0 && shownIds.every(id => selectedIds.includes(id));
+  const selectedElsewhere = selectedIds.filter(id => !shownIds.includes(id)).length;
+
+  // Only the rows shown change; picks on other tabs stay.
   const toggleAll = () => {
-    if (selectedIds.length === filtered.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filtered.map(r => r.candidate_id));
-    }
+    setSelectedIds(prev => (allShownSelected
+      ? prev.filter(id => !shownIds.includes(id))
+      : [...new Set([...prev, ...shownIds])]));
   };
 
   const selectedCandidates = results.filter(r => selectedIds.includes(r.candidate_id));
@@ -186,9 +192,11 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
               onClick={toggleAll}
               className="border-0 bg-transparent p-0 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:text-ink"
             >
-              {selectedIds.length === filtered.length ? 'Deselect all' : 'Select all'}
+              {allShownSelected ? 'Deselect all' : 'Select all'}
             </button>
-            <span className="text-[12px] text-ink-subtle">{selectedIds.length} selected</span>
+            <span className="text-[12px] text-ink-subtle">
+              {selectedIds.length} selected{selectedElsewhere > 0 ? `, ${selectedElsewhere} on other tabs` : ''}
+            </span>
           </div>
         )}
 
