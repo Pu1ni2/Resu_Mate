@@ -60,6 +60,7 @@ export default function ConversationalInterviewRoom({
   const animRef = useRef(0);
   const timerRef = useRef(null);
   const secondsRef = useRef(0); // the timer, for the page-closing handler
+  const limitSecondsRef = useRef(0); // the interview's time limit, once known
   const userTurnCountRef = useRef(0);
   const turnsRef = useRef([]);
   const phaseRef = useRef('setup');
@@ -293,6 +294,8 @@ export default function ConversationalInterviewRoom({
       const sessionData = await tokenResp.json();
       const clientSecret = sessionData.client_secret;
       setRemainingMinutes(sessionData.remaining_minutes ?? null);
+      // The whole interview's limit; the timer counts every session of it.
+      limitSecondsRef.current = (Number(sessionData.max_total_minutes) || 0) * 60;
       // An interrupted interview carries on from its conversation and its
       // time so far; a fresh one has neither.
       const soFar = Array.isArray(sessionData.transcript) ? sessionData.transcript : [];
@@ -430,6 +433,15 @@ export default function ConversationalInterviewRoom({
       await finalize();
     }
   };
+
+  // At its time limit the interview ends. The call runs between this page and
+  // OpenAI, so only the page can stop it; the interviewer is told the time it
+  // has, and closes within it.
+  useEffect(() => {
+    if (phase === 'live' && limitSecondsRef.current && timer >= limitSecondsRef.current) endInterview();
+    // Each second, and endInterview is made anew each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer, phase]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   // A page of its own over the rest of the app (studio-interview.css).
