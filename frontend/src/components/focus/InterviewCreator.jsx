@@ -18,8 +18,12 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   const [interviewMode, setInterviewMode] = useState('conversational');
   const [interviewCreating, setInterviewCreating] = useState(false);
   const [sendInvite, setSendInvite] = useState(true);
-  // What the server did: { mode, inviteSent, inviteError, portalLink }.
+  // What the server did: { mode, inviteSent, inviteError, portalLink,
+  // interviewId, questions }.
   const [created, setCreated] = useState(null);
+  // The questions being edited, one a line; null when not editing.
+  const [questionsDraft, setQuestionsDraft] = useState(null);
+  const [savingQuestions, setSavingQuestions] = useState(false);
 
   // The address the scan found, unless one has been typed already.
   useEffect(() => {
@@ -54,6 +58,8 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
         inviteSent: !!data.invite_sent,
         inviteError: data.invite_error || null,
         portalLink: data.portal_link || '',
+        interviewId: data.interview_config?.interview_id || null,
+        questions: data.interview_config?.questions || [],
       });
       toast(data.invite_sent ? 'Interview created and invitation emailed.' : 'Interview created. Send the candidate the sign-in link.', 'success');
       // The candidate takes the interview on their own time, so the result
@@ -69,6 +75,30 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
       toast(err.message || 'Failed to create interview', 'error');
     } finally {
       setInterviewCreating(false);
+    }
+  };
+
+  // The questions made for the candidate, as the manager edits them: they
+  // were saved with the interview, unseen and fixed.
+  const saveQuestions = async () => {
+    const questions = questionsDraft.split('\n').map(q => q.trim()).filter(Boolean);
+    if (!questions.length) { toast('Give at least one question.', 'error'); return; }
+    setSavingQuestions(true);
+    try {
+      const resp = await authFetch(`${API_BASE}/api/chat/interviews/${created.interviewId}/questions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'The questions couldn’t be saved.');
+      setCreated(current => ({ ...current, questions: data.questions }));
+      setQuestionsDraft(null);
+      toast('Questions saved.', 'success');
+    } catch (err) {
+      toast(err.message || 'The questions couldn’t be saved.', 'error');
+    } finally {
+      setSavingQuestions(false);
     }
   };
 
@@ -97,6 +127,48 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
             {interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions · {created.mode === 'conversational' ? 'Voice conversation' : 'Avatar interview'}
           </p>
           {interviewFocusAreas && <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Focus: {interviewFocusAreas}</p>}
+          {created.interviewId && (
+            <section aria-label="Interview questions" style={{ textAlign: 'left', marginTop: '20px' }}>
+              <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px' }}>What Alex will ask</h4>
+              {questionsDraft === null ? (
+                <>
+                  {created.questions.length > 0 ? (
+                    <ol style={{ paddingLeft: '20px', margin: '0 0 12px', color: 'var(--text2)', fontSize: '13px', lineHeight: 1.6 }}>
+                      {created.questions.map((question, i) => <li key={i}>{question}</li>)}
+                    </ol>
+                  ) : (
+                    <p style={{ color: 'var(--text3)', fontSize: '13px', marginBottom: '12px' }}>
+                      No questions could be made for this candidate, so Alex will ask general ones for the role.
+                    </p>
+                  )}
+                  <button className="btn btn-secondary btn-sm" onClick={() => setQuestionsDraft(created.questions.join('\n'))}>
+                    Edit questions
+                  </button>
+                </>
+              ) : (
+                <>
+                  <label htmlFor="interview-questions" style={{ display: 'block', fontSize: '12px', color: 'var(--text3)', marginBottom: '6px' }}>
+                    One question a line, asked in this order. They can be changed until the candidate starts.
+                  </label>
+                  <textarea
+                    id="interview-questions"
+                    value={questionsDraft}
+                    onChange={e => setQuestionsDraft(e.target.value)}
+                    rows={8}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--bg3)', color: 'var(--text)', fontFamily: 'inherit', fontSize: '13px', lineHeight: 1.5 }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button className="btn btn-primary btn-sm" onClick={saveQuestions} disabled={savingQuestions}>
+                      {savingQuestions ? 'Saving…' : 'Save questions'}
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setQuestionsDraft(null)} disabled={savingQuestions}>
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
         </div>
       </div>
     );
