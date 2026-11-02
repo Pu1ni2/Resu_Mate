@@ -75,6 +75,10 @@ class RealtimeSessionResponse(BaseModel):
     max_total_minutes: int
     remaining_minutes: int
     interview_id: int
+    # An interrupted interview's conversation and length so far, which this
+    # session continues; empty and 0 for one starting fresh.
+    transcript: List[dict] = Field(default_factory=list)
+    elapsed_seconds: int = 0
 
 
 async def _authorized_interview(db: AsyncSession, actor: Actor, interview_id: int) -> Interview:
@@ -167,9 +171,14 @@ async def create_realtime_session(
     else:
         candidate_name = email.split("@", 1)[0].replace(".", " ").title()
 
+    # What the interview already holds, when it was interrupted or a session
+    # dropped after a checkpoint: this session carries on from there, and the
+    # time it has is what's left.
+    so_far = [t for t in (interview.transcript or []) if isinstance(t, dict)]
+    elapsed = int(interview.duration or 0) if so_far else 0
     max_total_minutes = int(settings.realtime_max_total_minutes or 8)
-    remaining_minutes = max_total_minutes  # MVP: no rolling budget across sessions
-    instructions = build_instructions(interview, candidate_name, remaining_minutes)
+    remaining_minutes = max(1, max_total_minutes - elapsed // 60)
+    instructions = build_instructions(interview, candidate_name, remaining_minutes, so_far=so_far)
 
     session_cfg = {
         "type": "realtime",
@@ -241,6 +250,8 @@ async def create_realtime_session(
         max_total_minutes=max_total_minutes,
         remaining_minutes=remaining_minutes,
         interview_id=interview.id,
+        transcript=so_far,
+        elapsed_seconds=elapsed,
     )
 
 
@@ -267,6 +278,40 @@ async def checkpoint(
     interview.status = "in_progress"
     await db.commit()
     return {"saved": True, "turns": len(req.transcript)}
+
+
+class InterruptRequest(BaseModel):
+    interview_id: int
+    transcript: List[dict] = Field(default_factory=list, max_length=2000)
+    # The interview's length so far, in seconds, every session of it.
+    duration: int = Field(default=0, ge=0, le=24 * 60 * 60)
+
+
+@router.post("/interrupt")
+@limiter.limit("30/hour")
+async def interrupt(
+    request: Request,
+    req: InterruptRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: Actor = Depends(get_current_actor),
+):
+    """Keep what an interrupted voice interview captured, to carry on later.
+
+    A lost connection or a closed page ended the interview through /finalize:
+    it was completed, with a report written on part of it, and the fresh
+    start the room told the candidate to make was refused. Now it's kept as
+    "interrupted", with its transcript and length so far, and the candidate's
+    next session continues it (create_realtime_session).
+    """
+    interview = await _authorized_interview(db, actor, req.interview_id)
+    _refuse_if_completed(interview)
+    if req.transcript:
+        interview.transcript = req.transcript
+    if req.duration:
+        interview.duration = req.duration
+    interview.status = "interrupted"
+    await db.commit()
+    return {"saved": True, "status": interview.status, "turns": len(interview.transcript or [])}
 
 
 class FinalizeRequest(BaseModel):

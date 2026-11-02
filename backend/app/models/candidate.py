@@ -91,7 +91,7 @@ class Interview(Base):
     answers = Column(JSON, default=list)
     scores = Column(JSON, default=list)
     report = Column(Text)
-    status = Column(String(20), default="pending")  # pending, in_progress, completed
+    status = Column(String(20), default="pending")  # pending, in_progress, interrupted, completed
     # Interview format: "avatar" (existing LiveKit + Simli flow with the
     # camera + lip-synced face) or "conversational" (audio-only OpenAI Realtime
     # over WebRTC, no LiveKit). Defaults to avatar to preserve existing rows.

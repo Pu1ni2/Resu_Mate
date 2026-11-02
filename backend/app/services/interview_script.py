@@ -21,12 +21,19 @@ def load_prompt() -> str:
         return f.read()
 
 
-def build_instructions(interview: Interview, candidate_name: str, max_total_minutes: int) -> str:
+# The most of an interrupted interview's conversation the script carries:
+# enough for every question of any interview, its answers and the welcome.
+SO_FAR_TURNS = 60
+
+
+def build_instructions(interview: Interview, candidate_name: str, max_total_minutes: int, so_far=None) -> str:
     """Concatenate base prompt + a JSON context block.
 
     The model reads the JSON literally, so field names must stay stable —
     realtime_interview.txt references them by name (questions, num_questions,
-    role, level, candidate_name, tone, verification_targets, remaining_minutes).
+    role, level, candidate_name, tone, verification_targets, remaining_minutes,
+    conversation_so_far). so_far is the conversation of an interview that was
+    interrupted, which this session continues.
     """
     base = load_prompt()
     questions = interview.questions or []
@@ -64,4 +71,7 @@ def build_instructions(interview: Interview, candidate_name: str, max_total_minu
         "tone": "warm, sharp, direct, professional",
         "remaining_minutes": max_total_minutes,
     }
+    turns = [{"role": t.get("role"), "text": t.get("text")} for t in (so_far or []) if isinstance(t, dict)]
+    if turns:
+        context["conversation_so_far"] = turns[-SO_FAR_TURNS:]
     return base + "\n\n```json\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n```\n"
