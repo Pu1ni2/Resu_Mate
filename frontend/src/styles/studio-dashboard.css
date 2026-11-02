@@ -194,6 +194,9 @@
 .studio-dashboard .sd-interview-counts span { color: var(--color-ink-subtle); font-size: 12px; }
 .studio-dashboard .sd-interview-counts strong { font: 36px var(--font-serif); color: #4f6141; }
 
+/* An open report's way back, and what can be done with the interview. */
+.studio-dashboard .sd-report-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+
 /* The filters are toggle buttons in a group; the one pressed is the view. */
 .studio-dashboard .sd-interview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; margin: 18px 0; }
 .studio-dashboard .sd-interview-toolbar > div { display: flex; flex-wrap: wrap; gap: 4px; }

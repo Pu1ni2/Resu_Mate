@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, ArrowLeft, Loader, RefreshCw, MessageSquare } from 'lucide-react';
 
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
+import { toast } from '../../services/notify';
 import InterviewReportView from '../shared/InterviewReportView';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import ConversationSculpture from './ConversationSculpture';
 
 const STATUS_LABELS = { pending: 'Invitation ready', in_progress: 'In progress', interrupted: 'Interrupted', completed: 'Completed' };
@@ -46,13 +48,74 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
 
   const reload = () => setRevision(r => r + 1);
 
+  // What runs against the open report's interview: 'report' or 'reissue'.
+  const [acting, setActing] = useState('');
+  const [confirmingReissue, setConfirmingReissue] = useState(false);
+
+  const act = async (kind, failed) => {
+    setActing(kind);
+    try {
+      const response = await authFetch(`${API_BASE}/api/chat/interviews/${report.interview_id}/${kind}`, { method: 'POST' });
+      if (!response.ok) throw new Error(await responseError(response, failed));
+      return await response.json();
+    } catch (err) {
+      toast(err.message || failed, 'error');
+      return null;
+    } finally {
+      setActing('');
+    }
+  };
+
+  // Its report written again from the transcript: one that failed as the
+  // interview ended had no other way to be written.
+  const rewriteReport = async () => {
+    const data = await act('report', 'The report couldn’t be written. Please try again.');
+    if (data) setReport(open => ({ ...open, report: data.report }));
+  };
+
+  // Another interview for the candidate, set up as this one was.
+  const reissue = async () => {
+    const data = await act('reissue', 'The interview couldn’t be reissued. Please try again.');
+    if (!data) return;
+    toast('A new interview is ready. The candidate can sign in to take it.', 'success');
+    setConfirmingReissue(false);
+    setReport(null);
+    reload();
+  };
+
   if (report) {
+    const written = typeof report.report?.report === 'string' && report.report.report.trim() !== '';
     return (
       <section>
-        <button className="btn btn-secondary" style={{ marginBottom: 20 }} onClick={() => setReport(null)}>
-          <ArrowLeft size={15} aria-hidden="true" />Back to interviews
-        </button>
-        <InterviewReportView viewer="manager" report={report.report || {}} candidateId={report.candidate_id} candidateEmail={report.email} />
+        <div className="sd-report-actions">
+          <button className="btn btn-secondary" onClick={() => setReport(null)}>
+            <ArrowLeft size={15} aria-hidden="true" />Back to interviews
+          </button>
+          {report.interview_id && !written && (
+            <button className="btn btn-secondary" onClick={rewriteReport} disabled={Boolean(acting)}>
+              {acting === 'report' ? 'Writing the report…' : 'Write the report again'}
+            </button>
+          )}
+          {report.interview_id && (
+            <button className="btn btn-secondary" onClick={() => setConfirmingReissue(true)} disabled={Boolean(acting)}>
+              Reissue interview
+            </button>
+          )}
+        </div>
+        <InterviewReportView viewer="manager" report={report.report || {}} candidateId={report.candidate_id}
+          candidateEmail={report.email} interviewId={report.interview_id} />
+        <ConfirmDialog
+          open={confirmingReissue}
+          title="Reissue this interview?"
+          confirmLabel="Reissue interview"
+          busyLabel="Reissuing…"
+          busy={acting === 'reissue'}
+          onConfirm={reissue}
+          onCancel={() => setConfirmingReissue(false)}
+        >
+          The candidate gets a new interview, set up as this one was, with new questions. This one
+          stays, with its report.
+        </ConfirmDialog>
       </section>
     );
   }
