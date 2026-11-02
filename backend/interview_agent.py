@@ -172,6 +172,30 @@ async def keep_to_time(session, ctx, limit_seconds, sleep=asyncio.sleep):
         ctx.shutdown("time limit")
 
 
+# How often, in turns of the conversation, the transcript so far is sent.
+CHECKPOINT_EVERY_TURNS = 4
+
+
+def post_checkpoint(config: dict, transcript: list, room_name: str):
+    """Send the transcript so far: it was sent only as the worker shut down,
+    so a worker that stopped mid-interview took everything said with it.
+    Best effort; the transcript at the end still finishes the interview."""
+    candidate_email = config.get("candidate_email", "")
+    if not (candidate_email and transcript and room_name and AGENT_SHARED_SECRET):
+        return
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/api/chat/transcript-checkpoint",
+            json={"candidate_email": candidate_email, "room_name": room_name, "transcript": transcript},
+            headers={"X-Agent-Token": AGENT_SHARED_SECRET},
+            timeout=10,
+        )
+        if not resp.ok:
+            logger.warning(f"Transcript checkpoint returned {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Transcript checkpoint failed: {type(e).__name__}")
+
+
 def post_transcript(config: dict, transcript: list, room_name: str = "", duration: int = 0):
     """POST accumulated transcript to the backend interview-report endpoint.
 
@@ -268,6 +292,10 @@ async def entrypoint(ctx: JobContext):
                 return
             role = "interviewer" if getattr(item, "role", "") == "assistant" else "candidate"
             transcript.append({"role": role, "text": text, "timestamp": time.time()})
+            if len(transcript) % CHECKPOINT_EVERY_TURNS == 0:
+                # Off the event loop: the request mustn't hold up the audio.
+                asyncio.get_running_loop().run_in_executor(
+                    None, post_checkpoint, config, list(transcript), ctx.room.name)
         except Exception as e:
             logger.warning(f"transcript capture failed: {type(e).__name__}")
 
