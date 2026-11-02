@@ -781,11 +781,14 @@ async def save_transcript(
         if report_text:
             # Merged, so the proctoring numbers the candidate's browser saved stay.
             db_service.merge_interview_report(interview, {"report": report_text})
-            db_service.finish_interview(interview, req.duration)
     except Exception as exc:
         # Don't fail the transcript save if report generation hiccups.
         print(f"[save-transcript] report generation failed: {type(exc).__name__}")
 
+    # The interview is over whether or not its report could be written: left
+    # unfinished, it stayed "in progress" for good, as a voice interview's
+    # doesn't. A missing report can be written again.
+    db_service.finish_interview(interview, req.duration)
     await db.commit()
     await _notify_manager_interview_complete(db, interview)
     return {"saved": True, "turns": len(req.transcript), "report_generated": bool(interview.report)}
