@@ -110,6 +110,21 @@ def instructions_for(config):
     return build_system_prompt(config)
 
 
+# What starts the interview. The script's opening turn says how: greet the
+# candidate by name, then ask the first question.
+OPENING = "Begin the interview now: greet the candidate by name and ask the first question."
+
+
+def open_interview(session):
+    """Alex speaks first. The realtime model answers only when asked for a
+    reply, so the candidate sat in silence until they said something."""
+    try:
+        session.generate_reply(instructions=OPENING)
+    except Exception as e:
+        # The interview still runs: Alex answers once the candidate speaks.
+        logger.warning(f"Could not open the interview: {type(e).__name__}")
+
+
 def post_transcript(config: dict, transcript: list, room_name: str = ""):
     """POST accumulated transcript to the backend interview-report endpoint.
 
@@ -237,6 +252,8 @@ async def entrypoint(ctx: JobContext):
             logger.warning(f"Transcript post on shutdown failed: {e}")
 
     ctx.add_shutdown_callback(_on_shutdown)
+
+    open_interview(session)
 
     # Hold the entrypoint open until the framework shuts the worker down. Without
     # this the function returns, the job ends, and the agent leaves the room.
