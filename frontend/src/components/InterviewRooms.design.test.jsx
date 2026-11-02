@@ -147,6 +147,19 @@ describe('the voice interview room', () => {
     expect(console.warn).toHaveBeenCalledWith('interviewer error:', 'invalid_value', 'Unknown parameter');
   });
 
+  // "Reconnecting" before anything had connected read as a failure.
+  it('says "Connecting" until the first connection, not "Reconnecting"', async () => {
+    open();
+    fireEvent.click(screen.getByLabelText(/i understand and want to start/i));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /start interview/i })); });
+    expect(screen.getByRole('alert').textContent).toBe('Connecting to the interviewer…');
+    const peer = FakePeer.last;
+    act(() => { peer.iceConnectionState = 'checking'; peer.oniceconnectionstatechange(); });
+    expect(screen.getByRole('alert').textContent).toBe('Connecting to the interviewer…');
+    act(() => { peer.iceConnectionState = 'connected'; peer.oniceconnectionstatechange(); });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('says when the connection is lost, and while it is coming back', async () => {
     await goLive();
     const peer = FakePeer.last;
