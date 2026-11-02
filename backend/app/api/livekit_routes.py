@@ -83,6 +83,8 @@ class CreateRoomRequest(BaseModel):
     # interview. Taken from here, the candidate decided their own role, number
     # of questions, focus areas and résumé checks.
     interview_config: dict = Field(default_factory=dict)
+    # The interview the candidate is entering; older pages send none.
+    interview_id: Optional[int] = None
     # The candidate confirmed they understand how the interview works.
     consent: bool = False
 
@@ -92,13 +94,17 @@ class JoinRoomRequest(BaseModel):
     participant_name: str = Field(default="", max_length=200)
 
 
-async def _authorized_interview(db: AsyncSession, actor: Actor, candidate_email: str) -> Interview:
+async def _authorized_interview(db: AsyncSession, actor: Actor, candidate_email: str,
+                                interview_id: Optional[int] = None) -> Interview:
     """Resolve the interview this actor may act on, or raise 403/404.
 
     Candidates may only touch interviews issued to their own token email.
     Managers may only touch interviews they own (manager_id). Legacy rows with a
     NULL manager_id are treated as unowned and therefore invisible to managers —
     the same safe default used elsewhere in the app.
+
+    With interview_id, that interview of the address; without, from older
+    pages, the address's newest, which is another round once one is made.
     """
     email = (candidate_email or "").strip().lower()
     if actor.is_candidate:
@@ -109,12 +115,14 @@ async def _authorized_interview(db: AsyncSession, actor: Actor, candidate_email:
 
     # With its candidate: create_room reads interview.candidate for the name
     # when the request has none, and loading it lazily crashed the request.
-    result = await db.execute(
+    stmt = (
         select(Interview)
         .options(selectinload(Interview.candidate))
         .where(Interview.candidate_email == email)
-        .order_by(Interview.created_at.desc())
     )
+    if interview_id is not None:
+        stmt = stmt.where(Interview.id == interview_id)
+    result = await db.execute(stmt.order_by(Interview.created_at.desc()))
     interview = result.scalars().first()
     if not interview:
         raise HTTPException(status_code=404, detail="No interview found for this candidate")
@@ -140,7 +148,7 @@ async def create_room(
     rights into a room. The caller must own the interview — a candidate by token
     email, a manager by manager_id.
     """
-    interview = await _authorized_interview(db, actor, req.candidate_email)
+    interview = await _authorized_interview(db, actor, req.candidate_email, req.interview_id)
     # A finished interview stays finished, as for voice interviews
     # (realtime._refuse_if_completed): a new room set it back to in_progress,
     # so the candidate could sit it again and get a fresh report.

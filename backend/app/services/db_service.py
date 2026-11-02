@@ -380,8 +380,14 @@ def _proctoring_numbers(data: dict) -> dict:
     return out
 
 
-async def save_proctoring(session: AsyncSession, email: str, data: dict) -> Optional[Interview]:
-    """Record the candidate browser's proctoring numbers on their latest interview.
+async def save_proctoring(session: AsyncSession, email: str, data: dict,
+                          interview_id: int = None) -> Optional[Interview]:
+    """Record the candidate browser's proctoring numbers on the interview they took.
+
+    That's the interview with interview_id, when it's this candidate's;
+    without an id, from older pages, their latest. The latest alone put the
+    numbers on a newer round, made while they were taking this one, and a
+    terminated interview ended the round they hadn't taken.
 
     Only PROCTORING_FIELDS are taken, and only the first time: the candidate's
     own session must not be able to set its report or scores (it used to post a
@@ -390,7 +396,12 @@ async def save_proctoring(session: AsyncSession, email: str, data: dict) -> Opti
     server-written note if no report exists yet; otherwise the status is left to
     the interviewer.
     """
-    interview = await get_interview_by_email(session, email)
+    if interview_id is not None:
+        interview = (await session.execute(select(Interview).where(
+            Interview.id == interview_id, Interview.candidate_email == email.strip().lower(),
+        ))).scalar_one_or_none()
+    else:
+        interview = await get_interview_by_email(session, email)
     if not interview:
         return None
     numbers = _proctoring_numbers(data or {})

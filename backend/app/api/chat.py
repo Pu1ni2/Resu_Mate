@@ -967,6 +967,8 @@ class SaveInterviewResult(BaseModel):
     candidate_email: str
     candidate_name: Optional[str] = None
     report: dict
+    # The interview the room ran; older pages send none.
+    interview_id: Optional[int] = None
 
 @router.post("/save-interview-result")
 async def save_interview_result(
@@ -982,7 +984,7 @@ async def save_interview_result(
     own scores, and the avatar room's placeholder text could land after the
     interviewer's real report and erase it.
     """
-    interview = await db_service.save_proctoring(db, candidate_email, req.report)
+    interview = await db_service.save_proctoring(db, candidate_email, req.report, interview_id=req.interview_id)
     return {"status": "saved" if interview else "no interview"}
 
 
