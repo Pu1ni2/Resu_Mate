@@ -91,6 +91,8 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
   const rows = filtered.map(r => ({
     ...fromAtsResult(r),
     status: interviewStatuses[(r.email || '').toLowerCase()],
+    // Each person's file, from their result: there was no way to open it.
+    fileHref: `/hiring/focus?candidate=${encodeURIComponent(r.candidate_id)}`,
   }));
 
   const leadBucket = Math.max(stats?.strong_fit ?? 0, stats?.good_fit ?? 0, stats?.consider ?? 0, stats?.no_match ?? 0);

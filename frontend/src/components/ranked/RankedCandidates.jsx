@@ -135,7 +135,22 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-[14px] font-semibold text-ink">{row.name}</span>
+            {/* A row with a file links its name there, in a new tab so the list
+                stays as it is. */}
+            {row.fileHref ? (
+              <a
+                href={row.fileHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-w-0 items-center gap-1 text-[14px] font-semibold text-ink underline-offset-2 hover:underline"
+                aria-label={`Open ${row.name}’s file (new tab)`}
+              >
+                <span className="truncate">{row.name}</span>
+                <ExternalLink size={12} className="shrink-0 text-ink-subtle" aria-hidden="true" />
+              </a>
+            ) : (
+              <span className="truncate text-[14px] font-semibold text-ink">{row.name}</span>
+            )}
             <VerdictPill verdict={row.verdict} />
             <StatusPill status={row.status} />
           </div>
