@@ -133,6 +133,16 @@ describe('a screening run in the address', () => {
   });
 });
 
+describe('the earlier runs under the brief', () => {
+  it('open one, by its id in the address', async () => {
+    server['/api/pipeline/runs'] = () => reply({ runs: [{ run_id: 7, role: 'Engineer', total_screened: 1, created_at: KEPT.created_at }] });
+    open('/hiring?view=screening');
+    fireEvent.click(await screen.findByRole('button', { name: /^Engineer\s*1 screened/ }, { timeout: 3000 }));
+    expect(where()).toBe('?view=screening&run=7');
+    await results();
+  });
+});
+
 describe('a run the server could not keep', () => {
   it('is shown all the same, with no id in the address', async () => {
     server['/api/pipeline/run'] = () => reply({ ...RUN, run_id: null });
