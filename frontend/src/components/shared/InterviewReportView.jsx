@@ -348,9 +348,11 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
               <XCircle size={13} style={{ color: 'var(--color-caution)' }} /> {violations} violation{violations > 1 ? 's' : ''} detected
             </p>
           )}
+          {/* The times the face left the camera's picture: the room sees where
+              the face is, not where anyone looks, so not "gaze aversion". */}
           {(r.lookAwayCount || 0) > 10 && (
             <p style={{ fontSize: '13px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <EyeOff size={13} style={{ color: 'var(--color-caution)' }} /> Gaze aversion: {r.lookAwayCount} times
+              <EyeOff size={13} style={{ color: 'var(--color-caution)' }} /> Face out of view: {r.lookAwayCount} times
             </p>
           )}
         </div>
