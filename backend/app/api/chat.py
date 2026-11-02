@@ -1072,6 +1072,69 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
             out[key] = {"status": status, "mode": shown, "id": iv_id}
     return {"statuses": out, "count": len(out)}
 
+# ═══════ ONE INTERVIEW: ITS REPORT AGAIN, OR ANOTHER ═══════
+
+async def _managers_interview(db: AsyncSession, manager_id: int, interview_id: int):
+    """This manager's interview with that id, or 404."""
+    from app.models.candidate import Interview
+    interview = await db.get(Interview, interview_id)
+    if not interview or interview.manager_id != manager_id:
+        raise HTTPException(404, "Interview not found")
+    return interview
+
+
+@router.post("/interviews/{interview_id}/report")
+@limiter.limit("10/minute")
+async def rewrite_report(request: Request, interview_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Write a finished interview's report again, from its transcript.
+
+    One whose report failed, because the AI couldn't be reached as it ended,
+    had no report and no way to get one.
+    """
+    interview = await _managers_interview(db, user.id, interview_id)
+    if interview.status != "completed":
+        raise HTTPException(409, "This interview hasn't finished yet.")
+    try:
+        report = await write_report(interview.transcript or [], interview.role)
+    except Exception:
+        raise _failed("report rewrite", "The report couldn't be written. Please try again.")
+    db_service.merge_interview_report(interview, {"report": report})
+    await db.commit()
+    return {"interview_id": interview.id, "report": db_service.candidate_report(interview)}
+
+
+@router.post("/interviews/{interview_id}/reissue")
+@limiter.limit("30/hour")
+async def reissue_interview(request: Request, interview_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Another interview for the same candidate, set up as this one was.
+
+    Nothing made one: a candidate whose interview went wrong couldn't be
+    interviewed again. This one stays, with its report, as the earlier round.
+    """
+    old = await _managers_interview(db, user.id, interview_id)
+    if old.status != "completed":
+        raise HTTPException(409, "This interview hasn't finished yet.")
+    candidate = resume_rag.get_candidate(old.candidate_id, manager_id=user.id)
+    if not candidate:
+        raise HTTPException(404, "Candidate not found")
+    interview, _ = await interview_setup.create_interview(
+        db, manager_id=user.id, candidate=candidate, candidate_id=old.candidate_id,
+        email=old.candidate_email, name=candidate.get("name") or "", role=old.role, level=old.level,
+        num_questions=old.num_questions or 8, focus_areas=old.focus_areas or [],
+        mode=interview_modes.effective_mode(old.mode), experience_required=old.experience_required,
+    )
+    if interview is None:
+        raise HTTPException(500, "Could not save the interview. Please try again.")
+    await db_service.log_event(
+        db, action="interview.reissue", actor="manager", manager_id=user.id,
+        target_email=old.candidate_email, detail=f"from={old.id} to={interview.id}",
+    )
+    return {
+        "interview_id": interview.id, "status": interview.status, "mode": interview.mode,
+        "portal_link": settings.candidate_login_url,
+    }
+
+
 # ═══════ PDF REPORT EXPORT ═══════
 
 @router.get("/export-report/{email}")
