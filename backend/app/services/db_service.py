@@ -6,6 +6,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
+from app.models.evaluation import CandidateEvaluation
 from app.services.scores import is_number, average_score
 
 
@@ -93,9 +94,9 @@ async def max_candidate_id(session: AsyncSession) -> int:
 async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     """Delete a hiring manager's account and everything it holds.
 
-    Their candidates (with their interviews and portal grants),
+    Their candidates (with their interviews, portal grants and evaluations),
     any interview or grant they filed elsewhere, sourcing runs and the
-    profiles found, chat histories, the audit records of their account, and
+    profiles found, screening runs, chat histories, the audit records of their account, and
     the account. Returns the stored-file keys of the candidates' original
     files, to remove from object storage once this has committed. Commits.
     """
@@ -107,7 +108,7 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     for model in (Interview, CandidateAccess):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await delete_candidates(session, Candidate.manager_id == manager_id)
-    for model in (SourcedProfile, SourcingRun, ScreeningRun, ChatHistory, AuditLog):
+    for model in (SourcedProfile, SourcingRun, ScreeningRun, CandidateEvaluation, ChatHistory, AuditLog):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await session.execute(delete(HiringManager).where(HiringManager.id == manager_id))
     await session.commit()
@@ -123,8 +124,8 @@ async def stored_file_keys(session: AsyncSession, *where) -> list:
 
 
 async def delete_candidates(session: AsyncSession, *where) -> None:
-    """Delete the candidates matching `where`, their interviews and portal
-    grants first.
+    """Delete the candidates matching `where`, their interviews, portal
+    grants and kept evaluations first.
 
     Neither foreign key to candidates has ON DELETE CASCADE, and the ORM cascade
     on Candidate.interviews covers only deletes made through the session, not a
@@ -147,7 +148,7 @@ async def delete_candidates(session: AsyncSession, *where) -> None:
             or_(model.manager_id == Candidate.manager_id, model.manager_id.is_(None)),
         ).correlate(model).exists()
 
-    for model in (Interview, CandidateAccess):
+    for model in (Interview, CandidateAccess, CandidateEvaluation):
         await session.execute(delete(model).where(filed_under_them(model)))
     await session.execute(delete(Candidate).where(*where))
 

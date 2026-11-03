@@ -21,7 +21,7 @@ from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import db_service
-from app.services import interview_modes, interview_setup
+from app.services import evaluations, interview_modes, interview_setup
 from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
@@ -384,8 +384,12 @@ async def web_search(request: Request, req: WebSearchRequest, user=Depends(get_c
 
 @router.post("/hiring-agent")
 @limiter.limit("10/minute")
-async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(get_current_user)):
-    """Candidate evaluation powered by HR Agent"""
+async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
+    """Candidate evaluation powered by HR Agent.
+
+    A written evaluation of one of this manager's candidates is kept, to be
+    read again (GET /chat/candidates/{id}/evaluations)."""
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
@@ -410,7 +414,21 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
             # A failure, not a report that says "Evaluation failed: <error>".
             logger.warning("evaluation not written: %s", result.get("error"))
             raise HTTPException(status_code=502, detail="The evaluation couldn't be completed. Please try again.")
-        return {"report": result["report"], "ats_score": ats_score}
+        answer = {"report": result["report"], "ats_score": ats_score, "evaluation_id": None, "created_at": None}
+        # Kept when it's of a stored candidate, not data the page sent in. An
+        # evaluation that can't be kept is still answered.
+        if resume_rag.get_candidate(req.candidate_id, manager_id=user.id):
+            try:
+                kept = await evaluations.save(
+                    db, manager_id=user.id, candidate_id=req.candidate_id,
+                    role=req.role, level=req.level, experience_required=req.experience_required,
+                    job_description=req.job_description, anonymized=req.anonymize, report=result["report"],
+                )
+                answer.update(evaluation_id=kept.id, created_at=kept.created_at.isoformat())
+            except Exception as exc:
+                await db.rollback()
+                logger.warning("evaluation not kept: %s", type(exc).__name__)
+        return answer
     except HTTPException:
         raise
     except Exception:
@@ -1145,6 +1163,13 @@ async def candidate_interviews(candidate_id: int, user=Depends(get_current_user)
         "completed_at": iv.completed_at.isoformat() if iv.completed_at else None,
         "report": db_service.candidate_report(iv) if iv.status == "completed" else None,
     } for iv in rows]}
+
+
+@router.get("/candidates/{candidate_id}/evaluations")
+async def candidate_evaluations(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """This manager's kept role-fit evaluations of one of their candidates,
+    newest first. One was only sent back, and lost on opening another file."""
+    return {"evaluations": await evaluations.of_candidate(db, user.id, candidate_id)}
 
 
 # ═══════ ONE INTERVIEW: ITS REPORT AGAIN, OR ANOTHER ═══════
