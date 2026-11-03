@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { candidatesAPI, chatAPI, messageForApiError } from '../services/api';
 import { saveSession, clearSession, readStoredUser, clearCandidateCache } from '../services/session';
 import { toast } from '../services/notify';
@@ -49,10 +49,19 @@ export const AppProvider = ({ children }) => {
     setHiringManager(user);
   }, []);
 
+  // The candidate list request running, if one is, and which signed-in
+  // session it's for (loadCandidates).
+  const listRequest = useRef(null);
+  const listSession = useRef(0);
+
   const logoutHiringManager = useCallback(() => {
     // Same teardown a 401 performs, so signing out and being signed out cannot
     // drift apart.
     clearSession();
+    // A list still coming is the last manager's: the next one asks anew, and
+    // it isn't shown.
+    listSession.current += 1;
+    listRequest.current = null;
     setHiringManager(null);
     setCandidates([]);
     setCandidatesStatus('loading');
@@ -71,21 +80,35 @@ export const AppProvider = ({ children }) => {
     [selectedCandidates]
   );
 
-  const loadCandidates = useCallback(async () => {
-    setLoading(true);
-    setCandidatesStatus('loading');
-    try {
-      const res = await candidatesAPI.getAll();
-      const list = res?.data?.candidates || [];
-      setCandidates(list);
-      setCandidatesStatus('loaded');
-      if (list.length === 0) setSelectedIds([]);
-    } catch (err) {
-      console.warn('loadCandidates: backend fetch failed, keeping the list as it was:', err?.message);
-      setCandidatesStatus('failed');
-    } finally {
-      setLoading(false);
-    }
+  // One request at a time, shared by whoever asks while it runs: the
+  // dashboard asks as it opens, and so does this context for a signed-in
+  // manager, which downloaded the whole list twice on every page load.
+  const loadCandidates = useCallback(() => {
+    if (listRequest.current) return listRequest.current;
+    const session = listSession.current;
+    const current = () => session === listSession.current;
+    const request = (async () => {
+      setLoading(true);
+      setCandidatesStatus('loading');
+      try {
+        const res = await candidatesAPI.getAll();
+        if (!current()) return;
+        const list = res?.data?.candidates || [];
+        setCandidates(list);
+        setCandidatesStatus('loaded');
+        if (list.length === 0) setSelectedIds([]);
+      } catch (err) {
+        if (!current()) return;
+        console.warn('loadCandidates: backend fetch failed, keeping the list as it was:', err?.message);
+        setCandidatesStatus('failed');
+      } finally {
+        // Not while the next manager's list is coming.
+        if (current() || !listRequest.current) setLoading(false);
+      }
+    })();
+    listRequest.current = request;
+    request.finally(() => { if (listRequest.current === request) listRequest.current = null; });
+    return request;
   }, []);
 
   // Whenever a hiring manager is signed in: on mount, for a saved session, and
