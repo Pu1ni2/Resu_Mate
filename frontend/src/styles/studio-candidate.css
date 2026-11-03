@@ -120,6 +120,11 @@
 .studio-candidate .cd-skill-tag { background: #eef0e7 !important; border: 1px solid #e0e4d5 !important; border-radius: 4px; color: #5a6b4e !important; padding: 6px 9px; font-size: 11px; }
 .studio-candidate .cd-skill-more { background: transparent !important; border-style: dashed !important; }
 .studio-candidate .cd-replace-btn { color: #7d8373 !important; background: transparent !important; border: 0; font-size: 11px; padding: 0; align-self: flex-end; }
+.studio-candidate .cd-replace-btn:disabled { cursor: default; opacity: 0.75; }
+/* While a new résumé is read, under the one still shown. */
+.studio-candidate .cd-upload-note { align-self: flex-end; margin: 0; color: var(--color-ink-subtle); font-size: 12px; }
+/* While a résumé is read, the zone takes no other. */
+.studio-candidate .cd-upload-zone[aria-busy=true] { cursor: progress; transform: none; }
 .studio-candidate .cd-replace-btn:hover { color: var(--color-brand) !important; }
 .studio-candidate .cd-quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 13px; margin-top: 6px; }
 .studio-candidate .cd-quick-action { background: #eeeee3 !important; border: 1px solid #dfe1d2 !important; color: #4f5d46 !important; padding: 22px 17px; border-radius: 8px; gap: 11px; font-size: 12px; }

@@ -25,6 +25,7 @@ const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterview
 
 // One empty list, so an effect that watches the messages doesn't re-run on every render.
 const NO_MESSAGES = [];
+const UPLOAD_FAILED = "Your résumé couldn't be uploaded. Please try again.";
 // The portal's sections, in their order, as the address names them.
 const PORTAL_SECTIONS = ['upload', 'analysis', 'chat', 'interview'];
 
@@ -215,7 +216,12 @@ export default function CandidateDashboard() {
     }
   };
 
+  // While a résumé uploads and is read. It said nothing, and took a second
+  // file meanwhile; the résumé shown stays until the new one is ready.
+  const [uploading, setUploading] = useState(false);
+
   const uploadFile = async (file) => {
+    setUploading(true);
     try {
       const form = new FormData();
       form.append('file', file);
@@ -226,18 +232,26 @@ export default function CandidateDashboard() {
         body: form,
       });
       if (resp.status === 401) return; // signed out; the sign-in page says why
+      // The server's reason when it refuses the file.
+      if (!resp.ok) { toast(await responseError(resp, UPLOAD_FAILED), 'error'); return; }
       const data = await resp.json();
       if (data.success) {
         setAdvisorCandidates([data.data]);
-      } else { toast('Upload failed', 'error'); }
-    } catch (err) { toast(`Upload failed: ${err.message}`, 'error'); }
+      } else { toast(UPLOAD_FAILED, 'error'); }
+    } catch {
+      toast(UPLOAD_FAILED, 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleUpload = async (files) => {
-    const file = Array.from(files)[0];
-    if (!file) return;
+    const file = Array.from(files || [])[0];
+    if (!file || uploading) return;
     await uploadFile(file);
   };
+  // The file chosen, and the picker emptied, so the same file can be chosen again.
+  const onFileChosen = e => { handleUpload(e.target.files); e.target.value = ''; };
 
   const handleAdvisorSend = async (msg) => {
     const m = msg || input.trim();
@@ -512,16 +526,26 @@ export default function CandidateDashboard() {
             <div className="cd-tab-content">
               {!c ? (
                 <div className="cd-upload-hero">
-                  <div className="cd-upload-zone" {...pressable(() => document.getElementById('cd-file').click())}
+                  <div className="cd-upload-zone" {...pressable(() => { if (!uploading) document.getElementById('cd-file').click(); })}
+                    aria-busy={uploading} aria-disabled={uploading || undefined}
                     onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
                     onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
                     onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); handleUpload(e.dataTransfer.files); }}
                   >
-                    <div className="cd-upload-icon-wrap"><Upload size={28} /></div>
-                    <h3>Upload Your Resume</h3>
-                    <p>Drag & drop or click to browse</p>
+                    <div className="cd-upload-icon-wrap">{uploading ? <Loader size={28} className="spin" /> : <Upload size={28} />}</div>
+                    {uploading ? (
+                      <>
+                        <h3>Uploading your résumé…</h3>
+                        <p role="status">Reading it for your advisor. This takes a moment.</p>
+                      </>
+                    ) : (
+                      <>
+                        <h3>Upload Your Resume</h3>
+                        <p>Drag & drop or click to browse</p>
+                      </>
+                    )}
                     <span className="cd-upload-formats">PDF, DOCX, or TXT (max 5MB)</span>
-                    <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
+                    <input id="cd-file" type="file" accept=".pdf,.docx,.txt" hidden onChange={onFileChosen} />
                   </div>
                   <div className="cd-upload-caption"><span>01 — Bring your experience</span><p>A résumé gives your advisor context for more useful, personal guidance.</p></div>
                 </div>
@@ -570,10 +594,11 @@ export default function CandidateDashboard() {
                   </div>
 
                   {/* Replace button */}
-                  <button className="cd-replace-btn" onClick={() => document.getElementById('cd-file-replace').click()}>
-                    <Upload size={14} /> Replace Resume
+                  <button className="cd-replace-btn" onClick={() => document.getElementById('cd-file-replace').click()} disabled={uploading}>
+                    {uploading ? <><Loader size={14} className="spin" /> Reading your new résumé…</> : <><Upload size={14} /> Replace Resume</>}
                   </button>
-                  <input id="cd-file-replace" type="file" accept=".pdf,.docx,.txt" hidden onChange={e => handleUpload(e.target.files)} />
+                  {uploading && <p className="cd-upload-note" role="status">Uploading and reading your new résumé. This one stays until it&apos;s ready.</p>}
+                  <input id="cd-file-replace" type="file" accept=".pdf,.docx,.txt" hidden onChange={onFileChosen} />
 
                   {/* Quick actions */}
                   <div className="cd-quick-actions">
