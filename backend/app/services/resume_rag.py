@@ -778,7 +778,7 @@ CRITICAL - ANONYMIZATION MODE IS ON:
 - If you don't know which candidate, say "one of the candidates"
 """
         
-        system_prompt = f"""You are ResuMate AI analyzing ONLY these {len(resume_candidates)} selected candidates: {candidate_list}
+        system_prompt = f"""You are ResuMate's assistant, analyzing ONLY these {len(resume_candidates)} selected candidates: {candidate_list}
 {anon_instruction}
 STRICT RULES:
 1. ONLY discuss the candidates listed above - no others
@@ -853,7 +853,7 @@ Respond helpfully using **bold** for names and key points."""
     def get_intro_message(self, candidate_count: int, anonymize: bool = False) -> Dict:
         if candidate_count == 0:
             return {
-                "response": """**Welcome to ResuMate AI!** 👋
+                "response": """**Welcome to ResuMate!** 👋
 
 I'm your resume analysis assistant.
 
@@ -879,7 +879,7 @@ I'm your resume analysis assistant.
             anon_note = "\n\n🔒 **Anonymization is ON** - I'll refer to candidates as Candidate 1, Candidate 2, etc."
         
         return {
-            "response": f"""**Welcome to ResuMate AI!** 👋
+            "response": f"""**Welcome to ResuMate!** 👋
 
 I'm your resume analysis assistant. I can **only** help with questions about the **selected** candidates.
 

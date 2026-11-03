@@ -82,7 +82,7 @@ RESULT USAGE:
 - If cached evaluation exists, use it directly for drawbacks and strengths.
 - If cached GitHub exists, name specific projects from it.
 - If cached resume intelligence exists, use its gaps, red flags, and verification targets.
-- If cached interview report exists, use its score, violations, eye contact, and report summary.
+- If cached interview report exists, use its score, violations, face in view, and report summary. Face in view is whether a face was on camera, never where anyone looked.
 - If a cached credibility comparison exists, use its findings. It gives no score or recommendation; never invent one.
 
 RETURN ONLY VALID JSON:

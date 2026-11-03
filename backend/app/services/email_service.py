@@ -74,7 +74,7 @@ class EmailService:
     async def send_otp(self, to_email: str, code: str) -> bool:
         html = f"""
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">ResuMate AI — Access Code</h2>
+          <h2 style="color: #3B82F6;">Your ResuMate access code</h2>
           <p>Your one-time access code is:</p>
           <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1E40AF; padding: 16px; background: #EFF6FF; border-radius: 8px; text-align: center;">
             {code}
