@@ -348,3 +348,50 @@ async function waitForGone(query) {
   for (let i = 0; i < 20 && query(); i += 1) await new Promise(r => setTimeout(r, 25));
   expect(query()).toBeNull();
 }
+
+describe('leaving mid-search', () => {
+  // The search runs only while the page is open, and nothing said so.
+  const NOTE = 'Leaving this page stops the search. Everyone judged by then is saved, and opens again from Past searches.';
+
+  // A stream that runs until the page stops it.
+  function endlessServer() {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
+      const { signal } = options;
+      const body = new ReadableStream({
+        start(c) {
+          c.enqueue(encoder.encode(`${JSON.stringify(PLAN)}\n${JSON.stringify(person('github:ada', 'Ada'))}\n`));
+          signal?.addEventListener('abort', () => c.error(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+        },
+      });
+      return { ok: true, status: 200, body };
+    });
+  }
+
+  const closing = () => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+
+  it('is explained while the search runs, and not once it has stopped', async () => {
+    endlessServer();
+    renderPage();
+    await search();
+    expect(await screen.findByText(NOTE)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
+    await screen.findByText('Stopped. Everyone judged so far is saved');
+    expect(screen.queryByText(NOTE)).toBeNull();
+  });
+
+  it('asks first when the tab closes during a search, and not before or after it', async () => {
+    endlessServer();
+    renderPage();
+    expect(closing()).toBe(false);
+    await search();
+    await screen.findByText(NOTE);
+    expect(closing()).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
+    await screen.findByText('Stopped. Everyone judged so far is saved');
+    expect(closing()).toBe(false);
+  });
+});
