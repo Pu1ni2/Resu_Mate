@@ -259,6 +259,7 @@ async def batch_action(
                 email_type=req.email_type,
                 evaluation_report=f"Role: {req.role} | Level: {req.level}",
                 anonymize=False,
+                sender={"name": user.name, "company": user.company},
             )
             subject = email_result.get("subject", f"Interview Invitation — {req.role}")
             body = email_result.get("body", "")
@@ -288,7 +289,7 @@ async def batch_action(
             else:
                 try:
                     sent = await email_service.send_interview_invitation(
-                        email, name, req.role, settings.candidate_login_url
+                        email, name, req.role, settings.candidate_login_url, company=user.company or "",
                     )
                     result["email_sent"] = sent
                     if not sent:

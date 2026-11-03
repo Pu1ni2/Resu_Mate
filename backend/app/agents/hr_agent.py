@@ -9,10 +9,40 @@ Multi-step agent that:
 5. Generates report with recommendation
 """
 import json
+import re
 from datetime import date
 from typing import Dict, List, Any, Optional
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.services.experience import experience_text
+
+# A placeholder the model writes in square brackets: [Your Name], [Company].
+_PLACEHOLDER = re.compile(r"\[\s*(your\s+)?(full\s+)?(name|company(\s+name)?|title|position|recruiter|signature)\s*\]", re.I)
+
+
+def fill_placeholders(text: str, sender: Optional[Dict] = None) -> str:
+    """A draft's "[Your Name]" and "[Company]", filled from the manager
+    sending it, or left out when there's nothing to fill them with."""
+    name = (sender or {}).get("name") or ""
+    company = (sender or {}).get("company") or ""
+
+    def fill(match):
+        word = match.group(0).lower()
+        if "company" in word:
+            return company
+        # A title isn't known, so it goes.
+        if "title" in word or "position" in word:
+            return ""
+        return name
+    lines = []
+    for line in (text or "").split("\n"):
+        if not _PLACEHOLDER.search(line):
+            lines.append(line)
+            continue
+        filled = _PLACEHOLDER.sub(fill, line).rstrip()
+        # A line that held only placeholders with nothing to fill them goes.
+        if filled.strip():
+            lines.append(filled)
+    return "\n".join(lines).strip()
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
 
@@ -182,8 +212,11 @@ RULES:
     # ═══════ EMAIL DRAFTING ═══════
 
     async def draft_email(self, candidate: Dict, email_type: str,
-                          evaluation_report: str = None, anonymize: bool = False) -> Dict:
-        """Draft a professional email"""
+                          evaluation_report: str = None, anonymize: bool = False,
+                          sender: Optional[Dict] = None) -> Dict:
+        """Draft a professional email, signed by `sender` ({"name", "company"}),
+        the manager sending it. Drafts were signed "[Your Name]", for the
+        manager to find and replace."""
         context = {"candidate": candidate, "email_type": email_type, "evaluation_report": evaluation_report, "anonymize": anonymize}
         
         name = "Candidate" if anonymize else candidate.get("name", "Candidate")
@@ -207,6 +240,8 @@ RULES:
         }
 
         eval_context = f"\nEvaluation context:\n{evaluation_report[:1000]}" if evaluation_report else ""
+        signer = ", ".join(p for p in ((sender or {}).get("name"), (sender or {}).get("company")) if p)
+        sign_off = f"sign off as {signer}" if signer else "sign off without a name"
 
         prompt = f"""{type_prompts.get(email_type, type_prompts['interest'])}
 
@@ -216,7 +251,7 @@ Candidate: {name} | Role: {role} | Skills: {', '.join(str(s) for s in (candidate
 Return EXACTLY:
 SUBJECT: <subject line>
 BODY:
-<email body, sign off with [Your Name]>"""
+<email body, {sign_off}. No placeholders in square brackets.>"""
 
         content = await openai_tool.structured_call(prompt, "You are a professional recruiter writing personalized emails. Be natural, not robotic.")
 
@@ -226,7 +261,7 @@ BODY:
             subject = parts[0].replace("SUBJECT:", "").strip().split("\n")[0].strip()
             body = parts[1].strip() if len(parts) > 1 else content
 
-        return {"subject": subject, "body": body}
+        return {"subject": fill_placeholders(subject, sender), "body": fill_placeholders(body, sender)}
 
     # ═══════ TOOL WRAPPERS ═══════
 

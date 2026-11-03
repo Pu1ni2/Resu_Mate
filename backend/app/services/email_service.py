@@ -85,16 +85,19 @@ class EmailService:
         return await self.send(to_email, "Your ResuMate Interview Access Code", html)
 
     async def send_interview_invitation(
-        self, to_email: str, candidate_name: str, role: str, login_url: str
+        self, to_email: str, candidate_name: str, role: str, login_url: str, company: str = ""
     ) -> bool:
+        """The invitation names the company inviting: it said only that "you
+        have been invited", by no one in particular."""
         # Escaped: the name comes from a résumé, and a "<" in it, or in the
         # role, broke the email or put markup in it.
-        name, role_text, link = (html.escape(v or "") for v in (candidate_name, role, login_url))
+        name, role_text, link, company_text = (html.escape(v or "") for v in (candidate_name, role, login_url, company))
+        inviter = f"{company_text} has invited you" if company_text else "You have been invited"
         body = f"""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #3B82F6;">Interview Invitation — {role_text}</h2>
           <p>Hi {name},</p>
-          <p>You have been invited to complete an AI-powered interview for the <strong>{role_text}</strong> position.</p>
+          <p>{inviter} to complete an AI-powered interview for the <strong>{role_text}</strong> position.</p>
           <p>
             <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
               Start Interview
@@ -103,7 +106,8 @@ class EmailService:
           <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
         </div>
         """
-        return await self.send(to_email, f"Interview Invitation: {role}", body)
+        subject = f"Interview invitation from {company}: {role}" if company else f"Interview Invitation: {role}"
+        return await self.send(to_email, subject, body)
 
     async def send_erasure_code(self, to_email: str, code: str) -> bool:
         safe_code = html.escape(code)

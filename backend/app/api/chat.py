@@ -447,7 +447,8 @@ async def draft_email(request: Request, req: EmailDraftRequest, user=Depends(get
             # Not the email's body, which is where this used to land.
             raise HTTPException(status_code=404, detail="Candidate not found")
 
-        result = await hr_agent.draft_email(candidate, req.email_type, req.evaluation_report, req.anonymize)
+        result = await hr_agent.draft_email(candidate, req.email_type, req.evaluation_report, req.anonymize,
+                                            sender={"name": user.name, "company": user.company})
         return result
     except HTTPException:
         raise
@@ -941,6 +942,7 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         else:
             invite_sent = await email_service.send_interview_invitation(
                 email, req.candidate_name or "there", req.role or "General", settings.candidate_login_url,
+                company=user.company or "",
             )
             if not invite_sent:
                 invite_error = "The email service didn't accept the invite. Share the portal link instead."

@@ -252,6 +252,7 @@ async def draft_outreach(request: Request, profile_id: int,
 
     draft = await hr_agent.draft_email(
         {"name": profile.name, "predicted_role": title, "skills": []}, "outreach", context,
+        sender={"name": user.name, "company": user.company},
     )
     if not draft.get("body"):
         # No language model configured: a plain note is still better than nothing.
