@@ -575,7 +575,7 @@ export default function CandidateFocus() {
         <header className="sf-identity">
           <div className="sf-identity-main">
             <div className="sf-identity-mark" aria-hidden="true">{anonymize ? <User size={30} /> : (focusCandidate.name || '?').split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}<span /></div>
-            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}</span><h2>{displayName}</h2><p>{focusCandidate.predicted_role || 'Role not specified'}</p></div>
+            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}{focusCandidate.is_sample && ' · SAMPLE RÉSUMÉ'}</span><h2>{displayName}</h2><p>{focusCandidate.predicted_role || 'Role not specified'}</p></div>
           </div>
           <dl className="sf-facts">
             <div><dt><Briefcase size={14} /> Experience</dt><dd>{focusCandidate.total_experience_years != null ? `${focusCandidate.total_experience_years} years` : 'Not specified'}</dd></div>
@@ -586,7 +586,8 @@ export default function CandidateFocus() {
         <div className="sf-action-row">
           <button className={`sf-button ${activeTool === 'chat' ? 'sf-button-primary' : ''}`} onClick={() => goTool('chat')}><MessageSquare size={16} /> Discuss candidate</button>
           <button className={`sf-button ${activeTool === 'email' ? 'sf-button-primary' : ''}`} onClick={() => goTool('email')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to prepare an email.' : 'Prepare an email draft'}><Mail size={16} /> Draft email</button>
-          <button className="sf-button" onClick={() => goTool('interview')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to create an interview.' : 'Set up an interview'}><Video size={16} /> Create interview</button>
+          {/* The sample résumé has no one to invite; the server refuses it too. */}
+          <button className="sf-button" onClick={() => goTool('interview')} disabled={!hasEvaluation || focusCandidate.is_sample} title={focusCandidate.is_sample ? "The sample résumé is for trying ResuMate, so it can't be invited to an interview." : !hasEvaluation ? 'Complete a role evaluation to create an interview.' : 'Set up an interview'}><Video size={16} /> Create interview</button>
           {hasEvaluation && shownResult.report && <button className="sf-button sf-export" onClick={exportEvaluation}><Download size={16} /> Export evaluation</button>}
           {!hasEvaluation && <span className="sf-action-note">Evaluate role fit to unlock email & interview setup.</span>}
         </div>

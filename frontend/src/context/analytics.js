@@ -77,8 +77,9 @@ export const EMPTY_ANALYTICS = {
 
 export function computeAnalytics(candidates) {
   // Non-resume uploads (job descriptions, mostly) are in the same list but are
-  // not people, so they do not belong in a candidate pool's statistics.
-  const selected = (candidates || []).filter(c => c.is_resume !== false);
+  // not people, so they do not belong in a candidate pool's statistics. Nor
+  // does the sample résumé offered for trying ResuMate.
+  const selected = (candidates || []).filter(c => c.is_resume !== false && !c.is_sample);
   if (selected.length === 0) return EMPTY_ANALYTICS;
 
   const total = selected.length;

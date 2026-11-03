@@ -887,6 +887,8 @@ export default function Dashboard() {
                           </p>
                           
                           <div className="candidate-badges">
+                            {/* The sample résumé offered for trying ResuMate: no one to invite. */}
+                            {c.is_sample && <span className="badge badge-orange">Sample</span>}
                             {c.badges?.slice(0, 3).map((b, j) => (
                               <span key={j} className={`badge badge-${b.color || 'blue'}`}>{b.label}</span>
                             ))}
@@ -1049,7 +1051,7 @@ export default function Dashboard() {
                   <div className="clean-section">
                     <h3 className="clean-section-title">Experience Comparison</h3>
                     <div className="clean-card clean-card--padded">
-                      {selectedCandidates.filter(c => c.is_resume !== false).map((c, i) => {
+                      {selectedCandidates.filter(c => c.is_resume !== false && !c.is_sample).map((c, i) => {
                         const maxExp = Math.max(...selectedCandidates.map(x => knownYears(x.total_experience_years) ?? 0), 1);
                         // Unknown is "—" with no bar, not 0 years.
                         const years = knownYears(c.total_experience_years);
