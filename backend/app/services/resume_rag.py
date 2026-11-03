@@ -26,6 +26,16 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 # read by the .docx reader, which can't, or as raw bytes for the advisor.
 RESUME_EXTENSIONS = ('.pdf', '.docx', '.txt')
 OLD_WORD_FILE = "Old Word files (.doc) can't be read. Save it as .docx or PDF, then upload it again."
+# The fingerprint of the sample résumé the Candidates page offers for trying
+# ResuMate (frontend/public/sample-resume.pdf; a test keeps the two in step).
+# It was a candidate like any other: in the figures, and invitable, to an
+# address nobody owns.
+SAMPLE_RESUME_SHA256 = "5525edb26f217fe4904f51cb726d807320f9bb4705ad4f853ad3789279502d27"
+
+
+def is_sample(candidate: Dict) -> bool:
+    """Whether this candidate is the sample résumé, by its file's fingerprint."""
+    return bool(candidate) and candidate.get("file_hash") == SAMPLE_RESUME_SHA256
 
 
 def primary_email(candidate: Dict) -> str:
@@ -209,6 +219,7 @@ class ResumeRAGService:
             "raw_text": row.raw_text or "",
             "is_resume": row.is_resume,
             "analysis_failed": bool(row.analysis_failed),
+            "is_sample": row.file_hash == SAMPLE_RESUME_SHA256,
         }
 
     def add_missing(self, manager_id, records: List[Dict]) -> int:
@@ -429,7 +440,8 @@ class ResumeRAGService:
             "raw_text": text[:1500],
             "text": text[:5000],
             "embedded_links": embedded_links,
-            **summary_data
+            **summary_data,
+            "is_sample": file_hash == SAMPLE_RESUME_SHA256,
         }
 
         async with self._async_lock:

@@ -9,10 +9,17 @@ the video room had none to ask.
 """
 import logging
 
+from fastapi import HTTPException
+
 from app.agents.technical_agent import clean_questions, technical_agent
 from app.services import db_service
+from app.services.resume_rag import is_sample
 
 logger = logging.getLogger("resumate.interview_setup")
+
+# Why the sample résumé gets no interview. It was invitable like anyone, to
+# the made-up address on it.
+SAMPLE_NOT_INVITED = "The sample résumé is for trying ResuMate, so it can't be invited to an interview."
 
 
 async def create_interview(db, *, manager_id, candidate, candidate_id, email, name, role, level,
@@ -22,7 +29,11 @@ async def create_interview(db, *, manager_id, candidate, candidate_id, email, na
     Returns (interview, résumé analysis); the interview is None when it
     couldn't be saved. The questions are best effort: without them the
     interview stands, and the interviewer asks its own.
+
+    Refuses the sample résumé (400). A batch skips it before getting here.
     """
+    if is_sample(candidate):
+        raise HTTPException(400, SAMPLE_NOT_INVITED)
     await db_service.create_candidate_access(db, email, name or "", candidate_id, manager_id=manager_id)
     interview = await db_service.create_interview(db, {
         "candidate_id": candidate_id,

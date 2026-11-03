@@ -16,7 +16,7 @@ from app.core.errors import friendly_error
 from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
-from app.services.resume_rag import resume_rag, primary_email
+from app.services.resume_rag import resume_rag, primary_email, is_sample
 from app.services import interview_modes, interview_setup, screening_runs
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
@@ -224,6 +224,10 @@ async def batch_action(
         if not email:
             result.update(interview_created=False, email_sent=False,
                           skipped="No email address on this résumé, so they can't be invited.")
+            outcomes.append(result)
+            continue
+        if is_sample(candidate):
+            result.update(interview_created=False, email_sent=False, skipped=interview_setup.SAMPLE_NOT_INVITED)
             outcomes.append(result)
             continue
 
