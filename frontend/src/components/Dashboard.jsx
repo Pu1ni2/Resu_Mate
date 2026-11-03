@@ -12,6 +12,7 @@ import {
   Mic, MicOff, Volume2, Loader, Square, Video, Zap, Search, ArrowUpRight, ArrowRight
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
+import { knownYears } from '../services/experience';
 
 // Loaded when opened: Jarvis alone is a large part of the app.
 const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
@@ -351,7 +352,8 @@ export default function Dashboard() {
       .join(' ').toLowerCase().includes(query))
     .sort((a, b) => {
       if (candidateSort === 'name') return getDisplayName(a.candidate, a.index).localeCompare(getDisplayName(b.candidate, b.index));
-      if (candidateSort === 'experience') return (b.candidate.total_experience_years || 0) - (a.candidate.total_experience_years || 0);
+      // Most first; unknown last, not as 0.
+      if (candidateSort === 'experience') return (knownYears(b.candidate.total_experience_years) ?? -1) - (knownYears(a.candidate.total_experience_years) ?? -1);
       return a.index - b.index;
     });
   // What "Select all" picks: the résumés the search shows. And the selected
@@ -1038,8 +1040,10 @@ export default function Dashboard() {
                     <h3 className="clean-section-title">Experience Comparison</h3>
                     <div className="clean-card clean-card--padded">
                       {selectedCandidates.filter(c => c.is_resume !== false).map((c, i) => {
-                        const maxExp = Math.max(...selectedCandidates.map(x => x.total_experience_years || 0), 1);
-                        const pct = ((c.total_experience_years || 0) / maxExp) * 100;
+                        const maxExp = Math.max(...selectedCandidates.map(x => knownYears(x.total_experience_years) ?? 0), 1);
+                        // Unknown is "—" with no bar, not 0 years.
+                        const years = knownYears(c.total_experience_years);
+                        const pct = years === null ? 0 : (years / maxExp) * 100;
                         // Named by their place in the whole list, as on Candidates,
                         // so a hidden name is the same stand-in everywhere.
                         const name = getDisplayName(c, candidates.findIndex(x => x.id === c.id));
@@ -1059,10 +1063,10 @@ export default function Dashboard() {
                                 percent={pct}
                                 color="var(--accent)"
                                 index={i}
-                                detail={`${name} · ${c.total_experience_years || 0} years of experience`}
+                                detail={years === null ? `${name} · experience not known` : `${name} · ${years} years of experience`}
                               />
                             </div>
-                            <div className="clean-exp-years">{c.total_experience_years || 0}y</div>
+                            <div className="clean-exp-years">{years === null ? '—' : `${years}y`}</div>
                           </div>
                         );
                       })}

@@ -8,6 +8,7 @@ import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
 import { keepTabInside, useModalFocus } from '../ui/modalFocus';
+import { knownYears } from '../../services/experience';
 import { useAvatarInterviews } from '../../services/features';
 
 const SESSION_KEY = 'jarvis_session_v3';
@@ -169,7 +170,7 @@ function buildAtsSummary(data) {
 function buildCandidateList(candidates) {
   if (!candidates.length) return 'No candidates uploaded yet.';
   return candidates
-    .map(c => `${c.name} (${c.predicted_role || 'Unknown'}, ${c.total_experience_years || 0}y)`)
+    .map(c => `${c.name} (${c.predicted_role || 'Unknown'}, ${knownYears(c.total_experience_years) === null ? 'experience not known' : `${c.total_experience_years}y`})`)
     .join('; ');
 }
 

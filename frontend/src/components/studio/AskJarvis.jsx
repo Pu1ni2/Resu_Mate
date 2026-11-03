@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { knownYears } from '../../services/experience';
 
 const JarvisAgent = lazy(() => import('../pipeline/JarvisAgent'));
 
@@ -13,7 +14,8 @@ export const jarvisSummary = candidates => (candidates || [])
     id: c.id,
     name: c.name || 'Unknown',
     predicted_role: c.predicted_role || '',
-    total_experience_years: c.total_experience_years || 0,
+    // null when not known, not 0.
+    total_experience_years: knownYears(c.total_experience_years),
     experience_level: c.experience_level || '',
     location: c.location || '',
     email: c.email || c.embedded_links?.email || '',

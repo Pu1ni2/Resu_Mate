@@ -46,7 +46,7 @@ describe('Jarvis on a page other than the dashboard', () => {
 describe('what Jarvis is told of the candidates', () => {
   it('is the résumés, with what it needs to act on them', () => {
     expect(jarvisSummary([ADA, NOTE])).toEqual([{
-      id: 1, name: 'Ada', predicted_role: 'Data Engineer', total_experience_years: 0, experience_level: '',
+      id: 1, name: 'Ada', predicted_role: 'Data Engineer', total_experience_years: null, experience_level: '',
       location: '', email: '', skills: ['Python'], github_url: 'https://github.com/ada', linkedin_url: '',
     }]);
     expect(jarvisSummary(undefined)).toEqual([]);
