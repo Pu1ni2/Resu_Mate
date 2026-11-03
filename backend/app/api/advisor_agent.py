@@ -368,6 +368,45 @@ def get_suggestions(mode: str, history_len: int, last_reply: str = "") -> List[s
     return follow_ups.get(mode, ["Tell me more", "What else?", "Can you elaborate?"])
 
 
+# The advisor's modes, each with a conversation of its own.
+ADVISOR_MODES = ("general", "resume_coach", "interview_prep", "career_advisor")
+
+
+@router.get("/history")
+async def advisor_history(
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_candidate),
+):
+    """The signed-in candidate's conversation in each mode, as the advisor
+    remembers it (its last 20 messages). It was remembered, and answered from,
+    but the page started blank every time."""
+    session = await state_service.get_or_create_advisor_session(db, email)
+    kept = session.chat_history or {}
+    return {"history": {
+        mode: [{"role": m["role"], "content": m.get("content", "")}
+               for m in kept.get(mode, []) if isinstance(m, dict) and m.get("role") in ("user", "assistant")]
+        for mode in ADVISOR_MODES
+    }}
+
+
+class AdvisorClearRequest(BaseModel):
+    mode: str
+
+
+@router.post("/history/clear")
+async def clear_advisor_history(
+    req: AdvisorClearRequest,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_candidate),
+):
+    """Start one mode's conversation again. The advisor forgets it too, so a
+    new conversation isn't answered from the old one."""
+    if req.mode not in ADVISOR_MODES:
+        raise HTTPException(status_code=400, detail="Unknown advisor mode.")
+    await state_service.update_advisor_session(db, email, mode=req.mode, messages=[])
+    return {"cleared": req.mode}
+
+
 @router.get("/context")
 async def get_candidate_context(
     db: AsyncSession = Depends(get_db),
