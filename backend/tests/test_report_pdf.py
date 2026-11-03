@@ -64,7 +64,8 @@ def test_nothing_scored_is_not_zero(client):
     _seed(m["id"], 2, "Ada Lovelace", "ada@x.com")
     _run(_finished(m["id"], "ada@x.com", {"report": "## Notes"}, []))
     _, text = _export(client, tok, "ada@x.com")
-    assert "Avg Score:" in text
+    # No average at all, rather than "Avg Score: —".
+    assert "Avg Score" not in text
     assert "0.0/10" not in text
 
 
