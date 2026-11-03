@@ -62,6 +62,16 @@
 .studio-candidate .cd-account strong, .studio-candidate .cd-account > div > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-candidate .cd-account strong { color: #eceee6; font-size: 12px; font-weight: 500; }
 .studio-candidate .cd-account > div > span { color: #a8b29f; font-size: 11px; margin-top: 3px; }
+/* The account menu: the account opens sign-out and deleting the data. */
+.studio-candidate .cd-account-menu > summary { display: flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; border-radius: 6px; }
+.studio-candidate .cd-account-menu > summary::-webkit-details-marker { display: none; }
+.studio-candidate .cd-account-menu > summary:focus-visible { outline: 2px solid #b9c3aa; outline-offset: 3px; }
+.studio-candidate .cd-account-menu .cd-account { flex: 1; margin-bottom: 0; }
+.studio-candidate .cd-account-menu[open] > summary { margin-bottom: 12px; }
+.studio-candidate .cd-account-short { display: none; color: #d0d5c6; font-size: 11px; }
+.studio-candidate .cd-account-chevron { flex: 0 0 auto; color: #a8b29f; transition: transform 120ms; }
+.studio-candidate .cd-account-menu[open] .cd-account-chevron { transform: rotate(180deg); }
+.studio-candidate .cd-account-menu-items { display: grid; justify-items: start; }
 .studio-candidate .cd-logout { color: #d0d5c6 !important; border: 0; padding: 8px 0; font-size: 12px; background: transparent !important; }
 .studio-candidate .cd-logout:hover { color: var(--color-surface) !important; }
 .studio-candidate .cd-delete-data { color: #e5aa95 !important; margin-top: 3px; font-size: 11px; }
@@ -226,6 +236,12 @@
   .studio-candidate .cd-nav-link svg { width: 15px; }
   .studio-candidate .cd-nav-badge { display: none; }
   .studio-candidate .cd-sidebar-footer { display: flex; gap: 18px; padding: 8px 23px; margin: 0; }
+  /* The account's name is hidden here, so the menu opens from "Account",
+     and its two actions sit in a row under it. */
+  .studio-candidate .cd-account-menu { flex: 1; }
+  .studio-candidate .cd-account-short { display: inline; min-height: 30px; line-height: 30px; }
+  .studio-candidate .cd-account-menu[open] > summary { margin-bottom: 4px; }
+  .studio-candidate .cd-account-menu-items { display: flex; gap: 18px; }
   .studio-candidate .cd-logout { width: auto; min-height: 30px; font-size: 11px; padding: 3px 0; }
   .studio-candidate .cd-delete-data { margin: 0 0 0 auto; }
   .studio-candidate .cd-sidebar-footer svg { width: 12px; }

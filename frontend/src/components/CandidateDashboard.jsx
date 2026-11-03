@@ -9,7 +9,7 @@ import {
   LogOut, Camera, ChevronRight, CheckCircle,
   EyeOff, Shield, Eye, GraduationCap,
   Code, Star, TrendingUp, Target,
-  Mic, Volume2, Trash2, RotateCcw
+  Mic, Volume2, Trash2, RotateCcw, ChevronDown
 } from 'lucide-react';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
@@ -468,15 +468,25 @@ export default function CandidateDashboard() {
           <span>Make room for what comes next.</span>
         </div>
         <div className="cd-sidebar-footer">
-          <div className="cd-account"><span className="cd-account-avatar">{(candidateSession.name || 'C').slice(0, 1).toUpperCase()}</span><div><strong>{candidateSession.name || 'Candidate'}</strong><span>{candidateSession.email}</span></div></div>
-          <button className="cd-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
-          <button
-            className="cd-logout cd-delete-data"
-            onClick={() => setConfirmingErase(true)}
-            title="Permanently delete all your data"
-          >
-            <Trash2 size={16} /> Delete my data
-          </button>
+          {/* The account's actions, in a menu of its own: signing out and
+              deleting everything sat side by side as everyday buttons. */}
+          <details className="cd-account-menu">
+            <summary aria-label={`Account: ${candidateSession.name || 'Candidate'}`}>
+              <div className="cd-account"><span className="cd-account-avatar">{(candidateSession.name || 'C').slice(0, 1).toUpperCase()}</span><div><strong>{candidateSession.name || 'Candidate'}</strong><span>{candidateSession.email}</span></div></div>
+              <span className="cd-account-short">Account</span>
+              <ChevronDown size={14} className="cd-account-chevron" aria-hidden="true" />
+            </summary>
+            <div className="cd-account-menu-items">
+              <button className="cd-logout" onClick={handleLogout}><LogOut size={16} /> Sign out</button>
+              <button
+                className="cd-logout cd-delete-data"
+                onClick={() => setConfirmingErase(true)}
+                title="Permanently delete all your data"
+              >
+                <Trash2 size={16} /> Delete my data…
+              </button>
+            </div>
+          </details>
         </div>
       </aside>
 
