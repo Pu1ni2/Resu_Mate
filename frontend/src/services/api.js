@@ -62,12 +62,15 @@ export function messageForApiError(err, fallback) {
 }
 
 export const candidatesAPI = {
-  upload: file => {
+  // onSent(percent): how much of the file has gone up, as the browser
+  // reports it, or null when it can't say.
+  upload: (file, onSent) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/candidates/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000
+      timeout: 120000,
+      onUploadProgress: e => onSent?.(e.total ? Math.round((e.loaded * 100) / e.total) : null),
     });
   },
   getAll: () => api.get('/candidates'),

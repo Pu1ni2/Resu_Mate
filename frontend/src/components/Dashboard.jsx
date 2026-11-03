@@ -745,15 +745,23 @@ export default function Dashboard() {
                     </button>
                   )}
 
-                  {Object.entries(uploadProgress).map(([id, p]) => (
-                    <div key={id} className="upload-progress">
-                      <div className="progress-header">
-                        <span>Analyzing...</span>
-                        <span className="progress-value">{p}%</span>
+                  {/* Each upload's real stage (AppContext.uploadResume): the
+                      file going up, with how much, then the server reading
+                      it, which can't say how far along it is. */}
+                  {Object.entries(uploadProgress).map(([id, p]) => {
+                    const percent = p.stage === 'reading' ? null : p.percent;
+                    return (
+                      <div key={id} className="upload-progress" role="status">
+                        <div className="progress-header">
+                          <span>{p.stage === 'reading' ? 'Reading the résumé…' : p.stage === 'done' ? 'Read' : 'Uploading…'}</span>
+                          {percent !== null && percent !== undefined && <span className="progress-value">{percent}%</span>}
+                        </div>
+                        <div className={`sd-upload-bar${percent === null || percent === undefined ? ' is-working' : ''}`}>
+                          <span style={percent === null || percent === undefined ? undefined : { width: `${percent}%` }} />
+                        </div>
                       </div>
-                      <div className="progress"><div className="progress-fill" style={{ width: `${p}%` }} /></div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                 </div>
               </div>

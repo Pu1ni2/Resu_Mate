@@ -119,16 +119,18 @@ export const AppProvider = ({ children }) => {
 
   const uploadResume = useCallback(async (file) => {
     const uploadId = `upload-${Date.now()}`;
-    setUploadProgress(prev => ({ ...prev, [uploadId]: 5 }));
-
-    const interval = setInterval(() => {
-      setUploadProgress(prev => ({ ...prev, [uploadId]: Math.min((prev[uploadId] || 0) + 5, 90) }));
-    }, 300);
+    // What is really happening: the file going up, as far as the browser
+    // reports it, then the server reading it, which says nothing until it's
+    // done. A timer ran a bar up to 90% under "Analyzing...", whatever was
+    // happening. Each upload is { stage, percent }.
+    const stage = value => setUploadProgress(prev => (uploadId in prev ? { ...prev, [uploadId]: value } : prev));
+    setUploadProgress(prev => ({ ...prev, [uploadId]: { stage: 'uploading', percent: 0 } }));
 
     try {
-      const res = await candidatesAPI.upload(file);
-      clearInterval(interval);
-      setUploadProgress(prev => ({ ...prev, [uploadId]: 100 }));
+      const res = await candidatesAPI.upload(file, percent => stage(
+        percent !== null && percent >= 100 ? { stage: 'reading', percent: null } : { stage: 'uploading', percent },
+      ));
+      stage({ stage: 'done', percent: 100 });
 
       setTimeout(() => {
         setCandidates(prev => {
@@ -145,7 +147,6 @@ export const AppProvider = ({ children }) => {
 
       return res.data;
     } catch (err) {
-      clearInterval(interval);
       setUploadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[uploadId];

@@ -298,7 +298,16 @@
   .studio-dashboard .sd-interview-toolbar > div > button { padding: 8px; }
 }
 
+/* An upload's bar (Dashboard.jsx): how much has gone up, then, while the
+   server reads the résumé and can't say how far along it is, a band moving
+   along rather than a made-up figure. */
+.studio-dashboard .sd-upload-bar { position: relative; height: 4px; margin-top: 8px; overflow: hidden; border-radius: 2px; background: var(--color-line); }
+.studio-dashboard .sd-upload-bar > span { display: block; width: 0; height: 100%; border-radius: 2px; background: var(--color-forest); transition: width 300ms ease; }
+.studio-dashboard .sd-upload-bar.is-working > span { width: 35%; animation: studio-dashboard-reading 1.4s ease-in-out infinite; }
+@keyframes studio-dashboard-reading { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+
 @media (prefers-reduced-motion: reduce) {
+  .studio-dashboard .sd-upload-bar.is-working > span { width: 100%; animation: none; opacity: 0.45; }
   .studio-dashboard .sd-insights .clean-stat-card { animation: none; }
   .studio-dashboard .sd-insight-bar .clean-bar-fill { transform: none; transition: none; }
   .studio-dashboard .sd-chart-tooltip { transform: none; transition: none; }
