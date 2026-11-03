@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 
 from app.services.auth import get_current_user
-from app.services.resume_rag import resume_rag, MAX_FILE_SIZE
+from app.services.resume_rag import resume_rag, MAX_FILE_SIZE, OLD_WORD_FILE, RESUME_EXTENSIONS
 from app.core.database import get_db
 from app.services import db_service
 
@@ -29,6 +29,8 @@ def _safe_upload_path(original_filename: str, allowed_ext: set[str]) -> tuple[st
     """
     base = os.path.basename(original_filename or "")
     ext = os.path.splitext(base)[1].lower()
+    if ext == ".doc":
+        raise HTTPException(400, OLD_WORD_FILE)
     if ext not in allowed_ext:
         raise HTTPException(400, f"File type not allowed. Allowed: {', '.join(sorted(allowed_ext))}")
     stem = _SAFE_NAME_RE.sub("_", os.path.splitext(base)[0]) or "resume"
@@ -41,8 +43,7 @@ def _safe_upload_path(original_filename: str, allowed_ext: set[str]) -> tuple[st
 async def upload_resume(request: Request, file: UploadFile = File(...), user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Upload and analyze a resume"""
 
-    allowed_extensions = {'.pdf', '.docx', '.doc', '.txt'}
-    file_path, safe_name = _safe_upload_path(file.filename or "", allowed_extensions)
+    file_path, safe_name = _safe_upload_path(file.filename or "", set(RESUME_EXTENSIONS))
 
     content = await file.read()
     mgr = user.id

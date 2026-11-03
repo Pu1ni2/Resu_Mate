@@ -734,7 +734,7 @@ export default function Dashboard() {
                     onDragLeave={() => setDragActive(false)}
                     onDrop={e => { e.preventDefault(); setDragActive(false); handleUpload(e.dataTransfer.files); }}
                   >
-                    <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.doc,.txt" style={{ display: 'none' }} onChange={e => handleUpload(e.target.files)} />
+                    <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt" style={{ display: 'none' }} onChange={e => handleUpload(e.target.files)} />
                     <div className="upload-icon"><Upload size={36} /></div>
                     <h3>Drop resumes here or click to upload</h3>
                     <p>PDF, DOCX, TXT • Max 5MB each • No duplicates</p>

@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services import state_service
 from app.services.auth import get_current_candidate
+from app.services.resume_rag import OLD_WORD_FILE, RESUME_EXTENSIONS
 
 logger = logging.getLogger("resumate.advisor")
 
@@ -31,7 +32,9 @@ logger = logging.getLogger("resumate.advisor")
 # upload path. Previously this endpoint read an unbounded body from an
 # unauthenticated caller.
 MAX_RESUME_BYTES = 5 * 1024 * 1024
-ALLOWED_RESUME_EXT = (".pdf", ".docx", ".doc", ".txt")
+# The same files as the manager's upload. An old Word file (.doc) was taken
+# and read as raw bytes, which the advisor was then given as the résumé.
+ALLOWED_RESUME_EXT = RESUME_EXTENSIONS
 
 _client = None
 
@@ -78,7 +81,7 @@ def _resume_text(filename: str, content: bytes) -> str:
             return "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception:
             return content.decode('utf-8', errors='ignore')
-    if name.endswith(('.docx', '.doc')):
+    if name.endswith('.docx'):
         try:
             import docx
             import io
@@ -110,6 +113,8 @@ async def candidate_upload_resume(
     email = candidate_email
 
     filename = file.filename or ""
+    if filename.lower().endswith(".doc"):
+        raise HTTPException(400, OLD_WORD_FILE)
     if not filename.lower().endswith(ALLOWED_RESUME_EXT):
         raise HTTPException(400, f"File type not allowed. Allowed: {', '.join(ALLOWED_RESUME_EXT)}")
 

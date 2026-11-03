@@ -22,6 +22,10 @@ from app.services.experience import experience_text, known_years
 from app.tools.pdf_tool import pdf_tool
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+# The résumé files that can be read. An old Word file (.doc) was taken, then
+# read by the .docx reader, which can't, or as raw bytes for the advisor.
+RESUME_EXTENSIONS = ('.pdf', '.docx', '.txt')
+OLD_WORD_FILE = "Old Word files (.doc) can't be read. Save it as .docx or PDF, then upload it again."
 
 
 def primary_email(candidate: Dict) -> str:
@@ -264,7 +268,7 @@ class ResumeRAGService:
                 loader = PyPDFLoader(file_path)
                 docs = loader.load()
                 return "\n\n".join([d.page_content for d in docs])
-            elif ext in ['.docx', '.doc']:
+            elif ext == '.docx':
                 loader = Docx2txtLoader(file_path)
                 docs = loader.load()
                 return "\n\n".join([d.page_content for d in docs])
