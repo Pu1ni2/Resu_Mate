@@ -10,7 +10,7 @@ Multi-step agent that:
 """
 import json
 from datetime import date
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
@@ -32,7 +32,11 @@ class HRAgent(BaseAgent):
     async def evaluate(self, candidate: Dict, role: str = None, level: str = None,
                        experience: str = None, job_description: str = None,
                        anonymize: bool = False, ats_score: int = None) -> Dict:
-        """Full candidate evaluation with market research"""
+        """Full candidate evaluation with market research.
+
+        "report" is None when none was written, with the reason in "error".
+        "Evaluation failed: <the error>" used to come back as the report, and
+        the candidate file showed it as one."""
         context = {
             "candidate": candidate,
             "role": role or candidate.get("predicted_role", "General"),
@@ -44,7 +48,8 @@ class HRAgent(BaseAgent):
         }
 
         result = await self.run("Evaluate this candidate for the specified role", context)
-        return {"report": result.output if result.success else f"Evaluation failed: {result.error}", "logs": result.logs}
+        report = result.output if result.success else None
+        return {"report": report, "error": None if report else (result.error or "no step wrote a report"), "logs": result.logs}
 
     async def plan(self, task: str, context: Dict) -> List[AgentStep]:
         """Plan evaluation steps"""
@@ -100,12 +105,13 @@ Reply JSON: {{"needs_retry": false, "feedback": "brief assessment"}}"""
         except:
             return {"needs_retry": False, "feedback": "Reflection completed"}
 
-    async def synthesize(self, task: str, results: List, reflection: Dict, context: Dict) -> str:
-        """Return the evaluation report"""
+    async def synthesize(self, task: str, results: List, reflection: Dict, context: Dict) -> Optional[str]:
+        """Return the evaluation report, or None when no step wrote one. It
+        was "Evaluation could not be generated.", sent back as the report."""
         for r in results:
             if isinstance(r, str) and len(r) > 100:
                 return r
-        return "Evaluation could not be generated."
+        return None
 
     async def _generate_evaluation(self, context: Dict) -> str:
         """Generate the full evaluation report"""

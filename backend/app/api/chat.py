@@ -406,7 +406,11 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
             anonymize=req.anonymize,
             ats_score=ats_score,
         )
-        return {"report": result.get("report", "Evaluation failed."), "ats_score": ats_score}
+        if not result.get("report"):
+            # A failure, not a report that says "Evaluation failed: <error>".
+            logger.warning("evaluation not written: %s", result.get("error"))
+            raise HTTPException(status_code=502, detail="The evaluation couldn't be completed. Please try again.")
+        return {"report": result["report"], "ats_score": ats_score}
     except HTTPException:
         raise
     except Exception:
