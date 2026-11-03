@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
@@ -25,6 +25,8 @@ const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterview
 
 // One empty list, so an effect that watches the messages doesn't re-run on every render.
 const NO_MESSAGES = [];
+// The portal's sections, in their order, as the address names them.
+const PORTAL_SECTIONS = ['upload', 'analysis', 'chat', 'interview'];
 
 // Candidate-portal calls go through candidateFetch, with the session token
 // minted at OTP login. The server derives the candidate's identity from this
@@ -76,7 +78,11 @@ export default function CandidateDashboard() {
     return () => { live = false; };
   }, [candidateSession?.email]);
 
-  const [tab, setTab] = useState('upload');
+  // The open section is in the address (?section=chat), so a refresh, or
+  // Back, keeps it: the portal always opened on My Resume.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSection = searchParams.get('section');
+  const setTab = section => setSearchParams(section === 'upload' ? {} : { section });
   const [input, setInput] = useState('');
   const msgEndRef = useRef(null);
 
@@ -403,6 +409,9 @@ export default function CandidateDashboard() {
   const interviewCompleted = candidateSession.interview_completed || !!interviewReport;
   const hasInterview = candidateSession.has_interview && !interviewCompleted;
   const showInterviewTab = hasInterview || interviewCompleted;
+  // The interview section opens only once there is one.
+  const tab = PORTAL_SECTIONS.includes(requestedSection) && (requestedSection !== 'interview' || showInterviewTab)
+    ? requestedSection : 'upload';
   const c = advisorCandidates[0]; // Current resume data
   const getSkills = (cand) => Array.isArray(cand?.skills) ? cand.skills : [];
   const pageIntro = {
@@ -494,7 +503,7 @@ export default function CandidateDashboard() {
                 </div>
               </div>
             ) : (
-              <span className="cd-page-index" aria-hidden="true">0{['upload', 'analysis', 'chat', 'interview'].indexOf(tab) + 1}<span> / YOUR STUDIO</span></span>
+              <span className="cd-page-index" aria-hidden="true">0{PORTAL_SECTIONS.indexOf(tab) + 1}<span> / YOUR STUDIO</span></span>
             )}
           </div>
 
