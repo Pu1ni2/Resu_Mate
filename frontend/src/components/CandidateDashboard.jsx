@@ -9,7 +9,7 @@ import {
   LogOut, Camera, ChevronRight, CheckCircle,
   EyeOff, Shield, Eye, GraduationCap,
   Code, Star, TrendingUp, Target,
-  Mic, Volume2, Trash2
+  Mic, Volume2, Trash2, RotateCcw
 } from 'lucide-react';
 import InterviewReportView from './shared/InterviewReportView';
 import { toast } from '../services/notify';
@@ -170,6 +170,44 @@ export default function CandidateDashboard() {
 
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [advisorMessages, advisorTyping]);
   useEffect(() => { setDynamicSuggestions([]); }, [advisorMode]);
+
+  // Each mode's conversation, as the advisor remembers it. The advisor
+  // answered from it, but the page started blank. A mode already talked in
+  // here keeps what it shows.
+  useEffect(() => {
+    if (!candidateSession?.email) return undefined;
+    let cancelled = false;
+    candidateFetch(`${API_BASE}/api/advisor/history`)
+      .then(resp => (resp.ok ? resp.json() : null))
+      .then(data => {
+        if (cancelled || !data?.history) return;
+        setAdvisorChatMap(prev => Object.fromEntries(Object.entries(prev).map(
+          ([mode, shown]) => [mode, shown.length ? shown : (data.history[mode] || [])],
+        )));
+      })
+      .catch(() => { /* the page starts blank, as it did */ });
+    return () => { cancelled = true; };
+  }, [candidateSession?.email]);
+
+  // A new conversation in this mode. The advisor forgets the old one too, so
+  // it isn't answered from it.
+  const startAdvisorOver = async () => {
+    const mode = advisorMode;
+    const failed = "Couldn't start a new conversation. Please try again.";
+    try {
+      const resp = await candidateFetch(`${API_BASE}/api/advisor/history/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      if (resp.status === 401) return; // signed out; the sign-in page says why
+      if (!resp.ok) { toast(await responseError(resp, failed), 'error'); return; }
+      setAdvisorChatMap(prev => ({ ...prev, [mode]: [] }));
+      setDynamicSuggestions([]);
+    } catch {
+      toast(failed, 'error');
+    }
+  };
 
   const uploadFile = async (file) => {
     try {
@@ -680,6 +718,11 @@ export default function CandidateDashboard() {
                     {(advisorChatMap[mode.id]?.length || 0) > 0 && <span className="cd-mode-dot" />}
                   </button>
                 ))}
+                {advisorMessages.length > 0 && (
+                  <button type="button" className="cd-new-conversation" onClick={startAdvisorOver} disabled={advisorTyping}>
+                    <RotateCcw size={14} aria-hidden="true" /> New conversation
+                  </button>
+                )}
               </div>
 
               <div className="cd-chat-container">

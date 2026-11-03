@@ -149,6 +149,9 @@
 .studio-candidate .cd-exp-desc { color: #69715f !important; font-size: 12px; line-height: 1.8; }
 .studio-candidate .cd-chat-section { max-width: none; height: min(740px, calc(100dvh - 285px)); min-height: 470px; }
 .studio-candidate .cd-chat-mode-tabs { background: transparent !important; border: 0; gap: 7px; margin-bottom: 14px; padding: 0; flex-shrink: 0; }
+.studio-candidate .cd-new-conversation { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 10px 6px; border: 0; background: transparent; color: var(--color-accent); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.studio-candidate .cd-new-conversation:disabled { opacity: 0.5; cursor: default; }
+.studio-candidate .cd-new-conversation:focus-visible { outline: 2px solid #839370; outline-offset: 2px; }
 .studio-candidate .cd-mode-tab { border: 1px solid #dcdfcf; background: transparent !important; color: #76806a !important; border-radius: 5px; font-size: 11px; padding: 10px 14px; white-space: nowrap; }
 .studio-candidate .cd-mode-tab.active { background: var(--color-forest) !important; border-color: var(--color-forest); color: var(--color-surface) !important; box-shadow: none; }
 .studio-candidate .cd-mode-dot { background: #bdcaa9; }
