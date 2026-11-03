@@ -67,7 +67,7 @@ describe('what the pages claim', () => {
     };
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
-    expect(screen.getByText('1 candidates')).toBeTruthy();
+    expect(screen.getByText('Answers from 1 selected candidate')).toBeTruthy();
     expect(screen.queryByText(/GPT/)).toBeNull();
   });
 });

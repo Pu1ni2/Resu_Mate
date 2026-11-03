@@ -91,7 +91,7 @@ describe('the dashboard in the workspace frame', () => {
     open();
     fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
     expect(address()).toBe('/hiring?view=chat');
-    expect(heading()).toBe('A second perspective.');
+    expect(heading()).toBe('Your selected candidates.');
     expect(current('Candidate chat')).toBe('page');
   });
 

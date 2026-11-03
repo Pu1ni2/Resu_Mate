@@ -212,8 +212,10 @@ const VIEWS = {
   chat: {
     section: 'chat',
     eyebrow: 'A LITTLE HELP, WHEN YOU NEED IT',
-    title: <>A second <em>perspective.</em></>,
-    subtitle: 'Compare experience, explore strengths, and ask the questions a résumé leaves open.',
+    // Named for what it answers from: the candidate file's chat, about one
+    // person, had the same name, "A second perspective".
+    title: <>Your selected <em>candidates.</em></>,
+    subtitle: 'Answers come from the candidates you select. Compare experience, explore strengths, and ask what a résumé leaves open.',
   },
 };
 
@@ -1163,7 +1165,7 @@ export default function Dashboard() {
                         <div>
                           <div className="chat-ai-name">ResuMate AI</div>
                           <div className="chat-ai-status">
-                            {selectedCandidates.filter(c => c.is_resume !== false).length} candidates
+                            {(n => `Answers from ${n} selected candidate${n === 1 ? '' : 's'}`)(selectedCandidates.filter(c => c.is_resume !== false).length)}
                             {anonymize && ' • 🔒 Anonymized'}
                           </div>
                         </div>
