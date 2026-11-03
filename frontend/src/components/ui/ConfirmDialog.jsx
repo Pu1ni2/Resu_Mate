@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Button from './Button';
+import { keepTabInside, useModalFocus } from './modalFocus';
 
 /* ConfirmDialog
  *
@@ -17,15 +18,11 @@ import Button from './Button';
  * - While `busy` nothing cancels it: the request is already on its way.
  *
  * Rendered into <body> so no parent's stacking or overflow can clip it, and
- * above every other layer, toasts included. Jarvis's full-screen overlay does
+ * above every other layer, toasts included. Jarvis's full-screen overlay did
  * not trap focus, so a keyboard user could reach Delete All behind it, and the
  * dialog opened underneath, out of sight. Both callers show their errors after
- * it closes.
+ * it closes. The focus handling is shared with Jarvis (modalFocus.js).
  */
-
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), ' +
-  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function ConfirmDialog({
   open,
@@ -42,12 +39,7 @@ export default function ConfirmDialog({
   const bodyId = useId();
   const panelRef = useRef(null);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const opener = document.activeElement;
-    panelRef.current?.querySelector('[data-cancel]')?.focus();
-    return () => opener?.focus?.();
-  }, [open]);
+  useModalFocus(panelRef, open, '[data-cancel]');
 
   // While busy both buttons are disabled, and the browser moves focus off a
   // button that becomes disabled, to the page, where Tab and the page's
@@ -70,22 +62,7 @@ export default function ConfirmDialog({
       cancel();
       return;
     }
-    if (e.key !== 'Tab') return;
-    const focusable = [...panelRef.current.querySelectorAll(FOCUSABLE)];
-    if (!focusable.length) {
-      e.preventDefault();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    if (e.shiftKey && (active === first || active === panelRef.current)) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault();
-      first.focus();
-    }
+    keepTabInside(e, panelRef.current);
   }
 
   return createPortal(
