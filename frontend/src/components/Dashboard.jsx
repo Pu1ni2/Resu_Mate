@@ -14,7 +14,6 @@ import {
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 
 // Loaded when opened: Jarvis alone is a large part of the app.
-const JarvisAgent = lazy(() => import('./pipeline/JarvisAgent'));
 const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { pressable } from './ui/pressable';
@@ -388,7 +387,6 @@ export default function Dashboard() {
     }
   };
 
-  const [showPipeline, setShowPipeline] = useState(false);
   // The screening run open, as /pipeline/run answers it. It lived only in the
   // page, so a refresh, or Back from another page, meant screening again. Its
   // id is in the address now (?view=screening&run=ID), and a run named there
@@ -651,7 +649,6 @@ export default function Dashboard() {
       subtitle={view.subtitle}
       onNavigate={navigateTo}
       onChat={() => setTab('chat')}
-      onAssistant={() => setShowPipeline(true)}
       actions={(
         <button type="button" role="switch" aria-checked={anonymize} className="sw-switch" onClick={() => setAnonymize(!anonymize)}>
           {anonymize ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
@@ -696,32 +693,6 @@ export default function Dashboard() {
         />
         {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 13, marginTop: 8 }}>{accountError}</p>}
       </ConfirmDialog>
-
-      {/* Jarvis opens over any view, from the sidebar. */}
-      {showPipeline && (
-        <Suspense fallback={null}>
-        <JarvisAgent
-          candidatesSummary={candidates
-            .filter(c => c.is_resume !== false)
-            .map(c => ({
-              id: c.id,
-              name: c.name || 'Unknown',
-              predicted_role: c.predicted_role || '',
-              total_experience_years: c.total_experience_years || 0,
-              experience_level: c.experience_level || '',
-              location: c.location || '',
-              email: c.email || c.embedded_links?.email || '',
-              skills: c.skills || [],
-              github_url: c.embedded_links?.github_url || '',
-              linkedin_url: c.embedded_links?.linkedin_url || '',
-            }))}
-          onClose={() => setShowPipeline(false)}
-          onComplete={(result) => {
-            setPipelineResult(result);
-          }}
-        />
-        </Suspense>
-      )}
 
       <div className="studio-dashboard">
           {/* UPLOAD TAB */}

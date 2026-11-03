@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, SlidersHorizontal, Video, BarChart2, MessageSquare, ArrowUpRight, ScanSearch, Sparkles, Bell, Keyboard } from 'lucide-react';
+import { Users, SlidersHorizontal, Video, BarChart2, MessageSquare, ArrowUpRight, ScanSearch, Bell, Keyboard } from 'lucide-react';
 
 import { useProduct } from '../ProductLayer';
+import AskJarvis from './AskJarvis';
 
 /* The workspace's sections, in the sidebar's order. `view` is the dashboard's
  * name for each one, as in /hiring?view=…. */
@@ -20,11 +21,11 @@ const SECTIONS = [
  * `active` is the section the page belongs to ('chat' for the candidate chat),
  * or none; `place` names the page in the top bar when it is in no section.
  * The dashboard switches its views itself, so it passes `onNavigate` (and
- * `onChat`, `onAssistant`); every other page links back to it. `footer` goes
- * at the sidebar's foot: the manager's account. */
+ * `onChat`); every other page links back to it. Every page offers Jarvis
+ * (AskJarvis). `footer` goes at the sidebar's foot: the manager's account. */
 export default function WorkspaceShell({
   active = null, place, eyebrow, title, subtitle, actions, footer,
-  onNavigate, onChat, onAssistant, children,
+  onNavigate, onChat, children,
 }) {
   const product = useProduct();
   const registerFrame = product?.registerFrame;
@@ -83,11 +84,7 @@ export default function WorkspaceShell({
           ) : (
             <Link to="/hiring?view=chat"><MessageSquare size={16} aria-hidden="true" />Candidate chat</Link>
           )}
-          {onAssistant && (
-            <button type="button" className="sw-assist-jarvis" onClick={onAssistant}>
-              <Sparkles size={16} aria-hidden="true" /><span>Ask Jarvis</span><ArrowUpRight size={13} aria-hidden="true" />
-            </button>
-          )}
+          <AskJarvis />
         </div>
 
         <div className="sw-sidebar-note">

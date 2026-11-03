@@ -72,24 +72,22 @@ describe('the workspace frame', () => {
     expect(onNavigate.mock.calls.map(([view]) => view)).toEqual(['upload', 'screening', 'interviews', 'analytics']);
   });
 
-  it('leads to the candidate chat, and offers Jarvis only where the page can open it', () => {
+  it('leads to the candidate chat, and offers Jarvis on every page', () => {
     renderShell();
     expect(href('Candidate chat')).toBe('/hiring?view=chat');
-    expect(screen.queryByRole('button', { name: 'Ask Jarvis' })).toBeNull();
+    // Jarvis was offered only on the dashboard. AskJarvis opens it.
+    expect(screen.getByRole('button', { name: 'Ask Jarvis' })).toBeTruthy();
   });
 
-  it('opens the chat and Jarvis in the dashboard, and marks the chat when it is open', () => {
+  it('opens the chat in the dashboard, and marks the chat when it is open', () => {
     const onChat = vi.fn();
-    const onAssistant = vi.fn();
-    renderShell({ active: 'chat', onNavigate: vi.fn(), onChat, onAssistant });
+    renderShell({ active: 'chat', onNavigate: vi.fn(), onChat });
     const chat = screen.getByRole('button', { name: 'Candidate chat' });
     expect(chat.getAttribute('aria-current')).toBe('page');
     expect(nav().querySelectorAll('[aria-current]')).toHaveLength(0);
     expect(topBar()).toBe('THE WORKSPACE / Candidate chat');
     fireEvent.click(chat);
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Jarvis' }));
     expect(onChat).toHaveBeenCalledTimes(1);
-    expect(onAssistant).toHaveBeenCalledTimes(1);
   });
 
   it('leads home, to Find Candidates and to the legal pages', () => {
