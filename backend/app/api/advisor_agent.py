@@ -137,7 +137,7 @@ async def candidate_upload_resume(
         if client is None:
             raise RuntimeError("no OpenAI API key configured")
         analysis = await client.chat.completions.create(
-            model="gpt-4o",
+            model=settings.openai_model,
             messages=[{
                 "role": "system",
                 "content": "Analyze this resume and return JSON with: name, predicted_role, experience_level (Entry/Mid/Senior/Lead), total_experience_years (number), skills (array of strings), summary (2 sentences), location"
@@ -299,7 +299,7 @@ async def advisor_chat(
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model=settings.openai_model,
             messages=messages,
             max_tokens=1000,
             temperature=0.7,

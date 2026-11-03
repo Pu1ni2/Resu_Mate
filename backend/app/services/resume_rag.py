@@ -97,7 +97,7 @@ class ResumeRAGService:
         try:
             # Initialize embeddings with correct parameters
             self.embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
+                model=settings.embedding_model,
                 openai_api_key=settings.openai_api_key  # Changed from openai_api_key
             )
             

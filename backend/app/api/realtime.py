@@ -193,7 +193,7 @@ async def create_realtime_session(
         "instructions": instructions,
         "audio": {
             "input": {
-                "transcription": {"model": "gpt-4o-transcribe", "language": "en"},
+                "transcription": {"model": settings.transcription_model, "language": "en"},
                 # semantic_vad is the recommended default — energy VAD trips
                 # on coughs, breaths, and background TV. "low" eagerness gives
                 # the candidate more thinking time before the AI assumes the

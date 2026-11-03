@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
+    # The other models, set here (or in the environment) like OPENAI_MODEL:
+    # they were written into seven files. The interview worker reads the
+    # same names from its environment (interview_agent.py), and the realtime
+    # model is below with the voice interview's settings.
+    embedding_model: str = "text-embedding-3-small"
+    transcription_model: str = "gpt-4o-transcribe"
+    speech_to_text_model: str = "whisper-1"
+    text_to_speech_model: str = "tts-1"
 
     # Tavily
     tavily_api_key: str = ""

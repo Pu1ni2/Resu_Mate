@@ -21,7 +21,7 @@ class VoiceTool:
         """Convert text to speech audio"""
         if not self.client:
             raise ValueError("OpenAI client not initialized")
-        response = await self.client.audio.speech.create(model="tts-1", voice=voice, input=text[:4096])
+        response = await self.client.audio.speech.create(model=settings.text_to_speech_model, voice=voice, input=text[:4096])
         return response.content
 
     async def speech_to_text(self, audio_data: bytes, filename: str = "audio.webm") -> str:
@@ -30,7 +30,7 @@ class VoiceTool:
             raise ValueError("OpenAI client not initialized")
         audio_file = io.BytesIO(audio_data)
         audio_file.name = filename
-        transcript = await self.client.audio.transcriptions.create(model="whisper-1", file=audio_file)
+        transcript = await self.client.audio.transcriptions.create(model=settings.speech_to_text_model, file=audio_file)
         return transcript.text
 
 

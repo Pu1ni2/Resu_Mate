@@ -24,7 +24,7 @@ class OpenAITool:
             )
             self.embeddings = OpenAIEmbeddings(
                 api_key=settings.openai_api_key,
-                model="text-embedding-3-small",
+                model=settings.embedding_model,
                 timeout=_REQUEST_TIMEOUT_S,
                 max_retries=1,
             )

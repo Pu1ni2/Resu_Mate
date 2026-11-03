@@ -685,7 +685,7 @@ async def jarvis_chat(
     raw = ""
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model=settings.openai_model,
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.25,

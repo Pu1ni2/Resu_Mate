@@ -19,6 +19,10 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8006")
 SIMLI_API_KEY = os.getenv("SIMLI_API_KEY")
 SIMLI_FACE_ID = os.getenv("SIMLI_FACE_ID", "tmp9i8bbq7c")
 OPENAI_VOICE = os.getenv("OPENAI_VOICE", "alloy")
+# The models, by the same names the server's settings read
+# (app/core/config.py), so one setting in the environment serves both.
+REALTIME_MODEL = os.getenv("REALTIME_MODEL", "gpt-realtime-2")
+TRANSCRIPTION_MODEL = os.getenv("TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
 AGENT_SHARED_SECRET = os.getenv("AGENT_SHARED_SECRET", "")
 
 # Import LiveKit at module level
@@ -35,7 +39,7 @@ REALTIME_SETTINGS = {
     "turn_detection": SemanticVad(type="semantic_vad", eagerness="low",
                                   create_response=True, interrupt_response=True),
     "reasoning": RealtimeReasoning(effort="low"),
-    "input_audio_transcription": AudioTranscription(model="gpt-4o-transcribe", language="en"),
+    "input_audio_transcription": AudioTranscription(model=TRANSCRIPTION_MODEL, language="en"),
 }
 
 
@@ -271,7 +275,7 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         llm=lk_openai.realtime.RealtimeModel(
             voice=OPENAI_VOICE,
-            model="gpt-realtime-2",
+            model=REALTIME_MODEL,
             **REALTIME_SETTINGS,
         ),
     )
