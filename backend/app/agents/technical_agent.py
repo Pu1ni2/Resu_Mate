@@ -12,6 +12,7 @@ import json
 from datetime import date
 from typing import Dict, List, Any
 from app.agents.base_agent import BaseAgent, AgentStep
+from app.services.experience import experience_text
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
 from app.services.scores import describe_average
@@ -48,7 +49,7 @@ class TechnicalAgent(BaseAgent):
         summary = candidate_data.get("summary", "")
         role = candidate_data.get("predicted_role", "Professional")
         level = candidate_data.get("experience_level", "Mid-Level")
-        total_years = candidate_data.get("total_experience_years", 0)
+        total_years = experience_text(candidate_data.get("total_experience_years"))
         key_strengths = candidate_data.get("key_strengths", [])
 
         work_text = "\n".join(
@@ -64,7 +65,7 @@ class TechnicalAgent(BaseAgent):
 
 RESUME DATA:
 Name: {candidate_data.get('name', 'Unknown')}
-Role: {role} | Level: {level} | Total Exp: {total_years} years
+Role: {role} | Level: {level} | Total Exp: {total_years}
 Summary: {summary}
 Skills: {', '.join(skills[:20])}
 Key Strengths: {', '.join(key_strengths[:5])}
@@ -207,7 +208,7 @@ Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
         work_exp = candidate_data.get("work_experience", [])
         role = candidate_data.get("predicted_role", "Professional")
         level = candidate_data.get("experience_level", "Mid-Level")
-        total_years = candidate_data.get("total_experience_years", 0)
+        total_years = experience_text(candidate_data.get("total_experience_years"))
         key_strengths = candidate_data.get("key_strengths", [])
 
         turns = transcript or interview_report.get("transcript") or []
@@ -223,7 +224,7 @@ Reply JSON: {{"quality": "good/needs_improvement", "feedback": "brief note"}}"""
         prompt = f"""Compare this candidate's RESUME CLAIMS with what they said in their INTERVIEW.
 
 RESUME CLAIMS:
-- Role: {role} | Level: {level} | Claims {total_years} years experience
+- Role: {role} | Level: {level} | Experience claimed: {total_years}
 - Skills: {', '.join(skills[:15])}
 - Key Strengths: {', '.join(key_strengths[:5])}
 - Work History: {', '.join(f"{w.get('title','')} at {w.get('company','')}" for w in work_exp[:4])}

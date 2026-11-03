@@ -205,7 +205,8 @@ class CandidateBrief(BaseModel):
     id: int
     name: str
     predicted_role: str = ""
-    total_experience_years: float = 0
+    # None when the résumé doesn't say: the page sends null, which a float refused.
+    total_experience_years: Optional[float] = None
     experience_level: str = ""
     location: str = ""
     email: str = ""
@@ -263,7 +264,7 @@ def _candidate_to_dict(candidate: Any) -> Dict[str, Any]:
             "id": candidate.get("id"),
             "name": candidate.get("name", ""),
             "predicted_role": candidate.get("predicted_role", ""),
-            "total_experience_years": candidate.get("total_experience_years", 0),
+            "total_experience_years": candidate.get("total_experience_years"),
             "experience_level": candidate.get("experience_level", ""),
             "location": candidate.get("location", ""),
             "email": candidate.get("email", ""),
@@ -275,7 +276,7 @@ def _candidate_to_dict(candidate: Any) -> Dict[str, Any]:
         "id": candidate.id,
         "name": getattr(candidate, "name", ""),
         "predicted_role": getattr(candidate, "predicted_role", ""),
-        "total_experience_years": getattr(candidate, "total_experience_years", 0),
+        "total_experience_years": getattr(candidate, "total_experience_years", None),
         "experience_level": getattr(candidate, "experience_level", ""),
         "location": getattr(candidate, "location", ""),
         "email": getattr(candidate, "email", ""),
@@ -660,7 +661,7 @@ async def jarvis_chat(
             "id": candidate["id"],
             "name": candidate["name"],
             "role": candidate.get("predicted_role", ""),
-            "exp_years": candidate.get("total_experience_years", 0),
+            "exp_years": candidate.get("total_experience_years"),
             "experience_level": candidate.get("experience_level", ""),
             "location": candidate.get("location", ""),
             "email": candidate.get("email", ""),

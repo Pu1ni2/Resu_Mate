@@ -12,6 +12,7 @@ import json
 from datetime import date
 from typing import Dict, List, Any, Optional
 from app.agents.base_agent import BaseAgent, AgentStep
+from app.services.experience import experience_text
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
 
@@ -127,7 +128,7 @@ Reply JSON: {{"needs_retry": false, "feedback": "brief assessment"}}"""
 
         # Build candidate context
         ctx = f"Name: {display_name}\nRole: {candidate.get('predicted_role', 'N/A')}\n"
-        ctx += f"Experience: {candidate.get('total_experience_years', 'N/A')} years | Level: {candidate.get('experience_level', 'N/A')}\n"
+        ctx += f"Experience: {experience_text(candidate.get('total_experience_years'))} | Level: {candidate.get('experience_level', 'N/A')}\n"
         ctx += f"Location: {candidate.get('location', 'N/A')}\nSkills: {', '.join(str(s) for s in (candidate.get('skills') or [])[:15])}\n"
         ctx += f"Summary: {candidate.get('summary', 'N/A')}\n"
 

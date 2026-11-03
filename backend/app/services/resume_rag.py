@@ -18,6 +18,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.documents import Document
 
 from app.core.config import settings
+from app.services.experience import experience_text, known_years
 from app.tools.pdf_tool import pdf_tool
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
@@ -190,7 +191,8 @@ class ResumeRAGService:
             "file_hash": row.file_hash or "",
             "predicted_role": row.predicted_role or "",
             "experience_level": row.experience_level or "",
-            "total_experience_years": row.total_experience_years or 0,
+            # None when not known, not 0 (app/services/experience.py).
+            "total_experience_years": known_years(row.total_experience_years),
             "location": row.location or "",
             "summary": row.summary or "",
             "skills": row.skills or [],
@@ -459,7 +461,7 @@ EXPERIENCE CALCULATION - IMPORTANT:
 Return ONLY valid JSON:
 {{
     "summary": "2-3 sentence summary",
-    "total_experience_years": <number between 0-30>,
+    "total_experience_years": <number between 0-30, or null if the résumé doesn't show it>,
     "predicted_role": "job title",
     "experience_level": "Entry/Junior/Mid-Level/Senior/Lead",
     "location": "city, country or null",
@@ -506,12 +508,11 @@ BADGES (pick 2-3):
             
             data = json.loads(content)
             
-            exp = data.get('total_experience_years', 0)
-            if exp > 30:
-                data['total_experience_years'] = 30
-            elif exp < 0:
-                data['total_experience_years'] = 0
-                
+            # Years the model couldn't tell stay unknown. A null here used to
+            # fail the comparison below, which threw the whole analysis away.
+            exp = known_years(data.get('total_experience_years'))
+            data['total_experience_years'] = min(exp, 30) if exp is not None else None
+
             return data
             
         except Exception as e:
@@ -726,7 +727,7 @@ BADGES (pick 2-3):
             
             ctx = f"\n{'='*40}\n## {display_name}\n{'='*40}\n"
             ctx += f"**Role:** {c.get('predicted_role', 'N/A')} | **Level:** {c.get('experience_level', 'N/A')}\n"
-            ctx += f"**Experience:** {c.get('total_experience_years', 0)} years\n"
+            ctx += f"**Experience:** {experience_text(c.get('total_experience_years'))}\n"
             
             if c.get('location'):
                 ctx += f"**Location:** {c['location']}\n"

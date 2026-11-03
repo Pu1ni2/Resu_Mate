@@ -26,7 +26,9 @@ class Candidate(Base):
     full_text = Column(Text)
     predicted_role = Column(String(200))
     experience_level = Column(String(50))
-    total_experience_years = Column(Float, default=0)
+    # Null when the résumé doesn't say. A default of 0 stored "not known" as
+    # 0 years (app/services/experience.py).
+    total_experience_years = Column(Float)
     location = Column(String(200))
     summary = Column(Text)
     skills = Column(JSON, default=list)

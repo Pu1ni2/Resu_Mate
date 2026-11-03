@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services import db_service
 from app.services import evaluations, interview_modes, interview_setup
+from app.services.experience import experience_text
 from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
@@ -262,7 +263,7 @@ async def focus_chat(request: Request, req: FocusChatRequest, user=Depends(get_c
 
         # Build context from candidate data
         ctx = f"Name: {candidate_name}\nRole: {candidate.get('predicted_role', 'N/A')}\n"
-        ctx += f"Experience: {candidate.get('total_experience_years', 'N/A')} years | Level: {candidate.get('experience_level', 'N/A')}\n"
+        ctx += f"Experience: {experience_text(candidate.get('total_experience_years'))} | Level: {candidate.get('experience_level', 'N/A')}\n"
         ctx += f"Location: {candidate.get('location', 'N/A')}\nSummary: {candidate.get('summary', 'N/A')}\n"
         skills = candidate.get('skills', [])
         ctx += f"Skills: {', '.join(str(s) for s in skills[:15])}\n"
@@ -679,7 +680,7 @@ async def automate_ranking(request: Request, req: AutomateRankingRequest, user=D
         work_str = ", ".join(f"{w.get('title','')} at {w.get('company','')}" for w in work[:3]) or "N/A"
         candidate_summaries += f"""
 --- Candidate {i+1}: {c.get('name', 'Unknown')} (ID: {c.get('id', 0)}) ---
-Role: {c.get('predicted_role', 'N/A')} | Level: {c.get('experience_level', 'N/A')} | Exp: {c.get('total_experience_years', 0)} years
+Role: {c.get('predicted_role', 'N/A')} | Level: {c.get('experience_level', 'N/A')} | Exp: {experience_text(c.get('total_experience_years'))}
 Location: {c.get('location', 'N/A')}
 Skills: {', '.join((c.get('skills') or [])[:12])}
 Key Strengths: {', '.join((c.get('key_strengths') or [])[:4])}
