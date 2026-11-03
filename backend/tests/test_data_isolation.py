@@ -6,7 +6,17 @@ from conftest import register, auth_headers
 
 
 def _seed_candidate(resume_rag, manager_id, candidate_id, name, email):
-    """Put a candidate straight into a manager's in-memory drawer."""
+    """Put a candidate in the database and a manager's in-memory drawer, as an
+    upload does. The list is read from the database."""
+    import asyncio
+    from app.core import database
+    from app.models.candidate import Candidate
+
+    async def row():
+        async with database.async_session() as db:
+            db.add(Candidate(id=candidate_id, manager_id=manager_id, name=name, email=email, is_resume=True))
+            await db.commit()
+    asyncio.get_event_loop().run_until_complete(row())
     resume_rag.candidates.setdefault(manager_id, {})[candidate_id] = {
         "id": candidate_id, "manager_id": manager_id, "name": name,
         "email": email, "is_resume": True, "text": "resume text",

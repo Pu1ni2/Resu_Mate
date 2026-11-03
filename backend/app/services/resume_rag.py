@@ -177,6 +177,53 @@ class ResumeRAGService:
     def _hash_drawer(self, manager_id) -> Set[str]:
         return self.uploaded_file_hashes.setdefault(self._mkey(manager_id), set())
 
+    def record_from_row(self, row) -> Dict:
+        """A Candidate row as the store holds it: how the store is filled at
+        start-up, and again from a list read from the database."""
+        mkey = self._mkey(row.manager_id)
+        return {
+            "id": row.id,
+            "manager_id": mkey,
+            "name": row.name or "",
+            "email": row.email or "",
+            "file_name": row.file_name or "",
+            "file_hash": row.file_hash or "",
+            "predicted_role": row.predicted_role or "",
+            "experience_level": row.experience_level or "",
+            "total_experience_years": row.total_experience_years or 0,
+            "location": row.location or "",
+            "summary": row.summary or "",
+            "skills": row.skills or [],
+            "work_experience": row.work_experience or [],
+            "education": row.education or [],
+            "key_strengths": row.key_strengths or [],
+            "badges": row.badges or [],
+            "embedded_links": row.embedded_links or {},
+            "text": row.full_text or row.raw_text or "",
+            "raw_text": row.raw_text or "",
+            "is_resume": row.is_resume,
+            "analysis_failed": bool(row.analysis_failed),
+        }
+
+    def add_missing(self, manager_id, records: List[Dict]) -> int:
+        """Put back the manager's candidates the store is missing, as the
+        database has them (record_from_row). Records the store has stay as
+        they are. Returns how many were put back."""
+        with self._sync_lock:
+            drawer = self._drawer(manager_id)
+            hashes = self._hash_drawer(manager_id)
+            added = 0
+            for record in records:
+                if record["id"] in drawer:
+                    continue
+                drawer[record["id"]] = record
+                if record.get("file_hash"):
+                    hashes.add(record["file_hash"])
+                # New uploads take ids past every candidate's.
+                self.candidate_counter = max(self.candidate_counter, record["id"] or 0)
+                added += 1
+            return added
+
     def _get_file_hash(self, content: bytes) -> str:
         """Generate hash of file content"""
         return hashlib.sha256(content).hexdigest()

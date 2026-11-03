@@ -65,44 +65,18 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Candidate).order_by(Candidate.id))
             rows = result.scalars().all()
-            max_id = 0
             for row in rows:
                 # Place each candidate in its owning manager's drawer so the
                 # in-memory store is tenant-isolated from boot, not just after
                 # the first upload. manager_id may be NULL on legacy rows; the
-                # store coerces that to the sentinel drawer (0).
-                mkey = resume_rag._mkey(row.manager_id)
-                resume_rag.candidates.setdefault(mkey, {})[row.id] = {
-                    "id": row.id,
-                    "manager_id": mkey,
-                    "name": row.name or "",
-                    "email": row.email or "",
-                    "file_name": row.file_name or "",
-                    "file_hash": row.file_hash or "",
-                    "predicted_role": row.predicted_role or "",
-                    "experience_level": row.experience_level or "",
-                    "total_experience_years": row.total_experience_years or 0,
-                    "location": row.location or "",
-                    "summary": row.summary or "",
-                    "skills": row.skills or [],
-                    "work_experience": row.work_experience or [],
-                    "education": row.education or [],
-                    "key_strengths": row.key_strengths or [],
-                    "badges": row.badges or [],
-                    "embedded_links": row.embedded_links or {},
-                    "text": row.full_text or row.raw_text or "",
-                    "raw_text": row.raw_text or "",
-                    "is_resume": row.is_resume,
-                    "analysis_failed": bool(row.analysis_failed),
-                }
-                if row.file_hash:
-                    resume_rag.uploaded_file_hashes.setdefault(mkey, set()).add(row.file_hash)
-                max_id = max(max_id, row.id or 0)
-            # Resume the global id counter past the highest existing id so new
-            # uploads never collide with a warm-loaded candidate.
-            resume_rag.candidate_counter = max(resume_rag.candidate_counter, max_id)
+                # store coerces that to the sentinel drawer (0). The global id
+                # counter moves past every id, so new uploads never collide.
+                resume_rag.add_missing(row.manager_id, [resume_rag.record_from_row(row)])
             print(f"[OK] Loaded {len(rows)} candidates from DB into memory")
     except Exception as e:
+        # Each manager's list, read from the database, puts their candidates
+        # back (GET /candidates), so a failure here no longer leaves every
+        # list empty until a restart.
         print(f"[WARN] Could not warm candidate cache: {e}")
 
     print("✅ All agents registered")

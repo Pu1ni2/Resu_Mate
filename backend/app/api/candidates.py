@@ -124,10 +124,28 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
 
 
 @router.get("")
-async def get_candidates(user=Depends(get_current_user)):
-    """Get this manager's candidates only."""
-    candidates = resume_rag.get_all_candidates(manager_id=user.id)
-    return {"candidates": candidates}
+async def get_candidates(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """This manager's candidates only, as the database has them.
+
+    The list was the store's copy, made at start-up, so a start-up that
+    couldn't reach the database left every list empty until a restart. It's
+    read from the database now, and any candidate the store is missing is put
+    back in it, for screening and the rest. The store's own records are
+    listed where it has them. Without the database, the store's copy is
+    listed, as before.
+    """
+    from sqlalchemy import select as sql_select
+    from app.models.candidate import Candidate
+    try:
+        rows = (await db.execute(
+            sql_select(Candidate).where(Candidate.manager_id == user.id).order_by(Candidate.id)
+        )).scalars().all()
+    except Exception as exc:
+        print(f"[WARN] candidate list read from the store only: {type(exc).__name__}")
+        return {"candidates": resume_rag.get_all_candidates(manager_id=user.id)}
+    records = [resume_rag.record_from_row(row) for row in rows]
+    resume_rag.add_missing(user.id, records)
+    return {"candidates": [resume_rag.get_candidate(r["id"], manager_id=user.id) or r for r in records]}
 
 
 @router.get("/{candidate_id}")
