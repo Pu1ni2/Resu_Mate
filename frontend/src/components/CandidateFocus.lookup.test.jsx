@@ -63,7 +63,8 @@ describe('looking a candidate up online', () => {
     open();
     expect(screen.queryByRole('button', { name: 'Look them up online' })).toBeNull();
     expect(screen.getByText("Names are hidden, so they aren't looked up online.")).toBeTruthy();
-    expect(fetch).not.toHaveBeenCalled();
+    // Only the file's kept evaluations are read; nothing is looked up.
+    expect(fetch.mock.calls.map(([url]) => String(url)).filter(url => !/\/candidates\/\d+\/evaluations$/.test(url))).toEqual([]);
   });
 });
 

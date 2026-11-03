@@ -27,6 +27,10 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); });
 
+// What was asked of the server, apart from the file's kept evaluations, which
+// it reads on opening.
+const asked = () => fetch.mock.calls.map(([url]) => String(url)).filter(url => !/\/candidates\/\d+\/evaluations$/.test(url));
+
 describe('the candidate file', () => {
   it('opens the requested candidate immediately with all five sections and gated next actions', () => {
     open();
@@ -36,7 +40,7 @@ describe('the candidate file', () => {
     expect(screen.getByRole('button', { name: 'Draft email' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Create interview' }).disabled).toBe(true);
     // Nobody is looked up online until asked.
-    expect(fetch).not.toHaveBeenCalled();
+    expect(asked()).toEqual([]);
   });
 
   it('keeps the extracted text available when no original file was stored', async () => {
@@ -81,7 +85,7 @@ describe('the candidate file', () => {
     fireEvent.click(screen.getByRole('button', { name: /02 Résumé/ }));
     expect(screen.queryByText(GRACE.text)).toBeNull();
     expect(screen.getByRole('button', { name: 'Original file' }).disabled).toBe(true);
-    expect(fetch).not.toHaveBeenCalled();
+    expect(asked()).toEqual([]);
   });
 
   it('does not apply a previous candidate’s late research to the newly opened file', async () => {

@@ -59,6 +59,10 @@ export default function CandidateFocus() {
   const [selectedExperience, setSelectedExperience] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [agentResult, setAgentResult] = useState(null);
+  // The open file's newest kept evaluation (GET /chat/candidates/{id}/evaluations),
+  // shown until a new one is started. An evaluation was lost on opening
+  // another file, or a refresh.
+  const [keptEvaluation, setKeptEvaluation] = useState(null);
   const [agentLoading, setAgentLoading] = useState(false);
   const [suggestedRoles, setSuggestedRoles] = useState([]);
   const agentResultRef = useRef(null);
@@ -160,6 +164,15 @@ export default function CandidateFocus() {
     setAgentResult(null);
     setAgentLoading(false);
     setSuggestedRoles([]);
+    setKeptEvaluation(null);
+  };
+
+  const loadKeptEvaluation = (candidateId) => {
+    const version = selectionVersion.current;
+    authFetch(`${API_BASE}/api/chat/candidates/${encodeURIComponent(candidateId)}/evaluations`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (version === selectionVersion.current) setKeptEvaluation(data?.evaluations?.[0] || null); })
+      .catch(() => { /* none shown: a new one can still be written */ });
   };
 
   // ─── Auto-generate role suggestions ───
@@ -271,6 +284,7 @@ export default function CandidateFocus() {
     // Also a lookup still running for the last file: its answer is dropped.
     setScanLogs([]); setScanProfiles(null); setScanSummary(''); setScanContact(null); setScanDone(false); setScanRunning(false);
     setSearchParams(withRun({ candidate: String(candidate.id) }), { replace: true });
+    loadKeptEvaluation(candidate.id);
     const cached = restoreFromCache(candidate.id);
     if (cached) {
       setScanProfiles(cached.scanProfiles || null);
@@ -448,7 +462,8 @@ export default function CandidateFocus() {
       }
       const data = await response.json();
       if (version !== selectionVersion.current) return;
-      setAgentResult(data); setAgentStep('result');
+      // With what it was asked, as a kept one has it.
+      setAgentResult({ ...data, role, level: selectedLevel }); setAgentStep('result');
     } catch { if (version === selectionVersion.current) { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); } }
     finally { if (version === selectionVersion.current) setAgentLoading(false); }
   };
@@ -531,7 +546,13 @@ export default function CandidateFocus() {
   }
 
   const displayName = candidateName(focusCandidate);
-  const hasEvaluation = agentStep === 'result' && agentResult && !agentResult.error;
+  // The kept evaluation shows until a new one is started, unless it was
+  // written with the name while names are hidden.
+  const keptHidden = Boolean(keptEvaluation && anonymize && !keptEvaluation.anonymized);
+  const showingKept = agentStep === 'choose' && Boolean(keptEvaluation) && !keptHidden;
+  const shownStep = showingKept ? 'result' : agentStep;
+  const shownResult = showingKept ? keptEvaluation : agentResult;
+  const hasEvaluation = shownStep === 'result' && shownResult && !shownResult.error;
   const activeSection = ['websearch', 'github'].includes(activeTool) ? 'research' : ['agent', 'resume-intel'].includes(activeTool) ? 'evaluation' : ['interview', 'interview-history', 'calendly'].includes(activeTool) ? 'interviews' : activeTool;
   const sectionTabs = [
     { id: 'overview', label: 'Overview', icon: User, tool: 'overview' },
@@ -541,7 +562,7 @@ export default function CandidateFocus() {
     { id: 'interviews', label: 'Interviews', icon: Calendar, tool: 'interview' },
   ];
   const exportEvaluation = () => {
-    const url = URL.createObjectURL(new Blob([agentResult.report || ''], { type: 'text/markdown;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob([shownResult.report || ''], { type: 'text/markdown;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url; link.download = `candidate-${focusCandidate.id}-evaluation.md`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -566,7 +587,7 @@ export default function CandidateFocus() {
           <button className={`sf-button ${activeTool === 'chat' ? 'sf-button-primary' : ''}`} onClick={() => goTool('chat')}><MessageSquare size={16} /> Discuss candidate</button>
           <button className={`sf-button ${activeTool === 'email' ? 'sf-button-primary' : ''}`} onClick={() => goTool('email')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to prepare an email.' : 'Prepare an email draft'}><Mail size={16} /> Draft email</button>
           <button className="sf-button" onClick={() => goTool('interview')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to create an interview.' : 'Set up an interview'}><Video size={16} /> Create interview</button>
-          {hasEvaluation && agentResult.report && <button className="sf-button sf-export" onClick={exportEvaluation}><Download size={16} /> Export evaluation</button>}
+          {hasEvaluation && shownResult.report && <button className="sf-button sf-export" onClick={exportEvaluation}><Download size={16} /> Export evaluation</button>}
           {!hasEvaluation && <span className="sf-action-note">Evaluate role fit to unlock email & interview setup.</span>}
         </div>
         </div>
@@ -596,12 +617,12 @@ export default function CandidateFocus() {
 
         {activeSection === 'research' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">BEYOND THE RÉSUMÉ</span><h3>A wider perspective.</h3><p>Explore public work and sources that add context to the candidate’s experience.</p></div><Globe className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" role="group" aria-label="Research tools"><button aria-pressed={activeTool === 'websearch'} onClick={() => goTool('websearch')}><Globe size={16} /> Web research</button><button aria-pressed={activeTool === 'github'} onClick={() => goTool('github')}><Github size={16} /> GitHub portfolio</button></div>{activeTool === 'websearch' ? <WebSearchPanel searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchResults={searchResults} searchError={searchError} searchLoading={searchLoading} searchHistory={searchHistory} onSearch={handleWebSearch} getSearchSuggestions={getSearchSuggestions} /> : <GitHubPanel ghUsername={ghUsername} setGhUsername={setGhUsername} ghProfile={ghProfile} ghLoading={ghLoading} ghError={ghError} ghNeedsInput={ghNeedsInput} onFetchGitHub={fetchGitHub} />}</section>}
 
-        {activeSection === 'evaluation' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">MAKE AN INFORMED CALL</span><h3>Evidence meets opportunity.</h3><p>Assess the match to your role, then explore the questions worth asking.</p></div><Target className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" role="group" aria-label="Evaluation tools"><button aria-pressed={activeTool === 'agent'} onClick={() => goTool('agent')}><Target size={16} /> Role fit</button><button aria-pressed={activeTool === 'resume-intel'} onClick={() => goTool('resume-intel')}><BookOpen size={16} /> Résumé intelligence</button></div>{activeTool === 'agent' ? <HiringAgentPanel agentStep={agentStep} setAgentStep={setAgentStep} jdText={jdText} setJdText={setJdText} selectedRole={selectedRole} setSelectedRole={setSelectedRole} customRole={customRole} setCustomRole={setCustomRole} selectedExperience={selectedExperience} setSelectedExperience={setSelectedExperience} selectedLevel={selectedLevel} setSelectedLevel={setSelectedLevel} agentResult={agentResult} agentLoading={agentLoading} suggestedRoles={suggestedRoles} onRunHiringAgent={runHiringAgent} onRunJDAnalysis={runJDAnalysis} onReset={resetAgent} onSwitchToChat={() => goTool('chat')} agentResultRef={agentResultRef} /> : <ResumeIntelPanel key={focusCandidate.id} focusCandidate={focusCandidate} />}</section>}
+        {activeSection === 'evaluation' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">MAKE AN INFORMED CALL</span><h3>Evidence meets opportunity.</h3><p>Assess the match to your role, then explore the questions worth asking.</p></div><Target className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" role="group" aria-label="Evaluation tools"><button aria-pressed={activeTool === 'agent'} onClick={() => goTool('agent')}><Target size={16} /> Role fit</button><button aria-pressed={activeTool === 'resume-intel'} onClick={() => goTool('resume-intel')}><BookOpen size={16} /> Résumé intelligence</button></div>{activeTool === 'agent' ? <HiringAgentPanel agentStep={shownStep} setAgentStep={setAgentStep} jdText={jdText} setJdText={setJdText} selectedRole={selectedRole} setSelectedRole={setSelectedRole} customRole={customRole} setCustomRole={setCustomRole} selectedExperience={selectedExperience} setSelectedExperience={setSelectedExperience} selectedLevel={selectedLevel} setSelectedLevel={setSelectedLevel} agentResult={shownResult} keptHidden={agentStep === 'choose' && keptHidden} agentLoading={agentLoading} suggestedRoles={suggestedRoles} onRunHiringAgent={runHiringAgent} onRunJDAnalysis={runJDAnalysis} onReset={resetAgent} onSwitchToChat={() => goTool('chat')} agentResultRef={agentResultRef} /> : <ResumeIntelPanel key={focusCandidate.id} focusCandidate={focusCandidate} />}</section>}
 
         {activeSection === 'interviews' && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">MAKE ROOM FOR A CONVERSATION</span><h3>The next chapter.</h3><p>Prepare a focused interview or share a time to meet.</p></div><Calendar className="sf-section-symbol" size={40} strokeWidth={1} /></div><div className="sf-subtabs" role="group" aria-label="Interview tools"><button aria-pressed={activeTool === 'interview'} onClick={() => goTool('interview')}><Video size={16} /> Interview setup</button><button aria-pressed={activeTool === 'interview-history'} onClick={() => goTool('interview-history')}><History size={16} /> History</button><button aria-pressed={activeTool === 'calendly'} onClick={() => goTool('calendly')}><Calendar size={16} /> Scheduling</button></div>{activeTool === 'calendly' ? <SchedulePanel calData={calData} calLoading={calLoading} calError={calError} anonymize={anonymize} candidateName={focusCandidate.name} /> : activeTool === 'interview-history' ? <InterviewHistory key={focusCandidate.id} candidateId={focusCandidate.id} /> : hasEvaluation ? <InterviewCreator key={focusCandidate.id} focusCandidate={focusCandidate} selectedRole={selectedRole === 'other' ? customRole : selectedRole} selectedLevel={selectedLevel} selectedExperience={selectedExperience} scanContact={anonymize ? null : scanContact} /> : <div className="sf-empty sf-gated"><Video size={32} strokeWidth={1.2} /><h3>Give the conversation a direction.</h3><p>Complete a role evaluation first, then create an interview with the right context for this candidate.</p><button className="sf-button sf-button-primary" onClick={() => goTool('agent')}>Evaluate role fit <ArrowUpRight size={16} /></button></div>}</section>}
 
         {activeTool === 'chat' && <section className="sf-tool-section sf-conversation"><div className="sf-section-heading"><div><span className="sf-kicker">A SECOND PERSPECTIVE</span><h3>Let’s talk about the person.</h3><p>Ask about experience, strengths and the questions to explore together.</p></div><MessageSquare className="sf-section-symbol" size={36} strokeWidth={1} /></div><ChatPanel messages={chat.messages} isTyping={chat.isTyping} suggestions={chat.suggestions} chatInput={chat.chatInput} setChatInput={chat.setChatInput} onSend={chat.sendMessage} candidateName={focusCandidate.name} anonymize={anonymize} voice={voice} msgEndRef={chat.msgEndRef} /></section>}
-        {activeTool === 'email' && hasEvaluation && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">THOUGHTFUL COMMUNICATION</span><h3>Find the right words.</h3><p>Prepare and edit a draft, then open it in your email app to send.</p></div><Mail className="sf-section-symbol" size={36} strokeWidth={1} /></div><EmailComposer key={focusCandidate.id} focusCandidate={focusCandidate} agentResult={agentResult} anonymize={anonymize} getCandidatePayload={getCandidatePayload} /></section>}
+        {activeTool === 'email' && hasEvaluation && <section className="sf-tool-section"><div className="sf-section-heading"><div><span className="sf-kicker">THOUGHTFUL COMMUNICATION</span><h3>Find the right words.</h3><p>Prepare and edit a draft, then open it in your email app to send.</p></div><Mail className="sf-section-symbol" size={36} strokeWidth={1} /></div><EmailComposer key={focusCandidate.id} focusCandidate={focusCandidate} agentResult={shownResult} anonymize={anonymize} getCandidatePayload={getCandidatePayload} /></section>}
       </div>
     </WorkspaceShell>
   );

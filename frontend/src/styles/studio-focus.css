@@ -186,6 +186,8 @@
 .studio-focus .agent-intro-icon { border: 1px solid #d7ddc8; border-radius: 50% 50% 4px 4px; background: #e9ebdf !important; box-shadow: none; color: #6b7859 !important; }
 .studio-focus .agent-intro-title { color: var(--color-forest); font-size: 16px; font-weight: 600; }
 .studio-focus .agent-intro-desc { max-width: 570px; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
+/* When an evaluation was written and for what, or why a kept one is hidden. */
+.studio-focus .sf-evaluation-note { margin: 18px 0 12px; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
 .studio-focus .agent-choose { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .studio-focus .agent-option { flex-direction: column; align-items: flex-start; gap: 20px; padding: 25px; text-align: left; }
 .studio-focus .agent-option-icon { margin: 0; border-radius: 50%; background: #edeadd; color: #a06843; }

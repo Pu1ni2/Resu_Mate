@@ -1,6 +1,7 @@
 import React from 'react';
 import Markdown from '../ui/Markdown';
 import { pressable } from '../ui/pressable';
+import { whenOf } from '../sourcer/RunHistory';
 import {
   UserCheck, FileText, Target, Briefcase, Award,
   ChevronRight, Loader, AlertCircle, MessageSquare
@@ -13,7 +14,7 @@ export default function HiringAgentPanel({
   selectedLevel, setSelectedLevel,
   agentResult, agentLoading, suggestedRoles,
   onRunHiringAgent, onRunJDAnalysis, onReset,
-  onSwitchToChat, agentResultRef,
+  onSwitchToChat, agentResultRef, keptHidden = false,
 }) {
   return (
     <div className="agent-container">
@@ -25,6 +26,11 @@ export default function HiringAgentPanel({
         </div>
       </div>
 
+      {agentStep === 'choose' && keptHidden && (
+        <p className="sf-evaluation-note" role="note">
+          An earlier evaluation was written with the candidate&apos;s name, so it stays hidden while names are. Show names to read it, or evaluate again.
+        </p>
+      )}
       {agentStep === 'choose' && (
         <div className="agent-choose">
           <div className="agent-option glass-card" {...pressable(() => setAgentStep('jd'))}>
@@ -108,6 +114,14 @@ export default function HiringAgentPanel({
             <div className="agent-error glass-card" role="alert"><AlertCircle size={24} /><p>{agentResult.error}</p><button className="btn btn-secondary" onClick={onReset}>Start Over</button></div>
           ) : (
             <>
+              {/* When it was written, and for what: a kept one opens with
+                  the file, perhaps from long before. */}
+              {agentResult.created_at && (
+                <p className="sf-evaluation-note">
+                  Evaluated {whenOf(agentResult.created_at)}
+                  {agentResult.role ? ` for ${agentResult.role}${agentResult.level ? `, ${agentResult.level}` : ''}` : ' against a job description'}.
+                </p>
+              )}
               <div className="agent-report"><Markdown text={agentResult.report} /></div>
               <div className="agent-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button className="btn btn-ghost btn-sm" onClick={onReset}>← Start Over</button>
