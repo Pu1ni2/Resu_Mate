@@ -152,6 +152,8 @@
 /* ── the Insights view: the stats arrive one after another, and the charts'
    tooltips aren't clipped by their cards ── */
 .studio-dashboard .sd-insights .clean-card--padded { overflow: visible; }
+/* What a set of figures covers: the selected candidates, or all interviews. */
+.studio-dashboard .sd-insights-scope { margin: 0 0 14px; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.6; }
 /* The skills' names in one column, so every bar starts at the same place; a
    long one is cut short here, and said whole as its bar's name. */
 .studio-dashboard .sd-insights .clean-bar-label { flex: 0 0 140px; min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }

@@ -34,6 +34,10 @@ const INTERVIEW_KINDS = { conversational: 'Voice interview', avatar: 'Avatar int
  * recently, and the latest ones, each opening its report. Interviews aren't
  * scored any more, so there are no averages or score bands to show. With names
  * hidden, each person is the name the dashboard gives them. */
+// The interview figures cover the workspace, unlike the candidate figures
+// above them, which cover the selection.
+const INTERVIEWS_TITLE = 'All your interviews';
+
 function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -71,7 +75,7 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
   // A failed load says so: "no completed interviews" would be a claim.
   if (error) return (
     <div className="clean-section" style={{ marginTop: '32px' }}>
-      <h3 className="clean-section-title">Interviews</h3>
+      <h3 className="clean-section-title">{INTERVIEWS_TITLE}</h3>
       <div className="sd-error" role="alert">
         <p>{error}</p>
         <button className="btn btn-secondary btn-sm" onClick={fetchData}>Try again</button>
@@ -81,7 +85,7 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
 
   if (!data || data.length === 0) return (
     <div className="clean-section">
-      <h3 className="clean-section-title">Interviews</h3>
+      <h3 className="clean-section-title">{INTERVIEWS_TITLE}</h3>
       <div className="clean-card" style={{ padding: '40px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text3)', fontSize: '13px' }}>No completed interviews yet</p>
       </div>
@@ -134,7 +138,8 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
   return (
     <>
       <div className="clean-section" style={{ marginTop: '32px' }}>
-        <h3 className="clean-section-title">Interviews</h3>
+        <h3 className="clean-section-title">{INTERVIEWS_TITLE}</h3>
+        <p className="sd-insights-scope">Every finished interview in your workspace, whoever is selected.</p>
         <div className="clean-stat-grid">
           {[
             { label: 'Completed', value: total, sub: total === 1 ? 'interview' : 'interviews', icon: <Video size={18} /> },
@@ -1019,12 +1024,17 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <>
+                  {/* What these figures cover: the selection. The interviews
+                      below cover the whole workspace, and nothing said so. */}
+                  <p className="sd-insights-scope">
+                    For the {analytics.total === 1 ? 'candidate' : `${analytics.total} candidates`} you&apos;ve selected on Candidates.
+                  </p>
                   {/* Overview Stats */}
                   <div className="clean-stat-grid">
                     {[
                       { label: 'Candidates', value: analytics.total, sub: 'selected', icon: <Users size={18} /> },
-                      { label: 'Avg Experience', value: analytics.avgExperience === '—' ? '—' : `${analytics.avgExperience}y`, sub: 'years average', icon: <Briefcase size={18} /> },
-                      { label: 'Unique Skills', value: analytics.totalSkills, sub: 'across pool', icon: <Sparkles size={18} /> }
+                      { label: 'Avg Experience', value: analytics.avgExperience === '—' ? '—' : `${analytics.avgExperience}y`, sub: 'years, where known', icon: <Briefcase size={18} /> },
+                      { label: 'Unique Skills', value: analytics.totalSkills, sub: 'across the selected', icon: <Sparkles size={18} /> }
                     ].map((stat, i) => (
                       <div key={i} className="clean-stat-card">
                         <div className="clean-stat-icon">{stat.icon}</div>
