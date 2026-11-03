@@ -114,6 +114,12 @@ function RunHeader({ state, onStop, onNewSearch }) {
             GitHub reports {formatCount(githubTotal)} matches; this run reads {formatCount(readFromGithub)} of them.
           </p>
         )}
+        {/* The search runs only while this page is open, and nothing said so. */}
+        {running && (
+          <p className="mt-0.5 text-[12px] text-ink-faint">
+            Leaving this page stops the search. Everyone judged by then is saved, and opens again from Past searches.
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <span
@@ -225,6 +231,15 @@ export default function SourcerPage() {
     abortRef.current?.abort();
     if (frameRef.current) cancelFrame(frameRef.current);
   }, []);
+
+  // Closing or reloading the tab mid-search asks first: it stops the search,
+  // and the people not yet judged are lost.
+  useEffect(() => {
+    if (state.status !== 'running') return undefined;
+    const ask = e => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [state.status]);
 
   async function start(e) {
     e?.preventDefault();
