@@ -405,6 +405,13 @@
   .studio-interview .si-voice-live { grid-template-columns: 1fr; padding: 25px 22px; }
   .studio-interview .si-listening-panel { min-height: 320px; padding: 25px; }
   .studio-interview .si-transcript-scroll { min-height: 220px; max-height: 350px; }
+  /* Mute and End stay on screen while the conversation goes on: in one
+     column they came after the transcript, about 750px down a phone. */
+  .studio-interview .si-live-controls {
+    position: sticky; bottom: 0; z-index: 2; margin: 0 -22px -25px;
+    padding: 12px 22px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #e0e3d4; background: var(--color-canvas);
+  }
   .studio-interview .si-video-topbar { flex-wrap: wrap; padding-block: 15px; gap: 12px; }
   .studio-interview .si-video-status { gap: 8px; }
   .studio-interview .si-video-stage {
@@ -426,6 +433,7 @@
   .studio-interview .si-setup-card h2 { font-size: 30px; }
   .studio-interview .si-button { padding: 11px 14px; font-size: 11px; }
   .studio-interview .si-voice-live { padding: 22px 16px; }
+  .studio-interview .si-live-controls { margin: 0 -16px -22px; padding-inline: 16px; }
   .studio-interview .si-transcript-panel>header { padding: 18px 16px; }
   .studio-interview .si-transcript-scroll { padding: 18px 16px; }
   .studio-interview .si-video-live { padding-inline: 12px; }
