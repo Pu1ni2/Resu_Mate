@@ -23,3 +23,20 @@ describe('the interview rooms', () => {
     expect(stackOf(room['z-index'])).toBeLessThan(stackOf(ruleFor('product-layer.css', '.pl-toast-container')['z-index']));
   });
 });
+
+describe('the voice interview on a phone', () => {
+  // In one column, Mute and End came after the transcript, about 750px down.
+  const onPhones = rules(read('studio-interview.css')).filter(r => r.media === '@media (max-width: 760px)');
+  const controls = declarations(onPhones.find(r => r.selector === '.studio-interview .si-live-controls').body);
+
+  it('keeps Mute and End at the foot of the room, which scrolls under them', () => {
+    expect(controls.position).toBe('sticky');
+    expect(controls.bottom).toBe('0');
+    expect(ruleFor('studio-interview.css', '.studio-interview')['overflow-y']).toBe('auto');
+  });
+
+  it('gives them a background of their own, clear of the transcript going by', () => {
+    expect(controls.background).toBe('var(--color-canvas)');
+    expect(Number(controls['z-index'])).toBeGreaterThan(0);
+  });
+});
