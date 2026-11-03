@@ -264,7 +264,7 @@ export const AppProvider = ({ children }) => {
     } catch (_) {
       setMessages([{
         role: 'assistant',
-        content: '**Welcome to ResuMate AI!** 👋\n\nUpload resumes and select candidates to get started.'
+        content: '**Welcome to ResuMate!** 👋\n\nUpload resumes and select candidates to get started.'
       }]);
     }
   }, [selectedCandidates.length, messages.length, anonymize]);

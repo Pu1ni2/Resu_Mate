@@ -1177,7 +1177,7 @@ export default function Dashboard() {
                       <div className="chat-header-left">
                         <AIAvatar />
                         <div>
-                          <div className="chat-ai-name">ResuMate AI</div>
+                          <div className="chat-ai-name">ResuMate</div>
                           <div className="chat-ai-status">
                             {(n => `Answers from ${n} selected candidate${n === 1 ? '' : 's'}`)(selectedCandidates.filter(c => c.is_resume !== false).length)}
                             {anonymize && ' • 🔒 Anonymized'}
