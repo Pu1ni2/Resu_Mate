@@ -7,6 +7,7 @@ import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
+import { keepTabInside, useModalFocus } from '../ui/modalFocus';
 import { useAvatarInterviews } from '../../services/features';
 
 const SESSION_KEY = 'jarvis_session_v3';
@@ -409,6 +410,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const [resultsData,  setResultsData]  = useState(null);
   // Full-screen expanded card modal
   const [expandedCard, setExpandedCard] = useState(null);
+  // The keyboard stays in Jarvis while it's open, and in an expanded result
+  // while that is: Tab walked out to the page behind. Focus goes back to what
+  // had it when each closes.
+  const panelRef = useRef(null);
+  const cardRef = useRef(null);
+  useModalFocus(panelRef, true);
+  useModalFocus(cardRef, Boolean(expandedCard));
 
   const hasGreetedRef  = useRef(!!savedSession);   // skip greeting if restoring
   const msgIndexRef    = useRef(0);
@@ -1599,6 +1607,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         const cr = expandedCard.credibilityData;
         return (
           <div
+            ref={cardRef}
+            tabIndex={-1}
+            onKeyDown={e => keepTabInside(e, cardRef.current)}
             onClick={() => setExpandedCard(null)}
             role="dialog"
             aria-modal="true"
@@ -2049,6 +2060,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       })()}
 
       <div
+        ref={panelRef}
+        tabIndex={-1}
+        onKeyDown={e => { if (!expandedCard) keepTabInside(e, panelRef.current); }}
         role="dialog"
         aria-modal="true"
         aria-label="Jarvis, the hiring copilot"
