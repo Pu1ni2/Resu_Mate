@@ -44,7 +44,7 @@
 .studio-sourcer .sourcer-guide li { display: grid; grid-template-columns: 23px 1fr; gap: 10px; }
 .studio-sourcer .sourcer-guide li > span { padding-top: 3px; color: var(--color-brand); font-size: 12px; }
 .studio-sourcer .sourcer-guide strong { font-size: 14px; font-weight: 500; }
-.studio-sourcer .sourcer-guide li p { margin: 4px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
+.studio-sourcer .sourcer-guide li p { margin: 4px 0 0; color: var(--color-ink-subtle); font-size: 14px; line-height: 1.8; }
 .studio-sourcer .sourcer-guide-note { margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd1bf; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
 
 /* Past searches, under the brief. */

@@ -132,7 +132,7 @@
 /* 200px, not the design's 180: its kicker grew to 11px and keeps to one line. */
 .studio-focus .sf-note > .sf-kicker { max-width: 200px; }
 .studio-focus .sf-note h3 { margin: 24px 0 16px; color: #3c4833; font: 36px/1.08 var(--font-serif); letter-spacing: -0.6px; }
-.studio-focus .sf-note p { max-width: 310px; margin-bottom: 23px; color: var(--color-ink-muted); font-size: 12px; line-height: 1.9; }
+.studio-focus .sf-note p { max-width: 310px; margin-bottom: 23px; color: var(--color-ink-muted); font-size: 14px; line-height: 1.9; }
 .studio-focus .sf-explore { padding: 25px; border: 1px solid var(--color-line); border-radius: 3px; }
 .studio-focus .sf-explore h4 { margin: 0 0 9px; font-size: 12px; font-weight: 600; }
 .studio-focus .sf-explore button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 16px 0; border: 0; border-bottom: 1px solid #dddfd1; background: none; color: #526047; text-align: left; }
@@ -145,7 +145,7 @@
 .studio-focus :is(.sf-tool-section, .sf-resume-paper) { overflow: hidden; margin-top: 27px; border: 1px solid var(--color-line); border-radius: 4px; background: var(--color-surface); }
 .studio-focus .sf-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 28px 30px; border-bottom: 1px solid #e1e2d5; }
 .studio-focus .sf-section-heading h3 { margin: 9px 0 10px; font: clamp(29px, 3vw, 39px)/1.15 var(--font-serif); letter-spacing: -0.6px; }
-.studio-focus .sf-section-heading p { max-width: 520px; margin-bottom: 0; color: var(--color-ink-muted); font-size: 12px; line-height: 1.7; }
+.studio-focus .sf-section-heading p { max-width: 520px; margin-bottom: 0; color: var(--color-ink-muted); font-size: 14px; line-height: 1.7; }
 .studio-focus .sf-section-symbol { flex-shrink: 0; color: #a7ad95; }
 .studio-focus .sf-subtabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 15px 30px; border-bottom: 1px solid #e1e2d5; background: #f4f4eb; }
 .studio-focus .sf-subtabs button { display: flex; align-items: center; gap: 7px; padding: 10px 14px; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--color-ink-subtle); font-size: 14px; }
@@ -199,7 +199,7 @@
 .studio-focus .agent-option { flex-direction: column; align-items: flex-start; gap: 20px; padding: 25px; text-align: left; }
 .studio-focus .agent-option-icon { margin: 0; border-radius: 50%; background: #edeadd; color: #a06843; }
 .studio-focus .agent-option h4 { margin-bottom: 9px; font: 27px/1.15 var(--font-serif); }
-.studio-focus .agent-option p { color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
+.studio-focus .agent-option p { color: var(--color-ink-subtle); font-size: 14px; line-height: 1.8; }
 .studio-focus .agent-option:hover { border-color: #b8c1a5 !important; background: #f6f6eb !important; box-shadow: 0 5px 15px #4a51310a !important; }
 .studio-focus .agent-label { color: #536047; font-size: 12px; }
 .studio-focus .agent-section { margin-bottom: 24px; }

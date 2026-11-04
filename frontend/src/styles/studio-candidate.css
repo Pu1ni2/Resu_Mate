@@ -200,7 +200,7 @@
 .studio-candidate .cd-interview-done-header { padding: 26px; }
 .studio-candidate .cd-interview-done-badge { background: #e9eddd !important; color: #708958 !important; }
 .studio-candidate .cd-interview-done-info h3 { font: 28px var(--font-serif); color: var(--color-forest) !important; }
-.studio-candidate .cd-interview-done-info p { color: #7b846f !important; line-height: 1.7; font-size: 12px; }
+.studio-candidate .cd-interview-done-info p { color: #7b846f !important; line-height: 1.7; font-size: 14px; }
 .studio-candidate .cd-report-toggle { background: transparent !important; border: 1px solid #cbd3bc; color: #657950 !important; padding: 9px 12px; border-radius: 5px; font-size: 14px; }
 .studio-candidate .cd-report-detail { padding-top: 27px; border-color: #e2e5d7; }
 .studio-candidate .cd-interview-footer-text { color: #87917a !important; font-size: 12px; }

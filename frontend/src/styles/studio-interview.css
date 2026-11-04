@@ -213,7 +213,7 @@
   padding: 18px 20px; border: 1px solid #d6ddc8; border-radius: 4px; background: #f1f3e8;
   color: #56634a; font: 12px/1.75 var(--font-sans);
 }
-.studio-interview-consent>p:first-child { font-size: 12px; font-weight: 700; margin: 0 0 10px; color: #415237; }
+.studio-interview-consent>p:first-child { font-size: 14px; font-weight: 700; margin: 0 0 10px; color: #415237; }
 .studio-interview-consent ul { margin: 0 0 16px; padding-left: 17px; }
 .studio-interview-consent li { margin: 6px 0; }
 .studio-interview-consent label {
@@ -272,7 +272,7 @@
 .studio-interview .si-listening-panel h2 {
   font: 30px var(--font-serif); margin: 0 0 12px; color: var(--color-forest);
 }
-.studio-interview .si-listening-panel p { font-size: 12px; line-height: 1.6; color: var(--color-ink-subtle); }
+.studio-interview .si-listening-panel p { font-size: 14px; line-height: 1.6; color: var(--color-ink-subtle); }
 .studio-interview .si-transcript-panel {
   display: flex; flex-direction: column; background: var(--color-surface);
   border: 1px solid #ddded2; border-radius: 5px; min-width: 0; overflow: hidden;

@@ -107,7 +107,7 @@
 .studio-screening .ss-process li { display: flex; align-items: flex-start; gap: 13px; }
 .studio-screening .ss-process li > b { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #e9ebdf; color: #677b51; font: 12px var(--font-mono); }
 .studio-screening .ss-process li strong { color: #47573b; font-size: 12px; font-weight: 600; }
-.studio-screening .ss-process li p { margin: 6px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
+.studio-screening .ss-process li p { margin: 6px 0 0; color: var(--color-ink-subtle); font-size: 14px; line-height: 1.7; }
 .studio-screening .ss-scope { display: grid; grid-template-columns: auto 1fr; gap: 4px 13px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-line); }
 .studio-screening .ss-scope > span { grid-column: 2; align-self: end; color: var(--color-ink-subtle); font: 11px var(--font-mono); letter-spacing: 1px; }
 .studio-screening .ss-scope > strong { grid-column: 1; grid-row: 1 / 3; color: #6b7f50; font: 45px/1 var(--font-serif); }
