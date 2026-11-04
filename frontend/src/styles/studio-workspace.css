@@ -168,12 +168,15 @@
 .studio-workspace .suggestion { border: 1px solid #d5d8c9; border-radius: 4px; background: #eff0e6; color: #4d5a41; }
 
 /* ── short screens ── */
+/* On a laptop's height the sidebar's note, which is decoration, pushed the
+   manager's account and Sign Out below the fold. It stays for taller
+   screens; the account keeps to the sidebar's foot without it. */
+@media (max-height: 960px) and (min-width: 901px) {
+  .studio-workspace .sw-sidebar-note { display: none; }
+  .studio-workspace .sw-sidebar-bottom { margin-top: auto; }
+}
 @media (max-height: 800px) and (min-width: 901px) {
   .studio-workspace .sw-workspace-label { margin: 23px 0; }
-  .studio-workspace .sw-sidebar-note { padding-top: 25px; }
-  .studio-workspace .sw-sidebar-note small { display: none; }
-  .studio-workspace .sw-sidebar-note p { font-size: 23px; }
-  .studio-workspace .sw-sidebar-note > span { font-size: 30px; }
 }
 
 /* ── narrower screens ── */
