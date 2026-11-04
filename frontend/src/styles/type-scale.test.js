@@ -25,6 +25,33 @@ function components(dir) {
   });
 }
 
+/* A tag, the one thing 11px is for: a label in capitals, set so or typed so,
+ * and then tracked wide (0.07em or more; a size in px is taken at 11px). */
+const TRACKED = 0.07;
+const wide = (value, unit) => (unit === 'em' ? value : value / 11) >= TRACKED;
+
+function tagRule(body) {
+  if (/text-transform:\s*uppercase/.test(body)) return true;
+  const spacing = body.match(/letter-spacing:\s*([\d.]+)(em|px)/);
+  return Boolean(spacing) && wide(Number(spacing[1]), spacing[2]);
+}
+
+function tagStyle(style) {
+  if (/textTransform:\s*['"]uppercase['"]/.test(style)) return true;
+  const spacing = style.match(/letterSpacing:\s*['"]?([\d.]+)(em|px)?/);
+  return Boolean(spacing) && wide(Number(spacing[1]), spacing[2] || 'px');
+}
+
+// The style={{ … }} a size is in, or else its line.
+function around(text, at) {
+  const open = text.lastIndexOf('{{', at);
+  const close = text.indexOf('}}', at);
+  if (open !== -1 && close !== -1 && !text.slice(open, at).includes('}}')) return text.slice(open, close);
+  const start = text.lastIndexOf('\n', at) + 1;
+  const end = text.indexOf('\n', at);
+  return text.slice(start, end === -1 ? text.length : end);
+}
+
 /* What a component sets itself, in px: style={{ fontSize: 11 }} or '11px', a
  * fontSize={11} attribute, and Tailwind's text-[11px]. rem and em sizes
  * follow the page's, so they aren't counted. */
@@ -33,12 +60,18 @@ const componentSizes = components(src).flatMap(file => {
   const where = path.relative(src, file);
   const set = [...text.matchAll(/fontSize\s*[:=]\s*\{?\s*['"]?([\d.]+)([a-z%]*)/g)]
     .filter(m => m[2] === '' || m[2] === 'px')
-    .map(m => ({ size: Number(m[1]), where }));
-  const tailwind = [...text.matchAll(/\btext-\[([\d.]+)px\]/g)].map(m => ({ size: Number(m[1]), where }));
+    .map(m => ({ size: Number(m[1]), where, tag: tagStyle(around(text, m.index)) }));
+  const tailwind = [...text.matchAll(/\btext-\[([\d.]+)px\]/g)].map(m => ({
+    size: Number(m[1]), where, tag: /\buppercase\b|\btracking-(?:wide|wider|widest)\b/.test(around(text, m.index)),
+  }));
   return [...set, ...tailwind];
 });
 
-const sheetSizes = SHEETS.flatMap(file => fontSizes(rules(read(file))).map(({ size, selector }) => ({ size, where: `${file} ${selector}` })));
+const sheetSizes = SHEETS.flatMap(file => rules(read(file)).flatMap(rule => fontSizes([rule])
+  .map(({ size, selector }) => ({ size, where: `${file} ${selector}`, tag: tagRule(rule.body) }))));
+
+// Under 12px, only an 11px tag.
+const tooSmall = ({ size, tag }) => size < 12 && !(size === 11 && tag);
 
 describe('the text sizes', () => {
   it('are read from every stylesheet index.css loads, and from the components', () => {
@@ -53,5 +86,13 @@ describe('the text sizes', () => {
 
   it('are 11px or more in every component', () => {
     expect(componentSizes.filter(({ size }) => size < 11)).toEqual([]);
+  });
+
+  it('are 12px or more for details, in every stylesheet: 11px is for tags', () => {
+    expect(sheetSizes.filter(tooSmall)).toEqual([]);
+  });
+
+  it('are 12px or more for details, in every component: 11px is for tags', () => {
+    expect(componentSizes.filter(tooSmall)).toEqual([]);
   });
 });
