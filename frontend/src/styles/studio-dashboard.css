@@ -49,13 +49,13 @@
 .studio-dashboard .candidates-header h2 { display: flex; align-items: center; gap: 12px; font: 30px var(--font-serif); letter-spacing: -0.6px; }
 .studio-dashboard .candidates-header h2 span { padding: 5px 8px; border: 1px solid #ccd0c0; border-radius: 3px; color: var(--color-ink-muted); font: 12px var(--font-mono); }
 .studio-dashboard .candidates-actions { flex-wrap: wrap; gap: 7px; }
-.studio-dashboard .candidates-actions .btn { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+.studio-dashboard .candidates-actions .btn { min-height: 34px; padding: 7px 10px; font-size: 14px; }
 .studio-dashboard .sd-filterbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding: 11px 0; border-block: 1px solid var(--color-line); }
 .studio-dashboard .sd-filterbar > label { display: flex; flex: 1; align-items: center; gap: 9px; color: #727d64; }
-.studio-dashboard .sd-filterbar input { width: 100%; max-width: 380px; padding: 7px 0; border: 0; background: transparent; color: var(--color-ink); font-size: 12px; outline-offset: 3px; }
+.studio-dashboard .sd-filterbar input { width: 100%; max-width: 380px; padding: 7px 0; border: 0; background: transparent; color: var(--color-ink); font-size: 14px; outline-offset: 3px; }
 .studio-dashboard .sd-filterbar > div { display: flex; align-items: center; gap: 18px; }
 .studio-dashboard .sd-filterbar > div > span { color: var(--color-ink-subtle); font: 12px var(--font-mono); white-space: nowrap; }
-.studio-dashboard .sd-filterbar select { max-width: 150px; padding: 8px 10px; border: 1px solid var(--color-line); border-radius: 3px; background: var(--color-surface); color: var(--color-ink-muted); font-size: 12px; }
+.studio-dashboard .sd-filterbar select { max-width: 150px; padding: 8px 10px; border: 1px solid var(--color-line); border-radius: 3px; background: var(--color-surface); color: var(--color-ink-muted); font-size: 14px; }
 
 /* The cards, in a grid instead of the old scrolling strip. */
 .studio-dashboard .candidates-slider { position: static; display: block; padding: 0; }
@@ -217,7 +217,7 @@
   padding: 9px 12px;
   border: 1px solid transparent; border-radius: var(--radius-control);
   background: none; color: var(--color-ink-subtle);
-  font-size: 12px; cursor: pointer;
+  font-size: 14px; cursor: pointer;
 }
 .studio-dashboard .sd-interview-toolbar > div > button[aria-pressed=true] { border-color: #c6ceba; background: #e7eddb; color: #405534; }
 
@@ -236,7 +236,7 @@
 .studio-dashboard .sd-interview-status i { width: 5px; height: 5px; border-radius: 50%; background: #aa8250; }
 .studio-dashboard .sd-interview-status.is-completed i { background: #5d7948; }
 .studio-dashboard .sd-interview-kind { min-width: 110px; color: var(--color-ink-subtle); font-size: 12px; }
-.studio-dashboard .sd-row-link { display: flex; align-items: center; gap: 6px; color: #596e45; font-size: 12px; text-decoration: none; }
+.studio-dashboard .sd-row-link { display: flex; align-items: center; gap: 6px; color: #596e45; font-size: 14px; text-decoration: none; }
 .studio-dashboard .sd-interview-footnote { margin-top: 20px; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
 
 /* Two cards across, and the counts without the note. */

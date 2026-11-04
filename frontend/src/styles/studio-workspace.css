@@ -64,7 +64,7 @@
 .studio-workspace .sw-nav-item.is-active small { color: inherit; opacity: 0.75; }
 
 .studio-workspace .sw-assist-links { display: grid; gap: 7px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--color-line); }
-.studio-workspace .sw-assist-links :is(a, button) { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 0; background: none; color: var(--color-ink-muted); font-size: 12px; text-decoration: none; cursor: pointer; }
+.studio-workspace .sw-assist-links :is(a, button) { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 0; background: none; color: var(--color-ink-muted); font-size: 14px; text-decoration: none; cursor: pointer; }
 .studio-workspace .sw-assist-links :is(.is-active, a:hover, button:hover) { color: var(--color-accent); }
 
 .studio-workspace .sw-sidebar-note { margin: auto 0 20px; padding: 28px 12px 8px; }
@@ -93,7 +93,7 @@
 .studio-workspace .sw-topbar > span { font: 12px var(--font-mono); letter-spacing: 0.7px; color: var(--color-ink-muted); }
 .studio-workspace .sw-topbar i { margin: 0 13px; color: #b0b3a6; }
 .studio-workspace .sw-topbar-actions { display: flex; align-items: center; gap: 6px; }
-.studio-workspace .sw-topbar-actions > a { display: flex; align-items: center; gap: 8px; margin-right: 12px; color: var(--color-ink); font-size: 12px; text-decoration: none; white-space: nowrap; }
+.studio-workspace .sw-topbar-actions > a { display: flex; align-items: center; gap: 8px; margin-right: 12px; color: var(--color-ink); font-size: 14px; text-decoration: none; white-space: nowrap; }
 .studio-workspace .sw-topbar-actions > a:hover { color: var(--color-accent); }
 /* The notifications and the keyboard shortcuts, in the top bar. */
 .studio-workspace .sw-icon-button {
@@ -114,7 +114,7 @@
 .studio-workspace .sw-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 4px; }
 /* A switch among the page's actions, as the dashboard's Hide names: a button
    with role="switch", named by its words, the track showing whether it is on. */
-.studio-workspace .sw-switch { display: flex; align-items: center; gap: 7px; padding: 6px 0; border: 0; background: none; color: var(--color-ink-muted); font-size: 12px; cursor: pointer; }
+.studio-workspace .sw-switch { display: flex; align-items: center; gap: 7px; padding: 6px 0; border: 0; background: none; color: var(--color-ink-muted); font-size: 14px; cursor: pointer; }
 .studio-workspace .sw-switch-track { position: relative; display: block; width: 34px; height: 20px; margin-left: 5px; border-radius: 10px; background: #d8dccd; box-shadow: inset 0 0 0 1px #b9bfaa; transition: background 0.18s; }
 .studio-workspace .sw-switch-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-surface); box-shadow: 0 1px 2px #30382f30; transition: transform 0.18s; }
 .studio-workspace .sw-switch[aria-checked=true] .sw-switch-track { background: #526443; box-shadow: none; }
@@ -138,7 +138,7 @@
 .studio-workspace .sw-footer a { color: inherit; text-decoration: none; }
 
 /* ── the legacy pieces the workspace's pages still use, in Studio's look ── */
-.studio-workspace .btn { min-height: 40px; padding: 10px 15px; border-radius: 4px; font-size: 12px; font-weight: 600; box-shadow: none; transform: none; }
+.studio-workspace .btn { min-height: 40px; padding: 10px 15px; border-radius: 4px; font-size: 14px; font-weight: 600; box-shadow: none; transform: none; }
 .studio-workspace .btn-primary { border: 1px solid var(--color-forest); background: var(--color-forest); color: var(--color-ink-inverse); }
 .studio-workspace .btn-primary:hover:not(:disabled) { background: var(--color-forest-hover); }
 .studio-workspace :is(.btn-secondary, .btn-ghost) { border: 1px solid var(--color-line); background: var(--color-surface); color: #38412f; }

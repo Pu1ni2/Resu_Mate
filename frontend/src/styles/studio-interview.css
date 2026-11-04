@@ -181,7 +181,7 @@
 /* ── buttons ── */
 .studio-interview .si-button {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px;
-  padding: 11px 18px; border: 1px solid transparent; border-radius: 4px; font-size: 12px;
+  padding: 11px 18px; border: 1px solid transparent; border-radius: 4px; font-size: 14px;
   font-weight: 600; cursor: pointer; transition: background .16s; text-decoration: none;
 }
 .studio-interview .si-button:disabled { opacity: .45; cursor: not-allowed; }

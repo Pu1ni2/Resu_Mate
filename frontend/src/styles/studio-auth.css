@@ -103,7 +103,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .form-column { border-left: 1px solid var(--line); padding: 20px 0 20px 56px; display: flex; align-items: center; justify-content: center; min-width: 0; }
 .studio-auth .form-card { width: 100%; max-width: 410px; margin: auto; }
 .studio-auth .role-nav { display: flex; gap: 4px; border: 1px solid var(--line); padding: 4px; border-radius: 4px; background: #efefe4; margin-bottom: 35px; }
-.studio-auth .role-nav > a { text-decoration: none; flex: 1; text-align: center; font-size: 12px; min-height: 40px; padding: 10px 8px; border-radius: 2px; color: var(--muted); font-weight: 500; white-space: nowrap; transition: background .18s, color .18s; }
+.studio-auth .role-nav > a { text-decoration: none; flex: 1; text-align: center; font-size: 14px; min-height: 40px; padding: 10px 8px; border-radius: 2px; color: var(--muted); font-weight: 500; white-space: nowrap; transition: background .18s, color .18s; }
 .studio-auth .role-nav > a[aria-current="page"] { background: var(--forest); color: var(--card); box-shadow: 0 2px 4px #1f312416; }
 .studio-auth .role-nav > a:hover:not([aria-current="page"]) { color: var(--ink); background: #e5e8d9; }
 .studio-auth .form-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); font-weight: 600; margin-bottom: 12px; }
@@ -135,7 +135,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .field-wrap:has(.password-toggle) .field-input { padding-right: 65px; }
 .studio-auth .password-toggle { position: absolute; right: 1px; top: 1px; height: 47px; min-width: 58px; padding: 0 12px; font-size: 12px; color: var(--muted); }
 .studio-auth .password-toggle:hover { color: var(--rust); }
-.studio-auth .form-fields .field-row .field-input { padding-left: 11px; padding-right: 54px; font-size: 12px; }
+.studio-auth .form-fields .field-row .field-input { padding-left: 11px; padding-right: 54px; font-size: 14px; }
 .studio-auth .form-fields .field-row .password-toggle { min-width: 48px; padding: 0 9px; font-size: 12px; }
 .studio-auth .form-fields .field-row .field-label { font-size: 12px; }
 .studio-auth .field-help { font-size: 12px; color: var(--muted); line-height: 1.7; margin-top: 7px; }

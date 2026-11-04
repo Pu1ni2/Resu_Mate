@@ -167,7 +167,7 @@
 .studio-candidate .cd-new-conversation { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 10px 6px; border: 0; background: transparent; color: var(--color-accent); font-size: 12px; cursor: pointer; white-space: nowrap; }
 .studio-candidate .cd-new-conversation:disabled { opacity: 0.5; cursor: default; }
 .studio-candidate .cd-new-conversation:focus-visible { outline: 2px solid #839370; outline-offset: 2px; }
-.studio-candidate .cd-mode-tab { border: 1px solid #dcdfcf; background: transparent !important; color: #76806a !important; border-radius: 5px; font-size: 12px; padding: 10px 14px; white-space: nowrap; }
+.studio-candidate .cd-mode-tab { border: 1px solid #dcdfcf; background: transparent !important; color: #76806a !important; border-radius: 5px; font-size: 14px; padding: 10px 14px; white-space: nowrap; }
 .studio-candidate .cd-mode-tab.active { background: var(--color-forest) !important; border-color: var(--color-forest); color: var(--color-surface) !important; box-shadow: none; }
 .studio-candidate .cd-mode-dot { background: #bdcaa9; }
 .studio-candidate .cd-chat-container { background: var(--color-surface) !important; border: 1px solid #dcded0 !important; border-radius: 10px; box-shadow: 0 7px 24px #30382f03; }
@@ -201,7 +201,7 @@
 .studio-candidate .cd-interview-done-badge { background: #e9eddd !important; color: #708958 !important; }
 .studio-candidate .cd-interview-done-info h3 { font: 28px var(--font-serif); color: var(--color-forest) !important; }
 .studio-candidate .cd-interview-done-info p { color: #7b846f !important; line-height: 1.7; font-size: 12px; }
-.studio-candidate .cd-report-toggle { background: transparent !important; border: 1px solid #cbd3bc; color: #657950 !important; padding: 9px 12px; border-radius: 5px; font-size: 12px; }
+.studio-candidate .cd-report-toggle { background: transparent !important; border: 1px solid #cbd3bc; color: #657950 !important; padding: 9px 12px; border-radius: 5px; font-size: 14px; }
 .studio-candidate .cd-report-detail { padding-top: 27px; border-color: #e2e5d7; }
 .studio-candidate .cd-interview-footer-text { color: #87917a !important; font-size: 12px; }
 .studio-candidate .cd-empty { min-height: 320px; border: 1px solid #deded2; background: var(--color-surface); border-radius: 10px; padding: 70px 25px; color: #849174; }
