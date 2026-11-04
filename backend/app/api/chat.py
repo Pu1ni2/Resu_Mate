@@ -21,7 +21,7 @@ from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import db_service
-from app.services import evaluations, interview_modes, interview_setup
+from app.services import email_quota, evaluations, interview_modes, interview_setup
 from app.services.experience import experience_text
 from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
@@ -939,12 +939,16 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         from app.services.email_service import email_service
         if not email_service.configured:
             invite_error = "Email isn't set up on this server. Share the portal link instead."
+        elif not await email_quota.can_send(db, mgr):
+            invite_error = email_quota.limit_reached()
         else:
             invite_sent = await email_service.send_interview_invitation(
                 email, req.candidate_name or "there", req.role or "General", settings.candidate_login_url,
                 company=user.company or "",
             )
-            if not invite_sent:
+            if invite_sent:
+                await email_quota.record_sent(db, mgr, email, "interview invitation")
+            else:
                 invite_error = "The email service didn't accept the invite. Share the portal link instead."
     return {
         "message": f"Interview created for {email}", "interview_config": config,

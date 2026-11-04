@@ -17,7 +17,7 @@ from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag, primary_email, is_sample
-from app.services import interview_modes, interview_setup, screening_runs
+from app.services import email_quota, interview_modes, interview_setup, screening_runs
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
 from app.models.candidate import Interview
@@ -286,13 +286,17 @@ async def batch_action(
         if req.send_emails and result["interview_created"]:
             if not email_service.configured:
                 result["email_send_error"] = "Email isn't set up on this server. Share the portal link instead."
+            elif not await email_quota.can_send(db, mgr):
+                result["email_send_error"] = email_quota.limit_reached()
             else:
                 try:
                     sent = await email_service.send_interview_invitation(
                         email, name, req.role, settings.candidate_login_url, company=user.company or "",
                     )
                     result["email_sent"] = sent
-                    if not sent:
+                    if sent:
+                        await email_quota.record_sent(db, mgr, email, "interview invitation")
+                    else:
                         result["email_send_error"] = "The email service didn't accept this invite."
                 except Exception as e:
                     print(f"[WARN] batch invite not sent: {type(e).__name__}")
@@ -347,12 +351,17 @@ async def send_invites(
         elif interview.status == "completed":
             outcome["email"] = interview.candidate_email
             outcome["error"] = "This interview is already complete."
+        elif not await email_quota.can_send(db, user.id):
+            outcome["email"] = interview.candidate_email
+            outcome["error"] = email_quota.limit_reached()
         else:
             outcome["email"] = interview.candidate_email
             outcome["email_sent"] = await email_service.send_email_draft(
                 interview.candidate_email, draft.subject, draft.body, settings.candidate_login_url,
             )
-            if not outcome["email_sent"]:
+            if outcome["email_sent"]:
+                await email_quota.record_sent(db, user.id, interview.candidate_email, "interview invitation draft")
+            else:
                 outcome["error"] = "The email service didn't accept this invite."
         outcomes.append(outcome)
 

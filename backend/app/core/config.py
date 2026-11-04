@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # same names from its environment (interview_agent.py), and the realtime
     # model is below with the voice interview's settings.
     embedding_model: str = "text-embedding-3-small"
+    # The emails a manager may send to candidates in a day
+    # (app/services/email_quota.py).
+    daily_email_limit: int = 100
     transcription_model: str = "gpt-4o-transcribe"
     speech_to_text_model: str = "whisper-1"
     text_to_speech_model: str = "tts-1"
