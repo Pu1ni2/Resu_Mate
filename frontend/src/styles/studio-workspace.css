@@ -107,8 +107,10 @@
 .studio-workspace .sw-icon-button:hover { background: #e9ebdf; color: var(--color-ink); }
 .studio-workspace .sw-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--color-accent); color: var(--color-ink-inverse); font-size: 12px; font-weight: 600; line-height: 18px; text-align: center; }
 
-.studio-workspace .sw-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 37px 0 28px; }
-.studio-workspace .sw-page-header h1 { margin: 9px 0 12px; font: clamp(40px, 4.1vw, 62px)/1.05 var(--font-serif); letter-spacing: -1.8px; color: var(--color-ink); background: none; -webkit-text-fill-color: currentColor; }
+/* A working page's heading: compact, so the work starts near the top. It was
+   up to 62px, above the counts, the upload area and the actions. */
+.studio-workspace .sw-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 28px 0 22px; }
+.studio-workspace .sw-page-header h1 { margin: 8px 0 10px; font: clamp(32px, 2.9vw, 44px)/1.08 var(--font-serif); letter-spacing: -1.2px; color: var(--color-ink); background: none; -webkit-text-fill-color: currentColor; }
 .studio-workspace .sw-page-header h1 em { font-weight: 400; color: var(--color-accent); }
 .studio-workspace .sw-subtitle { max-width: 570px; margin: 0; font-size: 14px; line-height: 1.7; color: var(--color-ink-muted); }
 .studio-workspace .sw-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 4px; }
@@ -223,7 +225,7 @@
   .studio-workspace :is(.sw-topbar-root, .sw-shortcuts-button) { display: none; }
   .studio-workspace .sw-topbar-actions > a { gap: 5px; margin-right: 6px; font-size: 12px; }
   .studio-workspace .sw-page-header { gap: 17px; }
-  .studio-workspace .sw-page-header h1 { font-size: 43px; }
+  .studio-workspace .sw-page-header h1 { font-size: 34px; }
   .studio-workspace .sw-subtitle { font-size: 12px; }
   .studio-workspace .sw-page-actions { width: 100%; }
   .studio-workspace .sw-footer { margin-top: 28px; }
