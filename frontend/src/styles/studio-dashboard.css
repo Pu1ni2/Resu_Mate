@@ -41,8 +41,12 @@
 .studio-dashboard .upload-icon svg { width: 18px; height: 18px; }
 .studio-dashboard .upload-zone h3 { margin: 0; color: #35432e; font-size: 14px; font-weight: 600; }
 .studio-dashboard .upload-zone p { margin: 0; color: var(--color-ink-subtle); font-size: 12px; }
-.studio-dashboard .has-candidates .upload-zone { min-height: 112px; }
-.studio-dashboard .has-candidates .upload-zone .upload-icon { display: none; }
+/* Once the collection has people: a slim bar to add more, not a 112px tray
+   between the counts and the people. */
+.studio-dashboard .has-candidates .upload-card { margin-bottom: 22px; }
+.studio-dashboard .has-candidates .upload-zone { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; min-height: 0; padding: 11px 16px; }
+.studio-dashboard .has-candidates .upload-zone > svg { flex: none; color: #566747; }
+.studio-dashboard .has-candidates .upload-zone p { margin-left: auto; }
 
 /* The collection's heading, its actions, and its search. */
 .studio-dashboard .candidates-header { flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; }
@@ -294,6 +298,8 @@
   .studio-dashboard .sd-filterbar select { max-width: 120px; font-size: 12px; }
   .studio-dashboard .upload-zone { padding: 22px 10px; }
   .studio-dashboard .upload-zone h3 { font-size: 12px; }
+  /* "Add résumés" is short enough for its 14px. */
+  .studio-dashboard .has-candidates .upload-zone h3 { font-size: 14px; }
   .studio-dashboard .sd-overview small { line-height: 1.4; }
   .studio-dashboard .candidates-header h2 { font-size: 28px; }
   .studio-dashboard .sd-interview-toolbar > div > button { padding: 8px; }

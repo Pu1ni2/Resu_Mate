@@ -739,9 +739,21 @@ export default function Dashboard() {
                     onDrop={e => { e.preventDefault(); setDragActive(false); handleUpload(e.dataTransfer.files); }}
                   >
                     <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt" style={{ display: 'none' }} onChange={e => handleUpload(e.target.files)} />
-                    <div className="upload-icon"><Upload size={36} /></div>
-                    <h3>Drop resumes here or click to upload</h3>
-                    <p>PDF, DOCX, TXT • Max 5MB each • No duplicates</p>
+                    {candidates.length ? (
+                      // Once the collection has people, a slim bar to add more:
+                      // it was a 112px tray between the counts and the people.
+                      <>
+                        <Upload size={16} aria-hidden="true" />
+                        <h3>Add résumés</h3>
+                        <p>Drop them here or click • PDF, DOCX, TXT • Max 5MB each</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="upload-icon"><Upload size={36} /></div>
+                        <h3>Drop resumes here or click to upload</h3>
+                        <p>PDF, DOCX, TXT • Max 5MB each • No duplicates</p>
+                      </>
+                    )}
                   </div>
                   {candidates.length === 0 && (
                     <button type="button" className="btn btn-secondary btn-sm" onClick={loadSample} style={{ marginTop: 12 }}>
