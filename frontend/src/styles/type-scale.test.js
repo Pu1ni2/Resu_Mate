@@ -95,4 +95,15 @@ describe('the text sizes', () => {
   it('are 12px or more for details, in every component: 11px is for tags', () => {
     expect(componentSizes.filter(tooSmall)).toEqual([]);
   });
+
+  // Working text is 14px: nothing sits between it and the details' 12px.
+  const between = ({ size }) => size > 12 && size < 14;
+
+  it('are 12px or 14px, never between, in every stylesheet', () => {
+    expect(sheetSizes.filter(between)).toEqual([]);
+  });
+
+  it('are 12px or 14px, never between, in every component', () => {
+    expect(componentSizes.filter(between)).toEqual([]);
+  });
 });
