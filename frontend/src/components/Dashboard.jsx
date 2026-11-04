@@ -9,7 +9,8 @@ import {
   Users, BarChart2, Upload, Check, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2,
   ChevronLeft, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap, Search, ArrowUpRight, ArrowRight, ScanSearch
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap, Search, ArrowUpRight, ArrowRight, ScanSearch,
+  LayoutGrid, List
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { knownYears } from '../services/experience';
@@ -30,6 +31,9 @@ const AIAvatar = () => (
 );
 
 const INTERVIEW_KINDS = { conversational: 'Voice interview', avatar: 'Avatar interview' };
+
+// Whether the collection shows as cards or as a list, in this browser.
+const COLLECTION_VIEW_KEY = 'resumate_collection_view';
 
 /* The Insights view's interviews: how many are done, for which roles and how
  * recently, and the latest ones, each opening its report. Interviews aren't
@@ -285,6 +289,23 @@ export default function Dashboard() {
   // whole list, which numbers its file and its hidden name.
   const [candidateSearch, setCandidateSearch] = useState('');
   const [candidateSort, setCandidateSort] = useState('recent');
+  // Cards, or a list for a big collection: a row a person, where the cards
+  // took a screen for three. Remembered in this browser.
+  const [collectionView, setCollectionView] = useState(() => {
+    try {
+      return localStorage.getItem(COLLECTION_VIEW_KEY) === 'list' ? 'list' : 'cards';
+    } catch {
+      return 'cards';
+    }
+  });
+  const chooseView = useCallback((view) => {
+    setCollectionView(view);
+    try {
+      localStorage.setItem(COLLECTION_VIEW_KEY, view);
+    } catch {
+      // Storage blocked: the choice lasts until the page reloads.
+    }
+  }, []);
   const [input, setInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   // Delete All: asking, then deleting. Its own busy flag: the context's
@@ -857,6 +878,13 @@ export default function Dashboard() {
                     </label>
                     <div>
                       <span aria-live="polite">{visibleCandidates.length} {visibleCandidates.length === 1 ? 'file' : 'files'}</span>
+                      <div className="sd-view-switch" role="group" aria-label="Show the collection as">
+                        {[['cards', 'Cards', LayoutGrid], ['list', 'List', List]].map(([view, label, Icon]) => (
+                          <button key={view} type="button" aria-pressed={collectionView === view} onClick={() => chooseView(view)}>
+                            <Icon size={15} aria-hidden="true" /><span className="sd-view-label">{label}</span>
+                          </button>
+                        ))}
+                      </div>
                       <select aria-label="Sort candidates" value={candidateSort} onChange={e => setCandidateSort(e.target.value)}>
                         <option value="recent">Original order</option>
                         <option value="name">Name A–Z</option>
@@ -877,6 +905,57 @@ export default function Dashboard() {
                     </div>
                   )}
 
+                  {collectionView === 'list' && visibleCandidates.length > 0 ? (
+                    <div className="sd-list-wrap">
+                      <table className="sd-list">
+                        <caption className="sr-only">The collection, a row a person</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col"><span className="sr-only">Selected</span></th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Role</th>
+                            <th scope="col">Experience</th>
+                            <th scope="col" className="sd-list-level">Level</th>
+                            <th scope="col" className="sd-list-more">Location</th>
+                            <th scope="col" className="sd-list-more">Skills</th>
+                            <th scope="col"><span className="sr-only">Delete</span></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleCandidates.map(({ candidate: c, index: i }) => {
+                            const name = getDisplayName(c, i);
+                            const selected = selectedIds.includes(c.id);
+                            return (
+                              <tr key={c.id} className={selected ? 'is-selected' : undefined}>
+                                <td>
+                                  <input type="checkbox" checked={selected} onChange={() => toggleSelection(c.id)} aria-label={`Select ${name}`} />
+                                </td>
+                                <th scope="row">
+                                  <span className="sd-list-who">
+                                    <button type="button" className="sd-list-name" onClick={() => navigate(`/hiring/focus?candidate=${c.id}`)} aria-label={`Open candidate file for ${name}`}>
+                                      {name}
+                                    </button>
+                                    {c.is_sample && <span className="badge badge-orange">Sample</span>}
+                                    {c.is_resume === false && <span className="badge badge-orange">Not a résumé</span>}
+                                  </span>
+                                </th>
+                                <td>{c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || 'Processing...')}</td>
+                                <td>{c.total_experience_years != null ? `${c.total_experience_years}y` : '—'}</td>
+                                <td className="sd-list-level">{c.experience_level || '—'}</td>
+                                <td className="sd-list-more">{c.location || '—'}</td>
+                                <td className="sd-list-more">{getSkills(c).slice(0, 3).map(s => (typeof s === 'string' ? s : s?.name)).join(', ') || '—'}</td>
+                                <td>
+                                  <button type="button" className="sd-list-delete" onClick={() => deleteCandidate(c.id)} aria-label={`Delete ${name}`}>
+                                    <Trash2 size={14} aria-hidden="true" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
                   <div className="candidates-slider">
                     <div className="slider-track">
                       {visibleCandidates.map(({ candidate: c, index: i }) => (
@@ -955,6 +1034,7 @@ export default function Dashboard() {
                       ))}
                     </div>
                   </div>
+                  )}
                 </div>
               )}
 

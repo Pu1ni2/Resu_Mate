@@ -68,6 +68,26 @@
 .studio-dashboard .sd-filterbar > div > span { color: var(--color-ink-subtle); font: 12px var(--font-mono); white-space: nowrap; }
 .studio-dashboard .sd-filterbar select { max-width: 150px; padding: 8px 10px; border: 1px solid var(--color-line); border-radius: 3px; background: var(--color-surface); color: var(--color-ink-muted); font-size: 14px; }
 
+/* Cards, or a list for a big collection: a row a person. */
+.studio-dashboard .sd-view-switch { display: flex; border: 1px solid var(--color-line); border-radius: var(--radius-control); overflow: hidden; }
+.studio-dashboard .sd-view-switch button { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border: 0; background: var(--color-surface); color: var(--color-ink-muted); font-size: 14px; cursor: pointer; }
+.studio-dashboard .sd-view-switch button + button { border-left: 1px solid var(--color-line); }
+.studio-dashboard .sd-view-switch button[aria-pressed=true] { background: #e8ecdc; color: var(--color-ink); font-weight: 600; }
+.studio-dashboard .sd-view-switch button:focus-visible { outline: 2px solid var(--color-forest); outline-offset: -2px; }
+.studio-dashboard .sd-list-wrap { overflow-x: auto; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
+.studio-dashboard .sd-list { width: 100%; border-collapse: collapse; font-size: 14px; }
+.studio-dashboard .sd-list :is(th, td) { padding: 11px 14px; border-bottom: 1px solid var(--color-line); color: var(--color-ink-muted); font-weight: 400; text-align: left; vertical-align: middle; }
+.studio-dashboard .sd-list thead th { color: var(--color-ink-subtle); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.studio-dashboard .sd-list tbody tr:last-child > * { border-bottom: 0; }
+.studio-dashboard .sd-list tbody tr.is-selected { background: #f0f2e6; }
+.studio-dashboard .sd-list-who { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.studio-dashboard .sd-list :is(th, td):first-child, .studio-dashboard .sd-list td:last-child { width: 1%; }
+.studio-dashboard .sd-list-name { padding: 0; border: 0; background: none; color: var(--color-ink); font: 600 14px var(--font-sans); text-align: left; cursor: pointer; }
+.studio-dashboard .sd-list-name:hover { color: var(--color-accent); text-decoration: underline; }
+.studio-dashboard :is(.sd-list-name, .sd-list-delete):focus-visible { outline: 2px solid var(--color-forest); outline-offset: 2px; }
+.studio-dashboard .sd-list-delete { display: flex; padding: 6px; border: 0; background: none; color: #8b8f80; cursor: pointer; }
+.studio-dashboard .sd-list-delete:hover { color: var(--color-critical); }
+
 /* The cards, in a grid instead of the old scrolling strip. */
 .studio-dashboard .candidates-slider { position: static; display: block; padding: 0; }
 .studio-dashboard .slider-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; overflow: visible; padding: 0; scroll-snap-type: none; }
@@ -270,6 +290,8 @@
 /* Phones: the intro, then the sculpture under it; each interview over two
    lines. */
 @media (max-width: 700px) {
+  /* The list keeps who, what and how long; the rest is in the file. */
+  .studio-dashboard .sd-list .sd-list-more { display: none; }
   .studio-dashboard .sd-overview > div { padding: 16px 12px; }
   .studio-dashboard .sd-overview > div > span { letter-spacing: 0.3px; }
   .studio-dashboard .sd-overview strong { font-size: 37px; }
@@ -307,6 +329,15 @@
   .studio-dashboard .sd-filterbar input { font-size: 12px; }
   /* As small as the search beside it, so "Original order" fits its 120px. */
   .studio-dashboard .sd-filterbar select { max-width: 120px; font-size: 12px; }
+  /* The search gets the row to itself, the switch and the order the next. */
+  .studio-dashboard .sd-filterbar { flex-wrap: wrap; }
+  .studio-dashboard .sd-filterbar > label { flex: 1 0 100%; }
+  .studio-dashboard .sd-filterbar > div { margin-left: auto; }
+  /* The view switch is its icons on a phone; their names are still read out. */
+  .studio-dashboard .sd-view-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .studio-dashboard .sd-view-switch button { padding: 7px 8px; }
+  .studio-dashboard .sd-list :is(th, td) { padding: 10px 8px; }
+  .studio-dashboard .sd-list .sd-list-level { display: none; }
   .studio-dashboard .upload-zone { padding: 22px 10px; }
   .studio-dashboard .upload-zone h3 { font-size: 12px; }
   /* "Add résumés" is short enough for its 14px. */
