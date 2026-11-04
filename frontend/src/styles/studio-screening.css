@@ -20,7 +20,7 @@
 .studio-screening .ss-brief :is(input, textarea):focus-visible { outline: 2px solid #839370; outline-offset: 2px; }
 .studio-screening .ss-run { background: var(--color-forest); }
 .studio-screening .ss-run:hover:not(:disabled) { background: var(--color-forest-hover); }
-.studio-screening .ss-run-note { margin: 14px 0 0; color: var(--color-ink-subtle); font-size: 11px; line-height: 1.6; text-align: center; }
+.studio-screening .ss-run-note { margin: 14px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.6; text-align: center; }
 
 /* ── under the button: the earlier runs, to open again (RecentRuns.jsx) ── */
 .studio-screening .ss-runs { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-line); }
@@ -65,7 +65,7 @@
   animation: studio-screening-file-front 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .studio-screening .ss-dossier-sheet--front > svg { margin-bottom: 9px; }
-.studio-screening .ss-dossier-sheet--front > span { display: block; font: 11px/1.5 var(--font-mono); letter-spacing: 0.7px; }
+.studio-screening .ss-dossier-sheet--front > span { display: block; font: 12px/1.5 var(--font-mono); letter-spacing: 0.7px; }
 .studio-screening .ss-dossier-sheet--front > b { display: block; margin: 10px 0 14px; color: var(--color-forest); font: 24px/1.04 var(--font-serif); }
 .studio-screening .ss-dossier-sheet--front > b > em { color: #6b7f50; font-weight: 400; }
 .studio-screening .ss-dossier-sheet--front > i { display: block; width: 85%; height: 2px; margin: 6px 0; background: #d9dfcc; }
@@ -79,7 +79,7 @@
   transform: rotate(11deg) rotateY(-12deg);
   animation: studio-screening-role-arrive 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-.studio-screening .ss-role-object > span { display: block; margin: 9px 0; font: 11px/1.5 var(--font-mono); letter-spacing: 0.7px; }
+.studio-screening .ss-role-object > span { display: block; margin: 9px 0; font: 12px/1.5 var(--font-mono); letter-spacing: 0.7px; }
 .studio-screening .ss-role-object > b { display: block; font: 24px/1.05 var(--font-serif); }
 .studio-screening .ss-role-object > i { display: block; width: 80%; height: 2px; margin-top: 12px; background: #a86c4b55; }
 .studio-screening .ss-role-object > i:last-child { width: 55%; margin-top: 6px; }
@@ -91,7 +91,7 @@
 .studio-screening[data-running=true] .ss-dossier-scan { animation: studio-screening-scan 2.5s ease-in-out infinite; }
 
 /* What the run is doing, under the drawing. */
-.studio-screening .ss-process-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 22px; margin: 0 0 27px; color: var(--color-ink-subtle); font-size: 11px; }
+.studio-screening .ss-process-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 22px; margin: 0 0 27px; color: var(--color-ink-subtle); font-size: 12px; }
 .studio-screening .ss-process-status > span { flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: #839370; }
 .studio-screening[data-running=true] .ss-process-status { color: var(--color-accent-hover); }
 .studio-screening[data-running=true] .ss-process-status > span { background: var(--color-accent); box-shadow: 0 0 0 4px #b7463012; }
@@ -105,7 +105,7 @@
 /* The three steps, and how many people this run takes in. */
 .studio-screening .ss-process ol { display: grid; gap: 22px; margin: 0; padding: 0; list-style: none; }
 .studio-screening .ss-process li { display: flex; align-items: flex-start; gap: 13px; }
-.studio-screening .ss-process li > b { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #e9ebdf; color: #677b51; font: 11px var(--font-mono); }
+.studio-screening .ss-process li > b { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #e9ebdf; color: #677b51; font: 12px var(--font-mono); }
 .studio-screening .ss-process li strong { color: #47573b; font-size: 12px; font-weight: 600; }
 .studio-screening .ss-process li p { margin: 6px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
 .studio-screening .ss-scope { display: grid; grid-template-columns: auto 1fr; gap: 4px 13px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-line); }

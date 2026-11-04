@@ -60,7 +60,7 @@ function CredibilitySection({ candidateId, candidateEmail, interviewId }) {
         <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
           <Target size={15} /> Compare résumé and interview
         </button>
-        <p style={{ color: 'var(--color-ink-muted)', fontSize: '11px', marginTop: '8px' }}>Checks the résumé's claims against what the candidate said in the interview</p>
+        <p style={{ color: 'var(--color-ink-muted)', fontSize: '12px', marginTop: '8px' }}>Checks the résumé's claims against what the candidate said in the interview</p>
       </div>
     );
   }
@@ -102,25 +102,25 @@ function CredibilitySection({ candidateId, candidateEmail, interviewId }) {
       <div style={{ marginBottom: '14px' }}>
         {(rvi.confirmed_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-positive)', display: 'block', marginBottom: '4px' }}>Shown in the interview</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-positive)', display: 'block', marginBottom: '4px' }}>Shown in the interview</span>
             {rvi.confirmed_skills.map((s, i) => <SkillTag key={i} skill={s} type="confirmed" />)}
           </div>
         )}
         {(rvi.overrated_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-critical)', display: 'block', marginBottom: '4px' }}>Claimed, but not shown in the interview</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-critical)', display: 'block', marginBottom: '4px' }}>Claimed, but not shown in the interview</span>
             {rvi.overrated_skills.map((s, i) => <SkillTag key={i} skill={s} type="overrated" />)}
           </div>
         )}
         {(rvi.hidden_strengths || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Strengths not on the résumé</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Strengths not on the résumé</span>
             {rvi.hidden_strengths.map((s, i) => <SkillTag key={i} skill={s} type="hidden" />)}
           </div>
         )}
         {(rvi.unverified_skills || []).length > 0 && (
           <div style={{ marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-ink-muted)', display: 'block', marginBottom: '4px' }}>Not discussed</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-ink-muted)', display: 'block', marginBottom: '4px' }}>Not discussed</span>
             {rvi.unverified_skills.slice(0, 6).map((s, i) => <SkillTag key={i} skill={s} type="unverified" />)}
           </div>
         )}
@@ -141,7 +141,7 @@ function CredibilitySection({ candidateId, candidateEmail, interviewId }) {
       {/* Key Insights */}
       {(c.key_insights || []).length > 0 && (
         <div>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-ink-subtle)', display: 'block', marginBottom: '6px' }}>Key Insights</span>
+          <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-ink-subtle)', display: 'block', marginBottom: '6px' }}>Key Insights</span>
           {c.key_insights.map((insight, i) => (
             <p key={i} style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginBottom: '4px', paddingLeft: '10px', borderLeft: '2px solid var(--color-accent-line)' }}>{insight}</p>
           ))}
@@ -171,7 +171,7 @@ function TranscriptSection({ transcript }) {
             const isInterviewer = turn.role === 'interviewer';
             return (
               <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flexDirection: isInterviewer ? 'row' : 'row-reverse' }}>
-                <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700',
+                <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700',
                   background: isInterviewer ? 'var(--color-accent)' : 'var(--color-surface-raised)',
                   color: isInterviewer ? 'var(--color-ink-inverse)' : 'var(--color-ink-muted)', border: isInterviewer ? 'none' : '1px solid var(--color-line)'
                 }}>

@@ -1687,8 +1687,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid rgba(76,87,61,0.04)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: '#2b3029' }}>{r.name}</span>
-                              {r.language && <span style={{ fontSize: 11, color: '#aa4933', background: 'rgba(183,70,48,0.1)', padding: '1px 7px', borderRadius: 100 }}>{r.language}</span>}
-                              <span style={{ fontSize: 11, color: '#68705e', marginLeft: 'auto' }}>⭐ {r.stars || 0}  🍴 {r.forks || 0}</span>
+                              {r.language && <span style={{ fontSize: 12, color: '#aa4933', background: 'rgba(183,70,48,0.1)', padding: '1px 7px', borderRadius: 100 }}>{r.language}</span>}
+                              <span style={{ fontSize: 12, color: '#68705e', marginLeft: 'auto' }}>⭐ {r.stars || 0}  🍴 {r.forks || 0}</span>
                             </div>
                             {r.description && <div style={{ fontSize: 12, color: '#68705e', lineHeight: 1.5 }}>{r.description}</div>}
                           </div>
@@ -1736,7 +1736,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       {s.sources.map((src, i) => (
                         <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(76,87,61,0.04)' }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#486563', marginBottom: 2 }}>{src.title}</div>
-                          {src.url && <div style={{ fontSize: 11, color: '#68705e', wordBreak: 'break-all' }}>{src.url}</div>}
+                          {src.url && <div style={{ fontSize: 12, color: '#68705e', wordBreak: 'break-all' }}>{src.url}</div>}
                           {src.content && <div style={{ fontSize: 12, color: '#68705e', lineHeight: 1.5, marginTop: 4 }}>{src.content.slice(0, 300)}</div>}
                         </div>
                       ))}
@@ -1842,7 +1842,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>GAPS AND INCONSISTENCIES</div>
                         {gaps.map((gap, i) => (
                           <div key={i} style={{ padding: '10px 0', borderBottom: i < gaps.length - 1 ? '1px solid rgba(76,87,61,0.04)' : 'none' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: gap.severity === 'high' ? '#aa362b' : gap.severity === 'medium' ? '#8c5c23' : '#68705e', marginBottom: 4 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: gap.severity === 'high' ? '#aa362b' : gap.severity === 'medium' ? '#8c5c23' : '#68705e', marginBottom: 4 }}>
                               {(gap.type || 'gap').replace(/_/g, ' ').toUpperCase()}
                             </div>
                             <div style={{ fontSize: 13, color: '#596150', lineHeight: 1.6 }}>{gap.detail}</div>
@@ -2107,7 +2107,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               border: '1px solid rgba(183,70,48,0.15)',
               color: '#68705e', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+              fontSize: 12, fontWeight: 600, letterSpacing: '0.06em',
               transition: 'all 0.15s',
             }}
             onMouseEnter={e => {
@@ -2244,7 +2244,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                     background: 'radial-gradient(circle at 30% 25%, #d88d68, #a64a34)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 800, color: '#fffef9', marginTop: 1,
+                    fontSize: 12, fontWeight: 800, color: '#fffef9', marginTop: 1,
                   }}>J</div>
                   <p style={{
                     margin: 0, flex: 1, fontSize: 15, lineHeight: 1.7,
@@ -2359,8 +2359,8 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                             {g.topRepos.slice(0, 3).map((r, i) => (
                               <div key={i} style={{ fontSize: 12, color: '#596150', marginBottom: 3, display: 'flex', gap: 8, alignItems: 'baseline' }}>
                                 <span style={{ color: '#2b3029', fontWeight: 600 }}>{r.name}</span>
-                                {r.language && <span style={{ fontSize: 11, color: '#68705e' }}>{r.language}</span>}
-                                {r.description && <span style={{ fontSize: 11, color: '#68705e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{r.description}</span>}
+                                {r.language && <span style={{ fontSize: 12, color: '#68705e' }}>{r.language}</span>}
+                                {r.description && <span style={{ fontSize: 12, color: '#68705e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{r.description}</span>}
                               </div>
                             ))}
                           </div>
@@ -2461,7 +2461,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                         </div>
                         {s.snippet && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#68705e', lineHeight: 1.5 }}>{s.snippet.slice(0, 160)}…</p>}
                         {(s.sources || []).slice(0, 2).map((src, i) => (
-                          <div key={i} style={{ fontSize: 11, color: '#486563', marginTop: 2 }}>· {src.title}</div>
+                          <div key={i} style={{ fontSize: 12, color: '#486563', marginTop: 2 }}>· {src.title}</div>
                         ))}
                       </div>
                     </div>
@@ -2487,7 +2487,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(170,54,43)' }}>EVALUATION REPORT</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             {score && <span style={{ fontSize: 13, fontWeight: 900, color: '#46623d' }}>{score}/100</span>}
-                            {verdict && <span style={{ fontSize: 11, fontWeight: 700, color: '#8c5c23', background: 'rgba(140,92,35,0.1)', padding: '2px 8px', borderRadius: 100 }}>{verdict}</span>}
+                            {verdict && <span style={{ fontSize: 12, fontWeight: 700, color: '#8c5c23', background: 'rgba(140,92,35,0.1)', padding: '2px 8px', borderRadius: 100 }}>{verdict}</span>}
                             {expandBtn(msg)}
                           </div>
                         </div>
@@ -2508,7 +2508,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                             {plain.slice(0, 320)}{plain.length > 320 ? '…' : ''}
                           </div>
                         )}
-                        <div style={{ marginTop: 8, fontSize: 11, color: '#68705e', cursor: 'pointer' }}
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#68705e', cursor: 'pointer' }}
                           {...pressable(() => setExpandedCard(msg))}>
                           Tap ↗ for full report
                         </div>
@@ -2601,7 +2601,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                           </div>
                         )}
                         {iv.portalLink && (
-                          <div style={{ fontSize: 11, color: '#596150', marginTop: 10, wordBreak: 'break-all' }}>
+                          <div style={{ fontSize: 12, color: '#596150', marginTop: 10, wordBreak: 'break-all' }}>
                             Not emailed. Send them this sign-in link: <span style={{ color: '#2b3029', userSelect: 'all' }}>{iv.portalLink}</span>
                           </div>
                         )}
@@ -2669,7 +2669,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                       <div style={{ background: 'rgba(76,87,61,0.02)', border: '1px solid rgba(102,90,114,0.25)', borderRadius: 10, padding: '12px 14px' }}>
                         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: 'rgb(102,90,114)', marginBottom: 8 }}>CALENDLY SCHEDULING LINK</div>
                         {ca.url && <a href={ca.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#665a72', wordBreak: 'break-all', display: 'block', marginBottom: 6 }}>{ca.url}</a>}
-                        {ca.eventTypes && <div style={{ fontSize: 11, color: '#68705e' }}>{ca.eventTypes}</div>}
+                        {ca.eventTypes && <div style={{ fontSize: 12, color: '#68705e' }}>{ca.eventTypes}</div>}
                       </div>
                     </div>
                   );
@@ -2684,7 +2684,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                     borderRadius: '0 8px 8px 0',
                   }}>
                     <span style={{
-                      fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+                      fontSize: 12, fontWeight: 600, letterSpacing: '0.04em',
                       color: '#46623d', fontFamily: "'JetBrains Mono', monospace",
                     }}>
                       ✓ {msg.content}
@@ -2703,7 +2703,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                   width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                   background: 'radial-gradient(circle at 30% 25%, #d88d68, #a64a34)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800, color: '#fffef9', opacity: 0.5,
+                  fontSize: 12, fontWeight: 800, color: '#fffef9', opacity: 0.5,
                 }}>J</div>
                 <TypingDots />
               </div>
@@ -2724,7 +2724,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           <div style={{ height: 18, display: 'flex', alignItems: 'center' }}>
             {hint && (
               <div style={{
-                fontSize: 11, color: 'rgb(183,70,48)', letterSpacing: '0.04em',
+                fontSize: 12, color: 'rgb(183,70,48)', letterSpacing: '0.04em',
                 animation: 'jStatusFade 2s ease-in-out infinite',
               }}>
                 {hint}
@@ -2813,7 +2813,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           </div>
 
           {/* Caption */}
-          <div style={{ fontSize: 11, color: '#68705e', letterSpacing: '0.06em', userSelect: 'none' }}>
+          <div style={{ fontSize: 12, color: '#68705e', letterSpacing: '0.06em', userSelect: 'none' }}>
             {voice.isRecording
               ? 'RECORDING · PAUSE TO SEND AUTOMATICALLY'
               : voice.speakingMsgIndex !== null

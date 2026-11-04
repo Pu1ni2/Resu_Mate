@@ -207,7 +207,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                 <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Video size={14} /> Avatar interview
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>
                   {avatarAvailable ? 'Camera + lip-synced AI face. Slower but richer.' : 'Not set up on this server yet.'}
                 </span>
               </button>
@@ -228,7 +228,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                 <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Mic size={14} /> Voice conversation
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>Audio-only, low-latency. No camera, no avatar.</span>
+                <span style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>Audio-only, low-latency. No camera, no avatar.</span>
               </button>
             </div>
           </div>

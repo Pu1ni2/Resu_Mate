@@ -164,10 +164,10 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[5px] border border-line bg-surface px-4 py-2.5">
             <span className="text-[12px] font-medium text-ink-subtle">Screened against</span>
             {jd_requirements.required_skills.map((sk, i) => (
-              <span key={i} className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted">{sk}</span>
+              <span key={i} className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted">{sk}</span>
             ))}
             {jd_requirements.min_experience_years > 0 && (
-              <span className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted">
+              <span className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted">
                 {jd_requirements.min_experience_years}+ years
               </span>
             )}

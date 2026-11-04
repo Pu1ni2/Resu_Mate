@@ -50,7 +50,7 @@
 }
 .sc-conversation .sc-wave-caption { padding: 0 8px 8px; text-align: center; }
 .sc-conversation .sc-wave-caption > span { display: block; font: italic 25px/1.2 var(--font-serif); color: #694b3c; }
-.sc-conversation .sc-wave-caption > small { display: block; margin-top: 12px; font: 11px/1.6 var(--font-mono); letter-spacing: 0.65px; color: var(--color-ink-subtle); }
+.sc-conversation .sc-wave-caption > small { display: block; margin-top: 12px; font: 12px/1.6 var(--font-mono); letter-spacing: 0.65px; color: var(--color-ink-subtle); }
 
 /* ── the voice interview's welcome: smaller, and to the left ── */
 .sc-conversation[data-variant=welcome] { max-width: 330px; margin: 22px 0 -5px; }

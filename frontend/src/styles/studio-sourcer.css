@@ -25,14 +25,14 @@
 .studio-sourcer .sourcer-brief textarea { min-height: 190px; padding: 17px !important; border-color: #cbd1c0 !important; border-radius: 3px !important; background: #f9f8f1 !important; box-shadow: none !important; font-size: 15px !important; line-height: 1.8 !important; resize: vertical !important; }
 .studio-sourcer .sourcer-brief textarea::placeholder { color: var(--color-ink-faint); }
 .studio-sourcer .sourcer-brief fieldset { margin-top: 23px !important; }
-.studio-sourcer .sourcer-brief legend { font-size: 11px !important; font-weight: 500 !important; letter-spacing: 0.05em; }
+.studio-sourcer .sourcer-brief legend { font-size: 12px !important; font-weight: 500 !important; letter-spacing: 0.05em; }
 .studio-sourcer .sourcer-source { min-height: 43px; padding: 9px 12px !important; border-radius: 3px !important; font-size: 12px !important; }
 .studio-sourcer .sourcer-source:has(input:checked) { border-color: #b6bfa8 !important; background: #e9ebdf !important; }
 .studio-sourcer .sourcer-source:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 .studio-sourcer .sourcer-source input { width: 14px; height: 14px; margin: 0; accent-color: #68745a !important; }
 .studio-sourcer .sourcer-brief-bottom { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 25px !important; padding-top: 22px; border-top: 1px solid #dde0d4; }
 .studio-sourcer .sourcer-brief-bottom p { margin: 0; font: 23px/1.1 var(--font-serif); }
-.studio-sourcer .sourcer-brief-bottom p span { color: var(--color-ink-subtle); font: 11px/1.8 var(--font-sans); }
+.studio-sourcer .sourcer-brief-bottom p span { color: var(--color-ink-subtle); font: 12px/1.8 var(--font-sans); }
 .studio-sourcer .sourcer-brief-bottom button { min-height: 45px; padding: 12px 17px !important; border-color: var(--color-forest) !important; border-radius: 3px !important; background: var(--color-forest) !important; color: var(--color-ink-inverse) !important; font-size: 12px !important; }
 .studio-sourcer .sourcer-brief-bottom button:hover { background: var(--color-forest-hover) !important; }
 .studio-sourcer .sourcer-guide { padding: 0 16px 17px; }
@@ -42,10 +42,10 @@
 .studio-sourcer :is(.sourcer-guide, .sourcer-run-header) h2 em { color: var(--color-brand); font-weight: 400; }
 .studio-sourcer .sourcer-guide ol { display: grid; gap: 21px; margin: 0; padding: 0; list-style: none; }
 .studio-sourcer .sourcer-guide li { display: grid; grid-template-columns: 23px 1fr; gap: 10px; }
-.studio-sourcer .sourcer-guide li > span { padding-top: 3px; color: var(--color-brand); font-size: 11px; }
+.studio-sourcer .sourcer-guide li > span { padding-top: 3px; color: var(--color-brand); font-size: 12px; }
 .studio-sourcer .sourcer-guide strong { font-size: 13px; font-weight: 500; }
 .studio-sourcer .sourcer-guide li p { margin: 4px 0 0; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
-.studio-sourcer .sourcer-guide-note { margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd1bf; color: var(--color-ink-subtle); font-size: 11px; line-height: 1.8; }
+.studio-sourcer .sourcer-guide-note { margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd1bf; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.8; }
 
 /* Past searches, under the brief. */
 .studio-sourcer .sourcer-history { margin-top: 35px; border: 0 !important; border-top: 1px solid #cbd1c0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }

@@ -71,12 +71,12 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 /* ── the story on the left ── */
 .studio-auth .story-column { padding: 20px 36px 8px 0; min-width: 0; align-self: start; position: sticky; top: 30px; }
 .studio-auth .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .15em; }
-.studio-auth .issue { color: var(--rust); display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.studio-auth .issue { color: var(--rust); display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .studio-auth .issue::before { content: ''; height: 1px; width: 26px; background: currentColor; flex: none; }
 .studio-auth .story-column h1 { font: clamp(57px, 5.4vw, 79px)/.99 var(--serif); letter-spacing: -1.8px; margin: 24px 0 21px; }
 .studio-auth .story-column h1 em { color: var(--rust); font-weight: 400; }
 .studio-auth .story-copy { color: var(--muted); font-size: 14px; line-height: 1.85; max-width: 360px; }
-.studio-auth .art-caption { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); margin: 30px 0 0; padding-top: 17px; border-top: 1px dashed #cbd1bf; max-width: 550px; }
+.studio-auth .art-caption { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 30px 0 0; padding-top: 17px; border-top: 1px dashed #cbd1bf; max-width: 550px; }
 .studio-auth .art-caption > span { font-size: 17px; color: var(--rust); }
 
 /* The journey under the story: each small illustration has a job. */
@@ -120,7 +120,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .field-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 7px; }
 /* After a space in the label, so it reads "Company Optional": with the space,
    1px makes the design's 4px gap. */
-.studio-auth .optional { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 1px; }
+.studio-auth .optional { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 1px; }
 .studio-auth .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-bottom: 18px; }
 .studio-auth .form-fields > .field-row { margin-bottom: 0; }
 .studio-auth .form-fields .field-row > .field-group { min-width: 0; }
@@ -133,13 +133,13 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .field-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px #af3d3114; }
 .studio-auth .field-input:disabled { background: #eeeee5; color: #7b8271; border-color: #d3d7c9; }
 .studio-auth .field-wrap:has(.password-toggle) .field-input { padding-right: 65px; }
-.studio-auth .password-toggle { position: absolute; right: 1px; top: 1px; height: 47px; min-width: 58px; padding: 0 12px; font-size: 11px; color: var(--muted); }
+.studio-auth .password-toggle { position: absolute; right: 1px; top: 1px; height: 47px; min-width: 58px; padding: 0 12px; font-size: 12px; color: var(--muted); }
 .studio-auth .password-toggle:hover { color: var(--rust); }
 .studio-auth .form-fields .field-row .field-input { padding-left: 11px; padding-right: 54px; font-size: 12px; }
-.studio-auth .form-fields .field-row .password-toggle { min-width: 48px; padding: 0 9px; font-size: 11px; }
-.studio-auth .form-fields .field-row .field-label { font-size: 11px; }
-.studio-auth .field-help { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 7px; }
-.studio-auth .field-error { color: #a63f30; font-size: 11px; line-height: 1.6; margin-top: 6px; }
+.studio-auth .form-fields .field-row .password-toggle { min-width: 48px; padding: 0 9px; font-size: 12px; }
+.studio-auth .form-fields .field-row .field-label { font-size: 12px; }
+.studio-auth .field-help { font-size: 12px; color: var(--muted); line-height: 1.7; margin-top: 7px; }
+.studio-auth .field-error { color: #a63f30; font-size: 12px; line-height: 1.6; margin-top: 6px; }
 .studio-auth .field-error:empty { display: none; }
 .studio-auth .code-input { font-size: 26px; text-align: center; letter-spacing: .42em; height: 60px; padding-left: 22px; font-weight: 500; }
 
@@ -154,15 +154,15 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
    where the design drew a link: as tall as the link, so its underline sits
    under the words. */
 .studio-auth .form-foot button.text-link { line-height: normal; }
-.studio-auth .form-note { font-size: 11px; line-height: 1.75; color: var(--muted); margin-top: 20px; }
+.studio-auth .form-note { font-size: 12px; line-height: 1.75; color: var(--muted); margin-top: 20px; }
 .studio-auth .form-fields > .form-note { margin: 0 0 2px; }
 .studio-auth .form-note .text-link { font-weight: 400; }
-.studio-auth .consent { display: flex; align-items: flex-start; gap: 10px; font-size: 11px; line-height: 1.85; color: var(--muted); margin: 19px 0 21px; }
+.studio-auth .consent { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; line-height: 1.85; color: var(--muted); margin: 19px 0 21px; }
 .studio-auth .form-fields > .consent-group { margin: 0; }
 .studio-auth .form-fields .consent { margin: 0; }
 .studio-auth .consent-input { width: 15px; height: 15px; flex: none; accent-color: var(--forest); margin: 3px 0 0; cursor: pointer; }
-.studio-auth .consent a { font-size: 11px; padding: 0; color: var(--ink); text-decoration: underline; text-decoration-color: #9ba58c; text-underline-offset: 3px; }
-.studio-auth .form-assurance { display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid var(--line); padding-top: 19px; margin-top: 29px; font-size: 11px; color: var(--muted); }
+.studio-auth .consent a { font-size: 12px; padding: 0; color: var(--ink); text-decoration: underline; text-decoration-color: #9ba58c; text-underline-offset: 3px; }
+.studio-auth .form-assurance { display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid var(--line); padding-top: 19px; margin-top: 29px; font-size: 12px; color: var(--muted); }
 .studio-auth .form-assurance svg { width: 15px; height: 17px; fill: none; stroke: #7f8c70; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 /* Buttons */
@@ -187,7 +187,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .notice-error { background: #faeee5; border-color: #dfb5a4; color: #98432f; }
 .studio-auth .notice-success { background: #e9edde; border-color: #c8d3b6; color: #4b603b; }
 .studio-auth .notice-info { background: #edf0e4; border-color: #d0d8c3; color: #526446; }
-.studio-auth .notice-icon { flex: none; width: 17px; height: 17px; text-align: center; line-height: 17px; border: 1px solid currentColor; border-radius: 50%; font-size: 11px; margin-top: 2px; }
+.studio-auth .notice-icon { flex: none; width: 17px; height: 17px; text-align: center; line-height: 17px; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; margin-top: 2px; }
 .studio-auth .notice-body { min-width: 0; }
 .studio-auth .notice-body p + p { margin-top: 5px; }
 .studio-auth .notice-body strong { font-weight: 600; }
@@ -196,9 +196,9 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
 .studio-auth .success-copy { color: var(--muted); font-size: 13px; line-height: 1.8; margin-bottom: 25px; overflow-wrap: anywhere; }
 
 /* ── the footer ── */
-.studio-auth .site-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); padding: 22px 0; color: var(--muted); font-size: 11px; }
+.studio-auth .site-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); padding: 22px 0; color: var(--muted); font-size: 12px; }
 .studio-auth .site-footer > div { display: flex; align-items: center; gap: 23px; }
-.studio-auth .site-footer a { color: inherit; font-size: 11px; padding: 8px 0; min-height: 40px; display: inline-flex; align-items: center; text-decoration: none; }
+.studio-auth .site-footer a { color: inherit; font-size: 12px; padding: 8px 0; min-height: 40px; display: inline-flex; align-items: center; text-decoration: none; }
 .studio-auth .site-footer a:hover { color: var(--rust); }
 .studio-auth .site-footer > div > span { border-left: 1px solid var(--line); padding-left: 23px; }
 
@@ -216,7 +216,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .journey-step h3 { font-size: 27px; }
   .studio-auth .journey-thread { height: 136px; }
   .studio-auth .journey-step p { font-size: 13px; max-width: 164px; }
-  .studio-auth .journey-number { font-size: 11px; }
+  .studio-auth .journey-number { font-size: 12px; }
 }
 
 /* ── smaller screens ── */
@@ -228,14 +228,14 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .story-copy { font-size: 13px; max-width: 310px; }
   .studio-auth .form-column { padding-left: 35px; }
   .studio-auth .form-title { font-size: 45px; }
-  .studio-auth .art-caption { font-size: 11px; max-width: 550px; }
-  .studio-auth .site-footer { font-size: 11px; }
+  .studio-auth .art-caption { font-size: 12px; max-width: 550px; }
+  .studio-auth .site-footer { font-size: 12px; }
   .studio-auth .site-footer > div { gap: 18px; }
   .studio-auth .site-footer > div > span { padding-left: 18px; }
   .studio-auth .journey-steps { gap: 12px; }
   .studio-auth .journey-illustration { width: 92px; height: 96px; }
   .studio-auth .journey-step h3 { font-size: 23px; }
-  .studio-auth .journey-step p { font-size: 11px; line-height: 1.8; }
+  .studio-auth .journey-step p { font-size: 12px; line-height: 1.8; }
   .studio-auth .journey-thread { height: 110px; }
   .studio-auth .journey-heading > span { font-size: 15px; }
 }
@@ -248,7 +248,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .journey-illustration { width: 78px; height: 88px; margin: 0; }
   .studio-auth .journey-step h3 { font-size: 25px; margin: 0 0 6px; max-width: none; text-wrap: initial; }
   .studio-auth .journey-step p { font-size: 12px; margin: 0; max-width: 250px; line-height: 1.65; }
-  .studio-auth .journey-number { font-size: 11px; margin-bottom: 5px; }
+  .studio-auth .journey-number { font-size: 12px; margin-bottom: 5px; }
   .studio-auth .journey-thread { display: none; }
   .studio-auth .journey-thread-vertical { display: block; position: absolute; top: 0; left: 3px; width: 78px; height: 100%; z-index: -1; }
 }
@@ -262,17 +262,17 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .story-copy { font-size: 12px; }
   .studio-auth .issue { font-size: 11px; letter-spacing: .12em; gap: 8px; }
   .studio-auth .issue::before { width: 18px; }
-  .studio-auth .art-caption { font-size: 11px; align-items: flex-start; gap: 7px; }
+  .studio-auth .art-caption { font-size: 12px; align-items: flex-start; gap: 7px; }
   .studio-auth .form-card { max-width: 390px; }
   .studio-auth .role-nav { margin-bottom: 28px; }
-  .studio-auth .role-nav > a { font-size: 11px; }
+  .studio-auth .role-nav > a { font-size: 12px; }
   .studio-auth .form-intro { font-size: 12px; }
   .studio-auth .site-footer { gap: 15px; }
   .studio-auth .site-footer > div > span { display: none; }
   .studio-auth .form-fields > .field-row { grid-template-columns: 1fr; gap: 18px; }
   .studio-auth .form-fields .field-row .field-input { font-size: 16px; padding-left: 14px; padding-right: 65px; }
   .studio-auth .form-fields .field-row .field-label, .studio-auth .form-fields .field-row .field-help { font-size: 12px; }
-  .studio-auth .form-fields .field-row .password-toggle { font-size: 11px; min-width: 58px; }
+  .studio-auth .form-fields .field-row .password-toggle { font-size: 12px; min-width: 58px; }
 }
 @media (max-width: 950px) and (min-width: 701px) {
   /* After the 900px rules, as in the design: the journey's own spacing wins. */
@@ -285,12 +285,12 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .brand-mark { width: 26px; height: 28px; margin-right: 9px; }
   .studio-auth .brand-mark::before, .studio-auth .brand-mark::after { height: 26px; width: 7px; }
   .studio-auth .brand-mark::after { left: 17px; }
-  .studio-auth .back-home { font-size: 11px; gap: 7px; }
+  .studio-auth .back-home { font-size: 12px; gap: 7px; }
   .studio-auth .back-home span { font-size: 18px; }
   .studio-auth .site-header .back-home { max-width: 150px; line-height: 1.5; }
   .studio-auth .auth-layout { display: block; padding: 23px 0 20px; min-height: 0; }
   .studio-auth .story-column { position: static; padding: 0; margin-bottom: 24px; }
-  .studio-auth .story-column .issue { font-size: 11px; }
+  .studio-auth .story-column .issue { font-size: 12px; }
   .studio-auth .story-column h1 { font-size: 46px; margin: 16px 0 12px; letter-spacing: -1.1px; }
   .studio-auth .story-copy { font-size: 12px; max-width: 370px; line-height: 1.8; }
   .studio-auth .art-caption { display: none; }
@@ -306,9 +306,9 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .field-help, .studio-auth .field-error { font-size: 12px; }
   .studio-auth .field-row { gap: 12px; }
   .studio-auth .form-assurance { margin-top: 24px; padding-top: 17px; }
-  .studio-auth .site-footer { padding: 15px 0 18px; font-size: 11px; gap: 10px; }
+  .studio-auth .site-footer { padding: 15px 0 18px; font-size: 12px; gap: 10px; }
   .studio-auth .site-footer > div { gap: 17px; }
-  .studio-auth .site-footer a { font-size: 11px; }
+  .studio-auth .site-footer a { font-size: 12px; }
   .studio-auth .code-input { font-size: 26px; height: 60px; }
   .studio-auth .success-title { font-size: 39px; }
   .studio-auth .notice { font-size: 12px; }
@@ -321,21 +321,21 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .cta { font-size: 13px; }
   .studio-auth .journey { margin-top: 22px; padding-top: 16px; max-width: none; }
   .studio-auth .journey-heading { margin-bottom: 14px; }
-  .studio-auth .journey-heading h2 { font-size: 11px; }
+  .studio-auth .journey-heading h2 { font-size: 12px; }
   .studio-auth .journey-heading > span { font-size: 15px; }
   .studio-auth .journey-steps { gap: 14px; }
   .studio-auth .journey-illustration, .studio-auth .journey-thread, .studio-auth .journey-thread-vertical { display: none; }
   .studio-auth .journey-step { text-align: left; padding-right: 9px; }
   .studio-auth .journey-step + .journey-step { border-left: 1px solid var(--line); padding-left: 14px; }
   .studio-auth .journey-step h3 { font-size: 20px; line-height: 1.1; margin: 0; max-width: none; text-wrap: initial; }
-  .studio-auth .journey-number { font-size: 11px; margin-bottom: 8px; }
+  .studio-auth .journey-number { font-size: 12px; margin-bottom: 8px; }
   .studio-auth .journey-step p { display: none; }
 }
 @media (max-width: 380px) {
   .studio-auth .site-wrap { width: calc(100% - 32px); }
   .studio-auth .site-header { gap: 12px; }
   .studio-auth .brand { font-size: 22px; }
-  .studio-auth .back-home { font-size: 11px; gap: 4px; }
+  .studio-auth .back-home { font-size: 12px; gap: 4px; }
   .studio-auth .site-header .back-home { max-width: 130px; }
   .studio-auth .story-column h1 { font-size: 42px; }
   .studio-auth .form-title { font-size: 40px; }
@@ -343,7 +343,7 @@ html:has(.studio-auth)::-webkit-scrollbar-thumb { background: #adb39e; }
   .studio-auth .form-foot { font-size: 12px; }
   .studio-auth .site-footer { align-items: flex-start; flex-direction: column; gap: 1px; }
   .studio-auth .site-footer a { min-height: 34px; }
-  .studio-auth .form-assurance { font-size: 11px; }
+  .studio-auth .form-assurance { font-size: 12px; }
   .studio-auth .resend-actions { gap: 9px; }
   .studio-auth .role-nav > a { font-size: 12px; }
   .studio-auth .journey-steps { gap: 9px; }

@@ -24,7 +24,7 @@
 .studio-assistant .sa-wordmark small { display: block; margin-top: 4px; color: var(--color-ink-subtle); font: 11px/1.5 var(--font-mono); letter-spacing: 1.1px; }
 .studio-assistant .sa-controls { top: 25px !important; right: 28px !important; }
 .studio-assistant .sa-controls button { min-height: 36px; border-radius: var(--radius-control) !important; }
-.studio-assistant .sa-controls button:first-child { border-color: var(--color-line) !important; background: var(--color-surface) !important; color: var(--color-ink-muted) !important; font-size: 11px !important; }
+.studio-assistant .sa-controls button:first-child { border-color: var(--color-line) !important; background: var(--color-surface) !important; color: var(--color-ink-muted) !important; font-size: 12px !important; }
 
 /* The orb, with a ring round it and a shadow under it. */
 .studio-assistant .sa-orb-control { margin-bottom: 17px !important; border-radius: 50%; }
@@ -68,7 +68,7 @@
   .studio-assistant .sa-controls { top: 18px !important; right: 14px !important; }
   .studio-assistant .sa-controls button:first-child { padding: 0 8px !important; letter-spacing: 0 !important; }
   .studio-assistant .sa-heading { font-size: 33px; }
-  .studio-assistant .sa-intro { font-size: 11px; }
+  .studio-assistant .sa-intro { font-size: 12px; }
   .studio-assistant .sa-conversation { width: calc(100% - 24px); }
   .studio-assistant .sa-conversation-inner { padding-inline: 5px !important; }
   .studio-assistant .sa-composer { padding-left: 12px !important; }

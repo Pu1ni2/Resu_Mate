@@ -110,18 +110,18 @@ html:has(.studio.motion-paused) { scroll-behavior: auto; }
 .studio .sheet-label { font-size: 11px; letter-spacing: .12em; color: #6e7464; text-transform: uppercase; margin-bottom: 8px; }
 .studio .sheet-summary { font-size: 13px; line-height: 1.7; margin: 0 0 16px; color: #4f574a; }
 .studio .sheet-skills { display: flex; gap: 6px; flex-wrap: wrap; }
-.studio .sheet-skill { font-size: 11px; line-height: 1; background: #eef0e6; padding: 7px 8px; border-radius: 2px; }
+.studio .sheet-skill { font-size: 12px; line-height: 1; background: #eef0e6; padding: 7px 8px; border-radius: 2px; }
 .studio .evidence { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 15px; }
 .studio .evidence-row { display: flex; align-items: start; gap: 9px; margin-top: 10px; }
-.studio .evidence-icon { width: 18px; height: 18px; background: #e4ead8; color: #53673d; border-radius: 50%; font-size: 11px; display: grid; place-items: center; flex: none; }
+.studio .evidence-icon { width: 18px; height: 18px; background: #e4ead8; color: #53673d; border-radius: 50%; font-size: 12px; display: grid; place-items: center; flex: none; }
 .studio .evidence-row p { font-size: 12px; line-height: 1.6; margin: 0; }
-.studio .sheet-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; font-size: 11px; color: #74796a; letter-spacing: .06em; }
+.studio .sheet-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; font-size: 12px; color: #74796a; letter-spacing: .06em; }
 .studio .annotation { position: absolute; right: 0; top: 372px; width: 236px; background: #eef0df; padding: 19px 20px 17px; box-shadow: 3px 12px 25px #3038211b; transform: rotate(5deg); z-index: 3; border: 1px solid #d8dfc7; }
 .studio .annotation::before { content: ''; position: absolute; top: -10px; left: 80px; width: 60px; height: 20px; background: #e9e3d3c7; transform: rotate(-7deg); }
 .studio .annotation-head { display: flex; gap: 7px; align-items: center; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #5f6e48; }
 .studio .annotation-title { font: 26px/1.1 var(--serif); margin: 12px 0 9px; letter-spacing: -.4px; }
 .studio .annotation p { font-size: 13px; line-height: 1.55; color: #5e6a50; margin: 0; }
-.studio .stamp { position: absolute; right: 8px; top: 30px; z-index: 4; transform: rotate(11deg); width: 126px; height: 126px; border: 1px solid #55604c; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; background: var(--paper); font-size: 11px; letter-spacing: .05em; gap: 4px; box-shadow: 0 0 0 5px var(--paper), 0 0 0 6px #b6bcaa; text-align: center; line-height: 1.2; }
+.studio .stamp { position: absolute; right: 8px; top: 30px; z-index: 4; transform: rotate(11deg); width: 126px; height: 126px; border: 1px solid #55604c; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; background: var(--paper); font-size: 12px; letter-spacing: .05em; gap: 4px; box-shadow: 0 0 0 5px var(--paper), 0 0 0 6px #b6bcaa; text-align: center; line-height: 1.2; }
 .studio .stamp b { font: 44px/.9 var(--serif); color: var(--rust); font-weight: 400; letter-spacing: 0; }
 .studio .profile-switcher { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
 .studio .profile-label { font-size: 11px; color: #62695a; letter-spacing: .12em; text-transform: uppercase; line-height: 1.5; max-width: 110px; }
@@ -183,7 +183,7 @@ html:has(.studio.motion-paused) { scroll-behavior: auto; }
 .studio .person small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
 .studio .face { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #d9ddc7; color: #394833; display: grid; place-items: center; font: 17px var(--serif); }
 .studio .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.studio .chips span { font-size: 11px; background: #eef0e6; padding: 6px 8px; border-radius: 2px; }
+.studio .chips span { font-size: 12px; background: #eef0e6; padding: 6px 8px; border-radius: 2px; }
 .studio .table-label { display: flex; justify-content: space-between; padding-bottom: 9px; border-bottom: 1px solid #d1d4c4; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #77816b; }
 .studio .row { display: grid; grid-template-columns: 1.2fr 1fr auto; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #dfe1d4; }
 .studio .row-action { border: 0; background: transparent; color: var(--rust); display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding: 10px 0 10px 10px; min-height: 44px; }

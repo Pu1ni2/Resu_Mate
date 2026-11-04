@@ -161,7 +161,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Video size={12} /> Avatar interview
               </span>
-              <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>
+              <span style={{ fontSize: 12, color: 'var(--color-ink-muted)' }}>
                 {avatarAvailable ? 'Camera + lip-synced AI face' : 'Not set up on this server yet'}
               </span>
             </button>
@@ -180,7 +180,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Mic size={12} /> Voice conversation
               </span>
-              <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>Audio-only, low-latency</span>
+              <span style={{ fontSize: 12, color: 'var(--color-ink-muted)' }}>Audio-only, low-latency</span>
             </button>
           </div>
         </div>
@@ -218,7 +218,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
               <div key={c.candidate_id} style={styles.candidateRow}>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{c.name}</p>
-                  <p style={{ margin: 0, fontSize: 11, color: 'var(--color-ink-subtle)' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--color-ink-subtle)' }}>
                     ATS {c.ats_score} · {c.verdict}
                     {c.email ? ` · ${c.email}` : ' · no email'}
                   </p>
@@ -258,7 +258,7 @@ function ToggleChip({ icon, label, active, color, onClick }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={active} style={{
       display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-      borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+      borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer',
       background: active ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
       border: `1px solid ${active ? color : 'var(--color-line)'}`,
       color: active ? color : 'var(--color-ink-subtle)', transition: 'all 0.15s',
@@ -272,7 +272,7 @@ function StatBox({ value, label, color }) {
   return (
     <div style={{ textAlign: 'center', flex: 1 }}>
       <div style={{ fontSize: 30, fontWeight: 800, color }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--color-ink-subtle)' }}>{label}</div>
+      <div style={{ fontSize: 12, color: 'var(--color-ink-subtle)' }}>{label}</div>
     </div>
   );
 }

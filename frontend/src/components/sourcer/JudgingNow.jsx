@@ -71,7 +71,7 @@ export default function JudgingNow({ state }) {
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-data-track" aria-hidden="true">
                         <span className="block h-full rounded-full bg-accent" style={{ width: `${level.pct}%` }} />
                       </span>
-                      <span className={cn('w-14 shrink-0 whitespace-nowrap text-right text-[11px]', missedMust ? 'text-critical' : 'text-ink-faint')}>
+                      <span className={cn('w-14 shrink-0 whitespace-nowrap text-right text-[12px]', missedMust ? 'text-critical' : 'text-ink-faint')}>
                         {level.word}
                       </span>
                     </dd>

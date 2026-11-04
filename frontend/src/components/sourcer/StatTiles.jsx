@@ -13,7 +13,7 @@ function Tile({ label, value, of, strong, accent, progress }) {
         strong ? 'sourcer-stat-strong border-transparent bg-ink text-ink-inverse' : 'border-line bg-surface text-ink',
       )}
     >
-      <div className={cn('text-[11px] font-medium', strong ? 'opacity-70' : 'text-ink-subtle')}>{label}</div>
+      <div className={cn('text-[12px] font-medium', strong ? 'opacity-70' : 'text-ink-subtle')}>{label}</div>
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className={cn('sourcer-stat-value font-mono text-[26px] font-semibold leading-none', accent && 'text-accent')}>{value}</span>
         {of != null && <span className="font-mono text-[12px] opacity-60">/ {of}</span>}

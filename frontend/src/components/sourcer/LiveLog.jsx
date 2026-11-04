@@ -26,7 +26,7 @@ export default function LiveLog({ state }) {
                   <tr key={pid} className="border-t border-line first:border-t-0">
                     <td className="w-14 py-1.5 pl-4 font-mono text-ink-faint">{formatCount(position[pid])}</td>
                     <td className="w-40 max-w-40 truncate py-1.5 pr-3 font-medium text-ink">{p.name}</td>
-                    <td className={cn('w-24 py-1.5 pr-3 text-[11px] font-semibold', shortlisted ? 'text-accent' : 'text-ink-faint')}>
+                    <td className={cn('w-24 py-1.5 pr-3 text-[12px] font-semibold', shortlisted ? 'text-accent' : 'text-ink-faint')}>
                       {shortlisted ? 'Shortlist' : 'Passed on'}
                     </td>
                     <td className="max-w-0 truncate py-1.5 pr-4 text-ink-muted" title={p.judgement}>{p.judgement}</td>

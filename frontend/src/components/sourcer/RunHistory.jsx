@@ -33,7 +33,7 @@ export default function RunHistory({ runs, onOpen, onDelete }) {
               className="m-0 min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit]"
             >
               <span className="block truncate text-[13px] text-ink hover:text-accent">{run.description}</span>
-              <span className="block text-[11px] text-ink-subtle">
+              <span className="block text-[12px] text-ink-subtle">
                 {whenOf(run.created_at)}
                 {' · '}
                 <span className="font-mono">{formatCount(run.judged)}</span> read

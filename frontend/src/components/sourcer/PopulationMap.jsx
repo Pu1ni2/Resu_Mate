@@ -52,7 +52,7 @@ export default function PopulationMap({ state }) {
           </p>
         </>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-ink-subtle">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-ink-subtle">
         {LEGEND.map(([key, label]) => (
           <span key={key} className="inline-flex items-center gap-1.5">
             <span className={cn('inline-block h-2.5 w-2.5 rounded-[2px]', CELL[key])} aria-hidden="true" />

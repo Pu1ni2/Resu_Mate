@@ -23,9 +23,9 @@ function ReasonBar({ label, count, max, strong }) {
 function MethodTile({ label, value, note, accent }) {
   return (
     <div className={cn('rounded-[12px] border px-4 py-3', accent ? 'border-accent-line bg-accent-wash' : 'border-line bg-surface')}>
-      <div className="text-[11px] font-medium text-ink-subtle">{label}</div>
+      <div className="text-[12px] font-medium text-ink-subtle">{label}</div>
       <div className={cn('mt-1 font-mono text-[26px] font-semibold leading-none', accent ? 'text-accent' : 'text-ink')}>{value}</div>
-      <div className="mt-1 text-[11px] text-ink-subtle">{note}</div>
+      <div className="mt-1 text-[12px] text-ink-subtle">{note}</div>
     </div>
   );
 }
@@ -40,12 +40,12 @@ export default function FilterComparison({ state }) {
     >
       <div className="grid gap-5 md:grid-cols-[1fr_minmax(0,16rem)]">
         <div className="space-y-2">
-          <div className="text-[11px] font-medium text-ink-subtle">Slipped through a filter because</div>
+          <div className="text-[12px] font-medium text-ink-subtle">Slipped through a filter because</div>
           {reasons.map(r => <ReasonBar key={r.key} label={r.label} count={r.count} max={max} />)}
           <ReasonBar label="matched the filter anyway" count={byFilter} max={max} strong />
         </div>
         <div>
-          <div className="mb-2 text-[11px] font-medium text-ink-subtle">Same search, two methods</div>
+          <div className="mb-2 text-[12px] font-medium text-ink-subtle">Same search, two methods</div>
           <div className="grid grid-cols-2 gap-2">
             <MethodTile label="Boolean + filters" value={formatCount(byFilter)} note="of the shortlist reachable" />
             <MethodTile label="Read everyone" value={`+${formatCount(onlyByReading)}`} note="only found by reading" accent />

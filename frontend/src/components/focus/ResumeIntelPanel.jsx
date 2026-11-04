@@ -108,8 +108,8 @@ export default function ResumeIntelPanel({ focusCandidate }) {
           {intel.verification_targets.map((t, i) => (
             <div key={i} style={{ padding: '8px 10px', marginBottom: '6px', borderRadius: '8px', background: 'var(--bg3, rgba(255,255,255,0.04))' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text)' }}>{t.skill}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', margin: '2px 0' }}>Claim: {t.claim}</div>
-              <div style={{ fontSize: '11px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text3)', margin: '2px 0' }}>Claim: {t.claim}</div>
+              <div style={{ fontSize: '12px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <ChevronRight size={10} /> {t.question_angle}
               </div>
             </div>

@@ -9,7 +9,7 @@ export default function Panel({ title, meta, className, bodyClassName, children 
     <Card as="section" className={cn('sourcer-panel flex flex-col', className)} aria-label={title}>
       <div className="sourcer-panel-heading flex items-baseline justify-between gap-3 px-4 pt-3.5 pb-2.5">
         <h3 className="text-[12px] font-semibold text-ink-subtle">{title}</h3>
-        {meta != null && <span className="text-[11px] text-ink-faint">{meta}</span>}
+        {meta != null && <span className="text-[12px] text-ink-faint">{meta}</span>}
       </div>
       <div className={cn('px-4 pb-4', bodyClassName)}>{children}</div>
     </Card>

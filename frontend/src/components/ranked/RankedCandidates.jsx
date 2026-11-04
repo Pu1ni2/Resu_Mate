@@ -38,7 +38,7 @@ function StatusPill({ status }) {
   const Icon = ['in_progress', 'interrupted'].includes(status.status) ? Clock : isVoice ? Mic : Video;
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-subtle"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[12px] text-ink-subtle"
       title={`${isVoice ? 'Voice' : 'Avatar'} interview — ${label}`}
     >
       <Icon size={10} /> {label}
@@ -51,7 +51,7 @@ function VerdictPill({ verdict, className }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
+        'shrink-0 rounded-full border px-2 py-0.5 text-[12px] font-medium whitespace-nowrap',
         verdictTone[toneForVerdict(verdict)],
         className,
       )}
@@ -71,7 +71,7 @@ function MatchBar({ value, label, className }) {
       <div className="h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-data-track">
         <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
       </div>
-      <span className="shrink-0 font-mono text-[11px] text-ink-subtle">
+      <span className="shrink-0 font-mono text-[12px] text-ink-subtle">
         {pct}% {label}
       </span>
     </div>
@@ -170,7 +170,7 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
             {row.matched.slice(0, 3).map(s => (
               <span
                 key={s}
-                className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted"
+                className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted"
               >
                 {s}
               </span>
@@ -197,7 +197,7 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               {row.bars.map(b => (
                 <div key={b.label}>
-                  <div className="mb-1 text-[11px] text-ink-subtle">{b.label}</div>
+                  <div className="mb-1 text-[12px] text-ink-subtle">{b.label}</div>
                   {b.value === null
                     ? <div className="text-[12px] text-ink-subtle">Not asked for</div>
                     : <MatchBar value={b.value} label="" />}
@@ -210,10 +210,10 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
             <div className="mb-3 grid gap-3 sm:grid-cols-2">
               {row.matched?.length > 0 && (
                 <div>
-                  <div className="mb-1.5 text-[11px] font-medium text-positive">Matched</div>
+                  <div className="mb-1.5 text-[12px] font-medium text-positive">Matched</div>
                   <div className="flex flex-wrap gap-1.5">
                     {row.matched.map(s => (
-                      <span key={s} className="rounded-md border border-positive/25 bg-positive-wash px-2 py-1 text-[11px] text-positive">
+                      <span key={s} className="rounded-md border border-positive/25 bg-positive-wash px-2 py-1 text-[12px] text-positive">
                         {s}
                       </span>
                     ))}
@@ -222,10 +222,10 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
               )}
               {row.missing?.length > 0 && (
                 <div>
-                  <div className="mb-1.5 text-[11px] font-medium text-ink-subtle">Missing</div>
+                  <div className="mb-1.5 text-[12px] font-medium text-ink-subtle">Missing</div>
                   <div className="flex flex-wrap gap-1.5">
                     {row.missing.map(s => (
-                      <span key={s} className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-muted">
+                      <span key={s} className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted">
                         {s}
                       </span>
                     ))}

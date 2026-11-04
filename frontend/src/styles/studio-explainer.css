@@ -50,7 +50,7 @@
 .studio-explainer .explainer-step-nav button:hover:not([aria-pressed='true']) { background: #e3e6d8; }
 .studio-explainer .explainer-step-nav button:focus-visible { outline-offset: -4px; }
 .studio-explainer .explainer-step-number { margin-right: auto; font-size: 11px; opacity: .75; letter-spacing: .1em; }
-.studio-explainer .explainer-step-nav button > span:not(.explainer-step-number) { width: 100%; font-size: 11px; }
+.studio-explainer .explainer-step-nav button > span:not(.explainer-step-number) { width: 100%; font-size: 12px; }
 .studio-explainer .explainer-step-arrow { position: absolute; right: 14px; bottom: 20px; display: none; }
 .studio-explainer .explainer-step-detail { display: grid; grid-template-columns: 1fr 1fr; min-height: 585px; }
 .studio-explainer .explainer-step-story { padding: 47px 44px 36px; }
@@ -72,15 +72,15 @@
 .studio-explainer .explainer-paper h3 { font: 34px/1.05 var(--font-serif); letter-spacing: -.4px; }
 .studio-explainer .explainer-paper-rule { width: 28px; height: 2px; background: var(--color-brand); margin-top: 17px; }
 .studio-explainer .explainer-paper dl { margin: 20px 0; }
-.studio-explainer .explainer-paper dl > div { display: grid; grid-template-columns: 76px 1fr; gap: 8px; border-bottom: 1px solid #ebece3; padding: 11px 0; font-size: 11px; }
+.studio-explainer .explainer-paper dl > div { display: grid; grid-template-columns: 76px 1fr; gap: 8px; border-bottom: 1px solid #ebece3; padding: 11px 0; font-size: 12px; }
 .studio-explainer .explainer-paper dt { color: #748066; }
 .studio-explainer .explainer-paper dd { margin: 0; }
 .studio-explainer .explainer-paper-end { display: flex; align-items: center; gap: 12px; justify-content: center; height: 46px; color: #879676; }
 .studio-explainer .explainer-paper-end > span { width: 35px; height: 1px; background: #d7dccb; }
-.studio-explainer .explainer-paper footer { display: flex; justify-content: space-between; border-top: 1px solid #d6daca; padding-top: 15px; margin-top: 16px; font-size: 11px; color: #7c856e; letter-spacing: .06em; }
+.studio-explainer .explainer-paper footer { display: flex; justify-content: space-between; border-top: 1px solid #d6daca; padding-top: 15px; margin-top: 16px; font-size: 12px; color: #7c856e; letter-spacing: .06em; }
 .studio-explainer .explainer-wave { display: flex; justify-content: center; align-items: center; gap: 5px; height: 46px; }
 .studio-explainer .explainer-wave i { width: 3px; border-radius: 3px; background: #af6b50; }
-.studio-explainer .explainer-margin-note { position: relative; max-width: 325px; border-left: 2px solid #bcc7a7; padding-left: 14px; font-size: 11px; line-height: 1.8; color: #657154; }
+.studio-explainer .explainer-margin-note { position: relative; max-width: 325px; border-left: 2px solid #bcc7a7; padding-left: 14px; font-size: 12px; line-height: 1.8; color: #657154; }
 .studio-explainer .explainer-step-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-top: 1px solid #cbd1c0; padding: 16px 24px; }
 .studio-explainer .explainer-step-footer > span { font: italic 18px/1.2 var(--font-serif); color: #7e876f; }
 .studio-explainer .explainer-step-footer button { display: inline-flex; align-items: center; gap: 20px; min-height: 34px; font-size: 12px; color: #6d4533; }
@@ -95,20 +95,20 @@
 .studio-explainer .explainer-tool-top > span { font-size: 11px; letter-spacing: .1em; }
 .studio-explainer .explainer-tool-grid h3 { font: 27px/1.1 var(--font-serif); margin: 19px 0 10px; }
 .studio-explainer .explainer-tool-grid p { font-size: 12px; line-height: 1.8; color: var(--muted); }
-.studio-explainer .explainer-tool-link { display: flex; align-items: center; gap: 15px; margin-top: 18px; color: #9c513b; font-size: 11px; }
+.studio-explainer .explainer-tool-link { display: flex; align-items: center; gap: 15px; margin-top: 18px; color: #9c513b; font-size: 12px; }
 .studio-explainer .explainer-principles { display: grid; grid-template-columns: 1fr 1fr; gap: 65px; padding: 49px 48px; background: var(--color-forest); color: var(--color-canvas); }
 .studio-explainer .explainer-principles .explainer-eyebrow { color: #b9c0a5; }
 .studio-explainer .explainer-principles h2 em { color: #dba88b; }
 .studio-explainer .explainer-principle-list { display: grid; gap: 25px; }
 .studio-explainer .explainer-principle-list article { display: flex; gap: 20px; }
-.studio-explainer .explainer-principle-list article > span { color: #b4bd9f; font-size: 11px; padding-top: 5px; }
+.studio-explainer .explainer-principle-list article > span { color: #b4bd9f; font-size: 12px; padding-top: 5px; }
 .studio-explainer .explainer-principle-list h3 { font: 26px/1.1 var(--font-serif); margin-bottom: 9px; }
 .studio-explainer .explainer-principle-list p { color: #c0c7b5; font-size: 12px; line-height: 1.85; }
 .studio-explainer .explainer-cta { display: flex; align-items: center; justify-content: space-between; gap: 35px; padding: 83px 0 15px; }
 .studio-explainer .explainer-cta h2 { font: 58px/1.02 var(--font-serif); letter-spacing: -1px; margin-top: 20px; }
 .studio-explainer .explainer-cta > div:last-child { min-width: 210px; display: flex; flex-direction: column; gap: 18px; }
 .studio-explainer .explainer-cta .cta { justify-content: space-between; min-height: 50px; }
-.studio-explainer .explainer-candidate-link { display: flex; align-items: center; justify-content: space-between; gap: 18px; font-size: 11px; text-decoration: none; }
+.studio-explainer .explainer-candidate-link { display: flex; align-items: center; justify-content: space-between; gap: 18px; font-size: 12px; text-decoration: none; }
 @media (max-width: 1100px) {
   .studio-explainer .explainer-hero { grid-template-columns: 1.1fr 1fr; }
   .studio-explainer .explainer-sculpture { transform: scale(.9); transform-origin: center; }
