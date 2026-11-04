@@ -1,6 +1,6 @@
 """Auth models — HiringManager and OTPCode"""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, false
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, false, true
 from app.core.database import Base
 
 
@@ -20,6 +20,12 @@ class HiringManager(Base):
     # "Hide names", kept on the account so the server can keep candidates'
     # names and contact details from the AI. It was only the page's.
     hide_names = Column(Boolean, default=False, server_default=false(), nullable=False)
+    # Whether they've shown the address is theirs, with the link emailed at
+    # sign-up. Until then they can't email candidates: anyone could sign up
+    # with any address and send from ResuMate. Off for a new account; the
+    # server default, which the rows already there get, counts accounts from
+    # before as confirmed.
+    email_verified = Column(Boolean, default=False, server_default=true(), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -30,6 +36,7 @@ class HiringManager(Base):
             "email": self.email,
             "company": self.company,
             "hide_names": bool(self.hide_names),
+            "email_verified": bool(self.email_verified),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

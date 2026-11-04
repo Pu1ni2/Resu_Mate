@@ -95,6 +95,8 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
         company=req.company,
         terms_accepted_at=datetime.utcnow(),
         terms_version=TERMS_VERSION,
+        # Until they open the link emailed to them.
+        email_verified=False,
     )
     db.add(manager)
     await db.commit()
