@@ -48,10 +48,41 @@ def migration_head() -> str:
     return ScriptDirectory.from_config(Config(os.path.join(backend, "alembic.ini"))).get_current_head()
 
 
+def add_missing_columns(conn) -> list:
+    """Add to a SQLite file the columns its models have and it lacks.
+
+    create_all makes missing tables, not missing columns, so a local file made
+    before a new column (hiring_managers.hide_names) broke every query on that
+    table, signing in included. Only the column is added, not an index or a
+    unique rule on it. One SQLite can't add, such as NOT NULL with no default
+    on a table with rows, is left, with a warning. Returns what was added, as
+    table.column.
+    """
+    from sqlalchemy import inspect
+    from sqlalchemy.schema import CreateColumn
+    found = inspect(conn)
+    added = []
+    for table in Base.metadata.sorted_tables:
+        if not found.has_table(table.name):
+            continue
+        have = {c["name"] for c in found.get_columns(table.name)}
+        for column in table.columns:
+            if column.name in have:
+                continue
+            ddl = CreateColumn(column).compile(dialect=conn.dialect)
+            try:
+                conn.exec_driver_sql(f'ALTER TABLE "{table.name}" ADD COLUMN {ddl}')
+                added.append(f"{table.name}.{column.name}")
+            except Exception as exc:
+                print(f"[WARN] {table.name}.{column.name} could not be added: {type(exc).__name__}")
+    return added
+
+
 async def init_db():
     """Get the database ready.
 
-    SQLite (local runs and tests) is built straight from the models. Postgres
+    SQLite (local runs and tests) is built straight from the models, new
+    columns included (add_missing_columns). Postgres
     is built by the migrations: render.yaml runs `alembic upgrade head` before
     every start. create_all there hid a migration that left something out,
     because it quietly made whatever was missing, so on Postgres this checks
@@ -65,7 +96,8 @@ async def init_db():
     async with engine.begin() as conn:
         if engine.dialect.name == "sqlite":
             await conn.run_sync(Base.metadata.create_all)
-            print("Database tables created")
+            added = await conn.run_sync(add_missing_columns)
+            print("Database tables created" + (f"; columns added: {', '.join(added)}" if added else ""))
             return
         await conn.execute(text("SELECT 1"))
         if not await conn.run_sync(lambda c: inspect(c).has_table("alembic_version")):
