@@ -119,19 +119,38 @@ describe('the text sizes', () => {
     'studio-candidate.css': ['.studio-candidate .cd-mode-tab', '.studio-candidate .cd-report-toggle'],
   };
 
-  it('are 14px for working controls: buttons, inputs, tabs and the sidebar links', () => {
+  // The rules listed set 14px or more at every width; each is still there,
+  // with its size, to be checked.
+  function atFourteen(listed) {
     const seen = [];
-    const small = Object.entries(CONTROLS).flatMap(([file, selectors]) => rules(read(file))
+    const small = Object.entries(listed).flatMap(([file, selectors]) => rules(read(file))
       .filter(rule => !rule.media.includes('max-width') && selectors.includes(rule.selector))
       .flatMap(rule => fontSizes([rule]).map(({ size }) => {
         seen.push(`${file} ${rule.selector}`);
         return { size, where: `${file} ${rule.selector}` };
       }))
       .filter(({ size }) => size < 14));
-    expect(small).toEqual([]);
-    // Each one is still there, with its size, to be checked.
-    const listed = Object.entries(CONTROLS).flatMap(([file, selectors]) => selectors.map(s => `${file} ${s}`));
-    expect(listed.filter(control => !seen.includes(control))).toEqual([]);
+    const missing = Object.entries(listed).flatMap(([file, selectors]) => selectors.map(s => `${file} ${s}`))
+      .filter(rule => !seen.includes(rule));
+    return { small, missing };
+  }
+
+  it('are 14px for working controls: buttons, inputs, tabs and the sidebar links', () => {
+    expect(atFourteen(CONTROLS)).toEqual({ small: [], missing: [] });
+  });
+
+  // Ordinary reading is working text too; short captions stay 12px.
+  const READING = {
+    'studio-dashboard.css': ['.studio-dashboard .sd-interview-intro p', '.studio-dashboard .sd-interview-empty p'],
+    'studio-focus.css': ['.studio-focus .sf-note p', '.studio-focus .sf-section-heading p', '.studio-focus .agent-option p'],
+    'studio-interview.css': ['.studio-interview .si-listening-panel p', '.studio-interview-consent>p:first-child'],
+    'studio-screening.css': ['.studio-screening .ss-process li p'],
+    'studio-sourcer.css': ['.studio-sourcer .sourcer-guide li p'],
+    'studio-candidate.css': ['.studio-candidate .cd-interview-done-info p'],
+  };
+
+  it('are 14px for reading text: introductions, explanations and steps', () => {
+    expect(atFourteen(READING)).toEqual({ small: [], missing: [] });
   });
 
   // A working page's heading, which was up to 62px above the work.
