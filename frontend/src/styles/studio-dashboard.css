@@ -290,7 +290,8 @@
   .studio-dashboard .sd-first-steps { justify-content: center; }
   .studio-dashboard .sd-filterbar { gap: 8px; }
   .studio-dashboard .sd-filterbar input { font-size: 12px; }
-  .studio-dashboard .sd-filterbar select { max-width: 120px; }
+  /* As small as the search beside it, so "Original order" fits its 120px. */
+  .studio-dashboard .sd-filterbar select { max-width: 120px; font-size: 12px; }
   .studio-dashboard .upload-zone { padding: 22px 10px; }
   .studio-dashboard .upload-zone h3 { font-size: 12px; }
   .studio-dashboard .sd-overview small { line-height: 1.4; }
