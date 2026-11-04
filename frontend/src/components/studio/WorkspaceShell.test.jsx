@@ -116,6 +116,14 @@ describe('the workspace frame', () => {
     expect(within(main).getByText('The page')).toBeTruthy();
   });
 
+  it("puts a page's notice above its heading, such as the reminder to confirm the email", () => {
+    renderShell({ notice: <p>Confirm your email to send invitations.</p> });
+    const main = screen.getByRole('main');
+    const said = within(main).getByText('Confirm your email to send invitations.');
+    const heading = within(main).getByRole('heading', { level: 1 });
+    expect(said.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("puts the page's footer, the manager's account, at the sidebar's foot", () => {
     renderShell({ footer: <div>Jamie Parker</div> });
     const account = screen.getByText('Jamie Parker');
