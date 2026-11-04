@@ -125,7 +125,7 @@
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-top: auto; padding: 14px 0;
   border: 0; border-top: 1px solid #e0e3d4; background: none;
-  color: #47573b; font-size: 12px; font-weight: 600; cursor: pointer;
+  color: #47573b; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .studio-dashboard .sd-open-file:hover { color: var(--color-accent); }
 
