@@ -85,7 +85,10 @@
 .studio-focus .sf-identity-main > div:last-child { min-width: 0; }
 .studio-focus .sf-identity-mark { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 72px; height: 82px; border-radius: 50% 50% 4px 4px; background: #e9ebdf; box-shadow: inset 0 0 0 1px #c8cebb; color: #536046; font: 36px var(--font-serif); }
 .studio-focus .sf-identity-mark > span { position: absolute; right: -5px; bottom: 10px; width: 16px; height: 16px; border: 3px solid var(--color-surface); border-radius: 50%; background: var(--color-accent); }
-.studio-focus .sf-identity h2 { margin: 7px 0; font: clamp(31px, 3.3vw, 47px)/1.1 var(--font-serif); letter-spacing: -1px; overflow-wrap: anywhere; }
+/* The person's name, the page's heading: as large as a workspace page's. */
+.studio-focus .sf-identity h1 { margin: 7px 0; font: clamp(31px, 3.1vw, 44px)/1.1 var(--font-serif); letter-spacing: -1px; overflow-wrap: anywhere; }
+/* The ways back, above the person. */
+.studio-focus .sf-file-back { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 18px; }
 .studio-focus .sf-identity p { margin: 0; color: var(--color-ink-muted); font-size: 14px; }
 .studio-focus .sf-facts { display: grid; grid-template-columns: repeat(3, minmax(80px, 1fr)); gap: 23px; max-width: 49%; margin: 0; padding-left: 25px; border-left: 1px solid var(--color-line); }
 .studio-focus .sf-facts dt { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; color: var(--color-ink-muted); font-size: 12px; }
@@ -305,7 +308,7 @@
   .studio-focus .sf-identity { gap: 20px; padding: 24px 20px; }
   .studio-focus .sf-identity-main { gap: 15px; }
   .studio-focus .sf-identity-mark { width: 52px; height: 65px; font-size: 29px; }
-  .studio-focus .sf-identity h2 { font-size: 32px; }
+  .studio-focus .sf-identity h1 { font-size: 32px; }
   .studio-focus .sf-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
   .studio-focus .sf-facts dt { gap: 4px; }
   .studio-focus .sf-facts dd { font-size: 12px; }

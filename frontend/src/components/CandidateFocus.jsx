@@ -570,13 +570,19 @@ export default function CandidateFocus() {
   };
 
   return (
-    <WorkspaceShell active="candidates" eyebrow="PEOPLE IN PERSPECTIVE" title="The candidate file." actions={<>{toResults}<button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button></>} notice={<ConfirmEmailNotice />}>
+    // The person's name is the page's heading. "The candidate file." sat above
+    // it as large, and the ways back with it.
+    <WorkspaceShell active="candidates" notice={<ConfirmEmailNotice />}>
       <div className="studio-focus sf-file-open">
+        <div className="sf-file-back">
+          <button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button>
+          {toResults}
+        </div>
         <div className="sf-file-cover">
         <header className="sf-identity">
           <div className="sf-identity-main">
             <div className="sf-identity-mark" aria-hidden="true">{anonymize ? <User size={30} /> : (focusCandidate.name || '?').split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}<span /></div>
-            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}{focusCandidate.is_sample && ' · SAMPLE RÉSUMÉ'}</span><h2>{displayName}</h2><p>{focusCandidate.predicted_role || 'Role not specified'}</p></div>
+            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}{focusCandidate.is_sample && ' · SAMPLE RÉSUMÉ'}</span><h1>{displayName}</h1><p>{focusCandidate.predicted_role || 'Role not specified'}</p></div>
           </div>
           <dl className="sf-facts">
             <div><dt><Briefcase size={14} /> Experience</dt><dd>{focusCandidate.total_experience_years != null ? `${focusCandidate.total_experience_years} years` : 'Not specified'}</dd></div>
