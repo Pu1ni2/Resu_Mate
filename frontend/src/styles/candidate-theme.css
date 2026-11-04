@@ -25,7 +25,7 @@
 .cd-nav-link:hover { background: var(--bg3); color: var(--text); }
 .cd-nav-link.active { background: var(--cd-accent-bg); color: var(--cd-accent); font-weight: 600; }
 .cd-nav-link.active svg { color: var(--cd-accent); }
-.cd-nav-badge { position: absolute; right: 10px; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; color: #fff; }
+.cd-nav-badge { position: absolute; right: 10px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; color: #fff; }
 .cd-badge-new { background: #EF4444; }
 .cd-badge-done { background: #22C55E; }
 .cd-sidebar-footer { padding: 16px; border-top: 1px solid var(--surface-border); }

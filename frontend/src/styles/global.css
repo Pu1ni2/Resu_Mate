@@ -109,7 +109,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .upload-sample-btn{display:flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:10px;color:#60A5FA;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .2s}
 .upload-sample-btn:hover{background:rgba(59,130,246,0.18);border-color:rgba(59,130,246,0.45)}
 .upload-sample-btn:disabled{opacity:0.5;cursor:not-allowed}
-.upload-sample-tag{font-size:10px;font-weight:700;padding:2px 7px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);border-radius:8px;margin-left:2px}
+.upload-sample-tag{font-size:11px;font-weight:700;padding:2px 7px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);border-radius:8px;margin-left:2px}
 .progress-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
 .progress-value { color: var(--accent); font-weight: 600; }
 .candidates-section { margin-top: 20px; }
@@ -628,7 +628,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .focus-sidebar{width:68px;border-right:1px solid var(--glass-border);display:flex;flex-direction:column;padding:12px 0;gap:4px;flex-shrink:0;background:var(--bg2)}
 .focus-sidebar-group{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0;border-bottom:1px solid var(--glass-border)}
 .focus-sidebar-group:last-child{border-bottom:none}
-.focus-sidebar-label{font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:6px;font-weight:600}
+.focus-sidebar-label{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:6px;font-weight:600}
 .focus-sidebar-btn{width:44px;height:44px;border-radius:10px;background:transparent;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:inherit}
 .focus-sidebar-btn:hover{background:var(--bg3);color:var(--text2)}
 .focus-sidebar-btn.active{background:rgba(245,158,11,0.12);color:#F59E0B}
@@ -827,7 +827,7 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .cd-nav-link{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;margin-bottom:4px}
 .cd-nav-link:hover{background:var(--bg3);color:var(--text)}
 .cd-nav-link.active{background:rgba(59,130,246,0.15);color:#60A5FA}
-.cd-nav-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:auto}
+.cd-nav-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:auto}
 .cd-badge-new{background:#3B82F6;color:#fff}
 .cd-badge-done{background:#10B981;color:#fff}
 .cd-sidebar-footer{padding:16px;border-top:1px solid var(--glass-border)}
