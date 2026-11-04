@@ -19,6 +19,7 @@ const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
 import { toast } from '../services/notify';
 import { pressable } from './ui/pressable';
 import WorkspaceShell from './studio/WorkspaceShell';
+import ConfirmEmailNotice from './studio/ConfirmEmailNotice';
 import InterviewHub from './studio/InterviewHub';
 import InsightBar from './studio/InsightBar';
 
@@ -658,6 +659,7 @@ export default function Dashboard() {
       subtitle={view.subtitle}
       onNavigate={navigateTo}
       onChat={() => setTab('chat')}
+      notice={<ConfirmEmailNotice />}
       actions={(
         // aria-disabled, not disabled, while it's saved: a disabled button
         // drops the keyboard's focus.

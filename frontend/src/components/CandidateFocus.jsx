@@ -24,6 +24,7 @@ import ResumeIntelPanel from './focus/ResumeIntelPanel';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { toast } from '../services/notify';
 import WorkspaceShell from './studio/WorkspaceShell';
+import ConfirmEmailNotice from './studio/ConfirmEmailNotice';
 
 export default function CandidateFocus() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -511,7 +512,7 @@ export default function CandidateFocus() {
 
   if (phase === 'select' || !focusCandidate) {
     return (
-      <WorkspaceShell active="candidates" eyebrow="THE CANDIDATE FILE" title="A closer look." subtitle="Behind every résumé, a person worth understanding." actions={toResults || undefined}>
+      <WorkspaceShell active="candidates" eyebrow="THE CANDIDATE FILE" title="A closer look." subtitle="Behind every résumé, a person worth understanding." actions={toResults || undefined} notice={<ConfirmEmailNotice />}>
         <div className="studio-focus studio-focus-picker">
           <div className="sf-picker-intro">
             <div><span className="sf-kicker">YOUR PEOPLE, IN PERSPECTIVE</span><h2>Open a file. See the whole story.</h2><p>Bring their experience, research and next conversation together in one place.</p></div>
@@ -569,7 +570,7 @@ export default function CandidateFocus() {
   };
 
   return (
-    <WorkspaceShell active="candidates" eyebrow="PEOPLE IN PERSPECTIVE" title="The candidate file." actions={<>{toResults}<button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button></>}>
+    <WorkspaceShell active="candidates" eyebrow="PEOPLE IN PERSPECTIVE" title="The candidate file." actions={<>{toResults}<button className="btn btn-secondary" onClick={handleBack}><ArrowLeft size={16} /> All candidate files</button></>} notice={<ConfirmEmailNotice />}>
       <div className="studio-focus sf-file-open">
         <div className="sf-file-cover">
         <header className="sf-identity">

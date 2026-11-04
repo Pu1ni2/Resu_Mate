@@ -22,9 +22,10 @@ const SECTIONS = [
  * or none; `place` names the page in the top bar when it is in no section.
  * The dashboard switches its views itself, so it passes `onNavigate` (and
  * `onChat`); every other page links back to it. Every page offers Jarvis
- * (AskJarvis). `footer` goes at the sidebar's foot: the manager's account. */
+ * (AskJarvis). `footer` goes at the sidebar's foot: the manager's account.
+ * `notice` goes above the page's heading, such as ConfirmEmailNotice. */
 export default function WorkspaceShell({
-  active = null, place, eyebrow, title, subtitle, actions, footer,
+  active = null, place, eyebrow, title, subtitle, actions, footer, notice,
   onNavigate, onChat, children,
 }) {
   const product = useProduct();
@@ -133,6 +134,7 @@ export default function WorkspaceShell({
         </div>
 
         <main id="workspace-content" className="sw-content" tabIndex={-1}>
+          {notice}
           {title && (
             <header className="sw-page-header">
               <div>

@@ -76,6 +76,18 @@ export const SCREENS = {
       submit: 'Save new password', busy: 'Saving your password…',
     },
   },
+  verify: {
+    audience: 'hiring',
+    story: {
+      eyebrow: 'ONE LAST DETAIL', title: ['A real address.', 'A real welcome.'],
+      copy: 'Candidates hear from you by email, so first we check the address is yours.',
+      caption: 'One click, then back to the people who matter.',
+    },
+    form: {
+      eyebrow: 'YOUR ACCOUNT', title: 'Confirm your email.',
+      intro: 'Confirming your address lets you email candidates from your workspace.',
+    },
+  },
   candidate: {
     audience: 'candidate',
     story: {

@@ -120,6 +120,17 @@
 .studio-workspace .sw-switch[aria-checked=true] .sw-switch-track { background: #526443; box-shadow: none; }
 .studio-workspace .sw-switch[aria-checked=true] .sw-switch-knob { transform: translateX(14px); }
 .studio-workspace .sw-switch[aria-disabled=true] { cursor: progress; opacity: 0.6; }
+
+/* Above the page, until a new manager confirms their email (ConfirmEmailNotice). */
+.studio-workspace .sw-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 22px; padding: 12px 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: #f4f2e8; color: #3f4a37; font-size: 14px; line-height: 1.45; }
+.studio-workspace .sw-confirm > svg { flex: none; color: #5c694d; }
+.studio-workspace .sw-confirm > p { flex: 1 1 280px; margin: 0; }
+.studio-workspace .sw-confirm-button { flex: none; padding: 7px 14px; border: 1px solid #5c694d; border-radius: var(--radius-control); background: var(--color-surface); color: #3f4a37; font-size: 13px; cursor: pointer; }
+.studio-workspace .sw-confirm-button[aria-disabled=true] { cursor: progress; opacity: 0.6; }
+.studio-workspace .sw-confirm > .sw-confirm-said { flex-basis: 100%; color: var(--color-ink-muted); font-size: 13px; }
+/* Kept on the page while empty, so what it says later is announced; it takes
+   back the row's gap meanwhile. */
+.studio-workspace .sw-confirm > .sw-confirm-said:empty { margin-top: -8px; }
 .studio-workspace .sw-content { min-height: 65vh; outline: none; }
 
 .studio-workspace .sw-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 45px; padding: 25px 0; border-top: 1px solid var(--color-line); color: var(--color-ink-muted); font-size: 11px; }

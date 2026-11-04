@@ -92,7 +92,11 @@ export const chatAPI = {
 
 /* The signed-in manager's own account. */
 export const accountAPI = {
+  me: () => api.get('/auth/me'),
   savePreferences: prefs => api.put('/auth/preferences', prefs),
+  // The link sign-up emails, which confirms the address, and a new one.
+  verifyEmail: token => api.post('/auth/verify-email', { token }),
+  sendVerification: () => api.post('/auth/send-verification'),
 };
 
 /* The candidate sourcer. Starting a run streams, so it lives in

@@ -7,6 +7,7 @@ import HiringLogin from './components/auth/HiringLogin';
 import HiringRegister from './components/auth/HiringRegister';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
+import VerifyEmail from './components/auth/VerifyEmail';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { wakeServer } from './services/wake';
 import { TermsPage, PrivacyPage } from './components/LegalPage';
@@ -101,6 +102,7 @@ export default function App() {
       <Route path="/hiring/register" element={<HiringRegister />} />
       <Route path="/hiring/forgot" element={<ForgotPassword />} />
       <Route path="/hiring/reset" element={<ResetPassword />} />
+      <Route path="/hiring/verify-email" element={<VerifyEmail />} />
 
       {/* Hiring manager dashboard — protected */}
       <Route path="/hiring/focus" element={<ProtectedRoute><CandidateFocus /></ProtectedRoute>} />

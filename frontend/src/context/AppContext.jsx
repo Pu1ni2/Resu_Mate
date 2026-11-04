@@ -55,6 +55,15 @@ export const AppProvider = ({ children }) => {
     setHideNames(Boolean(user?.hide_names));
   }, []);
 
+  /* The signed-in manager's account as the server sent it now, such as once
+   * their email is confirmed. Only theirs: another manager may have signed in
+   * here meanwhile. */
+  const refreshHiringManager = useCallback((user) => {
+    if (!user || readStoredUser()?.id !== user.id) return;
+    saveStoredUser({ ...readStoredUser(), ...user });
+    setHiringManager(prev => ({ ...prev, ...user }));
+  }, []);
+
   // The candidate list request running, if one is, and which signed-in
   // session it's for (loadCandidates).
   const listRequest = useRef(null);
@@ -146,10 +155,13 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   // Whenever a hiring manager is signed in: on mount, for a saved session, and
-  // after signing in.
+  // after signing in. Not when their account is refreshed, which is the same
+  // manager.
+  const managerId = hiringManager?.id ?? null;
+  const signedIn = Boolean(hiringManager);
   useEffect(() => {
-    if (hiringManager) loadCandidates();
-  }, [hiringManager, loadCandidates]);
+    if (signedIn) loadCandidates();
+  }, [signedIn, managerId, loadCandidates]);
 
   const uploadResume = useCallback(async (file) => {
     const uploadId = `upload-${Date.now()}`;
@@ -335,7 +347,7 @@ export const AppProvider = ({ children }) => {
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,
       getDisplayName, getAvatarGradient,
       candidateSession, setCandidateSession,
-      hiringManager, loginHiringManager, logoutHiringManager,
+      hiringManager, loginHiringManager, logoutHiringManager, refreshHiringManager,
     }}>
       {children}
     </AppContext.Provider>
