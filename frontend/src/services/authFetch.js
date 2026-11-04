@@ -10,6 +10,7 @@
  */
 import {
   getToken, getCandidateToken, getRefreshToken, handleUnauthorized, handleCandidateUnauthorized, saveAccessToken,
+  isSignInCall,
 } from './session';
 
 export const API_BASE = import.meta.env.PROD
@@ -82,8 +83,7 @@ export async function authFetch(url, options = {}) {
   let resp = await send();
   // An expired session gets one renewal and one retry before it counts as a
   // sign-out. Sign-in calls are left alone: their 401 means a wrong password.
-  const isAuthCall = typeof url === 'string' && url.includes('/auth/');
-  if (resp.status === 401 && !isAuthCall && (await refreshSession())) {
+  if (resp.status === 401 && !isSignInCall(url) && (await refreshSession())) {
     resp = await send();
   }
   if (resp.status === 401) handleUnauthorized(url, sent);

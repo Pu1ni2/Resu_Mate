@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { getToken, handleUnauthorized } from './session';
+import { getToken, handleUnauthorized, isSignInCall } from './session';
 import { API_BASE, refreshSession, tooManyAttempts } from './authFetch';
 
 const api = axios.create({
@@ -23,8 +23,7 @@ api.interceptors.response.use(
     // An expired session gets one renewal and one retry, as in authFetch. The
     // request interceptor re-attaches the renewed token on the retry. Sign-in
     // calls are left alone: their 401 means a wrong password.
-    const isAuthCall = String(config?.url || '').includes('/auth/');
-    if (response?.status === 401 && config && !config._renewed && !isAuthCall) {
+    if (response?.status === 401 && config && !config._renewed && !isSignInCall(config.url)) {
       config._renewed = true;
       if (await refreshSession()) return api(config);
     }

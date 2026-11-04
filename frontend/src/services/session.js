@@ -127,13 +127,20 @@ export function handleCandidateUnauthorized() {
   }
 }
 
+/* The sign-in calls, whose 401 means a wrong password or code, not a session
+ * that expired. Every other call, the account's own (/auth/me,
+ * /auth/preferences) included, gets a renewal. All of /auth/ was left alone,
+ * so changing "Hide names" after the session had expired just failed. */
+const SIGN_IN = /\/auth\/(?:login|register|refresh|forgot-password|reset-password|candidate\/)/;
+export const isSignInCall = url => typeof url === 'string' && SIGN_IN.test(url);
+
 /* True for requests where a 401 is the expected answer and must not log the
  * user out — signing in with a wrong password is a 401, and treating it as an
  * expiry would fire a redirect from the page they are already on. */
 function isAuthFlow(url) {
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
   if (path === '/hiring/login' || path === '/hiring/register') return true;
-  return typeof url === 'string' && url.includes('/auth/');
+  return isSignInCall(url);
 }
 
 /* Session expired: clear it and let App.jsx route to login via React Router.
