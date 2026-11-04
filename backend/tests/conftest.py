@@ -103,13 +103,42 @@ def client():
         yield c
 
 
-def register(client, email, password="pw12345678", name="Mgr"):
-    """Register a hiring manager, return (token, user_dict)."""
-    r = client.post("/api/auth/register", json={
-        "name": name, "email": email, "password": password, "accept_terms": True,
-    })
+def register(client, email, password="pw12345678", name="Mgr", verified=True):
+    """Register a hiring manager, return (token, user_dict).
+
+    The account's email is confirmed, as a manager's who opened the link
+    sign-up emails, and that email isn't sent, so a test about other emails
+    sees only those. verified=False leaves the account as sign-up does, the
+    email sent.
+    """
+    import sqlite3
+    from app.services.email_service import email_service
+    patched = "send_email_verification" in vars(email_service)
+    before = email_service.send_email_verification
+    if verified:
+        async def _not_sent(*_args, **_kwargs):
+            return True
+        email_service.send_email_verification = _not_sent
+    try:
+        r = client.post("/api/auth/register", json={
+            "name": name, "email": email, "password": password, "accept_terms": True,
+        })
+    finally:
+        if verified:
+            if patched:
+                email_service.send_email_verification = before
+            else:
+                del email_service.send_email_verification
     assert r.status_code in (200, 201), r.text
     data = r.json()
+    if verified:
+        db = sqlite3.connect(_TMP_DB)
+        try:
+            db.execute("UPDATE hiring_managers SET email_verified = 1 WHERE id = ?", (data["user"]["id"],))
+            db.commit()
+        finally:
+            db.close()
+        data["user"]["email_verified"] = True
     return data["access_token"], data["user"]
 
 

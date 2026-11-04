@@ -23,6 +23,7 @@ from app.services.auth import (
     create_refresh_token,
     create_candidate_token,
     create_reset_token,
+    create_verify_token,
     decode_token,
     password_fingerprint,
     get_current_user,
@@ -70,13 +71,18 @@ class VerifyOTPRequest(BaseModel):
     email: str
     code: str
 
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(..., max_length=2000)
+
 
 # ── Hiring Manager Auth ───────────────────────────────────────────────────────
 
 @router.post("/register", status_code=201)
 @limiter.limit("5/minute")
-async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    """Create a new hiring manager account."""
+async def register(request: Request, req: RegisterRequest, background: BackgroundTasks,
+                   db: AsyncSession = Depends(get_db)):
+    """Create a new hiring manager account, and email them the link that
+    confirms their address."""
     if not req.accept_terms:
         raise HTTPException(status_code=400, detail="Please agree to the Terms and the Privacy Policy to sign up.")
 
@@ -105,12 +111,24 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
     access_token = create_access_token({"sub": str(manager.id)})
     refresh_token = _session_token(manager)
 
-    return {
+    answer = {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": manager.to_dict(),
     }
+    answer.update(_email_verification_link(manager, background))
+    return answer
+
+
+def _email_verification_link(manager: HiringManager, background: BackgroundTasks) -> dict:
+    """Email the manager the link that confirms their address, after the
+    response. Returns what to add to the answer: the link itself in local
+    development without email, as forgot-password does."""
+    from app.services.email_service import email_service
+    link = f"{settings.frontend_url.rstrip('/')}/hiring/verify-email?token={create_verify_token(manager)}"
+    background.add_task(email_service.send_email_verification, manager.email, link)
+    return {"debug_verify_link": link} if settings.debug and not email_service.configured else {}
 
 
 def _session_token(manager: HiringManager) -> str:
@@ -271,6 +289,47 @@ async def set_preferences(req: PreferencesRequest, current_user: HiringManager =
     current_user.hide_names = req.hide_names
     await db.commit()
     return current_user.to_dict()
+
+
+# ── Confirming the manager's email ────────────────────────────────────────────
+
+VERIFY_LINK_INVALID = "This link has expired or isn't valid."
+
+
+@router.post("/verify-email")
+@limiter.limit("20/hour")
+async def verify_email(request: Request, req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+    """Confirm a manager's address with the link emailed to it. No sign-in
+    needed: it may be opened on another device. Opening it again says it's
+    confirmed."""
+    try:
+        payload = decode_token(req.token)
+    except HTTPException:
+        raise HTTPException(status_code=400, detail=VERIFY_LINK_INVALID)
+    subject = str(payload.get("sub") or "")
+    if payload.get("type") != "verify" or not subject.isdigit():
+        raise HTTPException(status_code=400, detail=VERIFY_LINK_INVALID)
+    manager = (await db.execute(select(HiringManager).where(HiringManager.id == int(subject)))).scalar_one_or_none()
+    # Only for the address the account has now.
+    if not manager or not manager.is_active or payload.get("email") != manager.email:
+        raise HTTPException(status_code=400, detail=VERIFY_LINK_INVALID)
+    if not manager.email_verified:
+        manager.email_verified = True
+        await db.commit()
+        await db_service.log_event(db, action="account.email_verified", actor="manager", manager_id=manager.id)
+    return {"message": "Your email is confirmed.", "user": manager.to_dict()}
+
+
+@router.post("/send-verification")
+@limiter.limit("3/hour")
+async def send_verification(request: Request, background: BackgroundTasks,
+                            current_user: HiringManager = Depends(get_current_user)):
+    """Email the signed-in manager a new link to confirm their address."""
+    if current_user.email_verified:
+        return {"message": "Your email is already confirmed.", "user": current_user.to_dict()}
+    answer = {"message": f"We've sent a new link to {current_user.email}."}
+    answer.update(_email_verification_link(current_user, background))
+    return answer
 
 
 # ── Candidate OTP Auth ────────────────────────────────────────────────────────

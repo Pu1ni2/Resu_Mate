@@ -79,6 +79,23 @@ def create_reset_token(manager: HiringManager) -> str:
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
+# ── Email confirmation ────────────────────────────────────────────────────────
+
+VERIFY_TOKEN_DAYS = 7
+
+
+def create_verify_token(manager: HiringManager) -> str:
+    """The token in the link that confirms a manager's address: a week, and
+    for the address the account has when it's made."""
+    to_encode = {
+        "sub": str(manager.id),
+        "type": "verify",
+        "email": manager.email,
+        "exp": datetime.utcnow() + timedelta(days=VERIFY_TOKEN_DAYS),
+    }
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT. Raises 401 on any error."""
     try:

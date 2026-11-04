@@ -12,7 +12,7 @@ from conftest import auth_headers, register
 
 
 def test_a_new_account_starts_unconfirmed(client):
-    token, user = register(client, "new@x.com")
+    token, user = register(client, "new@x.com", verified=False)
     assert user["email_verified"] is False
     assert client.get("/api/auth/me", headers=auth_headers(token)).json()["email_verified"] is False
 

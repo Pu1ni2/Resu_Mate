@@ -140,6 +140,23 @@ class EmailService:
         """
         return await self.send(to_email, "Reset your ResuMate password", body)
 
+    async def send_email_verification(self, to_email: str, confirm_url: str) -> bool:
+        link = html.escape(confirm_url)
+        body = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Confirm your email for ResuMate</h2>
+          <p>Someone signed up for ResuMate with this address. If it was you, confirm it, and you can email candidates from your workspace:</p>
+          <p>
+            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
+              Confirm my email
+            </a>
+          </p>
+          <p style="color:#6B7280;">The link works for 7 days. If you didn't sign up, ignore this email.</p>
+          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
+        </div>
+        """
+        return await self.send(to_email, "Confirm your email for ResuMate", body)
+
     async def send_email_draft(self, to_email: str, subject: str, body: str, login_url: str = "") -> bool:
         """A plain-text email the manager reviewed, sent as written.
 
