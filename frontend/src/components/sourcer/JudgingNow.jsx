@@ -35,7 +35,7 @@ export default function JudgingNow({ state }) {
       meta={person ? `${formatCount(person.ms)} ms · ${formatCount(person.tokens)} tokens` : null}
     >
       {!person ? (
-        <p className="py-10 text-center text-[13px] text-ink-subtle">The person being read appears here.</p>
+        <p className="py-10 text-center text-[14px] text-ink-subtle">The person being read appears here.</p>
       ) : (
         <div className="sourcer-person-evidence grid gap-4 sm:grid-cols-[112px_1fr]">
           <div>
@@ -55,7 +55,7 @@ export default function JudgingNow({ state }) {
           </div>
 
           <div className="min-w-0">
-            {person.headline && <p className="mb-3 truncate text-[13px] text-ink-muted">{person.headline}</p>}
+            {person.headline && <p className="mb-3 truncate text-[14px] text-ink-muted">{person.headline}</p>}
             <dl className="m-0 space-y-1.5">
               {criteria.map(c => {
                 const a = answers[c.id] || { level: 'unknown', value: '' };
@@ -80,7 +80,7 @@ export default function JudgingNow({ state }) {
               })}
             </dl>
 
-            <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">{person.judgement}</p>
+            <p className="mt-3 text-[14px] leading-relaxed text-ink-muted">{person.judgement}</p>
             <div className="mt-3 flex items-center gap-2">
               <Badge tone={person.verdict === 'shortlist' ? 'accent' : 'neutral'} size="sm">
                 {person.verdict === 'shortlist' ? 'Shortlist' : 'Passed on'}

@@ -254,7 +254,7 @@
   letter-spacing: -1px; margin: 15px 0;
 }
 .studio-interview .si-state p {
-  font-size: 13px; line-height: 1.8; color: var(--color-ink-subtle); max-width: 440px;
+  font-size: 14px; line-height: 1.8; color: var(--color-ink-subtle); max-width: 440px;
 }
 .studio-interview .si-state .si-button { margin-top: 25px; }
 
@@ -296,7 +296,7 @@
 }
 .studio-interview .si-transcript-turn.candidate>span { color: #5e7549; }
 .studio-interview .si-transcript-turn p {
-  font-size: 13px; color: #505d44; line-height: 1.8; margin: 9px 0 0; overflow-wrap: anywhere;
+  font-size: 14px; color: #505d44; line-height: 1.8; margin: 9px 0 0; overflow-wrap: anywhere;
 }
 .studio-interview .si-live-controls {
   display: flex; justify-content: center; gap: 12px; grid-column: 1/-1; padding: 6px 0 12px;
@@ -396,7 +396,7 @@
     grid-template-columns: 1fr; max-width: 600px; padding: 32px 24px 50px; gap: 30px;
   }
   .studio-interview .si-setup-intro h1 { font-size: 45px; margin: 13px 0 18px; }
-  .studio-interview .si-setup-intro>p { font-size: 13px; max-width: none; }
+  .studio-interview .si-setup-intro>p { font-size: 14px; max-width: none; }
   .studio-interview .si-setup-details { margin-top: 18px; }
   .studio-interview .si-proctoring { margin-top: 18px; padding: 18px 0 0; }
   .studio-interview .si-setup-card { padding: 27px; }

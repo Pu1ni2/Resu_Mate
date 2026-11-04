@@ -11,7 +11,7 @@ export default function LiveLog({ state }) {
   return (
     <Panel title="Live judgements" meta={log.length ? `latest ${log.length}` : null} bodyClassName="px-0 pb-2">
       {log.length === 0 ? (
-        <p className="px-4 py-6 text-center text-[13px] text-ink-subtle">Judgements are listed here as they are written.</p>
+        <p className="px-4 py-6 text-center text-[14px] text-ink-subtle">Judgements are listed here as they are written.</p>
       ) : (
         <div className="max-h-72 overflow-y-auto">
           <table className="w-full text-left text-[12px]">

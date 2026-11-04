@@ -102,7 +102,7 @@
 .studio-dashboard .sd-first-file { display: grid; grid-template-columns: 0.85fr 1fr; align-items: center; gap: 54px; max-width: 870px; margin: 40px auto 12px; padding: 15px 25px 30px; }
 .studio-dashboard .sd-first-file h2 { margin: 11px 0 15px; color: var(--color-ink); font: 42px/1.1 var(--font-serif); letter-spacing: -1px; }
 .studio-dashboard .sd-first-file h2 em { font-weight: 400; color: var(--color-accent); }
-.studio-dashboard .sd-first-file p { max-width: 350px; color: var(--color-ink-subtle); font-size: 13px; line-height: 1.75; }
+.studio-dashboard .sd-first-file p { max-width: 350px; color: var(--color-ink-subtle); font-size: 14px; line-height: 1.75; }
 .studio-dashboard .sd-first-steps { display: flex; align-items: center; gap: 10px; margin: 21px 0; color: #657454; font: 12px var(--font-mono); }
 .studio-dashboard .sd-paper-art { position: relative; justify-self: center; width: 230px; height: 260px; perspective: 900px; }
 .studio-dashboard .sd-paper-back { position: absolute; inset: 6px 0 4px; border: 1px solid #b7c29e; background: #d8dec8; box-shadow: 10px 16px 25px #30382f12; transform: rotate(-8deg) rotateY(8deg); }
@@ -178,15 +178,15 @@
 /* ── a view's empty state ── */
 .studio-dashboard :is(.clean-empty, .empty-state) { padding: 55px 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .studio-dashboard :is(.clean-empty, .empty-state) h3 { color: var(--color-ink); font: 32px var(--font-serif); }
-.studio-dashboard :is(.clean-empty, .empty-state) p { color: var(--color-ink-subtle); font-size: 13px; }
+.studio-dashboard :is(.clean-empty, .empty-state) p { color: var(--color-ink-subtle); font-size: 14px; }
 
 /* ── a view still loading, one that couldn't load, a search with no match ── */
-.studio-dashboard :is(.sd-loading, .sd-error, .sd-no-results) { padding: 36px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink-subtle); font-size: 13px; }
+.studio-dashboard :is(.sd-loading, .sd-error, .sd-no-results) { padding: 36px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink-subtle); font-size: 14px; }
 .studio-dashboard .sd-loading { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .studio-dashboard .sd-error { border-left: 3px solid var(--color-critical); }
 .studio-dashboard .sd-no-results button { border: 0; background: none; color: #a13e2e; text-decoration: underline; cursor: pointer; }
 /* Selected candidates a search hides: said, so a bulk action doesn't reach them unseen. */
-.studio-dashboard .sd-selection-note { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink-subtle); font-size: 13px; }
+.studio-dashboard .sd-selection-note { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink-subtle); font-size: 14px; }
 .studio-dashboard .sd-selection-note button { border: 0; background: none; color: #a13e2e; text-decoration: underline; cursor: pointer; }
 
 /* ── the Interviews view (components/studio/InterviewHub.jsx) ── */

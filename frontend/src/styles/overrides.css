@@ -26,7 +26,7 @@
   display: flex; align-items: center; gap: 10px;
   flex-wrap: wrap; padding: 0;
 }
-.agent-actions .btn { font-size: 13px; padding: 10px 16px; }
+.agent-actions .btn { font-size: 14px; padding: 10px 16px; }
 
 
 
@@ -43,7 +43,7 @@
 }
 .agent-loading h3 { margin-top: 16px; font-size: 16px; }
 .agent-loading-steps { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
-.agent-step-item { font-size: 13px; color: var(--text3); }
+.agent-step-item { font-size: 14px; color: var(--text3); }
 .agent-step-item.active { color: var(--accent); }
 
 /* ─── Candidate portal: the page's colours ─── */
@@ -120,7 +120,7 @@
 
 /* ─── Fix: agent report markdown tables ─── */
 .agent-report .md table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-.agent-report .md th, .agent-report .md td { padding: 8px 12px; border: 1px solid var(--surface-border); text-align: left; font-size: 13px; }
+.agent-report .md th, .agent-report .md td { padding: 8px 12px; border: 1px solid var(--surface-border); text-align: left; font-size: 14px; }
 .agent-report .md th { background: var(--bg3); font-weight: 600; color: var(--text); }
 .agent-report .md td { color: var(--text2); }
 

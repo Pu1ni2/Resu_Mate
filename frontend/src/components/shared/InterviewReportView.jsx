@@ -57,7 +57,7 @@ function CredibilitySection({ candidateId, candidateEmail, interviewId }) {
   if (!credibility && !loading && !error) {
     return (
       <div className="sr-card" style={{ padding: '20px', textAlign: 'center' }}>
-        <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+        <button onClick={fetchCredibility} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'var(--color-accent)', color: 'var(--color-ink-inverse)', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
           <Target size={15} /> Compare résumé and interview
         </button>
         <p style={{ color: 'var(--color-ink-muted)', fontSize: '12px', marginTop: '8px' }}>Checks the résumé's claims against what the candidate said in the interview</p>
@@ -69,14 +69,14 @@ function CredibilitySection({ candidateId, candidateEmail, interviewId }) {
     return (
       <div className="sr-card" style={{ padding: '28px', textAlign: 'center' }}>
         <Loader size={20} className="spin" style={{ color: 'var(--color-accent)', marginBottom: '8px' }} />
-        <p style={{ color: 'var(--color-ink-muted)', fontSize: '13px' }}>Comparing the résumé and the interview…</p>
+        <p style={{ color: 'var(--color-ink-muted)', fontSize: '14px' }}>Comparing the résumé and the interview…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="sr-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '13px' }}>
+      <div className="sr-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '14px' }}>
         The comparison couldn't be completed: {error}
       </div>
     );
@@ -177,7 +177,7 @@ function TranscriptSection({ transcript }) {
                 }}>
                   {isInterviewer ? 'AI' : 'C'}
                 </div>
-                <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: '12px', fontSize: '13px', lineHeight: '1.5',
+                <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: '12px', fontSize: '14px', lineHeight: '1.5',
                   background: isInterviewer ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)',
                   border: isInterviewer ? '1px solid var(--color-accent-line)' : '1px solid var(--color-line)',
                   color: 'var(--color-ink)'
@@ -283,7 +283,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             product it rendered as a glaring white box, at the one moment
             something had gone wrong. */}
         {r.terminated && (
-          <div style={{ marginTop: '12px', padding: '10px 16px', background: 'var(--color-critical-wash)', border: '1px solid var(--color-critical)', borderRadius: '10px', color: 'var(--color-critical)', fontSize: '13px', fontWeight: '600' }}>
+          <div style={{ marginTop: '12px', padding: '10px 16px', background: 'var(--color-critical-wash)', border: '1px solid var(--color-critical)', borderRadius: '10px', color: 'var(--color-critical)', fontSize: '14px', fontWeight: '600' }}>
             Terminated: exceeded proctoring violations limit
           </div>
         )}
@@ -349,14 +349,14 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
             <Shield size={14} /> Proctoring Summary
           </h3>
           {violations > 0 && (
-            <p style={{ fontSize: '13px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
               <XCircle size={13} style={{ color: 'var(--color-caution)' }} /> {violations} violation{violations > 1 ? 's' : ''} detected
             </p>
           )}
           {/* The times the face left the camera's picture: the room sees where
               the face is, not where anyone looks, so not "gaze aversion". */}
           {(r.lookAwayCount || 0) > 10 && (
-            <p style={{ fontSize: '13px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--color-ink-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <EyeOff size={13} style={{ color: 'var(--color-caution)' }} /> Face out of view: {r.lookAwayCount} times
             </p>
           )}

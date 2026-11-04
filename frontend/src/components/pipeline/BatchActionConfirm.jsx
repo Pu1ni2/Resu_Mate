@@ -105,14 +105,14 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
 
           {results.interviews_created > 0 && (results.emails_sent < results.interviews_created ? (
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 8 }}>
+              <p style={{ fontSize: 14, color: 'var(--color-ink-muted)', marginBottom: 8 }}>
                 Send {results.emails_sent ? 'the candidates who weren’t emailed' : 'the invited candidates'} this link.
                 They sign in with the email address shown above.
               </p>
               <PortalLink link={results.portal_link} />
             </div>
           ) : (
-            <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
+            <p style={{ fontSize: 14, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
               Each invited candidate was emailed their sign-in link.
             </p>
           ))}
@@ -134,7 +134,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           <Zap size={18} style={{ color: 'var(--color-accent)' }} />
           Confirm Batch Actions
         </h3>
-        <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 20 }}>
+        <p style={{ fontSize: 14, color: 'var(--color-ink-muted)', marginBottom: 20 }}>
           Choose who gets an interview. Each one can sign in to the candidate portal to take it.
         </p>
 
@@ -204,7 +204,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
         {/* Send emails toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, padding: '10px 14px', background: sendEmails ? 'var(--color-accent-wash)' : 'var(--color-surface-raised)', border: `1px solid ${sendEmails ? 'var(--color-accent-line)' : 'var(--color-line)'}`, borderRadius: 10 }}>
           <input type="checkbox" id="sendEmails" checked={sendEmails} onChange={e => setSendEmails(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-          <label htmlFor="sendEmails" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer', color: sendEmails ? 'var(--color-accent)' : 'var(--color-ink-muted)' }}>
+          <label htmlFor="sendEmails" style={{ fontSize: 14, fontWeight: 600, cursor: 'pointer', color: sendEmails ? 'var(--color-accent)' : 'var(--color-ink-muted)' }}>
             <Send size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />
             Email the invitations to the candidates
           </label>
@@ -313,7 +313,7 @@ const styles = {
   select: {
     width: '100%', background: 'var(--color-surface-raised)',
     border: '1px solid var(--color-line)', borderRadius: 8,
-    padding: '8px 10px', color: 'var(--color-ink)', fontSize: 13, outline: 'none',
+    padding: '8px 10px', color: 'var(--color-ink)', fontSize: 14, outline: 'none',
   },
   candidateList: {
     maxHeight: 260, overflowY: 'auto',
@@ -335,6 +335,6 @@ const styles = {
   },
   outcomeRow: {
     display: 'flex', alignItems: 'center', padding: '8px 14px',
-    borderBottom: '1px solid var(--color-line)', fontSize: 13,
+    borderBottom: '1px solid var(--color-line)', fontSize: 14,
   },
 };

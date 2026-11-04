@@ -19,7 +19,7 @@ import { cn } from '../ui/cn';
 
 const SIZES = {
   sm: { outer: 'h-10 w-10', inner: 'h-[30px] w-[30px]', text: 'text-[12px]' },
-  md: { outer: 'h-12 w-12', inner: 'h-[38px] w-[38px]', text: 'text-[13px]' },
+  md: { outer: 'h-12 w-12', inner: 'h-[38px] w-[38px]', text: 'text-[14px]' },
   lg: { outer: 'h-14 w-14', inner: 'h-[44px] w-[44px]', text: 'text-[15px]' },
 };
 

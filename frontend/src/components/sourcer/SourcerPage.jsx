@@ -75,7 +75,7 @@ function SearchForm({ description, setDescription, sources, setSources, onSubmit
           <label
             key={key}
             className={cn(
-              'sourcer-source inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]',
+              'sourcer-source inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[14px]',
               sources[key] ? 'border-accent-line bg-accent-wash text-ink' : 'border-line text-ink-muted',
             )}
           >
@@ -89,7 +89,7 @@ function SearchForm({ description, setDescription, sources, setSources, onSubmit
           </label>
         ))}
       </fieldset>
-      {error && <p id="sourcer-error" role="alert" className="text-[13px] text-critical">{error}</p>}
+      {error && <p id="sourcer-error" role="alert" className="text-[14px] text-critical">{error}</p>}
       <div className="sourcer-brief-bottom"><p>Start with the work.<br /><span>The right evidence will follow.</span></p><Button type="submit" variant="primary"><Search size={16} /> Find candidates <ArrowUpRight size={16} aria-hidden="true" /></Button></div>
     </Card>
   );
@@ -105,7 +105,7 @@ function RunHeader({ state, onStop, onNewSearch }) {
       <div className="min-w-0">
         <p className="sourcer-section-mark">02 / THE SEARCH</p>
         <h2>Every person.<br /><em>A closer look.</em></h2>
-        <p className="mt-1 text-[13px] text-ink-subtle">
+        <p className="mt-1 text-[14px] text-ink-subtle">
           {[req.title, req.location, `${formatCount(state.counts.found)} people`].filter(Boolean).join(' · ')}
           {' · '}a written judgement on every single one
         </p>
@@ -302,7 +302,7 @@ export default function SourcerPage() {
   return (
     <WorkspaceShell active="candidates" title="Find candidates" eyebrow="THE TALENT SEARCH" subtitle="Good people aren't always where you'd expect. Start with what matters to the role.">
       <div className="studio-sourcer">
-        <Link to="/hiring?view=upload" className="sourcer-back inline-flex items-center gap-1.5 text-[13px] text-ink-subtle hover:text-ink">
+        <Link to="/hiring?view=upload" className="sourcer-back inline-flex items-center gap-1.5 text-[14px] text-ink-subtle hover:text-ink">
           <ArrowLeft size={14} /> Candidate library
         </Link>
 
@@ -333,12 +333,12 @@ export default function SourcerPage() {
             {(state.warnings.length > 0 || state.error) && (
               <div className="space-y-1.5" role="status">
                 {state.warnings.map(w => (
-                  <p key={w} className="flex items-center gap-2 rounded-[10px] border border-caution/30 bg-caution-wash px-3 py-2 text-[13px] text-caution">
+                  <p key={w} className="flex items-center gap-2 rounded-[10px] border border-caution/30 bg-caution-wash px-3 py-2 text-[14px] text-caution">
                     <AlertTriangle size={14} /> {w}
                   </p>
                 ))}
                 {state.error && (
-                  <p className="flex items-center gap-2 rounded-[10px] border border-critical/30 bg-critical-wash px-3 py-2 text-[13px] text-critical">
+                  <p className="flex items-center gap-2 rounded-[10px] border border-critical/30 bg-critical-wash px-3 py-2 text-[14px] text-critical">
                     <AlertTriangle size={14} /> {state.error}
                   </p>
                 )}

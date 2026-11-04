@@ -20,7 +20,7 @@ export default function TopOfShortlist({ state, onOpen }) {
   return (
     <Panel title="Top of shortlist" meta="ranked by written judgement">
       {top.length === 0 ? (
-        <p className="py-3 text-[13px] text-ink-subtle">No one has cleared the shortlist line yet.</p>
+        <p className="py-3 text-[14px] text-ink-subtle">No one has cleared the shortlist line yet.</p>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           {top.map(p => (

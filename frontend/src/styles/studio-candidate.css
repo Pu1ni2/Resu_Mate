@@ -40,7 +40,7 @@
 .studio-candidate .cd-portal-label { display: block; color: #a6af9e; font-size: 11px; letter-spacing: 2.3px; text-transform: uppercase; margin-top: 12px; }
 .studio-candidate .cd-sidebar-nav { flex: 0; padding: 10px 16px; }
 .studio-candidate .cd-nav-section-title { color: #a6af9e !important; padding: 0 13px 14px; font-size: 11px; letter-spacing: 1.9px; }
-.studio-candidate .cd-nav-link { min-height: 46px; color: #d1d5c9 !important; border: 1px solid transparent; border-radius: 7px; padding: 12px 13px; margin-bottom: 6px; font-size: 13px; background: transparent; }
+.studio-candidate .cd-nav-link { min-height: 46px; color: #d1d5c9 !important; border: 1px solid transparent; border-radius: 7px; padding: 12px 13px; margin-bottom: 6px; font-size: 14px; background: transparent; }
 .studio-candidate .cd-nav-link:hover { color: var(--color-surface) !important; background: #ffffff0b; }
 .studio-candidate .cd-nav-link.active { background: #e9ebdf !important; color: var(--color-forest) !important; border-color: #e9ebdf; box-shadow: none; }
 .studio-candidate .cd-nav-link.active::before { display: none; }
@@ -84,7 +84,7 @@
 .studio-candidate .cd-page-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 34px; }
 .studio-candidate .cd-eyebrow { color: #8b5b42; text-transform: uppercase; font-size: 11px; font-weight: 600; letter-spacing: 1.9px; }
 .studio-candidate .cd-page-intro h1 { font: 400 clamp(38px, 4.1vw, 62px)/1.06 var(--font-serif); letter-spacing: -1.5px; color: var(--color-forest); margin: 10px 0 14px; }
-.studio-candidate .cd-page-intro p { max-width: 540px; margin: 0; font-size: 13px; line-height: 1.8; color: #74786d; }
+.studio-candidate .cd-page-intro p { max-width: 540px; margin: 0; font-size: 14px; line-height: 1.8; color: #74786d; }
 .studio-candidate .cd-page-index { color: #a4aa99; font: 33px var(--font-serif); white-space: nowrap; margin-bottom: 5px; }
 .studio-candidate .cd-page-index > span { font: 11px var(--font-sans); letter-spacing: 1px; }
 .studio-candidate .cd-page-intro-welcome { align-items: center; gap: 20px; }
@@ -107,7 +107,7 @@
 .studio-candidate .cd-upload-zone:hover, .studio-candidate .cd-upload-zone.drag-over { background: #eeeee2 !important; border-color: #6f805f !important; transform: translateY(-2px); }
 .studio-candidate .cd-upload-icon-wrap { width: 74px; height: 88px; color: #6c7c59; background: #e9ebdf !important; border: 1px solid #d1d7c1; border-radius: 4px 15px 4px 4px; margin-bottom: 24px; box-shadow: 5px 6px 0 #eeeee5; }
 .studio-candidate .cd-upload-zone h3 { font: 34px var(--font-serif); color: var(--color-forest) !important; letter-spacing: -.6px; }
-.studio-candidate .cd-upload-zone p { color: #6e7569 !important; font-size: 13px; }
+.studio-candidate .cd-upload-zone p { color: #6e7569 !important; font-size: 14px; }
 .studio-candidate .cd-upload-formats { background: transparent; color: #858c7a !important; font-size: 12px; letter-spacing: .5px; margin-top: 22px; }
 .studio-candidate .cd-upload-caption { padding-top: 24px; border-top: 1px solid #cfd4c3; }
 .studio-candidate .cd-upload-caption > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px; color: #5e6c53; }
@@ -159,7 +159,7 @@
 .studio-candidate .cd-strength-item, .studio-candidate .cd-summary-text { color: #69715f !important; font-size: 12px; line-height: 1.85; }
 .studio-candidate .cd-strength-icon { color: #71895a !important; }
 .studio-candidate .cd-exp-dot, .studio-candidate .cd-exp-dot-blue { background: #a5b28c !important; box-shadow: 0 0 0 4px #eff1e7; }
-.studio-candidate .cd-experience-item h4 { color: #414c38 !important; font-size: 13px; font-weight: 600; }
+.studio-candidate .cd-experience-item h4 { color: #414c38 !important; font-size: 14px; font-weight: 600; }
 .studio-candidate .cd-exp-company { color: #839075 !important; font-size: 12px; line-height: 1.7; }
 .studio-candidate .cd-exp-desc { color: #69715f !important; font-size: 12px; line-height: 1.8; }
 .studio-candidate .cd-chat-section { max-width: none; height: min(740px, calc(100dvh - 285px)); min-height: 470px; }
@@ -175,7 +175,7 @@
 .studio-candidate .cd-chat-empty { max-width: 410px; padding: 38px 15px; }
 .studio-candidate .cd-chat-empty-icon { width: 64px; height: 64px; border: 1px solid #d7ddc8; background: #e9ebdf !important; color: #778865 !important; border-radius: 50%; margin-bottom: 21px; }
 .studio-candidate .cd-chat-empty h3 { color: var(--color-forest) !important; font: 34px var(--font-serif); }
-.studio-candidate .cd-chat-empty p { color: #7d8572 !important; font-size: 13px; line-height: 1.75; }
+.studio-candidate .cd-chat-empty p { color: #7d8572 !important; font-size: 14px; line-height: 1.75; }
 .studio-candidate .cd-msg-avatar { background: #e9ebdf !important; color: #6d7d5c !important; border: 1px solid #dce2cf; }
 .studio-candidate .cd-msg-bubble.assistant { background: #f0f2e8 !important; border: 1px solid #e4e8d8; color: #46543b; border-radius: 3px 12px 12px; padding: 15px 18px; }
 .studio-candidate .cd-msg-bubble.user { background: var(--color-forest) !important; color: var(--color-surface) !important; border: 0; border-radius: 12px 3px 12px 12px; padding: 14px 18px; box-shadow: none; }
@@ -184,7 +184,7 @@
 .studio-candidate .cd-suggestion-btn { color: #737e66 !important; border: 1px solid #e0e4d4 !important; background: #f8f8f1 !important; font-size: 12px; border-radius: 5px; padding: 8px 10px; line-height: 1.5; text-align: left; }
 .studio-candidate .cd-suggestion-btn:hover { color: var(--color-brand) !important; border-color: #d5baaa !important; }
 .studio-candidate .cd-chat-input-bar { padding: 15px 20px; background: var(--color-surface) !important; border-top: 1px solid #e4e6d9; }
-.studio-candidate .cd-chat-input { border: 0 !important; background: transparent !important; color: var(--color-forest) !important; border-radius: 0; font-size: 13px; padding: 10px 0; box-shadow: none !important; }
+.studio-candidate .cd-chat-input { border: 0 !important; background: transparent !important; color: var(--color-forest) !important; border-radius: 0; font-size: 14px; padding: 10px 0; box-shadow: none !important; }
 .studio-candidate .cd-chat-input::placeholder { color: #939a87; }
 .studio-candidate .cd-chat-send { background: var(--color-brand) !important; color: var(--color-surface); border-radius: 6px; box-shadow: none; }
 .studio-candidate .cd-interview-ready-card { max-width: 700px; padding: 42px; text-align: center; margin: 0 auto; }
@@ -195,7 +195,7 @@
 .studio-candidate .cd-interview-rules { background: #f3f4eb !important; border: 1px solid #e2e6d5; padding: 22px; border-radius: 6px; margin: 27px 0; }
 .studio-candidate .cd-rule { font-size: 12px; color: #657456 !important; padding: 5px 0; }
 .studio-candidate .cd-rule svg { color: #80906c !important; }
-.studio-candidate .cd-start-interview { background: var(--color-brand) !important; color: var(--color-surface) !important; box-shadow: none; border-radius: 6px; padding: 14px 25px; font-size: 13px; }
+.studio-candidate .cd-start-interview { background: var(--color-brand) !important; color: var(--color-surface) !important; box-shadow: none; border-radius: 6px; padding: 14px 25px; font-size: 14px; }
 .studio-candidate .cd-start-interview:hover { background: #a23e2b !important; box-shadow: 0 4px 12px #bf4a321f; }
 .studio-candidate .cd-interview-done-header { padding: 26px; }
 .studio-candidate .cd-interview-done-badge { background: #e9eddd !important; color: #708958 !important; }
@@ -206,7 +206,7 @@
 .studio-candidate .cd-interview-footer-text { color: #87917a !important; font-size: 12px; }
 .studio-candidate .cd-empty { min-height: 320px; border: 1px solid #deded2; background: var(--color-surface); border-radius: 10px; padding: 70px 25px; color: #849174; }
 .studio-candidate .cd-empty h3 { color: var(--color-forest) !important; font: 31px var(--font-serif); margin: 20px 0 12px; }
-.studio-candidate .cd-empty p { color: #7e8871 !important; font-size: 13px; }
+.studio-candidate .cd-empty p { color: #7e8871 !important; font-size: 14px; }
 @keyframes studio-candidate-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes studio-candidate-sculpture-arrive { from { opacity: 0; transform: translateY(16px) rotate(-24deg) scale(.94); } to { opacity: 1; transform: translateY(0) rotate(-14deg) scale(1); } }
 @keyframes studio-candidate-sculpture-orbit { from { opacity: 0; transform: translateY(6px) rotate(-5deg) scale(.94); } to { opacity: 1; transform: translateY(0) rotate(-25deg) scale(1); } }

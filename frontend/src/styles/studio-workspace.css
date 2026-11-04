@@ -55,7 +55,7 @@
   width: 100%; padding: 13px 12px;
   border: 1px solid transparent; border-radius: 4px;
   background: none; color: var(--color-ink-muted);
-  font-size: 13px; text-align: left; text-decoration: none;
+  font-size: 14px; text-align: left; text-decoration: none;
   cursor: pointer; transition: background 0.18s;
 }
 .studio-workspace .sw-nav-item small { margin-left: auto; font: 12px var(--font-mono); color: var(--color-ink-subtle); }
@@ -110,7 +110,7 @@
 .studio-workspace .sw-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 37px 0 28px; }
 .studio-workspace .sw-page-header h1 { margin: 9px 0 12px; font: clamp(40px, 4.1vw, 62px)/1.05 var(--font-serif); letter-spacing: -1.8px; color: var(--color-ink); background: none; -webkit-text-fill-color: currentColor; }
 .studio-workspace .sw-page-header h1 em { font-weight: 400; color: var(--color-accent); }
-.studio-workspace .sw-subtitle { max-width: 570px; margin: 0; font-size: 13px; line-height: 1.7; color: var(--color-ink-muted); }
+.studio-workspace .sw-subtitle { max-width: 570px; margin: 0; font-size: 14px; line-height: 1.7; color: var(--color-ink-muted); }
 .studio-workspace .sw-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 4px; }
 /* A switch among the page's actions, as the dashboard's Hide names: a button
    with role="switch", named by its words, the track showing whether it is on. */
@@ -125,9 +125,9 @@
 .studio-workspace .sw-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 22px; padding: 12px 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: #f4f2e8; color: #3f4a37; font-size: 14px; line-height: 1.45; }
 .studio-workspace .sw-confirm > svg { flex: none; color: #5c694d; }
 .studio-workspace .sw-confirm > p { flex: 1 1 280px; margin: 0; }
-.studio-workspace .sw-confirm-button { flex: none; padding: 7px 14px; border: 1px solid #5c694d; border-radius: var(--radius-control); background: var(--color-surface); color: #3f4a37; font-size: 13px; cursor: pointer; }
+.studio-workspace .sw-confirm-button { flex: none; padding: 7px 14px; border: 1px solid #5c694d; border-radius: var(--radius-control); background: var(--color-surface); color: #3f4a37; font-size: 14px; cursor: pointer; }
 .studio-workspace .sw-confirm-button[aria-disabled=true] { cursor: progress; opacity: 0.6; }
-.studio-workspace .sw-confirm > .sw-confirm-said { flex-basis: 100%; color: var(--color-ink-muted); font-size: 13px; }
+.studio-workspace .sw-confirm > .sw-confirm-said { flex-basis: 100%; color: var(--color-ink-muted); font-size: 14px; }
 /* Kept on the page while empty, so what it says later is announced; it takes
    back the row's gap meanwhile. */
 .studio-workspace .sw-confirm > .sw-confirm-said:empty { margin-top: -8px; }
@@ -145,7 +145,7 @@
 .studio-workspace :is(.btn-secondary, .btn-ghost):hover:not(:disabled) { background: #e9ebdf; }
 .studio-workspace .btn-danger { border: 1px solid #dfbaae; background: #f6e5de; color: #9d382c; }
 .studio-workspace .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.studio-workspace .input { min-height: 43px; border: 1px solid #ced0c1; border-radius: 4px; background: var(--color-surface); color: var(--color-ink); font-size: 13px; }
+.studio-workspace .input { min-height: 43px; border: 1px solid #ced0c1; border-radius: 4px; background: var(--color-surface); color: var(--color-ink); font-size: 14px; }
 .studio-workspace :is(.glass-card, .clean-card, .card) { border: 1px solid var(--color-line); border-radius: 5px; background: var(--color-surface); box-shadow: 0 3px 12px #383d2b04; backdrop-filter: none; }
 .studio-workspace .clean-section-title { margin-bottom: 15px; font: 11px var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--color-ink-muted); }
 .studio-workspace .clean-stat-card { border: 1px solid var(--color-line); border-radius: 4px; background: var(--color-surface); }

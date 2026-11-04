@@ -62,8 +62,8 @@ export default function OutreachModal({ person, profileId, onClose }) {
           <Button icon size="sm" variant="ghost" onClick={onClose} aria-label="Close draft"><X size={16} /></Button>
         </div>
 
-        {error && <p role="alert" className="text-[13px] text-critical">{error}</p>}
-        {!draft && !error && <p className="py-8 text-center text-[13px] text-ink-subtle">Drafting from what the judge saw…</p>}
+        {error && <p role="alert" className="text-[14px] text-critical">{error}</p>}
+        {!draft && !error && <p className="py-8 text-center text-[14px] text-ink-subtle">Drafting from what the judge saw…</p>}
 
         {draft && (
           <div className="space-y-3">
@@ -78,12 +78,12 @@ export default function OutreachModal({ person, profileId, onClose }) {
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button variant="primary" size="sm" onClick={copy}><Copy size={14} /> Copy</Button>
               {mailto && (
-                <a href={mailto} className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-surface-raised px-3.5 text-[13px] text-ink hover:border-line-strong">
+                <a href={mailto} className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-surface-raised px-3.5 text-[14px] text-ink hover:border-line-strong">
                   <Mail size={14} /> Open in email
                 </a>
               )}
               {profile && (
-                <a href={profile} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] text-accent hover:underline">
+                <a href={profile} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[14px] text-accent hover:underline">
                   Open profile <ExternalLink size={12} />
                 </a>
               )}

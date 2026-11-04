@@ -34,7 +34,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
         <div className="glass-card" style={{ padding: '32px', textAlign: 'center' }}>
           <Target size={32} style={{ color: 'var(--accent)', marginBottom: '12px' }} />
           <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '6px' }}>Resume Intelligence</h3>
-          <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '16px' }}>
             AI-powered gap analysis, skill verification targets, and red flag detection
           </p>
           <button className="btn btn-primary" onClick={analyze} style={{ background: 'var(--accent)', padding: '10px 24px' }}>
@@ -50,7 +50,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
       <div className="sf-intel-panel" style={{ padding: '20px', maxWidth: '540px' }}>
         <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
           <Loader size={24} className="spin" style={{ color: 'var(--accent)', marginBottom: '10px' }} />
-          <p style={{ color: 'var(--text2)', fontSize: '13px' }}>Analyzing resume for gaps and verification targets...</p>
+          <p style={{ color: 'var(--text2)', fontSize: '14px' }}>Analyzing resume for gaps and verification targets...</p>
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
       <div className="sf-intel-panel" style={{ padding: '20px', maxWidth: '540px' }}>
         <div className="glass-card" role="status" style={{ padding: '32px', textAlign: 'center' }}>
           <AlertTriangle size={28} style={{ color: '#F59E0B', marginBottom: '10px' }} />
-          <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '16px' }}>
             The analysis couldn't be completed.
           </p>
           <button className="btn btn-primary" onClick={analyze} style={{ background: 'var(--accent)', padding: '10px 24px' }}>
@@ -84,7 +84,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
       {/* Gaps */}
       {(intel.gaps || []).length > 0 && (
         <div className="glass-card" style={{ padding: '16px', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <AlertTriangle size={14} style={{ color: '#F59E0B' }} /> Gaps & Inconsistencies
           </h4>
           {intel.gaps.map((g, i) => (
@@ -102,7 +102,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
       {/* Verification Targets */}
       {(intel.verification_targets || []).length > 0 && (
         <div className="glass-card" style={{ padding: '16px', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Target size={14} style={{ color: 'var(--accent)' }} /> Interview Verification Targets
           </h4>
           {intel.verification_targets.map((t, i) => (
@@ -120,7 +120,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
       {/* Strong Points */}
       {(intel.strong_points || []).length > 0 && (
         <div className="glass-card" style={{ padding: '16px', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <CheckCircle size={14} style={{ color: '#22C55E' }} /> Strong Points
           </h4>
           {intel.strong_points.map((s, i) => (
@@ -132,7 +132,7 @@ export default function ResumeIntelPanel({ focusCandidate }) {
       {/* Red Flags */}
       {(intel.red_flags || []).length > 0 && (
         <div className="glass-card" style={{ padding: '16px', borderColor: 'rgba(239,68,68,0.15)' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', color: '#EF4444' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', color: '#EF4444' }}>
             <Shield size={14} /> Red Flags
           </h4>
           {intel.red_flags.map((f, i) => (

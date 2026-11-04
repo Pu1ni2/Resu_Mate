@@ -87,7 +87,7 @@ export default function ConfirmDialog({
         className="relative w-full max-w-md rounded-[18px] border border-line bg-surface p-5 shadow-e3 outline-none"
       >
         <h2 id={titleId} className="m-0 text-[15px] font-semibold text-ink">{title}</h2>
-        <div id={bodyId} className="mt-2 text-[13px] leading-relaxed text-ink-muted">{children}</div>
+        <div id={bodyId} className="mt-2 text-[14px] leading-relaxed text-ink-muted">{children}</div>
         <div className="mt-5 flex justify-end gap-2">
           <Button data-cancel size="sm" variant="secondary" onClick={cancel} disabled={busy}>
             {cancelLabel}

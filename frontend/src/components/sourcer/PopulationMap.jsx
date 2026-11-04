@@ -38,7 +38,7 @@ export default function PopulationMap({ state }) {
       meta={order.length ? `${formatCount(counts.judged)} / ${formatCount(counts.found)} · one cell = one person` : null}
     >
       {order.length === 0 ? (
-        <p className="py-10 text-center text-[13px] text-ink-subtle">Each person found becomes a cell here.</p>
+        <p className="py-10 text-center text-[14px] text-ink-subtle">Each person found becomes a cell here.</p>
       ) : (
         <>
           <div className="sourcer-population grid grid-cols-[repeat(auto-fill,minmax(10px,1fr))] gap-[3px]" aria-hidden="true" data-testid="population-map">

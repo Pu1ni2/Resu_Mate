@@ -107,8 +107,8 @@ function CompactRow({ row }) {
         className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
         style={{ opacity: Math.max(0.35, (Number(row.score) || 0) / 100) }}
       />
-      <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{row.name}</span>
-      <span className="shrink-0 font-mono text-[13px] text-ink-muted">{row.score}</span>
+      <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{row.name}</span>
+      <span className="shrink-0 font-mono text-[14px] text-ink-muted">{row.score}</span>
       <VerdictPill verdict={row.verdict} />
     </div>
   );
@@ -235,7 +235,7 @@ function FullRow({ row, selected, onToggleSelect, selectable, expandable, action
             </div>
           )}
 
-          {row.note && <p className="text-[13px] leading-relaxed text-ink-muted">{row.note}</p>}
+          {row.note && <p className="text-[14px] leading-relaxed text-ink-muted">{row.note}</p>}
 
           <RowLinks links={row.links} />
 
@@ -303,7 +303,7 @@ export default function RankedCandidates({
     <div className={cn('overflow-hidden rounded-[14px] border border-line bg-surface shadow-e1', className)}>
       {summary}
       {rows.length === 0 ? (
-        <p className="px-5 py-10 text-center text-[13px] text-ink-subtle">{emptyMessage}</p>
+        <p className="px-5 py-10 text-center text-[14px] text-ink-subtle">{emptyMessage}</p>
       ) : (
         <div className="divide-y divide-line">
           {rows.map(r => (

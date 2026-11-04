@@ -196,9 +196,9 @@ const styles = {
   input: {
     width: '100%', boxSizing: 'border-box', background: '#fbfaf5',
     border: '1px solid var(--color-line)', borderRadius: 'var(--radius-control)',
-    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 13,
+    padding: '11px 14px', color: 'var(--color-ink)', fontSize: 14,
     fontFamily: 'inherit',
   },
   formGroup: { marginBottom: 16 },
-  label: { display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-ink-muted)', marginBottom: 6 },
+  label: { display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--color-ink-muted)', marginBottom: 6 },
 };

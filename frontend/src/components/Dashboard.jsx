@@ -69,7 +69,7 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
   if (loading) return (
     <div className="clean-section" style={{ textAlign: 'center', padding: '48px' }}>
       <Loader size={18} className="spin" style={{ color: 'var(--text3)' }} />
-      <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '10px' }}>Loading interview data...</p>
+      <p style={{ color: 'var(--text3)', fontSize: '14px', marginTop: '10px' }}>Loading interview data...</p>
     </div>
   );
 
@@ -88,7 +88,7 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
     <div className="clean-section">
       <h3 className="clean-section-title">{INTERVIEWS_TITLE}</h3>
       <div className="clean-card" style={{ padding: '40px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--text3)', fontSize: '13px' }}>No completed interviews yet</p>
+        <p style={{ color: 'var(--text3)', fontSize: '14px' }}>No completed interviews yet</p>
       </div>
     </div>
   );
@@ -694,7 +694,7 @@ export default function Dashboard() {
           This deletes your account and everything in it: candidates, interviews and reports,
           searches and chats. It can't be undone.
         </p>
-        <label htmlFor="delete-account-password" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Your password</label>
+        <label htmlFor="delete-account-password" style={{ display: 'block', fontSize: 14, marginBottom: 6 }}>Your password</label>
         <input
           id="delete-account-password"
           type="password"
@@ -704,7 +704,7 @@ export default function Dashboard() {
           onChange={e => setAccountPassword(e.target.value)}
           style={{ width: '100%' }}
         />
-        {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 13, marginTop: 8 }}>{accountError}</p>}
+        {accountError && <p role="alert" style={{ color: 'var(--color-critical)', fontSize: 14, marginTop: 8 }}>{accountError}</p>}
       </ConfirmDialog>
 
       <div className="studio-dashboard">
@@ -1102,7 +1102,7 @@ export default function Dashboard() {
                     <h3 className="clean-section-title">Top Skills</h3>
                     <div className="clean-card clean-card--padded">
                       {analytics.topSkills.length === 0 ? (
-                        <p style={{ color: 'var(--text3)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>No skills data</p>
+                        <p style={{ color: 'var(--text3)', fontSize: '14px', textAlign: 'center', padding: '20px' }}>No skills data</p>
                       ) : (
                         // When every skill has the same count -- which is
                         // always true for a single candidate -- bars are all the

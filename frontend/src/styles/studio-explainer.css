@@ -56,7 +56,7 @@
 .studio-explainer .explainer-step-story { padding: 47px 44px 36px; }
 .studio-explainer .explainer-step-story .explainer-eyebrow { font-size: 11px; letter-spacing: .09em; flex-wrap: wrap; }
 .studio-explainer .explainer-step-story h2 { font: 47px/1.04 var(--font-serif); letter-spacing: -.7px; margin: 23px 0 20px; max-width: 340px; }
-.studio-explainer .explainer-description { font-size: 13px; line-height: 1.9; color: var(--muted); }
+.studio-explainer .explainer-description { font-size: 14px; line-height: 1.9; color: var(--muted); }
 .studio-explainer .explainer-step-story ul { list-style: none; padding: 0; margin: 27px 0; display: grid; gap: 17px; }
 .studio-explainer .explainer-step-story li { display: flex; align-items: flex-start; gap: 11px; font-size: 12px; line-height: 1.75; color: #5d6853; }
 .studio-explainer .explainer-step-story li svg { flex: none; margin-top: 4px; color: #7d8e69; }
@@ -86,7 +86,7 @@
 .studio-explainer .explainer-step-footer button { display: inline-flex; align-items: center; gap: 20px; min-height: 34px; font-size: 12px; color: #6d4533; }
 .studio-explainer .explainer-toolkit { padding: 94px 0 75px; display: grid; grid-template-columns: .75fr 1.7fr; gap: 55px; }
 .studio-explainer .explainer-toolkit header h2, .studio-explainer .explainer-principles h2 { margin: 20px 0; font: 47px/1.04 var(--font-serif); letter-spacing: -.7px; }
-.studio-explainer .explainer-toolkit header > p:last-child { font-size: 13px; line-height: 1.9; color: var(--muted); }
+.studio-explainer .explainer-toolkit header > p:last-child { font-size: 14px; line-height: 1.9; color: var(--muted); }
 .studio-explainer .explainer-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--color-line); }
 .studio-explainer .explainer-tool-grid button { padding: 24px 25px; border-bottom: 1px solid var(--color-line); text-align: left; transition: background .18s; }
 .studio-explainer .explainer-tool-grid button:nth-child(odd) { border-right: 1px solid var(--color-line); }
@@ -147,7 +147,7 @@
 @media (max-width: 480px) {
   .studio-explainer .explainer-hero-copy h1 { font-size: 51px; letter-spacing: -1.2px; }
   .studio-explainer .explainer-eyebrow { font-size: 11px; letter-spacing: .11em; gap: 10px; }
-  .studio-explainer .explainer-lead { font-size: 13px; }
+  .studio-explainer .explainer-lead { font-size: 14px; }
   .studio-explainer .explainer-sculpture { height: 345px; }
   .studio-explainer .explainer-sun { top: 55px; width: 185px; height: 185px; }
   .studio-explainer .explainer-orbit-line { height: 218px; top: 46px; }

@@ -112,7 +112,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 rounded-[4px] border border-line bg-surface px-3 py-2 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:bg-surface-hover hover:text-ink"
+            className="inline-flex items-center gap-1.5 rounded-[4px] border border-line bg-surface px-3 py-2 text-[14px] text-ink-muted transition-colors duration-[120ms] hover:bg-surface-hover hover:text-ink"
           >
             <ArrowLeft size={14} /> Back
           </button>
@@ -125,7 +125,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           </div>
           <button
             onClick={onRunAgain}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-[4px] border-0 bg-accent px-4 py-2 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-[4px] border-0 bg-accent px-4 py-2 text-[14px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
           >
             <Zap size={14} /> Run again
           </button>
@@ -185,7 +185,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
                 onClick={() => setActiveTab(tab)}
                 aria-pressed={active}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-[13px] transition-colors duration-[120ms]',
+                  'rounded-full border px-3 py-1.5 text-[14px] transition-colors duration-[120ms]',
                   active
                     ? 'border-accent-line bg-accent-wash text-accent'
                     : 'border-line bg-surface text-ink-muted hover:text-ink',
@@ -202,7 +202,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           <div className="mb-2.5 flex items-center justify-between">
             <button
               onClick={toggleAll}
-              className="border-0 bg-transparent p-0 text-[13px] text-ink-muted transition-colors duration-[120ms] hover:text-ink"
+              className="border-0 bg-transparent p-0 text-[14px] text-ink-muted transition-colors duration-[120ms] hover:text-ink"
             >
               {allShownSelected ? 'Deselect all' : 'Select all'}
             </button>
@@ -237,7 +237,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
             <div className="h-6 w-px bg-line" />
             <button
               onClick={() => setShowBatchModal(true)}
-              className="inline-flex items-center gap-2 rounded-[4px] border-0 bg-accent px-4 py-2.5 text-[13px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
+              className="inline-flex items-center gap-2 rounded-[4px] border-0 bg-accent px-4 py-2.5 text-[14px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
             >
               <Zap size={14} /> Create interviews + draft emails
             </button>

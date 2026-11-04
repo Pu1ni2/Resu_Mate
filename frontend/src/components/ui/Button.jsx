@@ -46,7 +46,7 @@ const variants = {
 };
 
 const sizes = {
-  sm: 'h-9 px-3.5 text-[13px]',
+  sm: 'h-9 px-3.5 text-[14px]',
   md: 'h-11 px-5 text-sm',
   lg: 'h-[52px] px-7 text-base',
 };

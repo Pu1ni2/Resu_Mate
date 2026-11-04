@@ -15,7 +15,7 @@ export default function LiveSample({ state }) {
       meta={sample.length ? `${sample.length} of the last ${formatCount(counts.judged)} read` : null}
     >
       {sample.length === 0 ? (
-        <p className="py-6 text-center text-[13px] text-ink-subtle">People appear here as they are read.</p>
+        <p className="py-6 text-center text-[14px] text-ink-subtle">People appear here as they are read.</p>
       ) : (
         // list-none m-0 p-0: the app loads Tailwind without its preflight reset,
         // so a bare <ul> keeps the browser's bullets and indent.

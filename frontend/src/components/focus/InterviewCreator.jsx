@@ -115,7 +115,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
           ) : (
             <div style={{ textAlign: 'left', marginBottom: '12px' }}>
               {created.inviteError && (
-                <p role="status" style={{ color: 'var(--warning)', fontSize: '13px', marginBottom: '8px' }}>{created.inviteError}</p>
+                <p role="status" style={{ color: 'var(--warning)', fontSize: '14px', marginBottom: '8px' }}>{created.inviteError}</p>
               )}
               <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '8px' }}>
                 Send the candidate this link. They sign in with <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>.
@@ -123,21 +123,21 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
               <PortalLink link={created.portalLink} />
             </div>
           )}
-          <p style={{ color: 'var(--text3)', fontSize: '13px' }}>
+          <p style={{ color: 'var(--text3)', fontSize: '14px' }}>
             {interviewRole || focusCandidate?.predicted_role || 'General'} · {interviewNumQuestions} questions · {created.mode === 'conversational' ? 'Voice conversation' : 'Avatar interview'}
           </p>
           {interviewFocusAreas && <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Focus: {interviewFocusAreas}</p>}
           {created.interviewId && (
             <section aria-label="Interview questions" style={{ textAlign: 'left', marginTop: '20px' }}>
-              <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px' }}>What Alex will ask</h4>
+              <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '8px' }}>What Alex will ask</h4>
               {questionsDraft === null ? (
                 <>
                   {created.questions.length > 0 ? (
-                    <ol style={{ paddingLeft: '20px', margin: '0 0 12px', color: 'var(--text2)', fontSize: '13px', lineHeight: 1.6 }}>
+                    <ol style={{ paddingLeft: '20px', margin: '0 0 12px', color: 'var(--text2)', fontSize: '14px', lineHeight: 1.6 }}>
                       {created.questions.map((question, i) => <li key={i}>{question}</li>)}
                     </ol>
                   ) : (
-                    <p style={{ color: 'var(--text3)', fontSize: '13px', marginBottom: '12px' }}>
+                    <p style={{ color: 'var(--text3)', fontSize: '14px', marginBottom: '12px' }}>
                       No questions could be made for this candidate, so Alex will ask general ones for the role.
                     </p>
                   )}
@@ -155,7 +155,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                     value={questionsDraft}
                     onChange={e => setQuestionsDraft(e.target.value)}
                     rows={8}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--bg3)', color: 'var(--text)', fontFamily: 'inherit', fontSize: '13px', lineHeight: 1.5 }}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--bg3)', color: 'var(--text)', fontFamily: 'inherit', fontSize: '14px', lineHeight: 1.5 }}
                   />
                   <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                     <button className="btn btn-primary btn-sm" onClick={saveQuestions} disabled={savingQuestions}>
@@ -204,7 +204,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Video size={14} /> Avatar interview
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>
@@ -225,7 +225,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}>
                   <Mic size={14} /> Voice conversation
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.4, whiteSpace: 'normal' }}>Audio-only, low-latency. No camera, no avatar.</span>
@@ -254,7 +254,7 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
             <input id="iv-focus" type="text" className="input" value={interviewFocusAreas} onChange={e => setInterviewFocusAreas(e.target.value)} placeholder="System Design, Python, Leadership (comma-separated)" style={{ padding: '11px 14px' }} />
           </div>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', paddingTop: '4px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text2)', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--text2)', cursor: 'pointer' }}>
               <input type="checkbox" checked={sendInvite} onChange={e => setSendInvite(e.target.checked)} />
               Email the invitation to the candidate
             </label>
