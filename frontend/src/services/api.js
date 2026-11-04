@@ -90,6 +90,11 @@ export const chatAPI = {
   clear: () => api.post('/chat/clear')
 };
 
+/* The signed-in manager's own account. */
+export const accountAPI = {
+  savePreferences: prefs => api.put('/auth/preferences', prefs),
+};
+
 /* The candidate sourcer. Starting a run streams, so it lives in
  * services/sourcerStream.js; everything after the run is plain requests. */
 export const sourcerAPI = {

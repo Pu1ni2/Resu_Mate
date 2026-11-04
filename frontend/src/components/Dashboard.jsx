@@ -266,7 +266,7 @@ export default function Dashboard() {
   const {
     candidates, candidatesStatus, selectedIds, selectedCandidates, uploadProgress, loading,
     loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
-    anonymize, setAnonymize, analytics,
+    anonymize, setAnonymize, hideNamesSaving, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
     getDisplayName, getAvatarGradient,
     hiringManager, logoutHiringManager,
@@ -659,7 +659,9 @@ export default function Dashboard() {
       onNavigate={navigateTo}
       onChat={() => setTab('chat')}
       actions={(
-        <button type="button" role="switch" aria-checked={anonymize} className="sw-switch" onClick={() => setAnonymize(!anonymize)}>
+        // aria-disabled, not disabled, while it's saved: a disabled button
+        // drops the keyboard's focus.
+        <button type="button" role="switch" aria-checked={anonymize} aria-disabled={hideNamesSaving || undefined} className="sw-switch" onClick={() => setAnonymize(!anonymize)}>
           {anonymize ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
           Hide names
           <span className="sw-switch-track" aria-hidden="true"><span className="sw-switch-knob" /></span>

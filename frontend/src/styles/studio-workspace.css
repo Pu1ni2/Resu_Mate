@@ -119,6 +119,7 @@
 .studio-workspace .sw-switch-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-surface); box-shadow: 0 1px 2px #30382f30; transition: transform 0.18s; }
 .studio-workspace .sw-switch[aria-checked=true] .sw-switch-track { background: #526443; box-shadow: none; }
 .studio-workspace .sw-switch[aria-checked=true] .sw-switch-knob { transform: translateX(14px); }
+.studio-workspace .sw-switch[aria-disabled=true] { cursor: progress; opacity: 0.6; }
 .studio-workspace .sw-content { min-height: 65vh; outline: none; }
 
 .studio-workspace .sw-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 45px; padding: 25px 0; border-top: 1px solid var(--color-line); color: var(--color-ink-muted); font-size: 11px; }

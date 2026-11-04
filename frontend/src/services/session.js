@@ -70,6 +70,16 @@ export function saveAccessToken(token) {
   }
 }
 
+/* Store the manager's account as the server last sent it ("Hide names"
+ * changed), keeping the tokens as they are. */
+export function saveStoredUser(user) {
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // Storage unavailable: the page has the change until it reloads.
+  }
+}
+
 export function readStoredUser() {
   try {
     const raw = localStorage.getItem(USER_KEY);

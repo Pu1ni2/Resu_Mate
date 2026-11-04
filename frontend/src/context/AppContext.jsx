@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { candidatesAPI, chatAPI, messageForApiError } from '../services/api';
-import { saveSession, clearSession, readStoredUser, clearCandidateCache } from '../services/session';
+import { accountAPI, candidatesAPI, chatAPI, messageForApiError } from '../services/api';
+import { saveSession, clearSession, readStoredUser, saveStoredUser, clearCandidateCache } from '../services/session';
 import { toast } from '../services/notify';
 import { computeAnalytics } from './analytics';
 
@@ -31,7 +31,12 @@ export const AppProvider = ({ children }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
 
-  const [anonymize, setAnonymize] = useState(false);
+  // "Hide names", as the account keeps it: the server keeps candidates' names
+  // and contact details from the AI by it too. It was the page's alone, and
+  // off again after every reload. setAnonymize, below, saves it.
+  const [anonymize, setHideNames] = useState(() => Boolean(readStoredUser()?.hide_names));
+  const [hideNamesSaving, setHideNamesSaving] = useState(false);
+  const savingHideNames = useRef(false);
 
   // Candidate session (for candidate portal)
   const [candidateSession, setCandidateSession] = useState(() => {
@@ -47,6 +52,7 @@ export const AppProvider = ({ children }) => {
   const loginHiringManager = useCallback((token, refreshToken, user) => {
     saveSession(token, refreshToken, user);
     setHiringManager(user);
+    setHideNames(Boolean(user?.hide_names));
   }, []);
 
   // The candidate list request running, if one is, and which signed-in
@@ -66,6 +72,34 @@ export const AppProvider = ({ children }) => {
     setCandidates([]);
     setCandidatesStatus('loading');
     setSelectedIds([]);
+    setHideNames(false);
+  }, []);
+
+  /* Turn "Hide names" on or off, and keep it on the account. The switch moves
+   * at once and waits while it's saved; when the server can't keep it, it
+   * moves back and the manager is told. Signed out, it's the page's alone. */
+  const setAnonymize = useCallback(async (next) => {
+    if (savingHideNames.current) return;
+    const value = Boolean(next);
+    const user = readStoredUser();
+    setHideNames(value);
+    if (!user) return;
+    savingHideNames.current = true;
+    setHideNamesSaving(true);
+    try {
+      const res = await accountAPI.savePreferences({ hide_names: value });
+      const now = readStoredUser();
+      if (now?.id === user.id) saveStoredUser({ ...now, ...res?.data });
+    } catch (err) {
+      // Not once they've gone: the next manager's switch is theirs.
+      if (readStoredUser()?.id === user.id) {
+        setHideNames(Boolean(user.hide_names));
+        toast(messageForApiError(err, 'Could not save "Hide names". Please try again.'), 'error');
+      }
+    } finally {
+      savingHideNames.current = false;
+      setHideNamesSaving(false);
+    }
   }, []);
 
   useEffect(() => { clearCandidateCache(); }, []);
@@ -297,7 +331,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       candidates, setCandidates, candidatesStatus, selectedIds, selectedCandidates, uploadProgress, loading, deleting,
       loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
-      anonymize, setAnonymize, analytics,
+      anonymize, setAnonymize, hideNamesSaving, analytics,
       messages, suggestions, isTyping, sendMessage, initChat, clearChat,
       getDisplayName, getAvatarGradient,
       candidateSession, setCandidateSession,
