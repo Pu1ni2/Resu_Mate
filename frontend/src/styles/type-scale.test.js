@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 
-import { read, rules, fontSizes } from './cssForTests';
+import { read, rules, fontSizes, declarations } from './cssForTests';
 
 /* The text sizes, across every stylesheet index.css loads and the sizes the
  * components set themselves. The review of Oct 31 found working controls and
@@ -130,6 +130,17 @@ describe('the text sizes', () => {
     // Each one is still there, with its size, to be checked.
     const listed = Object.entries(CONTROLS).flatMap(([file, selectors]) => selectors.map(s => `${file} ${s}`));
     expect(listed.filter(control => !seen.includes(control))).toEqual([]);
+  });
+
+  // A working page's heading, which was up to 62px above the work.
+  it('keep the workspace page heading compact: 44px at most, 34px on phones', () => {
+    const px = value => [...String(value || '').matchAll(/([\d.]+)px/g)].map(m => Number(m[1]));
+    const heading = rules(read('studio-workspace.css')).filter(r => r.selector === '.studio-workspace .sw-page-header h1');
+    const all = heading.find(r => r.media === '');
+    const phone = heading.find(r => r.media.includes('max-width: 600px'));
+    const sizes = rule => [...px(declarations(rule.body).font), ...px(declarations(rule.body)['font-size'])];
+    expect(Math.max(...sizes(all))).toBeLessThanOrEqual(44);
+    expect(Math.max(...sizes(phone))).toBeLessThanOrEqual(34);
   });
 
   // Working text is 14px: nothing sits between it and the details' 12px.
