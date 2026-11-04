@@ -256,6 +256,21 @@ async def get_me(current_user: HiringManager = Depends(get_current_user)):
     return current_user.to_dict()
 
 
+class PreferencesRequest(BaseModel):
+    hide_names: bool
+
+
+@router.put("/preferences")
+async def set_preferences(req: PreferencesRequest, current_user: HiringManager = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db)):
+    """The manager's settings, kept on the account. "Hide names" was only the
+    page's, so the server couldn't keep names from the AI when a request
+    didn't ask it to. Returns the profile."""
+    current_user.hide_names = req.hide_names
+    await db.commit()
+    return current_user.to_dict()
+
+
 # ── Candidate OTP Auth ────────────────────────────────────────────────────────
 
 SIGN_IN_CODE_SENT = "If this address has been invited to an interview, we've emailed it a sign-in code."

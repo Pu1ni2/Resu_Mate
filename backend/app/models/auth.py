@@ -1,6 +1,6 @@
 """Auth models — HiringManager and OTPCode"""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, false
 from app.core.database import Base
 
 
@@ -17,6 +17,9 @@ class HiringManager(Base):
     # (app/api/auth.py TERMS_VERSION). Empty for accounts made before.
     terms_accepted_at = Column(DateTime, nullable=True)
     terms_version = Column(String(40), nullable=True)
+    # "Hide names", kept on the account so the server can keep candidates'
+    # names and contact details from the AI. It was only the page's.
+    hide_names = Column(Boolean, default=False, server_default=false(), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -26,6 +29,7 @@ class HiringManager(Base):
             "name": self.name,
             "email": self.email,
             "company": self.company,
+            "hide_names": bool(self.hide_names),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
