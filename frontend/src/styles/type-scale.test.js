@@ -96,6 +96,42 @@ describe('the text sizes', () => {
     expect(componentSizes.filter(tooSmall)).toEqual([]);
   });
 
+  // Working controls are working text: 14px, though a narrow screen's own
+  // rule may set one smaller to fit.
+  const CONTROLS = {
+    'studio-auth.css': ['.studio-auth .role-nav > a', '.studio-auth .field-input', '.studio-auth .form-fields .field-row .field-input'],
+    'studio-workspace.css': [
+      '.studio-workspace .sw-nav-item', '.studio-workspace .sw-assist-links :is(a, button)',
+      '.studio-workspace .sw-topbar-actions > a', '.studio-workspace .sw-switch', '.studio-workspace .btn',
+    ],
+    'studio-interview.css': ['.studio-interview .si-button'],
+    'studio-dashboard.css': [
+      '.studio-dashboard .candidates-actions .btn', '.studio-dashboard .sd-filterbar input', '.studio-dashboard .sd-filterbar select',
+      '.studio-dashboard .sd-interview-toolbar > div > button', '.studio-dashboard .sd-row-link',
+    ],
+    'studio-focus.css': [
+      '.studio-focus .sf-search input', '.studio-focus .sf-action-row .sf-button', '.studio-focus .sf-file-tabs button',
+      '.studio-focus .sf-text-link', '.studio-focus .sf-explore button > span', '.studio-focus .sf-subtabs button', '.studio-focus .btn',
+    ],
+    'studio-sourcer.css': ['.studio-sourcer .sourcer-brief-bottom button'],
+    'studio-candidate.css': ['.studio-candidate .cd-mode-tab', '.studio-candidate .cd-report-toggle'],
+  };
+
+  it('are 14px for working controls: buttons, inputs, tabs and the sidebar links', () => {
+    const seen = [];
+    const small = Object.entries(CONTROLS).flatMap(([file, selectors]) => rules(read(file))
+      .filter(rule => !rule.media.includes('max-width') && selectors.includes(rule.selector))
+      .flatMap(rule => fontSizes([rule]).map(({ size }) => {
+        seen.push(`${file} ${rule.selector}`);
+        return { size, where: `${file} ${rule.selector}` };
+      }))
+      .filter(({ size }) => size < 14));
+    expect(small).toEqual([]);
+    // Each one is still there, with its size, to be checked.
+    const listed = Object.entries(CONTROLS).flatMap(([file, selectors]) => selectors.map(s => `${file} ${s}`));
+    expect(listed.filter(control => !seen.includes(control))).toEqual([]);
+  });
+
   // Working text is 14px: nothing sits between it and the details' 12px.
   const between = ({ size }) => size > 12 && size < 14;
 
