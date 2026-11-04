@@ -23,6 +23,7 @@ from app.core.database import get_db
 from app.services import db_service
 from app.services import email_quota, evaluations, interview_modes, interview_setup
 from app.services.experience import experience_text
+from app.services.hidden_names import NO_LOOKUP, hides_names, scrub
 from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
@@ -193,7 +194,8 @@ async def send_message(request: Request, req: ChatRequest, user=Depends(get_curr
     """Multi-candidate RAG chat"""
     try:
         history = chat_histories.get(_chat_key(user.id, req.conversation_id), [])
-        response = await resume_rag.chat(req.message, req.candidate_ids, history, req.anonymize, manager_id=user.id)
+        response = await resume_rag.chat(req.message, req.candidate_ids, history, hides_names(user, req.anonymize),
+                                         manager_id=user.id)
         _remember_chat(user.id, req.conversation_id, req.message, response.get("response", ""))
         return response
     except HTTPException:
@@ -205,7 +207,7 @@ async def send_message(request: Request, req: ChatRequest, user=Depends(get_curr
 @limiter.limit("30/minute")
 async def get_intro(request: Request, count: int = 0, anonymize: bool = False, user=Depends(get_current_user)):
     """Get chat intro message"""
-    return resume_rag.get_intro_message(count, anonymize)
+    return resume_rag.get_intro_message(count, hides_names(user, anonymize))
 
 @router.post("/clear")
 async def clear_chat(user=Depends(get_current_user)):
@@ -259,10 +261,15 @@ async def focus_chat(request: Request, req: FocusChatRequest, user=Depends(get_c
             return {"response": "Candidate not found. Please re-upload the resume.", "suggestions": []}
 
         candidate_name = candidate.get('name', 'Unknown')
-        display_name = "The Candidate" if req.anonymize else candidate_name
+        # Names are hidden when the account says so, not only the request
+        # (app/services/hidden_names.py). Then the AI gets no name, address,
+        # phone number or link: it got the name, and the whole résumé text,
+        # and was only asked not to use the name.
+        anonymize = hides_names(user, req.anonymize)
+        display_name = "The Candidate" if anonymize else candidate_name
 
         # Build context from candidate data
-        ctx = f"Name: {candidate_name}\nRole: {candidate.get('predicted_role', 'N/A')}\n"
+        ctx = f"Name: {display_name}\nRole: {candidate.get('predicted_role', 'N/A')}\n"
         ctx += f"Experience: {experience_text(candidate.get('total_experience_years'))} | Level: {candidate.get('experience_level', 'N/A')}\n"
         ctx += f"Location: {candidate.get('location', 'N/A')}\nSummary: {candidate.get('summary', 'N/A')}\n"
         skills = candidate.get('skills', [])
@@ -274,13 +281,16 @@ async def focus_chat(request: Request, req: FocusChatRequest, user=Depends(get_c
         resume_text = candidate.get('text', '') or candidate.get('raw_text', '')
         if resume_text and len(resume_text) > 3000:
             resume_text = resume_text[:3000]
+        if anonymize:
+            ctx, resume_text = scrub(ctx, candidate_name), scrub(resume_text, candidate_name)
 
-        # Auto web search via Research Agent
+        # Auto web search via Research Agent, which searches by name: not
+        # while names are hidden.
         web_context = ""
         web_sources = []
-        should_search = await research_agent.should_search(req.message, candidate_name)
+        should_search = (not anonymize) and await research_agent.should_search(req.message, candidate_name)
 
-        if should_search and not req.anonymize:
+        if should_search:
             search_result = await research_agent.search_for_chat(req.message, candidate_name)
             web_context = search_result.get("web_context", "")
             web_sources = search_result.get("sources", [])
@@ -290,9 +300,9 @@ async def focus_chat(request: Request, req: FocusChatRequest, user=Depends(get_c
                 web_context = (f" (No web search was done: {search_result['unavailable']} "
                                "If the question needs the web, say you couldn't search.)")
 
-        # Build scan data context
+        # Build scan data context: the online lookup's, which names profiles.
         scan_context = ""
-        if req.scan_data:
+        if req.scan_data and not anonymize:
             gh = req.scan_data.get("github")
             if gh:
                 scan_context += f"\n🐙 GITHUB (@{gh.get('username', '')}):\n"
@@ -323,7 +333,7 @@ RULES:
 2. Cross-reference data across sources
 3. NEVER hallucinate — only use provided data
 4. Cite sources: [Resume], [GitHub], [LinkedIn], [Web] when relevant
-5. {"Use 'The Candidate' instead of real name." if req.anonymize else "Use real name."}
+5. {"Use 'The Candidate' instead of real name." if anonymize else "Use real name."}
 
 Respond helpfully with **bold** for key points."""
 
@@ -332,18 +342,20 @@ Respond helpfully with **bold** for key points."""
 
         from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
         msgs = [SystemMessage(content=system)]
+        # The conversation so far, without the name either, when hidden.
+        said = (lambda text: scrub(text, candidate_name)) if anonymize else (lambda text: text)
         for m in req.conversation_history[-20:]:
             if m.get("role") == "user":
-                msgs.append(HumanMessage(content=m["content"]))
+                msgs.append(HumanMessage(content=said(m["content"])))
             elif m.get("role") == "assistant":
-                msgs.append(AIMessage(content=m["content"]))
-        msgs.append(HumanMessage(content=req.message))
+                msgs.append(AIMessage(content=said(m["content"])))
+        msgs.append(HumanMessage(content=said(req.message)))
 
         response = await openai_tool.llm.ainvoke(msgs)
         ai_response = response.content
 
         # Anonymize
-        if req.anonymize and candidate_name:
+        if anonymize and candidate_name:
             for part in candidate_name.split():
                 if len(part) > 2:
                     ai_response = re.sub(re.escape(part), "The Candidate", ai_response, flags=re.IGNORECASE)
@@ -408,7 +420,7 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
             role=req.role, level=req.level,
             experience=req.experience_required,
             job_description=req.job_description,
-            anonymize=req.anonymize,
+            anonymize=hides_names(user, req.anonymize),
             ats_score=ats_score,
         )
         if not result.get("report"):
@@ -423,7 +435,7 @@ async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(g
                 kept = await evaluations.save(
                     db, manager_id=user.id, candidate_id=req.candidate_id,
                     role=req.role, level=req.level, experience_required=req.experience_required,
-                    job_description=req.job_description, anonymized=req.anonymize, report=result["report"],
+                    job_description=req.job_description, anonymized=hides_names(user, req.anonymize), report=result["report"],
                 )
                 answer.update(evaluation_id=kept.id, created_at=kept.created_at.isoformat())
             except Exception as exc:
@@ -447,7 +459,7 @@ async def draft_email(request: Request, req: EmailDraftRequest, user=Depends(get
             # Not the email's body, which is where this used to land.
             raise HTTPException(status_code=404, detail="Candidate not found")
 
-        result = await hr_agent.draft_email(candidate, req.email_type, req.evaluation_report, req.anonymize,
+        result = await hr_agent.draft_email(candidate, req.email_type, req.evaluation_report, hides_names(user, req.anonymize),
                                             sender={"name": user.name, "company": user.company})
         return result
     except HTTPException:
@@ -533,7 +545,12 @@ async def github_analyze(request: Request, req: GitHubRequest, user=Depends(get_
 @router.post("/scan-resume")
 @limiter.limit("10/minute")
 async def scan_resume(request: Request, req: ScanRequest, user=Depends(get_current_user)):
-    """Resume scanning powered by Data Agent"""
+    """Resume scanning powered by Data Agent.
+
+    Not while names are hidden: it searches the web by the person's name, and
+    the page only didn't offer it, so a request could still run it."""
+    if hides_names(user, req.anonymize):
+        raise HTTPException(status_code=403, detail=NO_LOOKUP)
     try:
         candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
         if not candidate:
@@ -543,7 +560,7 @@ async def scan_resume(request: Request, req: ScanRequest, user=Depends(get_curre
             "name": candidate.get("name", "Unknown"),
             "text": candidate.get("text", "") or candidate.get("raw_text", ""),
             "embedded_links": candidate.get("embedded_links", {}),
-            "anonymize": req.anonymize,
+            "anonymize": False,
         }
 
         result = await data_agent.run("Scan and enrich this candidate's profile", context)

@@ -18,6 +18,7 @@ from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag, primary_email, is_sample
 from app.services import email_quota, interview_modes, interview_setup, screening_runs
+from app.services.hidden_names import hides_names
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
 from app.models.candidate import Interview
@@ -258,7 +259,9 @@ async def batch_action(
                 candidate=candidate,
                 email_type=req.email_type,
                 evaluation_report=f"Role: {req.role} | Level: {req.level}",
-                anonymize=False,
+                # Without the name while names are hidden: the drafts were
+                # always written with it.
+                anonymize=hides_names(user),
                 sender={"name": user.name, "company": user.company},
             )
             subject = email_result.get("subject", f"Interview Invitation — {req.role}")

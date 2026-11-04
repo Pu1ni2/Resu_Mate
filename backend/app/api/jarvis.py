@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.services.auth import get_current_user
+from app.services.hidden_names import hides_names, stand_ins
 
 logger = logging.getLogger("resumate.jarvis")
 
@@ -606,6 +607,14 @@ async def jarvis_chat(
     if owned_ids:
         candidates = [c for c in candidates if c.get("id") in owned_ids]
 
+    # With "Hide names" on the account, the AI is told each person as the
+    # pages show them, "Candidate N", with no address or profile links. It was
+    # given every name and address the page sent, whatever the switch said.
+    names = stand_ins(user.id) if hides_names(user) else {}
+    if names:
+        candidates = [{**c, "name": names.get(c.get("id"), "Candidate"), "email": "", "github_url": "", "linkedin_url": ""}
+                      for c in candidates]
+
     active_candidate = _resolve_active_candidate(req.message, req.context, candidates)
 
     # Deterministic kickoff guard: if role is still unknown and the user sends
@@ -648,7 +657,7 @@ async def jarvis_chat(
             "top_candidates": [
                 {
                     "id": row["candidate_id"],
-                    "name": row["name"],
+                    "name": names.get(row["candidate_id"], "Candidate") if names else row["name"],
                     "ats_score": row["ats_score"],
                     "verdict": row["verdict"],
                 }

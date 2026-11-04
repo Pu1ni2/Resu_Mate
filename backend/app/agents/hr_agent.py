@@ -219,8 +219,10 @@ RULES:
         manager to find and replace."""
         context = {"candidate": candidate, "email_type": email_type, "evaluation_report": evaluation_report, "anonymize": anonymize}
         
-        name = "Candidate" if anonymize else candidate.get("name", "Candidate")
-        first_name = "Candidate" if anonymize else name.split()[0]
+        # With names hidden the model isn't told the name, and greets them
+        # without one: it wrote "Hi Candidate".
+        name = "the candidate" if anonymize else candidate.get("name", "Candidate")
+        greeting = ' Greet them as "Hi there", without a name.' if anonymize else ""
         role = candidate.get("predicted_role", "the position")
 
         type_prompts = {
@@ -243,7 +245,7 @@ RULES:
         signer = ", ".join(p for p in ((sender or {}).get("name"), (sender or {}).get("company")) if p)
         sign_off = f"sign off as {signer}" if signer else "sign off without a name"
 
-        prompt = f"""{type_prompts.get(email_type, type_prompts['interest'])}
+        prompt = f"""{type_prompts.get(email_type, type_prompts['interest'])}{greeting}
 
 Candidate: {name} | Role: {role} | Skills: {', '.join(str(s) for s in (candidate.get('skills') or [])[:8])}
 {eval_context}
