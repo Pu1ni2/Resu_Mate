@@ -85,6 +85,14 @@ describe('the Hide names switch', () => {
     fireEvent.click(toggle);
     expect(app.setAnonymize).toHaveBeenCalledWith(true);
   });
+
+  it('says it is busy while it is saved to the account, and keeps the focus', () => {
+    open({ anonymize: true, hideNamesSaving: true });
+    const toggle = screen.getByRole('switch', { name: 'Hide names' });
+    expect(toggle.getAttribute('aria-disabled')).toBe('true');
+    // Not disabled, which drops the keyboard's focus.
+    expect(toggle.disabled).toBe(false);
+  });
 });
 
 describe('the upload area', () => {
