@@ -68,6 +68,7 @@ describe('the wording', () => {
 describe('the links', () => {
   it('lead into the app', () => {
     renderHome();
+    // Named for whose it is, as Candidate login beside it.
     expect(href('Manager sign in')).toBe('/hiring/login');
     expect(href('Start hiring')).toBe('/hiring/register');
     expect(href('or start hiring')).toBe('/hiring/register');
@@ -82,6 +83,7 @@ describe('the links', () => {
     localStorage.setItem(TOKEN_KEY, 'jwt');
     renderHome();
     expect(href('Your workspace')).toBe('/hiring');
+    expect(screen.queryByRole('link', { name: 'Manager sign in' })).toBeNull();
     expect(href('Start hiring')).toBe('/hiring');
     expect(href('or start hiring')).toBe('/hiring');
     expect(href('Candidate login')).toBe('/candidate/login');
