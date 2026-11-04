@@ -90,11 +90,15 @@
 /* The ways back, above the person. */
 .studio-focus .sf-file-back { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 18px; }
 .studio-focus .sf-identity p { margin: 0; color: var(--color-ink-muted); font-size: 14px; }
+/* The role the file was evaluated for, under the person's own. */
+.studio-focus .sf-identity .sf-active-role { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--color-ink); }
 .studio-focus .sf-facts { display: grid; grid-template-columns: repeat(3, minmax(80px, 1fr)); gap: 23px; max-width: 49%; margin: 0; padding-left: 25px; border-left: 1px solid var(--color-line); }
 .studio-focus .sf-facts dt { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; color: var(--color-ink-muted); font-size: 12px; }
 .studio-focus .sf-facts dd { margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .studio-focus .sf-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 15px 20px; border: 1px solid var(--color-line); border-top: 0; background: #f1f1e7; }
 .studio-focus .sf-action-row .sf-button { min-height: 37px; padding: 8px 11px; font-size: 14px; }
+/* The tool that's open, which used to take the primary look from the next step. */
+.studio-focus .sf-action-row .sf-button[aria-pressed=true]:not(.sf-button-primary) { box-shadow: inset 0 0 0 1px var(--color-forest); }
 .studio-focus .sf-action-note { max-width: 180px; margin-left: auto; color: var(--color-ink-muted); font-size: 12px; line-height: 1.6; }
 .studio-focus .sf-export { margin-left: auto; }
 

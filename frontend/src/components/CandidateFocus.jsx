@@ -554,6 +554,11 @@ export default function CandidateFocus() {
   const shownStep = showingKept ? 'result' : agentStep;
   const shownResult = showingKept ? keptEvaluation : agentResult;
   const hasEvaluation = shownStep === 'result' && shownResult && !shownResult.error;
+  // The file's one next step, first in its actions: an evaluation, then an
+  // interview. The sample résumé has no one to invite.
+  const nextStep = !hasEvaluation ? 'evaluate' : focusCandidate.is_sample ? null : 'interview';
+  // The role it was evaluated for; one against a job description has none.
+  const evaluatedFor = hasEvaluation ? (shownResult.role || 'the job description') : null;
   const activeSection = ['websearch', 'github'].includes(activeTool) ? 'research' : ['agent', 'resume-intel'].includes(activeTool) ? 'evaluation' : ['interview', 'interview-history', 'calendly'].includes(activeTool) ? 'interviews' : activeTool;
   const sectionTabs = [
     { id: 'overview', label: 'Overview', icon: User, tool: 'overview' },
@@ -582,7 +587,7 @@ export default function CandidateFocus() {
         <header className="sf-identity">
           <div className="sf-identity-main">
             <div className="sf-identity-mark" aria-hidden="true">{anonymize ? <User size={30} /> : (focusCandidate.name || '?').split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}<span /></div>
-            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}{focusCandidate.is_sample && ' · SAMPLE RÉSUMÉ'}</span><h1>{displayName}</h1><p>{focusCandidate.predicted_role || 'Role not specified'}</p></div>
+            <div><span className="sf-kicker">CANDIDATE / {String(focusCandidate.id).padStart(3, '0')}{focusCandidate.is_sample && ' · SAMPLE RÉSUMÉ'}</span><h1>{displayName}</h1><p>{focusCandidate.predicted_role || 'Role not specified'}</p>{evaluatedFor && <p className="sf-active-role"><Target size={14} aria-hidden="true" /> Evaluated for <strong>{evaluatedFor}</strong>{shownResult.level ? ` · ${shownResult.level}` : ''}</p>}</div>
           </div>
           <dl className="sf-facts">
             <div><dt><Briefcase size={14} /> Experience</dt><dd>{focusCandidate.total_experience_years != null ? `${focusCandidate.total_experience_years} years` : 'Not specified'}</dd></div>
@@ -591,12 +596,16 @@ export default function CandidateFocus() {
           </dl>
         </header>
         <div className="sf-action-row">
-          <button className={`sf-button ${activeTool === 'chat' ? 'sf-button-primary' : ''}`} onClick={() => goTool('chat')}><MessageSquare size={16} /> Discuss candidate</button>
-          <button className={`sf-button ${activeTool === 'email' ? 'sf-button-primary' : ''}`} onClick={() => goTool('email')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to prepare an email.' : 'Prepare an email draft'}><Mail size={16} /> Draft email</button>
+          {/* The next step leads, as the primary action; the tool that's
+              open says so (aria-pressed) rather than taking that look. */}
+          {nextStep === 'evaluate' && <button className="sf-button sf-button-primary" aria-pressed={activeSection === 'evaluation'} onClick={() => goTool('agent')}><Target size={16} /> Evaluate role fit</button>}
+          {nextStep === 'interview' && <button className="sf-button sf-button-primary" aria-pressed={activeTool === 'interview'} onClick={() => goTool('interview')}><Video size={16} /> Create interview</button>}
+          <button className="sf-button" aria-pressed={activeTool === 'chat'} onClick={() => goTool('chat')}><MessageSquare size={16} /> Discuss candidate</button>
+          <button className="sf-button" aria-pressed={activeTool === 'email'} onClick={() => goTool('email')} disabled={!hasEvaluation} title={!hasEvaluation ? 'Complete a role evaluation to prepare an email.' : 'Prepare an email draft'}><Mail size={16} /> Draft email</button>
           {/* The sample résumé has no one to invite; the server refuses it too. */}
-          <button className="sf-button" onClick={() => goTool('interview')} disabled={!hasEvaluation || focusCandidate.is_sample} title={focusCandidate.is_sample ? "The sample résumé is for trying ResuMate, so it can't be invited to an interview." : !hasEvaluation ? 'Complete a role evaluation to create an interview.' : 'Set up an interview'}><Video size={16} /> Create interview</button>
+          {nextStep !== 'interview' && <button className="sf-button" onClick={() => goTool('interview')} disabled={!hasEvaluation || focusCandidate.is_sample} title={focusCandidate.is_sample ? "The sample résumé is for trying ResuMate, so it can't be invited to an interview." : !hasEvaluation ? 'Complete a role evaluation to create an interview.' : 'Set up an interview'}><Video size={16} /> Create interview</button>}
           {hasEvaluation && shownResult.report && <button className="sf-button sf-export" onClick={exportEvaluation}><Download size={16} /> Export evaluation</button>}
-          {!hasEvaluation && <span className="sf-action-note">Evaluate role fit to unlock email & interview setup.</span>}
+          {!hasEvaluation && <span className="sf-action-note">Email and interviews follow an evaluation.</span>}
         </div>
         </div>
         <nav className="sf-file-tabs" aria-label="Candidate file sections">
@@ -615,7 +624,13 @@ export default function CandidateFocus() {
               <button className="sf-text-link" onClick={() => goTool('resume')}>Read the full résumé <ArrowUpRight size={17} /></button>
             </article>
             <aside className="sf-overview-aside">
-              <div className="sf-note"><span className="sf-kicker">THE RIGHT NEXT QUESTION</span><Target size={28} strokeWidth={1.2} /><h3>Great experience.<br />The right fit?</h3><p>Bring a role into the picture. Compare this person’s experience with what your team needs.</p><button className="sf-button sf-button-dark" onClick={() => goTool('agent')}>Evaluate role fit <ArrowUpRight size={17} /></button></div>
+              {/* The next step leads the actions above, once: this says why,
+                  and once evaluated, for what. */}
+              {evaluatedFor ? (
+                <div className="sf-note"><span className="sf-kicker">THE EVALUATION</span><Target size={28} strokeWidth={1.2} /><h3>Evaluated for {evaluatedFor}.</h3><p>{focusCandidate.is_sample ? 'The sample résumé is for trying ResuMate, so there is no one to invite.' : 'Read what it found, then hear it from them in an interview.'}</p><button className="sf-button sf-button-dark" onClick={() => goTool('agent')}>Read the evaluation <ArrowUpRight size={17} /></button></div>
+              ) : (
+                <div className="sf-note"><span className="sf-kicker">THE RIGHT NEXT QUESTION</span><Target size={28} strokeWidth={1.2} /><h3>Great experience.<br />The right fit?</h3><p>Bring a role into the picture with Evaluate role fit, above: compare this person’s experience with what your team needs.</p></div>
+              )}
               <div className="sf-explore"><h4>Follow the evidence</h4><button onClick={() => goTool('websearch')}><Globe size={17} /><span>Research & public work<small>Look beyond the document</small></span><ArrowUpRight size={16} /></button><button onClick={() => goTool('resume-intel')}><BookOpen size={17} /><span>Résumé intelligence<small>Find what to ask next</small></span><ArrowUpRight size={16} /></button><button onClick={() => goTool('chat')}><MessageSquare size={17} /><span>Discuss this candidate<small>Answers from their file</small></span><ArrowUpRight size={16} /></button></div>
             </aside>
           </div>
