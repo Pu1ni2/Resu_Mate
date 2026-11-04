@@ -65,7 +65,7 @@ describe('the sidebar', () => {
 
   it('opens the other pages as links', () => {
     open();
-    fireEvent.click(screen.getByRole('link', { name: 'Find Candidates' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Find candidates' }));
     expect(screen.getByText('The sourcer')).toBeTruthy();
   });
 

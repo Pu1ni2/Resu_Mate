@@ -102,7 +102,7 @@ describe('the text sizes', () => {
     'studio-auth.css': ['.studio-auth .role-nav > a', '.studio-auth .field-input', '.studio-auth .form-fields .field-row .field-input'],
     'studio-workspace.css': [
       '.studio-workspace .sw-nav-item', '.studio-workspace .sw-assist-links :is(a, button)',
-      '.studio-workspace .sw-topbar-actions > a', '.studio-workspace .sw-switch', '.studio-workspace .btn',
+      '.studio-workspace .sw-switch', '.studio-workspace .btn',
     ],
     'studio-interview.css': ['.studio-interview .si-button'],
     'studio-dashboard.css': [

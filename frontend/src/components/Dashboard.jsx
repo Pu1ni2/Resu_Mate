@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
@@ -9,7 +9,7 @@ import {
   Users, BarChart2, Upload, Check, Sparkles,
   Eye, EyeOff, Briefcase, MapPin, Award, Trash2,
   ChevronLeft, TrendingUp, Send, Bot, FileText, AlertCircle,
-  Mic, MicOff, Volume2, Loader, Square, Video, Zap, Search, ArrowUpRight, ArrowRight
+  Mic, MicOff, Volume2, Loader, Square, Video, Zap, Search, ArrowUpRight, ArrowRight, ScanSearch
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { knownYears } from '../services/experience';
@@ -731,6 +731,7 @@ export default function Dashboard() {
 
               <div className="card upload-card">
                 <div className="card-body">
+                  <div className="sd-add-row">
                   <div
                     className={`upload-zone ${dragActive ? 'active' : ''}`}
                     {...pressable(() => fileRef.current?.click())}
@@ -754,6 +755,14 @@ export default function Dashboard() {
                         <p>PDF, DOCX, TXT • Max 5MB each • No duplicates</p>
                       </>
                     )}
+                  </div>
+                  {/* The other way in. It sat in every page's top bar; it
+                      belongs with the collection it adds to. */}
+                  {candidates.length > 0 && (
+                    <Link className="sd-find-link" to="/hiring/sourcer">
+                      <ScanSearch size={16} aria-hidden="true" />Find candidates<ArrowUpRight size={14} aria-hidden="true" />
+                    </Link>
+                  )}
                   </div>
                   {candidates.length === 0 && (
                     <button type="button" className="btn btn-secondary btn-sm" onClick={loadSample} style={{ marginTop: 12 }}>
@@ -967,9 +976,14 @@ export default function Dashboard() {
                       <span>02 Understand</span><ArrowRight size={14} aria-hidden="true" />
                       <span>03 Connect</span>
                     </div>
-                    <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>
-                      <Upload size={15} aria-hidden="true" />Upload your first resume
-                    </button>
+                    <div className="sd-first-actions">
+                      <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>
+                        <Upload size={15} aria-hidden="true" />Upload your first resume
+                      </button>
+                      <Link className="btn btn-secondary" to="/hiring/sourcer">
+                        <ScanSearch size={15} aria-hidden="true" />Find candidates
+                      </Link>
+                    </div>
                   </div>
                 </section>
               )}

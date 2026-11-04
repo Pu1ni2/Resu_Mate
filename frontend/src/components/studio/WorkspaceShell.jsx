@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, SlidersHorizontal, Video, BarChart2, MessageSquare, ArrowUpRight, ScanSearch, Bell, Keyboard } from 'lucide-react';
+import { Users, SlidersHorizontal, Video, BarChart2, MessageSquare, ArrowUpRight, Bell, Keyboard } from 'lucide-react';
 
 import { useProduct } from '../ProductLayer';
 import AskJarvis from './AskJarvis';
@@ -15,8 +15,8 @@ const SECTIONS = [
 ];
 
 /* The frame the hiring workspace's pages share (styles/studio-workspace.css):
- * the sidebar with the sections, the top bar with Find Candidates, the
- * notifications and the keyboard shortcuts, the page's heading, and the footer.
+ * the sidebar with the sections, the top bar with the notifications and the
+ * keyboard shortcuts, the page's heading, and the footer.
  *
  * `active` is the section the page belongs to ('chat' for the candidate chat),
  * or none; `place` names the page in the top bar when it is in no section.
@@ -104,9 +104,8 @@ export default function WorkspaceShell({
         <div className="sw-topbar">
           <span><span className="sw-topbar-root">THE WORKSPACE <i aria-hidden="true">/</i> </span>{here}</span>
           <div className="sw-topbar-actions">
-            <Link to="/hiring/sourcer">
-              <ScanSearch size={16} aria-hidden="true" />Find Candidates<ArrowUpRight size={14} aria-hidden="true" />
-            </Link>
+            {/* Find candidates was here, on every page; it is with the
+                collection it adds to now (Dashboard's Candidates view). */}
             {product && (
               <>
                 <button

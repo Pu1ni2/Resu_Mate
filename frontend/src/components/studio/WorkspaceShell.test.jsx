@@ -90,10 +90,9 @@ describe('the workspace frame', () => {
     expect(onChat).toHaveBeenCalledTimes(1);
   });
 
-  it('leads home, to Find Candidates and to the legal pages', () => {
+  it('leads home and to the legal pages', () => {
     renderShell();
     expect(href('ResuMate homepage')).toBe('/');
-    expect(href('Find Candidates')).toBe('/hiring/sourcer');
     expect(href('Privacy')).toBe('/privacy');
     expect(href('Terms')).toBe('/terms');
   });

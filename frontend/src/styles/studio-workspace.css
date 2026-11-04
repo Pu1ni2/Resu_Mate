@@ -93,8 +93,6 @@
 .studio-workspace .sw-topbar > span { font: 12px var(--font-mono); letter-spacing: 0.7px; color: var(--color-ink-muted); }
 .studio-workspace .sw-topbar i { margin: 0 13px; color: #b0b3a6; }
 .studio-workspace .sw-topbar-actions { display: flex; align-items: center; gap: 6px; }
-.studio-workspace .sw-topbar-actions > a { display: flex; align-items: center; gap: 8px; margin-right: 12px; color: var(--color-ink); font-size: 14px; text-decoration: none; white-space: nowrap; }
-.studio-workspace .sw-topbar-actions > a:hover { color: var(--color-accent); }
 /* The notifications and the keyboard shortcuts, in the top bar. */
 .studio-workspace .sw-icon-button {
   position: relative;
@@ -226,7 +224,6 @@
   .studio-workspace .sw-topbar { flex-wrap: wrap; gap: 8px 12px; padding-top: 6px; }
   .studio-workspace .sw-topbar > span { letter-spacing: 0; }
   .studio-workspace :is(.sw-topbar-root, .sw-shortcuts-button) { display: none; }
-  .studio-workspace .sw-topbar-actions > a { gap: 5px; margin-right: 6px; font-size: 12px; }
   .studio-workspace .sw-page-header { gap: 17px; }
   .studio-workspace .sw-page-header h1 { font-size: 34px; }
   .studio-workspace .sw-subtitle { font-size: 12px; }

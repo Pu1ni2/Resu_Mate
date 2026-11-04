@@ -47,6 +47,13 @@
 .studio-dashboard .has-candidates .upload-zone { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; min-height: 0; padding: 11px 16px; }
 .studio-dashboard .has-candidates .upload-zone > svg { flex: none; color: #566747; }
 .studio-dashboard .has-candidates .upload-zone p { margin-left: auto; }
+/* Beside it, the other way in: Find candidates, with the collection it adds to. */
+.studio-dashboard .sd-add-row { display: flex; align-items: stretch; gap: 12px; }
+.studio-dashboard .sd-add-row > .upload-zone { flex: 1; min-width: 0; }
+.studio-dashboard .sd-find-link { display: flex; flex: none; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-ink); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.studio-dashboard .sd-find-link:hover { border-color: #71805f; background: #e8ecdc; }
+.studio-dashboard .sd-find-link:focus-visible { outline: 2px solid var(--color-forest); outline-offset: 2px; }
+.studio-dashboard .sd-first-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
 /* The collection's heading, its actions, and its search. */
 .studio-dashboard .candidates-header { flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; }
@@ -292,6 +299,10 @@
   .studio-dashboard .sd-paper-art { height: 215px; margin-top: -20px; transform: scale(0.8); }
   .studio-dashboard .sd-first-file p { margin-inline: auto; }
   .studio-dashboard .sd-first-steps { justify-content: center; }
+  .studio-dashboard .sd-first-actions { justify-content: center; }
+  /* Find candidates under the bar, as wide as it. */
+  .studio-dashboard .sd-add-row { flex-wrap: wrap; }
+  .studio-dashboard .sd-find-link { flex: 1 0 100%; justify-content: center; min-height: 42px; }
   .studio-dashboard .sd-filterbar { gap: 8px; }
   .studio-dashboard .sd-filterbar input { font-size: 12px; }
   /* As small as the search beside it, so "Original order" fits its 120px. */
