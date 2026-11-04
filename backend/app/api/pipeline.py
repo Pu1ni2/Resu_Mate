@@ -289,8 +289,8 @@ async def batch_action(
         if req.send_emails and result["interview_created"]:
             if not email_service.configured:
                 result["email_send_error"] = "Email isn't set up on this server. Share the portal link instead."
-            elif not await email_quota.can_send(db, mgr):
-                result["email_send_error"] = email_quota.limit_reached()
+            elif refused := await email_quota.refusal(db, user):
+                result["email_send_error"] = refused
             else:
                 try:
                     sent = await email_service.send_interview_invitation(
@@ -354,9 +354,9 @@ async def send_invites(
         elif interview.status == "completed":
             outcome["email"] = interview.candidate_email
             outcome["error"] = "This interview is already complete."
-        elif not await email_quota.can_send(db, user.id):
+        elif refused := await email_quota.refusal(db, user):
             outcome["email"] = interview.candidate_email
-            outcome["error"] = email_quota.limit_reached()
+            outcome["error"] = refused
         else:
             outcome["email"] = interview.candidate_email
             outcome["email_sent"] = await email_service.send_email_draft(

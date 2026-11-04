@@ -882,7 +882,8 @@ async def _notify_manager_interview_complete(db, interview) -> None:
         mgr = (await db.execute(
             _select(HiringManager).where(HiringManager.id == interview.manager_id)
         )).scalar_one_or_none()
-        if not mgr or not mgr.email:
+        # Not to an address the manager hasn't confirmed is theirs.
+        if not mgr or not mgr.email or not mgr.email_verified:
             return
         from html import escape
         from app.services.email_service import email_service
@@ -956,8 +957,8 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         from app.services.email_service import email_service
         if not email_service.configured:
             invite_error = "Email isn't set up on this server. Share the portal link instead."
-        elif not await email_quota.can_send(db, mgr):
-            invite_error = email_quota.limit_reached()
+        elif refused := await email_quota.refusal(db, user):
+            invite_error = refused
         else:
             invite_sent = await email_service.send_interview_invitation(
                 email, req.candidate_name or "there", req.role or "General", settings.candidate_login_url,
