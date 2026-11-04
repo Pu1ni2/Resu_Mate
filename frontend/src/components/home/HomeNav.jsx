@@ -2,8 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 /* The menu. Platform and For candidates open the preview on the right tab;
- * How it works opens its page. */
-export default function HomeNav({ signInTo, onShow }) {
+ * How it works opens its page. The manager's way in says it's the manager's,
+ * as Candidate login does: it was a bare "Sign in" beside it. A manager
+ * already signed in is taken to their workspace, and it says so. */
+export default function HomeNav({ signInTo, signedIn = false, onShow }) {
   const show = tab => (event) => {
     event.preventDefault();
     onShow(tab);
@@ -20,7 +22,7 @@ export default function HomeNav({ signInTo, onShow }) {
         </nav>
         <div className="nav-actions">
           <Link className="nav-login" to="/candidate/login">Candidate login</Link>
-          <Link className="nav-cta" to={signInTo}>Sign in <span className="arrow" aria-hidden="true">↗</span></Link>
+          <Link className="nav-cta" to={signInTo}>{signedIn ? 'Your workspace' : 'Manager sign in'} <span className="arrow" aria-hidden="true">↗</span></Link>
         </div>
       </header>
     </div>

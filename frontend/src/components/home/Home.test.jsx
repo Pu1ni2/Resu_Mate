@@ -68,7 +68,7 @@ describe('the wording', () => {
 describe('the links', () => {
   it('lead into the app', () => {
     renderHome();
-    expect(href('Sign in')).toBe('/hiring/login');
+    expect(href('Manager sign in')).toBe('/hiring/login');
     expect(href('Start hiring')).toBe('/hiring/register');
     expect(href('or start hiring')).toBe('/hiring/register');
     expect(href('Candidate login')).toBe('/candidate/login');
@@ -81,7 +81,7 @@ describe('the links', () => {
   it('take a manager who is signed in straight to the dashboard', () => {
     localStorage.setItem(TOKEN_KEY, 'jwt');
     renderHome();
-    expect(href('Sign in')).toBe('/hiring');
+    expect(href('Your workspace')).toBe('/hiring');
     expect(href('Start hiring')).toBe('/hiring');
     expect(href('or start hiring')).toBe('/hiring');
     expect(href('Candidate login')).toBe('/candidate/login');

@@ -45,7 +45,7 @@ export default function Home() {
 
   return (
     <div id="top" className={still ? 'studio motion-paused' : 'studio'}>
-      <HomeNav signInTo={forManager('/hiring/login')} onShow={showInPreview} />
+      <HomeNav signInTo={forManager('/hiring/login')} signedIn={Boolean(getToken())} onShow={showInPreview} />
       <main>
         <Hero person={state.person} onChoose={person => dispatch({ type: 'choose', person })}
           startHiringTo={forManager('/hiring/register')} />
