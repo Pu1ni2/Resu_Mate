@@ -74,3 +74,17 @@ describe('adding résumés', () => {
     expect(screen.queryByRole('button', { name: /^add résumés/i })).toBeNull();
   });
 });
+
+// The other way in, with the collection it adds to: it sat in every page's
+// top bar.
+describe('finding candidates', () => {
+  it('sits beside Add résumés', () => {
+    open();
+    expect(screen.getByRole('link', { name: 'Find candidates' }).getAttribute('href')).toBe('/hiring/sourcer');
+  });
+
+  it('is offered in an empty collection too', () => {
+    open({ candidates: [] });
+    expect(screen.getByRole('link', { name: 'Find candidates' }).getAttribute('href')).toBe('/hiring/sourcer');
+  });
+});

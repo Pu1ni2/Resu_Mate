@@ -106,6 +106,7 @@ describe('the text sizes', () => {
     ],
     'studio-interview.css': ['.studio-interview .si-button'],
     'studio-dashboard.css': [
+      '.studio-dashboard .sd-find-link',
       '.studio-dashboard .candidates-actions .btn', '.studio-dashboard .sd-filterbar input', '.studio-dashboard .sd-filterbar select',
       '.studio-dashboard .sd-interview-toolbar > div > button', '.studio-dashboard .sd-row-link',
     ],

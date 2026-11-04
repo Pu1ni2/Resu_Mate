@@ -97,6 +97,11 @@ describe('the workspace frame', () => {
     expect(href('Terms')).toBe('/terms');
   });
 
+  it('keeps Find candidates out of its top bar: it is with the collection', () => {
+    renderShell();
+    expect(screen.queryByRole('link', { name: /find candidates/i })).toBeNull();
+  });
+
   it("skips to the page's own part, which starts with the page's heading", () => {
     renderShell({
       eyebrow: '01 / THE CANDIDATE COLLECTION',
