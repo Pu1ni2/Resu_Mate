@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Send, Mic, MicOff, Loader, RotateCcw, Maximize2 } from 'lucide-react';
 import useVoice from '../../hooks/useVoice';
+import { scrollBehavior } from '../../hooks/usePrefersReducedMotion';
 import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
@@ -461,7 +462,7 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   // ── Append message ────────────────────────────────────────────────────────
   const appendMsg = useCallback((msg) => {
     setMessages(prev => [...prev, { id: newId(), ...msg }]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: scrollBehavior() }), 60);
   }, []);
 
   const updateContext = useCallback((patch) => {

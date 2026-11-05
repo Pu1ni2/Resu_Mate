@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { authFetch, responseError } from '../services/authFetch';
+import { scrollBehavior } from './usePrefersReducedMotion';
 
 export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, scanContact, anonymize, getCandidatePayload, speakText }) {
   const [chatInput, setChatInput] = useState('');
@@ -17,7 +18,7 @@ export default function useFocusChat({ apiBase, focusCandidate, scanProfiles, sc
   }, [focusCandidate?.id]);
 
   useEffect(() => {
-    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    msgEndRef.current?.scrollIntoView({ behavior: scrollBehavior() });
   }, [messages, isTyping]);
 
   // Auto-speak last assistant message when pending

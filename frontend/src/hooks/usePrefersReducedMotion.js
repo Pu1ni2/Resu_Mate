@@ -13,3 +13,13 @@ import useMediaQuery from './useMediaQuery';
 export default function usePrefersReducedMotion() {
   return useMediaQuery('(prefers-reduced-motion: reduce)');
 }
+
+/* How script should scroll, as the setting asks. A script's own smooth
+ * scrolling glides whatever the stylesheets say: the chats glided to each new
+ * message for everyone. Read when it's used, so it follows the setting too. */
+export function scrollBehavior() {
+  const query = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+  return query?.matches ? 'auto' : 'smooth';
+}

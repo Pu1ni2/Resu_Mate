@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { scrollBehavior } from '../hooks/usePrefersReducedMotion';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
 import {
@@ -197,7 +198,7 @@ export default function CandidateDashboard() {
   };
   const advisorSuggestions = advisorMessages.length === 0 ? modeSuggestions[advisorMode] : dynamicSuggestions;
 
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [advisorMessages, advisorTyping]);
+  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: scrollBehavior() }); }, [advisorMessages, advisorTyping]);
   useEffect(() => { setDynamicSuggestions([]); }, [advisorMode]);
 
   // Each mode's conversation, as the advisor remembers it. The advisor

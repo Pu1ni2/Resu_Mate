@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { scrollBehavior } from '../hooks/usePrefersReducedMotion';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
 import ATSResultsView from './pipeline/ATSResultsView';
@@ -393,7 +394,7 @@ export default function Dashboard() {
   }, [tab, initChat]);
 
   useEffect(() => {
-    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    msgEndRef.current?.scrollIntoView({ behavior: scrollBehavior() });
   }, [messages, isTyping]);
 
   const handleUpload = async (files) => {
