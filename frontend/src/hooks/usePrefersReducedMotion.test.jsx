@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
 
-import usePrefersReducedMotion from './usePrefersReducedMotion';
+import usePrefersReducedMotion, { scrollBehavior } from './usePrefersReducedMotion';
 
 /* The stylesheet's prefers-reduced-motion rule collapses CSS animations, but
  * script can't see it. This hook is how the homepage knows to scroll without
@@ -92,5 +92,31 @@ describe('usePrefersReducedMotion', () => {
     delete window.matchMedia;
     expect(() => render(<Probe />)).not.toThrow();
     expect(screen.getByText('full')).toBeTruthy();
+  });
+});
+
+// The chats scrolled smoothly from script for everyone, which no stylesheet
+// reaches.
+describe('scrollBehavior', () => {
+  it('jumps rather than glides when less motion is asked for', () => {
+    stubMatchMedia({ matches: true });
+    expect(scrollBehavior()).toBe('auto');
+  });
+
+  it('glides otherwise', () => {
+    stubMatchMedia({ matches: false });
+    expect(scrollBehavior()).toBe('smooth');
+  });
+
+  it('follows the setting each time it is read', () => {
+    const mm = stubMatchMedia({ matches: false });
+    expect(scrollBehavior()).toBe('smooth');
+    mm.emit(true);
+    expect(scrollBehavior()).toBe('auto');
+  });
+
+  it('glides when matchMedia is missing entirely', () => {
+    delete window.matchMedia;
+    expect(scrollBehavior()).toBe('smooth');
   });
 });
