@@ -120,6 +120,13 @@ describe('the workspace frame', () => {
     expect(within(main).getByText('The page')).toBeTruthy();
   });
 
+  it("keeps a page's actions when the page's own content heads it", () => {
+    renderShell({ title: undefined, actions: <button>Hide names</button> });
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('button', { name: 'Hide names' })).toBeTruthy();
+    expect(within(main).queryByRole('heading', { level: 1 })).toBeNull();
+  });
+
   it("puts a page's notice above its heading, such as the reminder to confirm the email", () => {
     renderShell({ notice: <p>Confirm your email to send invitations.</p> });
     const main = screen.getByRole('main');

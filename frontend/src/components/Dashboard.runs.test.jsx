@@ -152,3 +152,20 @@ describe('a run the server could not keep', () => {
     expect(where()).toBe('?view=screening');
   });
 });
+
+// "Find the right fit." sat above an open run, as large as its shortlist.
+describe('an open run', () => {
+  it("leads the page with its role, keeping Hide names", async () => {
+    open('/hiring?view=screening&run=7');
+    await results();
+    expect(screen.getAllByRole('heading', { level: 1 }).map(h => h.textContent)).toEqual(['Shortlist — Engineer']);
+    expect(screen.getByRole('switch', { name: 'Hide names' })).toBeTruthy();
+  });
+
+  it('gives the view its own heading back once it is left', async () => {
+    open('/hiring?view=screening&run=7');
+    await results();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getAllByRole('heading', { level: 1 }).map(h => h.textContent)).toEqual(['Find the right fit.']);
+  });
+});

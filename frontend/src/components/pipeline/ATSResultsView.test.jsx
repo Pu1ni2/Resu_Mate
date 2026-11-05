@@ -79,6 +79,43 @@ describe('where the results sit', () => {
     expect(sizes.length).toBeGreaterThan(0);
     expect(sizes.filter(size => size < 11)).toEqual([]);
   });
+
+  it('lead the page in the workspace when the frame has no heading of its own', () => {
+    open(run({}), { embedded: true, leads: true });
+    expect(screen.getAllByRole('heading', { level: 1 }).map(h => h.textContent)).toEqual(['Shortlist — Backend Engineer']);
+  });
+});
+
+/* The bulk action was fixed to the screen from the first moment, over the
+ * people before their evidence was read; on a phone its button took four
+ * lines over them. It follows the list. */
+describe('the bulk action', () => {
+  const BEA = { ...RESULT, candidate_id: 2, name: 'Bea', email: 'bea@x.com' };
+  const two = () => open(run({ results: [RESULT, BEA], shortlist: [RESULT, BEA], total_screened: 2 }));
+
+  it('comes after every person, their file and their details', () => {
+    two();
+    const bar = screen.getByRole('group', { name: 'The selected candidates' });
+    expect(bar.textContent).toContain('2 selected');
+    const before = [
+      ...screen.getAllByRole('link', { name: /’s file \(new tab\)$/ }),
+      ...screen.getAllByRole('button', { name: /^Show details for / }),
+    ];
+    expect(before).toHaveLength(4);
+    for (const el of before) expect(el.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('sits in the page, not fixed over it', () => {
+    two();
+    const bar = screen.getByRole('group', { name: 'The selected candidates' });
+    expect(bar.className).not.toMatch(/\b(fixed|sticky)\b/);
+  });
+
+  it('goes when no one is selected', () => {
+    two();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
+    expect(screen.queryByRole('group', { name: 'The selected candidates' })).toBeNull();
+  });
 });
 
 describe('selecting from the screening results', () => {
