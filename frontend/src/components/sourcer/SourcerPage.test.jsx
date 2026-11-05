@@ -231,6 +231,47 @@ describe('the shortlist', () => {
   });
 });
 
+/* Once a search had ended, its people were one panel among six, chips under
+ * the map, the log and the judging, with the list in a drawer. */
+describe('a search that has ended', () => {
+  it('leads with its people, best first, on the page', async () => {
+    fakeServer();
+    renderPage();
+    await search();
+    await screen.findByText('Every person found has been read');
+    const people = screen.getByRole('region', { name: /The shortlist/ });
+    expect(people.textContent).toMatch(/^The shortlist 2/);
+    expect(within(people).getAllByText(/Maya Chen|Ada Lovelace/).map(n => n.textContent)).toEqual(['Maya Chen', 'Ada Lovelace']);
+    expect(within(people).getByRole('button', { name: 'Draft outreach to Ada Lovelace' })).toBeTruthy();
+    // Everyone is on the page: there is no "See all" to a drawer.
+    expect(screen.queryByRole('region', { name: 'Top of shortlist' })).toBeNull();
+  });
+
+  it('folds how the search went away below them: the counts, the map, the log, the judging', async () => {
+    fakeServer();
+    renderPage();
+    await search();
+    await screen.findByText('Every person found has been read');
+    const people = screen.getByRole('region', { name: /The shortlist/ });
+    const how = screen.getByText('How the search went').closest('details');
+    expect(how.open).toBe(false);
+    expect(people.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const part of [screen.getByText('Shortlisted'), screen.getByTestId('population-map'),
+      screen.getByRole('region', { name: 'Judging now' }), screen.getByText('Read everyone')]) {
+      expect(how.contains(part)).toBe(true);
+    }
+  });
+
+  it('while it runs, shows the live panels instead, with the shortlist so far', async () => {
+    runningServer(RUN.filter(e => e.type !== 'done'));
+    renderPage();
+    await search();
+    expect(await screen.findByRole('region', { name: 'Top of shortlist' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: /The shortlist/ })).toBeNull();
+    expect(screen.queryByText('How the search went')).toBeNull();
+  });
+});
+
 describe('outreach', () => {
   it('drafts a message to edit and copy; Escape closes only the draft', async () => {
     fakeServer();
