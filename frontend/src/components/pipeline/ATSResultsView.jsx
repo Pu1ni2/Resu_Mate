@@ -33,8 +33,9 @@ function BucketTile({ label, count, lead }) {
  * could open it was the voice agent's full-screen overlay; now that Screening
  * is a section with its own nav entry, it has to sit in the workspace and
  * inherit the page background rather than paint its own. There the frame's
- * title is the page's heading, so the shortlist's is the next level down. */
-export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, embedded = false }) {
+ * title is the page's heading, so the shortlist's is the next level down,
+ * unless `leads`: the frame has none, and the role leads the page. */
+export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, embedded = false, leads = false }) {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedIds, setSelectedIds] = useState(() =>
     (pipelineResult?.shortlist || []).map(r => r.candidate_id)
@@ -101,7 +102,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
   }));
 
   const leadBucket = Math.max(stats?.strong_fit ?? 0, stats?.good_fit ?? 0, stats?.consider ?? 0, stats?.no_match ?? 0);
-  const Heading = embedded ? 'h2' : 'h1';
+  const Heading = embedded && !leads ? 'h2' : 'h1';
 
   return (
     <div className={embedded ? 'studio-screening-results' : 'studio-screening-results min-h-screen bg-canvas px-5 py-6 text-ink'}>
@@ -227,14 +228,16 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
           emptyMessage="No candidates in this category."
         />
 
-        {/* Sticky batch bar */}
+        {/* The bulk action, after the people and their evidence. It floated
+            over them, fixed to the screen, from the first moment, and on a
+            phone its button took four lines over what was being read. It
+            follows the list now, and wraps on a phone. */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-5 left-1/2 z-[100] flex max-w-[90vw] -translate-x-1/2 items-center gap-4 rounded-[6px] border border-accent-line bg-surface px-5 py-3.5 shadow-e3">
+          <div role="group" aria-label="The selected candidates" className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[6px] border border-accent-line bg-surface px-5 py-3.5">
             <div className="flex items-center gap-2">
               <Users size={16} className="text-accent" />
               <span className="text-[14px] font-semibold text-ink">{selectedIds.length} selected</span>
             </div>
-            <div className="h-6 w-px bg-line" />
             <button
               onClick={() => setShowBatchModal(true)}
               className="inline-flex items-center gap-2 rounded-[4px] border-0 bg-accent px-4 py-2.5 text-[14px] font-medium text-ink-inverse transition-colors duration-[120ms] hover:bg-accent-hover"
@@ -244,7 +247,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
             <button
               onClick={() => setSelectedIds([])}
               aria-label="Clear selection"
-              className="border-0 bg-transparent p-1 text-ink-faint transition-colors duration-[120ms] hover:text-ink-muted"
+              className="ml-auto border-0 bg-transparent p-1 text-ink-faint transition-colors duration-[120ms] hover:text-ink-muted"
             >
               <XCircle size={16} />
             </button>

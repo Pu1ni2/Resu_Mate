@@ -154,12 +154,9 @@ export function Review() {
             <Route
               path="/review/results"
               element={(
-                <WorkspaceShell
-                  active="screening"
-                  title={<>A closer look at <em>the fit.</em></>}
-                  subtitle="Illustrative screening results for design review."
-                >
-                  <ATSResultsView embedded pipelineResult={pipeline()} onBack={reload} onRunAgain={reload} />
+                // As the workspace shows an open run: the role leads the page.
+                <WorkspaceShell active="screening">
+                  <ATSResultsView embedded leads pipelineResult={pipeline()} onBack={reload} onRunAgain={reload} />
                 </WorkspaceShell>
               )}
             />

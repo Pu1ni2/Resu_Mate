@@ -112,6 +112,9 @@
 .studio-workspace .sw-page-header h1 em { font-weight: 400; color: var(--color-accent); }
 .studio-workspace .sw-subtitle { max-width: 570px; margin: 0; font-size: 14px; line-height: 1.7; color: var(--color-ink-muted); }
 .studio-workspace .sw-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-bottom: 4px; }
+/* Actions without a heading, to the right, with less room: the page's own
+   content heads it. */
+.studio-workspace .sw-page-header.is-actions-only { justify-content: flex-end; padding: 18px 0 8px; }
 /* A switch among the page's actions, as the dashboard's Hide names: a button
    with role="switch", named by its words, the track showing whether it is on. */
 .studio-workspace .sw-switch { display: flex; align-items: center; gap: 7px; padding: 6px 0; border: 0; background: none; color: var(--color-ink-muted); font-size: 14px; cursor: pointer; }

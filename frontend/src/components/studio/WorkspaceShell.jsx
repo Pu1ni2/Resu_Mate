@@ -134,13 +134,17 @@ export default function WorkspaceShell({
 
         <main id="workspace-content" className="sw-content" tabIndex={-1}>
           {notice}
-          {title && (
-            <header className="sw-page-header">
-              <div>
-                {eyebrow && <p className="sw-eyebrow">{eyebrow}</p>}
-                <h1>{title}</h1>
-                {subtitle && <p className="sw-subtitle">{subtitle}</p>}
-              </div>
+          {/* A page whose own content heads it, such as an open screening
+              run, keeps its actions here without a heading. */}
+          {(title || actions) && (
+            <header className={`sw-page-header${title ? '' : ' is-actions-only'}`}>
+              {title && (
+                <div>
+                  {eyebrow && <p className="sw-eyebrow">{eyebrow}</p>}
+                  <h1>{title}</h1>
+                  {subtitle && <p className="sw-subtitle">{subtitle}</p>}
+                </div>
+              )}
               {actions && <div className="sw-page-actions">{actions}</div>}
             </header>
           )}

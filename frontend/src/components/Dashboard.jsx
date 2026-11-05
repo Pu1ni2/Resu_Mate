@@ -672,12 +672,15 @@ export default function Dashboard() {
   };
 
   const view = VIEWS[tab];
+  // An open screening run leads with its role, its own heading: the view's,
+  // "Find the right fit.", sat above it as large.
+  const runOpen = tab === 'screening' && Boolean(shownRun);
   return (
     <WorkspaceShell
       active={view.section}
-      eyebrow={view.eyebrow}
-      title={view.title}
-      subtitle={view.subtitle}
+      eyebrow={runOpen ? undefined : view.eyebrow}
+      title={runOpen ? undefined : view.title}
+      subtitle={runOpen ? undefined : view.subtitle}
       onNavigate={navigateTo}
       onChat={() => setTab('chat')}
       notice={<ConfirmEmailNotice />}
@@ -1082,6 +1085,7 @@ export default function Dashboard() {
                 <ATSResultsView
                   key={shownRun.run_id ?? 'not kept'}
                   embedded
+                  leads
                   pipelineResult={shownRun}
                   onBack={leaveRun}
                   onRunAgain={leaveRun}
