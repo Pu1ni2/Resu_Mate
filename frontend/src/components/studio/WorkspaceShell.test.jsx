@@ -8,9 +8,13 @@ import ProductLayer from '../ProductLayer';
 import { toast, notify } from '../../services/notify';
 
 /* The frame the hiring workspace's pages share: the four sections with the
- * current one marked, the way to the candidate chat, Jarvis and Find
- * Candidates, a skip link to the page's own part, and, inside ProductLayer,
- * the bell and the shortcuts in its top bar instead of floating over the page. */
+ * current one marked, the assistant, a skip link to the page's own part, and,
+ * inside ProductLayer, the bell and the shortcuts in its top bar instead of
+ * floating over the page. */
+
+// The assistant counts the selection as it opens.
+const mocks = vi.hoisted(() => ({ app: null }));
+vi.mock('../../context/AppContext', () => ({ useApp: () => mocks.app }));
 
 const SECTIONS = ['Candidates', 'Screening', 'Interviews', 'Insights'];
 
@@ -38,6 +42,7 @@ beforeEach(() => {
   localStorage.clear();
   // The first-visit walkthrough would open over the page.
   localStorage.setItem('resumate_onboarded', 'true');
+  mocks.app = { candidates: [], selectedCandidates: [] };
 });
 
 describe('the workspace frame', () => {
@@ -72,20 +77,22 @@ describe('the workspace frame', () => {
     expect(onNavigate.mock.calls.map(([view]) => view)).toEqual(['upload', 'screening', 'interviews', 'analytics']);
   });
 
-  it('leads to the candidate chat, and offers Jarvis on every page', () => {
+  it('leads, from its assistant, to the chat about the selected candidates, and to Jarvis on every page', () => {
     renderShell();
-    expect(href('Candidate chat')).toBe('/hiring?view=chat');
-    // Jarvis was offered only on the dashboard. AskJarvis opens it.
-    expect(screen.getByRole('button', { name: 'Ask Jarvis' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    expect(href(/^Selected candidates/)).toBe('/hiring?view=chat');
+    // Jarvis was offered only on the dashboard.
+    expect(screen.getByRole('button', { name: /^The whole workspace/ })).toBeTruthy();
   });
 
   it('opens the chat in the dashboard, and marks the chat when it is open', () => {
     const onChat = vi.fn();
     renderShell({ active: 'chat', onNavigate: vi.fn(), onChat });
-    const chat = screen.getByRole('button', { name: 'Candidate chat' });
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    const chat = screen.getByRole('button', { name: /^Selected candidates/ });
     expect(chat.getAttribute('aria-current')).toBe('page');
     expect(nav().querySelectorAll('[aria-current]')).toHaveLength(0);
-    expect(topBar()).toBe('THE WORKSPACE / Candidate chat');
+    expect(topBar()).toBe('THE WORKSPACE / Selected candidates');
     fireEvent.click(chat);
     expect(onChat).toHaveBeenCalledTimes(1);
   });

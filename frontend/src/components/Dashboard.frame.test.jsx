@@ -87,17 +87,20 @@ describe('the dashboard in the workspace frame', () => {
     expect(heading()).toBe('A place for possibility.');
   });
 
-  it('opens the candidate chat from the sidebar, and marks it', () => {
+  it('opens the chat about the selected candidates from the sidebar, and marks it', () => {
     open();
-    fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Selected candidates/ }));
     expect(address()).toBe('/hiring?view=chat');
     expect(heading()).toBe('Your selected candidates.');
-    expect(current('Candidate chat')).toBe('page');
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    expect(current(/^Selected candidates/)).toBe('page');
   });
 
   it('opens Jarvis from the sidebar over any view', async () => {
     open('/hiring?view=interviews');
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Jarvis' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    fireEvent.click(screen.getByRole('button', { name: /^The whole workspace/ }));
     expect(await screen.findByRole('dialog', { name: 'Jarvis, the hiring copilot' }, { timeout: 5000 })).toBeTruthy();
   });
 });

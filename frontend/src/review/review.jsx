@@ -44,7 +44,7 @@ const PAGES = [
   ['/hiring?view=interviews', 'Interviews'],
   ['/review/report', 'Interview report'],
   ['/hiring?view=analytics', 'Insights'],
-  ['/hiring?view=chat', 'Candidate chat'],
+  ['/hiring?view=chat', 'Selected candidates chat'],
   ['/hiring/sourcer', 'Find candidates'],
   ['/candidate/dashboard', 'Candidate portal'],
   ['/review/voice-interview', 'Voice interview room'],

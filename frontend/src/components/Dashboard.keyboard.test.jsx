@@ -145,7 +145,8 @@ describe('a candidate card', () => {
 describe('the candidate chat', () => {
   it('labels its message box and its send button', () => {
     open({ candidates: [ADA], selectedIds: [1], selectedCandidates: [ADA] });
-    fireEvent.click(screen.getByRole('button', { name: 'Candidate chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Selected candidates/ }));
     expect(screen.getByRole('textbox', { name: 'Message the AI assistant' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
   });

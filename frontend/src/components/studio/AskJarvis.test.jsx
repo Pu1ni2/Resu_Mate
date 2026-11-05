@@ -7,7 +7,7 @@ import CandidateFocus from '../CandidateFocus';
 import { jarvisSummary } from './AskJarvis';
 
 /* Jarvis could be opened only from the dashboard: the candidate file, Find
- * candidates and the rest had no way to it. Every manager page's sidebar
+ * candidates and the rest had no way to it. Every manager page's assistant
  * offers it now, opening it over the page. */
 
 const mocks = vi.hoisted(() => ({ app: null }));
@@ -35,7 +35,8 @@ afterEach(() => {
 describe('Jarvis on a page other than the dashboard', () => {
   it('opens over the candidate file, and closes back to it', async () => {
     render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Jarvis' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    fireEvent.click(screen.getByRole('button', { name: /^The whole workspace/ }));
     expect(await screen.findByRole('dialog', { name: 'Jarvis, the hiring copilot' }, { timeout: 5000 })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /close jarvis/i }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Jarvis, the hiring copilot' })).toBeNull());

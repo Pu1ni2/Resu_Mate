@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, SlidersHorizontal, Video, BarChart2, MessageSquare, ArrowUpRight, Bell, Keyboard } from 'lucide-react';
+import { Users, SlidersHorizontal, Video, BarChart2, ArrowUpRight, Bell, Keyboard } from 'lucide-react';
 
 import { useProduct } from '../ProductLayer';
-import AskJarvis from './AskJarvis';
+import Assistant from './Assistant';
 
 /* The workspace's sections, in the sidebar's order. `view` is the dashboard's
  * name for each one, as in /hiring?view=…. */
@@ -18,12 +18,13 @@ const SECTIONS = [
  * the sidebar with the sections, the top bar with the notifications and the
  * keyboard shortcuts, the page's heading, and the footer.
  *
- * `active` is the section the page belongs to ('chat' for the candidate chat),
- * or none; `place` names the page in the top bar when it is in no section.
- * The dashboard switches its views itself, so it passes `onNavigate` (and
- * `onChat`); every other page links back to it. Every page offers Jarvis
- * (AskJarvis). `footer` goes at the sidebar's foot: the manager's account.
- * `notice` goes above the page's heading, such as ConfirmEmailNotice. */
+ * `active` is the section the page belongs to ('chat' for the chat about the
+ * selected candidates), or none; `place` names the page in the top bar when it
+ * is in no section. The dashboard switches its views itself, so it passes
+ * `onNavigate` (and `onChat`, for that chat); every other page links back to
+ * it. Every page has the assistant (Assistant). `footer` goes at the sidebar's
+ * foot: the manager's account. `notice` goes above the page's heading, such as
+ * ConfirmEmailNotice. */
 export default function WorkspaceShell({
   active = null, place, eyebrow, title, subtitle, actions, footer, notice,
   onNavigate, onChat, children,
@@ -35,7 +36,7 @@ export default function WorkspaceShell({
   // shortcuts to its top bar instead of floating them over the page.
   useEffect(() => registerFrame?.(), [registerFrame]);
 
-  const here = SECTIONS.find(s => s.id === active)?.label || (active === 'chat' ? 'Candidate chat' : place);
+  const here = SECTIONS.find(s => s.id === active)?.label || (active === 'chat' ? 'Selected candidates' : place);
   const unread = product?.unreadCount || 0;
 
   return (
@@ -73,19 +74,7 @@ export default function WorkspaceShell({
         </nav>
 
         <div className="sw-assist-links">
-          {onChat ? (
-            <button
-              type="button"
-              className={active === 'chat' ? 'is-active' : undefined}
-              aria-current={active === 'chat' ? 'page' : undefined}
-              onClick={onChat}
-            >
-              <MessageSquare size={16} aria-hidden="true" />Candidate chat
-            </button>
-          ) : (
-            <Link to="/hiring?view=chat"><MessageSquare size={16} aria-hidden="true" />Candidate chat</Link>
-          )}
-          <AskJarvis />
+          <Assistant onSelected={onChat} selectedOpen={active === 'chat'} />
         </div>
 
         <div className="sw-sidebar-note">

@@ -1,6 +1,5 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { knownYears } from '../../services/experience';
 
@@ -30,23 +29,16 @@ function Jarvis({ onClose }) {
   return <JarvisAgent candidatesSummary={jarvisSummary(candidates)} onClose={onClose} />;
 }
 
-/* "Ask Jarvis", in the sidebar of every manager page, opening Jarvis over
- * the page. It was only on the dashboard, so the candidate file, Find
- * candidates and the rest had no way to it. Jarvis covers the whole page, so
- * it's rendered into <body>, clear of the sidebar's own layers. */
-export default function AskJarvis() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" className="sw-assist-jarvis" onClick={() => setOpen(true)}>
-        <Sparkles size={16} aria-hidden="true" /><span>Ask Jarvis</span><ArrowUpRight size={13} aria-hidden="true" />
-      </button>
-      {open && createPortal(
-        <Suspense fallback={null}>
-          <Jarvis onClose={() => setOpen(false)} />
-        </Suspense>,
-        document.body,
-      )}
-    </>
+/* Jarvis over the page, from the assistant's "The whole workspace"
+ * (Assistant.jsx), in the sidebar of every manager page. It was only on the
+ * dashboard, so the candidate file, Find candidates and the rest had no way to
+ * it. Jarvis covers the whole page, so it's rendered into <body>, clear of the
+ * sidebar's own layers. */
+export default function JarvisOverPage({ onClose }) {
+  return createPortal(
+    <Suspense fallback={null}>
+      <Jarvis onClose={onClose} />
+    </Suspense>,
+    document.body,
   );
 }
