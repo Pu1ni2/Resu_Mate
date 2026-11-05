@@ -141,12 +141,13 @@ export const results = [{
   scores: [],
 }];
 
-// The latest interview per address, as interview-statuses sends them.
+// The latest interview per address, newest first, as interview-statuses sends
+// them: with when each was made and finished, in the server's naive UTC.
 export const statuses = {
   statuses: {
-    'maya@example.com': { status: 'completed', mode: 'conversational', id: 41 },
-    'alex@example.com': { status: 'in_progress', mode: 'conversational', id: 42 },
-    'jordan@example.com': { status: 'pending', mode: 'avatar', id: 43 },
+    'jordan@example.com': { status: 'pending', mode: 'avatar', id: 43, created_at: '2026-11-03T16:20:00', completed_at: null },
+    'alex@example.com': { status: 'in_progress', mode: 'conversational', id: 42, created_at: '2026-11-02T11:05:00', completed_at: null },
+    'maya@example.com': { status: 'completed', mode: 'conversational', id: 41, created_at: '2026-10-29T09:30:00', completed_at: '2026-10-30T14:10:00' },
   },
   count: 3,
 };

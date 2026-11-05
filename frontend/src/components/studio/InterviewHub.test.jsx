@@ -101,12 +101,12 @@ describe('the Interviews view', () => {
     const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 500, json: async () => ({ detail: 'Please try again.' }) });
     open();
     expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.queryByText('Your next conversation starts here.')).toBeNull();
+    expect(screen.queryByRole('heading', { name: /A résumé opens the door/ })).toBeNull();
     expect(document.querySelector('.sd-interview-counts').textContent).toBe('Invitations—In progress—Completed—');
 
     fetcher.mockResolvedValue(response({ statuses: {}, results: [] }));
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(screen.getByText('Your next conversation starts here.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('heading', { name: /A résumé opens the door/ })).toBeTruthy());
   });
 });
 

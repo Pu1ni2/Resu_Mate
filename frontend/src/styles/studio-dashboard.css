@@ -267,6 +267,13 @@
 .studio-dashboard .sd-interview-status i { width: 5px; height: 5px; border-radius: 50%; background: #aa8250; }
 .studio-dashboard .sd-interview-status.is-completed i { background: #5d7948; }
 .studio-dashboard .sd-interview-kind { min-width: 110px; color: var(--color-ink-subtle); font-size: 12px; }
+/* When each was finished, or made: the queue had no dates at all. */
+.studio-dashboard .sd-interview-when { min-width: 120px; color: var(--color-ink-subtle); font-size: 12px; white-space: nowrap; }
+/* The queue's search, between its filters and Refresh. The field's own
+   outline gives way to the box's, which shows where the keyboard is. */
+.studio-dashboard .sd-interview-search { display: flex; flex: 1 1 220px; align-items: center; gap: 8px; max-width: 320px; padding: 0 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: #727d64; }
+.studio-dashboard .sd-interview-search:focus-within { outline: 2px solid var(--color-forest); outline-offset: 2px; }
+.studio-dashboard .sd-interview-search input { width: 100%; min-width: 0; padding: 9px 0; border: 0; outline: 0; background: transparent; color: var(--color-ink); font-size: 14px; }
 .studio-dashboard .sd-row-link { display: flex; align-items: center; gap: 6px; color: #596e45; font-size: 14px; text-decoration: none; }
 .studio-dashboard .sd-interview-footnote { margin-top: 20px; color: var(--color-ink-subtle); font-size: 12px; line-height: 1.7; }
 
@@ -311,7 +318,8 @@
   .studio-dashboard .sd-interview-row { flex-wrap: wrap; gap: 12px; }
   .studio-dashboard .sd-interview-person { flex-basis: calc(100% - 55px); }
   .studio-dashboard .sd-interview-status { margin-right: auto; }
-  .studio-dashboard .sd-interview-kind { min-width: 0; }
+  .studio-dashboard :is(.sd-interview-kind, .sd-interview-when) { min-width: 0; }
+  .studio-dashboard .sd-interview-search { flex-basis: 100%; max-width: none; }
 }
 
 /* Phones: one card across, the empty desk stacked and centred. */

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, ArrowLeft, Loader, RefreshCw, MessageSquare } from 'lucide-react';
+import { ArrowUpRight, ArrowLeft, Loader, RefreshCw, MessageSquare, Search } from 'lucide-react';
 
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { toast } from '../../services/notify';
@@ -16,6 +16,16 @@ const FILTERS = [['all', 'All interviews'], ['pending', 'Invitations'], ['in_pro
 const STAGE = { interrupted: 'in_progress' };
 const stageOf = status => STAGE[status] || status;
 
+// A day from the server's naive UTC, as "4 Nov 2026" where the browser is.
+function dayOf(iso) {
+  if (!iso) return '';
+  const day = new Date(/[zZ]$|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`);
+  return Number.isNaN(day.getTime()) ? '' : day.toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
+// When a row's interview was finished, or else made.
+const whenOf = row => (row.completed_at ? `Finished ${dayOf(row.completed_at)}` : row.created_at ? `Invited ${dayOf(row.created_at)}` : '');
+
 /* The dashboard's Interviews view (styles/studio-dashboard.css): the latest
  * interview for each candidate, from its invitation to its report, which
  * opens here. A failed load says so and offers another try, rather than
@@ -26,6 +36,7 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useState('');
   const [report, setReport] = useState(null);
   const [revision, setRevision] = useState(0);
 
@@ -129,21 +140,34 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
       : candidate?.name || result?.candidate_name || email;
     return { ...interview, email, candidate, result, name };
   });
-  const visible = interviews.filter(row => filter === 'all' || stageOf(row.status) === filter);
+  // A search by name, role or address, with the stage's filter. The names
+  // searched are the ones shown, so Hide names hides them from it too.
+  const asked = query.trim().toLowerCase();
+  const matches = row => !asked || [row.name, row.candidate?.predicted_role, row.result?.role, anonymize ? '' : row.email]
+    .some(text => typeof text === 'string' && text.toLowerCase().includes(asked));
+  const visible = interviews.filter(row => (filter === 'all' || stageOf(row.status) === filter) && matches(row));
   const count = status => (loading || error ? '—' : String(interviews.filter(r => stageOf(r.status) === status).length).padStart(2, '0'));
+
+  // The sculpture and its invitation are for an empty page: with interviews
+  // the queue leads. They sat above it, as large, every time.
+  if (!loading && !error && interviews.length === 0) {
+    return (
+      <div className="sd-interviews">
+        <section className="sd-interview-intro">
+          <div>
+            <span className="sw-eyebrow">SPACE TO BE HEARD</span>
+            <h2>A résumé opens the door.<br /><em>A conversation tells you more.</em></h2>
+            <p>Open a candidate file, evaluate their fit, and create their interview. Invitations and finished conversations appear here.</p>
+            <Link className="btn btn-primary" to="/hiring/focus">Open a candidate file<ArrowUpRight size={15} aria-hidden="true" /></Link>
+          </div>
+          <ConversationSculpture />
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="sd-interviews">
-      <section className="sd-interview-intro">
-        <div>
-          <span className="sw-eyebrow">SPACE TO BE HEARD</span>
-          <h2>A résumé opens the door.<br /><em>A conversation tells you more.</em></h2>
-          <p>Create an interview from a candidate’s evaluation. Review invitations and completed conversations here.</p>
-          <Link className="btn btn-primary" to="/hiring/focus">Open a candidate file<ArrowUpRight size={15} aria-hidden="true" /></Link>
-        </div>
-        <ConversationSculpture />
-      </section>
-
       <div className="sd-interview-counts">
         {[['pending', 'Invitations'], ['in_progress', 'In progress'], ['completed', 'Completed']].map(([status, label]) => (
           <div key={status}><span>{label}</span><strong>{count(status)}</strong></div>
@@ -156,6 +180,10 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
             <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>
           ))}
         </div>
+        <label className="sd-interview-search">
+          <Search size={15} aria-hidden="true" />
+          <input type="search" aria-label="Search interviews" placeholder="Search by name or role" value={query} onChange={e => setQuery(e.target.value)} />
+        </label>
         <button className="btn btn-secondary" onClick={reload} disabled={loading}>
           <RefreshCw size={14} aria-hidden="true" />Refresh
         </button>
@@ -171,12 +199,10 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
       ) : visible.length === 0 ? (
         <section className="sd-interview-empty">
           <MessageSquare size={27} aria-hidden="true" />
-          <h3>{interviews.length ? 'No interviews in this view.' : 'Your next conversation starts here.'}</h3>
-          <p>
-            {interviews.length
-              ? 'Choose another filter to see your interviews.'
-              : 'Open a candidate file, evaluate their fit, and create their interview. Invitations will appear here.'}
-          </p>
+          <h3>{asked ? `No interviews match “${query.trim()}”.` : 'No interviews in this view.'}</h3>
+          {asked
+            ? <button type="button" className="btn btn-secondary" onClick={() => setQuery('')}>Clear search</button>
+            : <p>Choose another filter to see your interviews.</p>}
         </section>
       ) : (
         <div className="sd-interview-list">
@@ -188,6 +214,7 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
                 <p>{row.candidate?.predicted_role || row.result?.role || 'Candidate interview'}</p>
               </div>
               <span className={`sd-interview-status is-${row.status}`}><i aria-hidden="true" />{STATUS_LABELS[row.status] || row.status}</span>
+              {whenOf(row) && <span className="sd-interview-when">{whenOf(row)}</span>}
               <span className="sd-interview-kind">{KIND_LABELS[row.mode] || 'Interview'}</span>
               {row.status === 'completed' && row.result ? (
                 <button className="btn btn-secondary" onClick={() => setReport(row.result)}>
@@ -206,7 +233,7 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
       )}
 
       <p className="sd-interview-footnote">
-        Showing the latest interview for each candidate. An invitation does not confirm a scheduled meeting.
+        Showing the latest interview for each candidate, newest first. An invitation does not confirm a scheduled meeting.
       </p>
     </div>
   );
