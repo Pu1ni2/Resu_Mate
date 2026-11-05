@@ -176,15 +176,30 @@ describe('SourcerPage', () => {
   });
 });
 
+/* A search still running: its events, and the stream left open. */
+function runningServer(events) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
+    if (String(url).endsWith('/api/sourcer/runs') && options.method === 'POST') {
+      const body = new ReadableStream({
+        start(c) {
+          c.enqueue(encoder.encode(events.map(e => JSON.stringify(e)).join('\n') + '\n'));
+          options.signal?.addEventListener('abort', () => c.error(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+        },
+      });
+      return { ok: true, status: 200, body };
+    }
+    return { ok: true, status: 200, json: async () => ({ runs: [] }) };
+  });
+}
+
 describe('the shortlist', () => {
-  it('opens from the top of the shortlist, best first, and closes on Escape', async () => {
-    fakeServer();
+  it('opens, while the search runs, from the top of the shortlist, best first, and closes on Escape', async () => {
+    runningServer(RUN.filter(e => e.type !== 'done'));
     renderPage();
     await search();
-    await screen.findByText('Every person found has been read');
 
-    const top = screen.getByRole('region', { name: 'Top of shortlist' });
-    expect(within(top).getByText('Maya C.')).toBeTruthy();
+    const top = await screen.findByRole('region', { name: 'Top of shortlist' });
+    await within(top).findByText('Maya C.');
     fireEvent.click(within(top).getByRole('button', { name: /See all 2/ }));
 
     const dialog = screen.getByRole('dialog', { name: /Shortlist/ });
@@ -200,7 +215,6 @@ describe('the shortlist', () => {
     renderPage();
     await search();
     await screen.findByText('Every person found has been read');
-    fireEvent.click(screen.getByRole('button', { name: /See all/ }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Ada Lovelace' }));
     expect(post).toHaveBeenCalledWith('/sourcer/profiles/92/status', { status: 'saved' });
@@ -212,7 +226,6 @@ describe('the shortlist', () => {
     renderPage();
     await search();
     await screen.findByText('Every person found has been read');
-    fireEvent.click(screen.getByRole('button', { name: /See all/ }));
     expect(screen.getByRole('button', { name: 'Save Maya Chen' }).disabled).toBe(true);
     expect(screen.getByText(/available once the run is saved/)).toBeTruthy();
   });
@@ -229,7 +242,6 @@ describe('outreach', () => {
     renderPage();
     await search();
     await screen.findByText('Every person found has been read');
-    fireEvent.click(screen.getByRole('button', { name: /See all/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Draft outreach to Maya Chen' }));
 
     expect(post).toHaveBeenCalledWith('/sourcer/profiles/91/draft-outreach');
@@ -245,7 +257,7 @@ describe('outreach', () => {
 
     fireEvent.keyDown(draft, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: /Outreach/ })).toBeNull();
-    expect(screen.getByRole('dialog', { name: /Shortlist/ })).toBeTruthy();
+    expect(screen.getByRole('region', { name: /The shortlist/ })).toBeTruthy();
   });
 
   it('says so when a draft cannot be written', async () => {
@@ -254,7 +266,6 @@ describe('outreach', () => {
     renderPage();
     await search();
     await screen.findByText('Every person found has been read');
-    fireEvent.click(screen.getByRole('button', { name: /See all/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Draft outreach to Ada Lovelace' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/Could not draft a message/);
   });
@@ -316,7 +327,6 @@ describe('past searches', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Stop/ }));
     // The saved partial run comes back with ids, so its people can be acted on.
     await screen.findAllByText('Kept.', {}, { timeout: 3000 });
-    fireEvent.click(screen.getByRole('button', { name: /See all/ }));
     expect(screen.getByRole('button', { name: 'Save Ada Lovelace' }).disabled).toBe(false);
   });
 });

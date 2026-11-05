@@ -41,6 +41,28 @@ function RowActions({ person, profileId, onStatus, onDraft }) {
   );
 }
 
+/* Everyone shortlisted, best first, with what can be done for each: in the
+ * drawer while a search runs, and on the page once it has ended. */
+export function ShortlistList({ state, onStatus, onDraft }) {
+  const people = shortlistOf(state);
+  const byPid = Object.fromEntries(people.map(p => [p.pid, p]));
+  const rows = people.map(p => fromSourcedProfile(p, state.plan));
+  return (
+    <>
+      {!state.runId && (
+        <p className="mb-3 text-[12px] text-ink-subtle">Save, dismiss and outreach are available once the run is saved.</p>
+      )}
+      <RankedCandidates
+        rows={rows}
+        emptyMessage="No one has cleared the shortlist line yet."
+        renderActions={row => (
+          <RowActions person={byPid[row.id]} profileId={state.profileIds[row.id]} onStatus={onStatus} onDraft={onDraft} />
+        )}
+      />
+    </>
+  );
+}
+
 /* Everyone shortlisted, best first, in a side panel over the map. A modal
  * dialog: focus moves in when it opens and back when it closes, and Escape or
  * the backdrop closes it. Escape is handled on the dialog itself, not the
@@ -57,9 +79,7 @@ export default function ShortlistDrawer({ open, onClose, state, onStatus, onDraf
   }, [open]);
 
   if (!open) return null;
-  const people = shortlistOf(state);
-  const byPid = Object.fromEntries(people.map(p => [p.pid, p]));
-  const rows = people.map(p => fromSourcedProfile(p, state.plan));
+  const count = shortlistOf(state).length;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -75,23 +95,14 @@ export default function ShortlistDrawer({ open, onClose, state, onStatus, onDraf
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h2 id="sourcer-shortlist-title" className="text-[15px] font-semibold text-ink">
-            Shortlist <span className="font-mono text-ink-subtle">{rows.length}</span>
+            Shortlist <span className="font-mono text-ink-subtle">{count}</span>
           </h2>
           <Button icon size="sm" variant="ghost" onClick={onClose} aria-label="Close shortlist">
             <X size={16} />
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          {!state.runId && (
-            <p className="mb-3 text-[12px] text-ink-subtle">Save, dismiss and outreach are available once the run is saved.</p>
-          )}
-          <RankedCandidates
-            rows={rows}
-            emptyMessage="No one has cleared the shortlist line yet."
-            renderActions={row => (
-              <RowActions person={byPid[row.id]} profileId={state.profileIds[row.id]} onStatus={onStatus} onDraft={onDraft} />
-            )}
-          />
+          <ShortlistList state={state} onStatus={onStatus} onDraft={onDraft} />
         </div>
       </div>
     </div>

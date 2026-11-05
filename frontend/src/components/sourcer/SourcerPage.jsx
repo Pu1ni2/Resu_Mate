@@ -9,7 +9,7 @@ import { messageForApiError, sourcerAPI } from '../../services/api';
 import { toast } from '../../services/notify';
 import { streamRun } from '../../services/sourcerStream';
 import { formatCount } from './format';
-import { initialState, talentMapReducer } from './talentMapModel';
+import { initialState, shortlistOf, talentMapReducer } from './talentMapModel';
 import StatTiles from './StatTiles';
 import LiveSample from './LiveSample';
 import PopulationMap from './PopulationMap';
@@ -17,7 +17,7 @@ import JudgingNow from './JudgingNow';
 import FilterComparison from './FilterComparison';
 import LiveLog from './LiveLog';
 import TopOfShortlist from './TopOfShortlist';
-import ShortlistDrawer from './ShortlistDrawer';
+import ShortlistDrawer, { ShortlistList } from './ShortlistDrawer';
 import OutreachModal from './OutreachModal';
 import RunHistory from './RunHistory';
 import WorkspaceShell from '../studio/WorkspaceShell';
@@ -345,25 +345,56 @@ export default function SourcerPage() {
               </div>
             )}
 
-            <StatTiles counts={state.counts} stats={state.stats} />
+            {state.status === 'running' ? (
+              <>
+                <StatTiles counts={state.counts} stats={state.stats} />
 
-            <div className="sourcer-results-grid">
-              <div className="space-y-4">
-                <LiveSample state={state} />
-                <PopulationMap state={state} />
-                <LiveLog state={state} />
-              </div>
-              <div className="space-y-4">
-                <JudgingNow state={state} />
-                <FilterComparison state={state} />
-                <TopOfShortlist state={state} onOpen={() => setShortlistOpen(true)} />
-              </div>
-            </div>
+                <div className="sourcer-results-grid">
+                  <div className="space-y-4">
+                    <LiveSample state={state} />
+                    <PopulationMap state={state} />
+                    <LiveLog state={state} />
+                  </div>
+                  <div className="space-y-4">
+                    <JudgingNow state={state} />
+                    <FilterComparison state={state} />
+                    <TopOfShortlist state={state} onOpen={() => setShortlistOpen(true)} />
+                  </div>
+                </div>
 
-            <ShortlistDrawer
-              open={shortlistOpen} onClose={closeShortlist} state={state}
-              onStatus={setStatus} onDraft={setOutreachPid}
-            />
+                <ShortlistDrawer
+                  open={shortlistOpen} onClose={closeShortlist} state={state}
+                  onStatus={setStatus} onDraft={setOutreachPid}
+                />
+              </>
+            ) : (
+              // Once the search has ended, the people lead: they were one
+              // panel among six, behind a "See all", under the map, the log
+              // and the judging, which are how it went and fold away here.
+              <>
+                <section className="sourcer-people" aria-labelledby="sourcer-people-title">
+                  <h2 id="sourcer-people-title">The shortlist <span>{shortlistOf(state).length}</span></h2>
+                  <ShortlistList state={state} onStatus={setStatus} onDraft={setOutreachPid} />
+                </section>
+                <details className="sourcer-process">
+                  <summary>How the search went</summary>
+                  <div>
+                    <StatTiles counts={state.counts} stats={state.stats} />
+                    <div className="sourcer-results-grid">
+                      <div className="space-y-4">
+                        <LiveSample state={state} />
+                        <PopulationMap state={state} />
+                        <LiveLog state={state} />
+                      </div>
+                      <div className="space-y-4">
+                        <JudgingNow state={state} />
+                        <FilterComparison state={state} />
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </>
+            )}
             {outreachPid && state.profileIds[outreachPid] && (
               <OutreachModal
                 person={state.people[outreachPid]}

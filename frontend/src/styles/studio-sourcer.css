@@ -67,6 +67,14 @@
 .studio-sourcer .sourcer-stat-value { font: 36px/1.15 var(--font-serif) !important; letter-spacing: -0.5px; }
 .studio-sourcer .sourcer-results-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 .studio-sourcer .sourcer-results-grid > div { min-width: 0; }
+/* A search that has ended: its people first, then how it went, folded. */
+.studio-sourcer .sourcer-people h2 { margin: 6px 0 16px; color: var(--color-forest); font: 30px/1.15 var(--font-serif); }
+.studio-sourcer .sourcer-people h2 span { color: var(--color-ink-subtle); font: 14px var(--font-mono); }
+.studio-sourcer .sourcer-process { margin-top: 28px; border: 1px solid #d1d6c5; border-radius: 4px; background: var(--color-surface); }
+.studio-sourcer .sourcer-process > summary { padding: 15px 20px; color: var(--color-forest); font-size: 14px; font-weight: 600; cursor: pointer; }
+.studio-sourcer .sourcer-process > summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.studio-sourcer .sourcer-process[open] > summary { border-bottom: 1px solid #e0e2d7; }
+.studio-sourcer .sourcer-process > div { display: grid; gap: 24px; padding: 20px; }
 .studio-sourcer .sourcer-panel { min-width: 0; border-color: #d1d6c5 !important; border-radius: 4px !important; background: var(--color-surface) !important; box-shadow: 0 5px 16px #30382f03 !important; }
 .studio-sourcer .sourcer-panel-heading { padding: 19px 20px 15px !important; border-bottom: 1px solid #e0e2d7; }
 .studio-sourcer .sourcer-panel-heading h3 { color: var(--color-forest) !important; font: 24px/1.15 var(--font-serif) !important; }
