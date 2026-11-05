@@ -110,6 +110,7 @@ describe('the text sizes', () => {
       '.studio-dashboard .sd-view-switch button', '.studio-dashboard .sd-list-name',
       '.studio-dashboard .candidates-actions .btn', '.studio-dashboard .sd-filterbar input', '.studio-dashboard .sd-filterbar select',
       '.studio-dashboard .sd-interview-toolbar > div > button', '.studio-dashboard .sd-row-link',
+      '.studio-dashboard .sd-interview-search input',
     ],
     'studio-focus.css': [
       '.studio-focus .sf-search input', '.studio-focus .sf-action-row .sf-button', '.studio-focus .sf-file-tabs button',
