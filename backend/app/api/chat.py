@@ -1129,11 +1129,14 @@ async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSes
 @router.get("/interview-statuses")
 async def interview_statuses(background: BackgroundTasks, user=Depends(get_current_user),
                              db: AsyncSession = Depends(get_db)):
-    """Compact email -> {status, mode, id} map for the ATS results badges.
+    """Compact email -> {status, mode, id, created_at, completed_at} map for
+    the ATS results badges and the Interviews queue.
 
     Scoped to this manager's interviews only. Lighter than
     get-all-interview-results (no report bodies, no transcripts). Used by
-    ATSResultsView to render Pending / In progress / Completed badges.
+    ATSResultsView to render Pending / In progress / Completed badges, and by
+    the Interviews view, which says when each was made and finished: it had
+    no dates at all.
 
     Interviews started and left for good are finished after the answer, on
     what was said (interview_report.finish_abandoned), so the next look
@@ -1149,17 +1152,24 @@ async def interview_statuses(background: BackgroundTasks, user=Depends(get_curre
             Interview.status,
             Interview.mode,
             Interview.id,
+            Interview.created_at,
+            Interview.completed_at,
         )
         .where(Interview.manager_id == user.id)
         .order_by(Interview.created_at.desc())
     )).all()
     # Latest interview per email wins (rows are ordered desc by created_at).
     out: dict = {}
-    for email, status, mode, iv_id in rows:
+    for email, status, mode, iv_id, created_at, completed_at in rows:
         key = (email or "").lower()
         if key and key not in out:
             shown = (mode or "avatar") if status == "completed" else interview_modes.effective_mode(mode)
-            out[key] = {"status": status, "mode": shown, "id": iv_id}
+            out[key] = {
+                "status": status, "mode": shown, "id": iv_id,
+                # In the server's naive UTC, as the other dates it sends.
+                "created_at": created_at.isoformat() if created_at else None,
+                "completed_at": completed_at.isoformat() if completed_at else None,
+            }
     return {"statuses": out, "count": len(out)}
 
 @router.get("/candidates/{candidate_id}/interviews")
