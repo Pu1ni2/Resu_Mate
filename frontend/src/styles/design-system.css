@@ -187,6 +187,15 @@ body {
   }
 }
 
+/* A touch screen. An iPhone zooms in on a text box, menu or text area under
+   16px when it's tapped, and stays zoomed in after, so there they're all
+   16px. This sheet is in the first layer, where !important outranks every
+   later layer's. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset'], [type='image']),
+  select, textarea { font-size: 16px !important; }
+}
+
 /* Screen reader only */
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
 

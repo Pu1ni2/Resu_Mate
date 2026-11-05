@@ -355,6 +355,12 @@
   .studio-dashboard .sd-interview-toolbar > div > button { padding: 8px; }
 }
 
+/* A touch screen's menus are 16px (design-system.css), and "Original order"
+   needs more room than the order menu's 150px, or a phone's 120px. */
+@media (hover: none) and (pointer: coarse) {
+  .studio-dashboard .sd-filterbar select { max-width: none; }
+}
+
 /* An upload's bar (Dashboard.jsx): how much has gone up, then, while the
    server reads the résumé and can't say how far along it is, a band moving
    along rather than a made-up figure. */
