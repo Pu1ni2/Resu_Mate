@@ -53,9 +53,31 @@ function reportSummary(report) {
   ].filter(Boolean).join(' · ');
 }
 
+// Whether this browser has shown the portal before. A flag, not who: the
+// candidate's address isn't kept for it.
+const WELCOMED_KEY = 'resumate_portal_welcomed';
+
 export default function CandidateDashboard() {
   const navigate = useNavigate();
   const { candidateSession, setCandidateSession } = useApp();
+
+  // Each section's introduction in full on the first visit, then its heading
+  // alone: the same paragraph, and on My Resume the sculpture, greeted a
+  // candidate every time they came back.
+  const [returning] = useState(() => {
+    try {
+      return localStorage.getItem(WELCOMED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(WELCOMED_KEY, '1');
+    } catch {
+      // Storage blocked: every visit is the first.
+    }
+  }, []);
 
   // The candidate's own résumé, from the server. It used to be the app's
   // candidate list, which is the hiring manager's: on a browser a manager had
@@ -514,9 +536,9 @@ export default function CandidateDashboard() {
         </header>
 
         <div className="cd-body">
-          <div className={`cd-page-intro${tab === 'upload' ? ' cd-page-intro-welcome' : ''}`}>
-            <div><span className="cd-eyebrow">{pageIntro[0]}</span><h1>{pageIntro[1]}</h1><p>{pageIntro[2]}</p></div>
-            {tab === 'upload' ? (
+          <div className={`cd-page-intro${tab === 'upload' && !returning ? ' cd-page-intro-welcome' : ''}${returning ? ' is-returning' : ''}`}>
+            <div><span className="cd-eyebrow">{pageIntro[0]}</span><h1>{pageIntro[1]}</h1>{!returning && <p>{pageIntro[2]}</p>}</div>
+            {tab === 'upload' && !returning ? (
               <div className="cd-welcome-sculpture" aria-hidden="true">
                 <div className="cd-sculpture-scene">
                   <span className="cd-sculpture-shadow" />

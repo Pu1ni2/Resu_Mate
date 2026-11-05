@@ -89,6 +89,9 @@
 .studio-candidate .cd-page-index > span { font: 11px var(--font-sans); letter-spacing: 1px; }
 .studio-candidate .cd-page-intro-welcome { align-items: center; gap: 20px; }
 .studio-candidate .cd-page-intro-welcome > div:first-child { flex: 1; min-width: 0; }
+/* After the first visit: the section's heading alone, smaller and closer. */
+.studio-candidate .cd-page-intro.is-returning { margin-bottom: 22px; }
+.studio-candidate .cd-page-intro.is-returning h1 { margin-bottom: 0; font-size: clamp(32px, 2.9vw, 44px); }
 .studio-candidate .cd-welcome-sculpture { flex: 0 0 260px; height: 208px; position: relative; pointer-events: none; }
 .studio-candidate .cd-sculpture-scene { position: absolute; inset: 0; width: 260px; height: 208px; transform-origin: center; isolation: isolate; }
 .studio-candidate .cd-sculpture-shadow { position: absolute; width: 178px; height: 25px; left: 54px; top: 151px; border-radius: 50%; background: radial-gradient(ellipse, #5b4c3430, #5b4c3400 70%); transform: rotate(-8deg); filter: blur(5px); animation: studio-candidate-sculpture-shadow 1.1s ease-out both; }
