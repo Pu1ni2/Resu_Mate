@@ -2199,7 +2199,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           </div>
 
           <div className="sa-heading">A little <em>perspective.</em></div>
-          <p className="sa-intro">Ask Jarvis to explore, compare, or help with your next step.</p>
+          {/* What it answers from, as the assistant's choice says: the whole
+              workspace, where the two chats answer from fewer. */}
+          <p className="sa-intro">Jarvis looks across your whole workspace. Ask it to explore, compare, or help with your next step.</p>
 
           {/* LISTENING / THINKING / DONE. Conveyed by colour and a pulse
               animation otherwise, neither of which a screen reader can read. */}
