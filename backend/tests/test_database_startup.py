@@ -37,6 +37,15 @@ def test_the_migration_head_is_the_revision_nothing_builds_on():
     assert revisions - parents == {database.migration_head()}
 
 
+def test_postgres_connections_are_checked_before_use():
+    # One the server or a proxy closed while idle failed the next request.
+    options = database.engine_options("postgresql+asyncpg://resumate:pw@db:5432/resumate")
+    assert options["pool_pre_ping"] is True and options["pool_recycle"] == 1800
+    assert options["hide_parameters"] is True
+    local = database.engine_options("sqlite+aiosqlite:///./resumate.db")
+    assert "pool_pre_ping" not in local and local["hide_parameters"] is True
+
+
 def test_production_refuses_sqlite_and_an_unmigrated_postgres(monkeypatch):
     # With DATABASE_URL unset, production kept its data in a SQLite file that
     # every deploy wipes; a Postgres with no migration history was built from
