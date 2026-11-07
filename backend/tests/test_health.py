@@ -8,6 +8,27 @@ from conftest import auth_headers, register
 AGENT = {"X-Agent-Token": "test-agent-secret"}
 
 
+def test_the_root_says_only_that_it_is_up(client):
+    # It also named the version and the agents behind it.
+    assert client.get("/").json() == {"status": "running"}
+
+
+def test_production_serves_no_map_of_the_api():
+    # /docs, /redoc and /openapi.json listed every route and its fields.
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    import main
+    with TestClient(FastAPI(**main.docs_urls(False))) as production:
+        for path in ("/docs", "/redoc", "/openapi.json"):
+            assert production.get(path).status_code == 404
+
+
+def test_local_runs_keep_the_docs(client):
+    # The tests run with DEBUG, as local development does.
+    assert client.get("/openapi.json").status_code == 200
+    assert client.get("/docs").status_code == 200
+
+
 def test_health_is_ok_when_the_database_answers(client):
     r = client.get("/health")
     assert r.status_code == 200
