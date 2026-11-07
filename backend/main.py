@@ -185,6 +185,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# Headers that make browsers handle every answer safely, CORS's included;
+# HSTS only in production, which is served over HTTPS.
+from app.core.security_headers import SecurityHeaders
+app.add_middleware(SecurityHeaders, hsts=not settings.debug)
+
 # Routes — ALL registered on the SAME app
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
