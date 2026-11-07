@@ -843,6 +843,11 @@ async def save_transcript(
         )).scalars().first()
     if not (interview and req.transcript):
         return {"saved": False, "reason": "No interview record found or empty transcript"}
+    if interview.status == "completed":
+        # Finished already. The worker can post twice (after a timeout it
+        # tried a second address), and each post wrote the report again and
+        # emailed the manager again.
+        return {"saved": False, "already_completed": True}
 
     interview.transcript = req.transcript
 
