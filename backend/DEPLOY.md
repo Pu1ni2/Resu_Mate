@@ -207,3 +207,19 @@ can't be reached, and Render's health check (`healthCheckPath: /health`) uses it
 
 Free services sleep after 15 idle minutes and take up to a minute to start;
 the frontend asks `/health` as it loads and tells people while it wakes.
+
+### The site's headers
+
+`render.yaml` gives the static site its headers. Render's docs don't say
+which value wins when two rules set the same header on a path, and
+`Cache-Control` is set both on `/*` (`no-cache`) and on `/assets/*` (a year).
+After the first deploy with them, check one of each:
+
+```
+curl -sI https://resumate-ui.onrender.com/ | grep -i -E "cache-control|strict-transport|content-security"
+curl -sI https://resumate-ui.onrender.com/assets/<a file from the page> | grep -i cache-control
+```
+
+The page should say `no-cache`, and the hashed file `max-age=31536000`. If
+the hashed file says `no-cache` too, it is only fetched again on each visit,
+as it was before.
