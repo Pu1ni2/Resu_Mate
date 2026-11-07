@@ -112,6 +112,38 @@ def test_a_video_interview_finishes_though_its_report_cannot_be_written(client, 
     assert finished is not None
 
 
+def test_a_second_post_of_a_video_transcript_changes_nothing(client, monkeypatch):
+    # After a timeout the worker tried a second address, and each post wrote
+    # the report again and emailed the manager again.
+    from app.services.email_service import email_service
+    from app.tools.openai_tool import openai_tool
+    written, emailed = [], []
+
+    async def write(prompt, system="", json_mode=False):
+        written.append(prompt)
+        return "## Report"
+
+    async def send(to, subject, body):
+        emailed.append(subject)
+        return True
+    monkeypatch.setattr(openai_tool, "structured_call", write)
+    monkeypatch.setattr(email_service, "send", send)
+    _, m = register(client, "f7@co.com")
+    iid = _run(_interview(m["id"], "f7@x.com", status="in_progress", mode="avatar", room_name="interview-f7"))
+    said = [{"role": "interviewer", "text": "Tell me about a project you led."},
+            {"role": "candidate", "text": "I led the move of our billing service to events " * 6}]
+    body = {"candidate_email": "f7@x.com", "room_name": "interview-f7", "duration": 300, "transcript": said}
+    assert client.post("/api/chat/save-transcript", headers=AGENT, json=body).json()["saved"] is True
+    first = _run(_transcript(iid)), _run(_read(iid))
+
+    again = client.post("/api/chat/save-transcript", headers=AGENT,
+                        json={**body, "duration": 310, "transcript": said + [{"role": "candidate", "text": "Bye."}]})
+    assert again.status_code == 200
+    assert again.json() == {"saved": False, "already_completed": True}
+    assert (_run(_transcript(iid)), _run(_read(iid))) == first
+    assert (len(written), len(emailed)) == (1, 1)
+
+
 # ── the video interview's transcript, as it goes ──────────────────────────────
 
 SO_FAR = [{"role": "interviewer", "text": "Tell me about a project you led."},
