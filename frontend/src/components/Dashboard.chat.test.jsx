@@ -55,6 +55,8 @@ describe('the candidate chat', () => {
     expect(log.textContent).toContain('Who has the most experience?');
   });
 
+  // "Ask about your selected candidates…" was cut short in the 178px a phone
+  // gives the box at 16px; the heading says whom it's about.
   it('says what the message box is for, without emoji', () => {
     open();
     const box = screen.getByRole('textbox', { name: 'Message the AI assistant' });

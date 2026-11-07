@@ -87,6 +87,14 @@ describe('Jarvis in the Studio design', () => {
     await cardAndDetail(/RESUME INTELLIGENCE · Dana/);
     expect(tooSmall()).toEqual([]);
   });
+
+  // "Type a message, or press the mic to speak" was cut short in the 288px a
+  // phone gives the box at 16px.
+  it('says in its box only what to type, and below it how to speak', () => {
+    open();
+    expect(screen.getByLabelText('Message Jarvis').getAttribute('placeholder')).toBe('Type a message…');
+    expect(screen.getByText(/^TYPE OR CLICK MIC TO SPEAK/)).toBeTruthy();
+  });
 });
 
 describe("its analyses of a person show no score on them, in the card or opened", () => {
