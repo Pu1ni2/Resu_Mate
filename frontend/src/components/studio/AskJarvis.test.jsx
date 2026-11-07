@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import CandidateFocus from '../CandidateFocus';
@@ -41,6 +41,16 @@ describe('Jarvis on a page other than the dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: /close jarvis/i }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Jarvis, the hiring copilot' })).toBeNull());
     expect(screen.getByRole('heading', { name: 'Ada' })).toBeTruthy();
+  });
+
+  // The assistant offers it as "The whole workspace"; the two chats answer
+  // from fewer.
+  it('says it looks across the whole workspace, as the assistant names it', async () => {
+    render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    fireEvent.click(screen.getByRole('button', { name: /^The whole workspace/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Jarvis, the hiring copilot' }, { timeout: 5000 });
+    expect(within(dialog).getByText(/^Jarvis looks across your whole workspace\./)).toBeTruthy();
   });
 });
 
