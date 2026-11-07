@@ -33,10 +33,22 @@ def display_url(url: str) -> str:
 
 print(f"Database: {display_url(DATABASE_URL)}")
 
-# hide_parameters: a database error's text held the statement's values, a
-# candidate's name, address and résumé among them, and the error went to
-# the log.
-engine = create_async_engine(DATABASE_URL, echo=False, hide_parameters=True)
+def engine_options(url: str) -> dict:
+    """How the engine is made for this database.
+
+    hide_parameters: a database error's text held the statement's values, a
+    candidate's name, address and résumé among them, and the error went to
+    the log. On Postgres, a connection the server or a proxy closed while it
+    sat idle in the pool failed the next request that drew it: each is now
+    checked before use, and replaced after 30 minutes.
+    """
+    options = {"echo": False, "hide_parameters": True}
+    if not url.startswith("sqlite"):
+        options.update(pool_pre_ping=True, pool_recycle=1800)
+    return options
+
+
+engine = create_async_engine(DATABASE_URL, **engine_options(DATABASE_URL))
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
