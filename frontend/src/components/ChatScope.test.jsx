@@ -58,7 +58,7 @@ describe("the candidate file's chat", () => {
   it('is named for the one candidate, and answers from their file', () => {
     mocks.app = app([]);
     render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
-    const entry = screen.getByRole('button', { name: /Discuss this candidate\s*Answers from their file/ });
+    const entry = screen.getByRole('button', { name: /Ask about this candidate\s*Answers from their file/ });
     fireEvent.click(entry);
     expect(screen.getByText('ABOUT THIS CANDIDATE')).toBeTruthy();
     expect(screen.getByText(/Answers come from this candidate's file\./)).toBeTruthy();

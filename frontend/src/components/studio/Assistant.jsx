@@ -6,14 +6,17 @@ import { useApp } from '../../context/AppContext';
 import JarvisOverPage from './AskJarvis';
 
 /* The assistant, in the sidebar of every manager page: one button, and the
- * choice of what to ask about. "Candidate chat" and "Ask Jarvis" were two ways
- * in, side by side and named differently. The chats behind it are still their
- * own:
+ * choice of what to ask about. "Candidate chat", the candidate file's "Discuss
+ * candidate" and "Ask Jarvis" were three ways in, named differently. The chats
+ * behind it are still their own:
+ *   - this candidate: the candidate file's chat, in a file. `thisCandidate` is
+ *     { name, onAsk, asking }: the name the file shows, what opens the chat,
+ *     and whether it's open;
  *   - the selected candidates: the dashboard's chat. The dashboard opens it
  *     itself (`onSelected`, and `selectedOpen` while it's open); other pages
  *     link to it;
  *   - the whole workspace: Jarvis, over the page. */
-export default function Assistant({ onSelected, selectedOpen = false }) {
+export default function Assistant({ thisCandidate, onSelected, selectedOpen = false }) {
   const [open, setOpen] = useState(false);
   const [jarvis, setJarvis] = useState(false);
   const wrap = useRef(null);
@@ -56,7 +59,7 @@ export default function Assistant({ onSelected, selectedOpen = false }) {
       <button
         ref={button}
         type="button"
-        className={`sw-assistant-button${selectedOpen ? ' is-active' : ''}`}
+        className={`sw-assistant-button${selectedOpen || thisCandidate?.asking ? ' is-active' : ''}`}
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         onClick={() => setOpen(was => !was)}
@@ -66,6 +69,8 @@ export default function Assistant({ onSelected, selectedOpen = false }) {
       {open && (
         <Choices
           id={listId}
+          thisCandidate={thisCandidate}
+          onCandidate={thisCandidate && choose(thisCandidate.onAsk)}
           onSelected={onSelected && choose(onSelected)}
           selectedOpen={selectedOpen}
           onLink={close}
@@ -79,7 +84,7 @@ export default function Assistant({ onSelected, selectedOpen = false }) {
 
 /* What it can answer about, the narrower first. Rendered only while open, so
  * the selection is counted as it opens. */
-function Choices({ id, onSelected, selectedOpen, onLink, onJarvis }) {
+function Choices({ id, thisCandidate, onCandidate, onSelected, selectedOpen, onLink, onJarvis }) {
   const { selectedCandidates } = useApp();
   const count = (selectedCandidates || []).filter(c => c.is_resume !== false).length;
   const selected = (
@@ -91,6 +96,12 @@ function Choices({ id, onSelected, selectedOpen, onLink, onJarvis }) {
   return (
     <div id={id} className="sw-assistant-choices" role="group" aria-labelledby={`${id}-about`}>
       <p id={`${id}-about`}>Ask about</p>
+      {thisCandidate && (
+        <button type="button" aria-current={thisCandidate.asking ? 'true' : undefined} onClick={onCandidate}>
+          <span>This candidate</span>
+          <small>Answers from {thisCandidate.name}’s file</small>
+        </button>
+      )}
       {onSelected ? (
         <button type="button" aria-current={selectedOpen ? 'page' : undefined} onClick={onSelected}>{selected}</button>
       ) : (

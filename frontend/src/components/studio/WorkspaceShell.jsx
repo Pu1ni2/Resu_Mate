@@ -22,12 +22,12 @@ const SECTIONS = [
  * selected candidates), or none; `place` names the page in the top bar when it
  * is in no section. The dashboard switches its views itself, so it passes
  * `onNavigate` (and `onChat`, for that chat); every other page links back to
- * it. Every page has the assistant (Assistant). `footer` goes at the sidebar's
- * foot: the manager's account. `notice` goes above the page's heading, such as
- * ConfirmEmailNotice. */
+ * it. Every page has the assistant (Assistant), and a candidate file gives it
+ * `thisCandidate`. `footer` goes at the sidebar's foot: the manager's account.
+ * `notice` goes above the page's heading, such as ConfirmEmailNotice. */
 export default function WorkspaceShell({
   active = null, place, eyebrow, title, subtitle, actions, footer, notice,
-  onNavigate, onChat, children,
+  onNavigate, onChat, thisCandidate, children,
 }) {
   const product = useProduct();
   const registerFrame = product?.registerFrame;
@@ -74,7 +74,7 @@ export default function WorkspaceShell({
         </nav>
 
         <div className="sw-assist-links">
-          <Assistant onSelected={onChat} selectedOpen={active === 'chat'} />
+          <Assistant thisCandidate={thisCandidate} onSelected={onChat} selectedOpen={active === 'chat'} />
         </div>
 
         <div className="sw-sidebar-note">

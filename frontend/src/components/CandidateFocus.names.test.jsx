@@ -49,8 +49,9 @@ describe("the candidate file's buttons", () => {
   it('in every section of a file go by their own words', () => {
     render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
     const found = [...mislabelled()];
-    // Each section, and the second tool inside the ones that have two.
-    const visits = [/02 Résumé/, /03 Research/, /GitHub portfolio/, /04 Evaluation/, /Résumé intelligence/, /05 Interviews/, /Scheduling/, /Discuss candidate/];
+    // Each section, the second tool inside the ones that have two, and the
+    // chat, from the assistant.
+    const visits = [/02 Résumé/, /03 Research/, /GitHub portfolio/, /04 Evaluation/, /Résumé intelligence/, /05 Interviews/, /Scheduling/, /^Assistant$/, /^This candidate/];
     for (const name of visits) {
       fireEvent.click(screen.getByRole('button', { name }));
       found.push(...mislabelled());

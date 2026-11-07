@@ -125,7 +125,7 @@ export default function HiringAgentPanel({
               <div className="agent-report"><Markdown text={agentResult.report} /></div>
               <div className="agent-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button className="btn btn-ghost btn-sm" onClick={onReset}>← Start Over</button>
-                <button className="btn btn-secondary btn-sm" onClick={onSwitchToChat}><MessageSquare size={14} /> Discuss</button>
+                <button className="btn btn-secondary btn-sm" onClick={onSwitchToChat}><MessageSquare size={14} /> Ask about this candidate</button>
               </div>
             </>
           )}

@@ -25,6 +25,11 @@ const reply = body => ({ ok: true, status: 200, headers: new Headers({ 'content-
 const calls = path => fetch.mock.calls.filter(([url]) => String(url).includes(path));
 const open = () => render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
 const lookUp = () => fireEvent.click(screen.getByRole('button', { name: 'Look them up online' }));
+// The file's chat, from the assistant.
+const askAbout = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+  fireEvent.click(screen.getByRole('button', { name: /^This candidate/ }));
+};
 const firstMessage = () => document.querySelector('.chat-bubble.assistant').textContent;
 
 beforeEach(() => {
@@ -71,7 +76,7 @@ describe('looking a candidate up online', () => {
 describe('the chat', () => {
   it('opens on the résumé alone, ready to ask', async () => {
     open();
-    fireEvent.click(screen.getByRole('button', { name: 'Discuss candidate' }));
+    askAbout();
     expect(firstMessage()).toMatch(/Resume — skills, experience, education/);
     expect(firstMessage()).not.toMatch(/GitHub/);
     // Nothing to ask about GitHub before there is a profile.
@@ -87,7 +92,7 @@ describe('the chat', () => {
 
   it('gets what a lookup found in its first message, and keeps the conversation', async () => {
     open();
-    fireEvent.click(screen.getByRole('button', { name: 'Discuss candidate' }));
+    askAbout();
     fireEvent.change(screen.getByRole('textbox', { name: 'Ask about Ada' }), { target: { value: 'What does Ada build?' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await screen.findByText('Ada writes Python.');
@@ -101,14 +106,14 @@ describe('the chat', () => {
 
   it('is put back when the file opens again, though nobody was looked up', async () => {
     open();
-    fireEvent.click(screen.getByRole('button', { name: 'Discuss candidate' }));
+    askAbout();
     fireEvent.change(screen.getByRole('textbox', { name: 'Ask about Ada' }), { target: { value: 'What does Ada build?' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await screen.findByText('Ada writes Python.');
 
     fireEvent.click(screen.getByRole('button', { name: 'All candidate files' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open file for Ada' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Discuss candidate' }));
+    askAbout();
     expect(screen.getByText('What does Ada build?')).toBeTruthy();
     expect(screen.getByText('Ada writes Python.')).toBeTruthy();
   });
