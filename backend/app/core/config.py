@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     # Email (SendGrid)
     sendgrid_api_key: str = ""
     from_email: str = "noreply@resumate.ai"
+    # How long one email may take. SendGrid's client waited for ever, holding
+    # up whatever was sending it.
+    sendgrid_timeout_seconds: float = 10
 
     # Shared secret the interview worker uses to authenticate machine-to-machine
     # calls like /save-transcript. Set in both backend and worker env vars.

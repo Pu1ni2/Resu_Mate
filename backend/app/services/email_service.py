@@ -14,6 +14,8 @@ class EmailService:
             try:
                 import sendgrid as sg_module
                 self._sg = sg_module.SendGridAPIClient(api_key=settings.sendgrid_api_key)
+                # Each request the client makes takes its timeout from here.
+                self._sg.client.timeout = settings.sendgrid_timeout_seconds
             except Exception as e:
                 logger.warning("SendGrid init failed: %s", e)
 
@@ -62,12 +64,19 @@ class EmailService:
             )
             # In a thread: the SendGrid client blocks, and every sign-in code
             # and invitation held up all other requests until SendGrid answered.
-            response = await asyncio.to_thread(self._sg.send, message)
+            # The client's own timeout is per network step, so a slow answer
+            # could still run on; this caps the whole send.
+            response = await asyncio.wait_for(
+                asyncio.to_thread(self._sg.send, message), timeout=settings.sendgrid_timeout_seconds,
+            )
             success = 200 <= response.status_code < 300
             if not success:
                 logger.warning("SendGrid rejected message: status=%s", response.status_code)
             return success
         except Exception as e:
+            if isinstance(e, TimeoutError) or isinstance(getattr(e, "reason", None), TimeoutError):
+                logger.warning("SendGrid didn't answer within %ss", settings.sendgrid_timeout_seconds)
+                return False
             logger.exception("SendGrid send error: %s", e)
             return False
 
