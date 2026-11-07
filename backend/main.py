@@ -96,12 +96,24 @@ async def lifespan(app: FastAPI):
 # The same object every router decorates with, keyed by account or address.
 from app.core.rate_limit import limiter
 
+def docs_urls(debug: bool) -> dict:
+    """Where the API's own documentation is served: on local runs only.
+
+    It maps every route and the fields each takes, and production served it,
+    /docs, /redoc and /openapi.json, to anyone.
+    """
+    if debug:
+        return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
 # ═══ ONE app instance — everything registers here ═══
 app = FastAPI(
     title="ResuMate AI",
     description="Multi-Agent AI Hiring Platform",
     version="3.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    **docs_urls(settings.debug),
 )
 
 app.state.limiter = limiter
@@ -201,12 +213,8 @@ print("[OK] All routers registered (auth, chat, candidates, livekit, advisor, pi
 
 @app.get("/")
 async def root():
-    return {
-        "message": "ResuMate AI API",
-        "version": "3.0.0",
-        "architecture": "Multi-Agent (Data, HR, Technical, Research, Advisor)",
-        "status": "running"
-    }
+    # Only that it's up: it also named the version and the agents behind it.
+    return {"status": "running"}
 
 
 @app.get("/api/features")
