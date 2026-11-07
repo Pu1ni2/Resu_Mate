@@ -163,6 +163,34 @@ def test_email_is_sent_off_the_event_loop():
     assert seen["thread"] != seen["loop"]
 
 
+def test_an_email_gives_up_when_sendgrid_is_slow(monkeypatch):
+    # SendGrid's client waited for ever, holding up whatever was sending.
+    from app.core.config import settings
+    from app.services.email_service import EmailService
+    monkeypatch.setattr(settings, "sendgrid_timeout_seconds", 0.2)
+
+    class SlowSendGrid:
+        def send(self, message):
+            time.sleep(1)
+            return type("Accepted", (), {"status_code": 202})()
+
+    service = EmailService()
+    service._sg = SlowSendGrid()
+    started = time.monotonic()
+    assert _run(service.send("ada@x.com", "Your code", "<p>123456</p>")) is False
+    assert time.monotonic() - started < 0.8
+
+
+def test_sendgrids_own_requests_have_the_timeout(monkeypatch):
+    # Its timeout is per network step: a request that never connects, or
+    # stops answering, ends there, and frees its thread.
+    from app.core.config import settings
+    from app.services.email_service import EmailService
+    monkeypatch.setattr(settings, "sendgrid_api_key", "SG.test")
+    service = EmailService()
+    assert service._sg.client.mail.send.timeout == settings.sendgrid_timeout_seconds == 10
+
+
 def test_a_slow_scrape_neither_freezes_the_server_nor_outlasts_its_timeout(monkeypatch):
     from app.tools import browser_tool as bt
     monkeypatch.setattr(bt, "SCRAPE_TIMEOUT", 0.3)
