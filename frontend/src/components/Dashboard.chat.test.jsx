@@ -58,7 +58,7 @@ describe('the candidate chat', () => {
   it('says what the message box is for, without emoji', () => {
     open();
     const box = screen.getByRole('textbox', { name: 'Message the AI assistant' });
-    expect(box.getAttribute('placeholder')).toBe('Ask about your selected candidates…');
+    expect(box.getAttribute('placeholder')).toBe('Ask about them…');
   });
 
   it('sends a suggestion as a message', () => {

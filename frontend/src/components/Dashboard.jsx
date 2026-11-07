@@ -1420,7 +1420,8 @@ export default function Dashboard() {
                           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                           if (e.key === 'Escape') setInput('');
                         }}
-                        placeholder={isRecording ? 'Listening…' : isTranscribing ? 'Transcribing…' : 'Ask about your selected candidates…'}
+                        // Short enough for a phone's 16px; the heading says whom it's about.
+                        placeholder={isRecording ? 'Listening…' : isTranscribing ? 'Transcribing…' : 'Ask about them…'}
                         disabled={isTyping || isRecording || isTranscribing}
                       />
                       

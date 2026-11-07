@@ -2755,7 +2755,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                 voice.isRecording    ? 'Recording… (or type here)' :
                 voice.isTranscribing ? 'Transcribing…' :
                 isProcessing         ? 'Jarvis is thinking…' :
-                'Type a message, or press the mic to speak'
+                // Short enough for a phone's 16px; the caption below says
+                // how to speak.
+                'Type a message…'
               }
               disabled={isProcessing || voice.isTranscribing}
               style={{
