@@ -68,7 +68,8 @@ describe('the fonts', () => {
   });
 
   it('stay separate files, never inlined into the stylesheet', () => {
-    const inline = viteConfig.build.assetsInlineLimit;
+    // The config is a function of the command: a build's settings are checked first.
+    const inline = viteConfig({ command: 'serve', mode: 'test' }).build.assetsInlineLimit;
     expect(inline('/x/node_modules/@fontsource/dm-sans/files/dm-sans-latin-ext-400-normal.woff2')).toBe(false);
     expect(inline('/x/node_modules/@fontsource/dm-sans/files/dm-sans-latin-ext-400-normal.woff')).toBe(false);
     expect(inline('/x/src/assets/logo.svg')).toBeUndefined();

@@ -108,8 +108,8 @@ elsewhere (Neon, Supabase) through `DATABASE_URL`.
 | `DATABASE_URL` | Postgres connection string (Internal URL on Render) |
 | `SECRET_KEY` | strong random; backend refuses to boot in prod with the default |
 | `DEBUG` | `false` in production |
-| `FRONTEND_URL` | the frontend's address: invitation and password-reset links point there |
-| `CORS_ORIGINS` | frontend origin(s) |
+| `FRONTEND_URL` | the frontend's address: invitation and password-reset links point there, and CORS lets it in. Production doesn't start without it |
+| `CORS_ORIGINS` | other origins allowed to call the API (optional) |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | required for the agents; the chat model, default `gpt-4o` |
 | `REALTIME_MODEL`, `REALTIME_VOICE` | voice interviews; defaults `gpt-realtime-2`, `marin` |
 | `SENDGRID_API_KEY`, `FROM_EMAIL` | email (see below) |
@@ -117,6 +117,10 @@ elsewhere (Neon, Supabase) through `DATABASE_URL`.
 | `SOURCER_MODEL`, `SOURCER_MAX_*`, `SOURCER_PRICE_*` | the candidate sourcer (optional) |
 | `CALENDLY_TOKEN` | scheduling links (optional) |
 | `AVATAR_INTERVIEWS`, `LIVEKIT_*`, `AGENT_SHARED_SECRET` | avatar interviews (see below); `false` on the free plan |
+
+The frontend (static site) needs one: `VITE_API_URL`, the API's public
+address. A Render build without it fails (`frontend/build-checks.js`), and
+Render keeps serving the site it has.
 
 ## Email
 

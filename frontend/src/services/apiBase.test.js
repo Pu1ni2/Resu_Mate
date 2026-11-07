@@ -43,7 +43,9 @@ describe('the backend address in a production build', () => {
     expect(await apiBaseWith('https://api.example.com')).toBe('https://api.example.com');
   });
 
-  it('falls back to the Render backend when it does not', async () => {
-    expect(await apiBaseWith('')).toBe('https://resumate-api-74dm.onrender.com');
+  // It fell back to one deployment's backend; a Render build without it now
+  // fails instead (build-checks.js).
+  it('has no fallback when the build does not set it', async () => {
+    expect(await apiBaseWith('')).toBe('');
   });
 });

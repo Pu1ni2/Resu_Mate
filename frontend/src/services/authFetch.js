@@ -13,8 +13,13 @@ import {
   isSignInCall,
 } from './session';
 
+/* The API's address, fixed when the site is built (VITE_API_URL). It fell
+ * back to one deployment's API, written here, so any other deployment's site
+ * called the wrong server; a Render build without it now fails
+ * (build-checks.js). In development the dev server passes /api through to the
+ * backend, so calls stay on the page's own address. */
 export const API_BASE = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_URL || 'https://resumate-api-74dm.onrender.com')
+  ? String(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
   : '';
 
 /* Headers with the bearer token attached — and nothing attached when there is
