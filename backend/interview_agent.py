@@ -201,7 +201,7 @@ def post_checkpoint(config: dict, transcript: list, room_name: str):
 
 
 def post_transcript(config: dict, transcript: list, room_name: str = "", duration: int = 0):
-    """POST accumulated transcript to the backend interview-report endpoint.
+    """POST the transcript to the backend's save-transcript, which finishes the interview.
 
     room_name identifies the exact interview; without it the backend has to
     guess "the latest interview for this email". duration is the interview's
@@ -233,7 +233,10 @@ def post_transcript(config: dict, transcript: list, room_name: str = "", duratio
         )
     headers = {"X-Agent-Token": AGENT_SHARED_SECRET} if AGENT_SHARED_SECRET else {}
 
-    for url in [BACKEND_URL, "http://localhost:8006"]:
+    # The second address only when the first can't be reached. After a
+    # timeout the server has the transcript and is still writing the report:
+    # posting again made it write the report twice.
+    for url in dict.fromkeys([BACKEND_URL, "http://localhost:8006"]):
         try:
             resp = requests.post(
                 f"{url}/api/chat/save-transcript",
@@ -241,12 +244,20 @@ def post_transcript(config: dict, transcript: list, room_name: str = "", duratio
                 headers=headers,
                 timeout=10,
             )
-            if resp.ok:
-                logger.info(f"Transcript saved ({len(transcript)} turns)")
-                return
-            logger.warning(f"Transcript POST to {url} returned {resp.status_code}: {resp.text[:200]}")
+        except requests.ConnectionError as e:
+            logger.warning(f"Transcript POST could not reach {url}: {type(e).__name__}")
+            continue
+        except requests.Timeout:
+            logger.warning(f"Transcript POST to {url} timed out; the server may still be saving it")
+            return
         except Exception as e:
-            logger.warning(f"Transcript POST failed to {url}: {e}")
+            logger.warning(f"Transcript POST to {url} failed: {type(e).__name__}")
+            return
+        if resp.ok:
+            logger.info(f"Transcript saved ({len(transcript)} turns)")
+        else:
+            logger.warning(f"Transcript POST to {url} returned {resp.status_code}")
+        return
 
 
 # ═══ ENTRYPOINT — MUST be at module level for multiprocessing to pickle it ═══
