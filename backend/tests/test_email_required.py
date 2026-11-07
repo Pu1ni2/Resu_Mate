@@ -33,8 +33,14 @@ def test_an_email_not_sent_leaves_nothing_of_itself_in_the_log(no_email, capsys)
         assert kept not in logged
 
 
-def test_production_does_not_start_without_email(production, no_email):
+def test_production_does_not_start_without_email(production, no_email, monkeypatch):
     import main
+
+    async def database_ready():
+        pass
+    # The tests' SQLite database is refused in production first
+    # (test_database_startup.py); this is about email.
+    monkeypatch.setattr(main, "init_db", database_ready)
     with pytest.raises(RuntimeError, match="Email isn't set up"):
         with TestClient(main.app):
             pass

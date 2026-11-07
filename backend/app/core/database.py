@@ -78,6 +78,25 @@ def add_missing_columns(conn) -> list:
     return added
 
 
+def production_refusal(dialect: str, has_history: bool = True):
+    """Why production (DEBUG off) can't start on this database, or None.
+
+    A SQLite file there is wiped by every deploy, and with DATABASE_URL
+    unset production quietly ran on one. A Postgres with no migration
+    history was built by create_all, which hides what a migration left out.
+    Local runs (DEBUG on) start on either, as before.
+    """
+    if settings.debug:
+        return None
+    if dialect == "sqlite":
+        return ("Production needs Postgres: the database is a SQLite file, which every deploy "
+                "wipes. Set DATABASE_URL to the Postgres database (DEBUG=true runs locally).")
+    if not has_history:
+        return ("The database has no migration history. Run `alembic upgrade head` on an empty "
+                "database, or `alembic stamp head` once on one the app built, then start again.")
+    return None
+
+
 async def init_db():
     """Get the database ready.
 
@@ -90,9 +109,13 @@ async def init_db():
     raises otherwise.
 
     A Postgres database with no migration history at all was built by
-    create_all; it keeps being built that way, with a warning.
+    create_all; locally it keeps being built that way, with a warning.
+    Production refuses both it and SQLite (production_refusal).
     """
     from sqlalchemy import inspect, text
+    refusal = production_refusal(engine.dialect.name)
+    if refusal:
+        raise RuntimeError(refusal)
     async with engine.begin() as conn:
         if engine.dialect.name == "sqlite":
             await conn.run_sync(Base.metadata.create_all)
@@ -101,6 +124,9 @@ async def init_db():
             return
         await conn.execute(text("SELECT 1"))
         if not await conn.run_sync(lambda c: inspect(c).has_table("alembic_version")):
+            refusal = production_refusal(engine.dialect.name, has_history=False)
+            if refusal:
+                raise RuntimeError(refusal)
             print("[WARN] The database has no migration history, so it is built from the models. "
                   "Run `alembic stamp head` once, then `alembic upgrade head` on every deploy.")
             await conn.run_sync(Base.metadata.create_all)
