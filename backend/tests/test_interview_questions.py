@@ -250,6 +250,31 @@ def test_the_worker_sends_the_interviews_length(monkeypatch):
     assert (sent[0]["duration"], sent[0]["room_name"]) == (143, "interview-a")
 
 
+def test_the_worker_tries_its_second_address_only_when_the_first_cant_be_reached(monkeypatch):
+    # After a timeout it posted again, and the server wrote the report twice.
+    import dotenv
+    import requests
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)
+    worker = importlib.import_module("interview_agent")
+    monkeypatch.setattr(worker, "BACKEND_URL", "https://api.example.test")
+    tried, failure = [], [requests.ReadTimeout()]
+
+    def post(url, json=None, headers=None, timeout=None):
+        tried.append(url)
+        raise failure[0]
+    monkeypatch.setattr(worker.requests, "post", post)
+    said = [{"role": "candidate", "text": "Hello"}]
+
+    worker.post_transcript({"candidate_email": "ada@x.com"}, said, room_name="interview-a")
+    assert tried == ["https://api.example.test/api/chat/save-transcript"]
+
+    tried.clear()
+    failure[0] = requests.ConnectionError()
+    worker.post_transcript({"candidate_email": "ada@x.com"}, said, room_name="interview-a")
+    assert tried == ["https://api.example.test/api/chat/save-transcript",
+                     "http://localhost:8006/api/chat/save-transcript"]
+
+
 def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, monkeypatch):
     # LiveKit's own turn-taking, at medium eagerness, cut Alex off; the voice
     # interview's session is set for a calmer conversation.
