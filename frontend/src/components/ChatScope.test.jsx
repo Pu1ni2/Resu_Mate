@@ -5,10 +5,12 @@ import { MemoryRouter } from 'react-router-dom';
 
 import Dashboard from './Dashboard';
 import CandidateFocus from './CandidateFocus';
+import HiringAgentPanel from './focus/HiringAgentPanel';
 
 /* The dashboard's chat, over the selected candidates, and the candidate
  * file's chat, about one person, were both called "A second perspective".
- * Each is named now for what it answers from. */
+ * Each is named now for what it answers from, and the file's is reached from
+ * the assistant, not a button of its own among the file's actions. */
 
 const mocks = vi.hoisted(() => ({ app: null }));
 vi.mock('../context/AppContext', () => ({ useApp: () => mocks.app }));
@@ -63,5 +65,30 @@ describe("the candidate file's chat", () => {
     expect(screen.getByText('ABOUT THIS CANDIDATE')).toBeTruthy();
     expect(screen.getByText(/Answers come from this candidate's file\./)).toBeTruthy();
     expect(screen.queryByText(/second perspective/i)).toBeNull();
+  });
+
+  it("is the assistant's first choice in the file, and no longer a button among its actions", () => {
+    mocks.app = app([BEA]);
+    render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
+    expect(screen.queryByRole('button', { name: /^Discuss/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    const [first] = screen.getByRole('group', { name: 'Ask about' }).querySelectorAll('a, button');
+    expect(first.textContent).toBe('This candidateAnswers from Ada’s file');
+    fireEvent.click(first);
+    expect(screen.getByText('ABOUT THIS CANDIDATE')).toBeTruthy();
+  });
+
+  it('names the person as the file does, so not while names are hidden', () => {
+    mocks.app = { ...app([]), anonymize: true, getDisplayName: (c, i) => `Candidate ${i + 1}` };
+    render(<MemoryRouter initialEntries={['/hiring/focus?candidate=1']}><CandidateFocus /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Assistant' }));
+    expect(screen.getByRole('button', { name: /^This candidate/ }).textContent).toBe('This candidateAnswers from Candidate 1’s file');
+  });
+
+  it("is what an evaluation's own button opens, by the same name", () => {
+    const onSwitchToChat = vi.fn();
+    render(<HiringAgentPanel agentStep="result" agentResult={{ report: 'A strong fit.' }} onSwitchToChat={onSwitchToChat} onReset={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ask about this candidate' }));
+    expect(onSwitchToChat).toHaveBeenCalledTimes(1);
   });
 });

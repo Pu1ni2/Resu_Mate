@@ -6,7 +6,8 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Assistant from './Assistant';
 
 /* One assistant, with what it answers about in view. "Candidate chat" and
- * "Ask Jarvis" sat side by side in the sidebar, named differently. */
+ * "Ask Jarvis" sat side by side in the sidebar, named differently, and the
+ * candidate file had "Discuss candidate" among its actions. */
 
 const mocks = vi.hoisted(() => ({ app: null }));
 vi.mock('../../context/AppContext', () => ({ useApp: () => mocks.app }));
@@ -106,6 +107,36 @@ describe('the selected candidates', () => {
     expect(choices()).toBeNull();
     // The choice is gone, so the focus is kept on the assistant.
     expect(document.activeElement).toBe(button);
+  });
+});
+
+describe('this candidate', () => {
+  const ada = (asking = false) => ({ name: 'Ada', onAsk: vi.fn(), asking });
+
+  it('comes first, in a candidate file, naming whose file it answers from', () => {
+    fireEvent.click(show({ thisCandidate: ada() }));
+    expect(named()).toEqual(['This candidate', 'Selected candidates', 'The whole workspace']);
+    expect(about('This candidate')).toBe('Answers from Ada’s file');
+  });
+
+  it("opens the file's chat, keeping the focus on the assistant", () => {
+    const person = ada();
+    const button = show({ thisCandidate: person });
+    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: /^This candidate/ }));
+    expect(person.onAsk).toHaveBeenCalledTimes(1);
+    expect(choices()).toBeNull();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("is marked while the file's chat is open", () => {
+    fireEvent.click(show({ thisCandidate: ada(true) }));
+    expect(screen.getByRole('button', { name: /^This candidate/ }).getAttribute('aria-current')).toBe('true');
+  });
+
+  it('is not offered outside a candidate file', () => {
+    fireEvent.click(show());
+    expect(screen.queryByRole('button', { name: /^This candidate/ })).toBeNull();
   });
 });
 
