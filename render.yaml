@@ -57,9 +57,11 @@ services:
       - key: DEBUG
         value: "false"
       # The frontend's public URL, for the links in emails (invitations,
-      # password resets). Also allowed by CORS.
+      # password resets), and the site CORS lets call the API. Required: the
+      # backend doesn't start without it.
       - key: FRONTEND_URL
         sync: false
+      # Optional: other sites allowed to call the API, comma-separated.
       - key: CORS_ORIGINS
         sync: false
       - key: OPENAI_API_KEY

@@ -8,6 +8,23 @@ from typing import List, Optional
 _DEFAULT_SECRET = "change-me-in-production"
 _MIN_SECRET_LEN = 32
 
+# The dev servers' origins, which CORS lets in only on local runs (DEBUG).
+# Production let them in too: any page running on a visitor's own machine
+# could call the API in their name.
+LOCAL_ORIGINS = (
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3006",
+    "http://localhost:5173",
+)
+
+
+def origin_of(url: str) -> str:
+    """The scheme and host a browser sends as Origin: no path, no trailing slash."""
+    from urllib.parse import urlsplit
+    parts = urlsplit(url.strip())
+    return f"{parts.scheme}://{parts.netloc}" if parts.scheme and parts.netloc else ""
+
 # The settings file, read from the working directory. RESUMATE_ENV_FILE names
 # another: the tests give an empty one, so the real keys in a developer's
 # backend/.env (OpenAI, SendGrid, S3) never reach a test run.
@@ -72,22 +89,17 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = False
 
-    # CORS — comma-separated origin list. The defaults cover local dev (3000, 3001,
-    # 5173) and the Render frontend URL so the app boots usable even if the
-    # CORS_ORIGINS env var isn't set. Override in production for security.
-    cors_origins: str = (
-        "http://localhost:3000,http://localhost:3001,http://localhost:3006,"
-        "http://localhost:5173,"
-        "https://resumate-ui.onrender.com"
-    )
+    # CORS: comma-separated origins allowed besides FRONTEND_URL's, e.g. a
+    # second domain. See cors_origins_list.
+    cors_origins: str = ""
 
-    # Public base URL of the frontend, used to build links inside outbound
-    # emails. This MUST be reachable by the recipient — an interview invitation
-    # is read on the candidate's machine, so a localhost URL is a dead link for
-    # everyone except the developer who wrote it. Defaults to the deployed
-    # frontend rather than a dev port so a missing env var degrades to "works
-    # in production" instead of "works only on my laptop".
-    frontend_url: str = "https://resumate-ui.onrender.com"
+    # Public base URL of the frontend: the links inside outbound emails, and
+    # the origin CORS lets in. It must be reachable by the recipient: an
+    # interview invitation is read on the candidate's machine, so a localhost
+    # URL is a dead link for everyone but its developer. Production needs it
+    # set (require_frontend_url): its default was one deployment's address,
+    # so any other sent its candidates there.
+    frontend_url: str = ""
 
     @property
     def candidate_login_url(self) -> str:
@@ -134,31 +146,40 @@ class Settings(BaseSettings):
     
     @property
     def cors_origins_list(self) -> List[str]:
-        """Origins allowed by CORS.
+        """Origins allowed by CORS: FRONTEND_URL's, CORS_ORIGINS, and on local
+        runs (DEBUG) the dev servers'.
 
-        The env-provided CORS_ORIGINS is MERGED with a set of always-allowed
-        origins (the Render frontend + local dev ports) rather than replacing
-        them. This way a malformed, empty, or stale CORS_ORIGINS value set in
-        the Render dashboard can't lock the production frontend out — the cause
-        of the "No Access-Control-Allow-Origin header" lockout. Blank entries
-        are dropped and duplicates de-duped while preserving order.
+        FRONTEND_URL's is always among them, so a blank or stale CORS_ORIGINS
+        can't lock the site out: the "No Access-Control-Allow-Origin header"
+        lockout that a fixed, always-merged list used to prevent. Entries are
+        reduced to the origin a browser sends, blanks dropped, duplicates
+        removed in order.
         """
-        always_allowed = [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3006",
-            "http://localhost:5173",
-            "https://resumate-ui.onrender.com",
-        ]
-        from_env = [o.strip() for o in (self.cors_origins or "").split(",")]
-        seen: set = set()
+        listed = [self.frontend_url, *(self.cors_origins or "").split(",")]
+        if self.debug:
+            listed += LOCAL_ORIGINS
         merged: List[str] = []
-        for origin in [*from_env, *always_allowed]:
-            if origin and origin not in seen:
-                seen.add(origin)
+        for origin in map(origin_of, listed):
+            if origin and origin not in merged:
                 merged.append(origin)
         return merged
-    
+
+    def require_frontend_url(self) -> None:
+        """Production doesn't start without FRONTEND_URL.
+
+        Its emails link to the site, and CORS lets the site in, by it. The
+        server checks when it starts (main.py), as for email, so migrations
+        and CI's checks run without it. Local runs (DEBUG) work without it:
+        their links are relative to the site that shows them.
+        """
+        if self.debug or origin_of(self.frontend_url):
+            return
+        raise RuntimeError(
+            "FRONTEND_URL isn't set, and production needs it: emailed links point to it, "
+            "and it's the site allowed to call the API. Set it to the frontend's public "
+            "address, e.g. https://app.example.com."
+        )
+
     class Config:
         env_file = ENV_FILE
         env_file_encoding = "utf-8"

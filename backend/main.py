@@ -44,6 +44,8 @@ async def lifespan(app: FastAPI):
     # reset a password without email.
     from app.services.email_service import email_service
     email_service.require_in_production()
+    # Nor this: the emails' links point to the site, and CORS lets it in.
+    settings.require_frontend_url()
 
     from app.agents.orchestrator import orchestrator
     from app.agents.data_agent import data_agent
@@ -160,13 +162,15 @@ async def _unhandled_exception_handler(_request: _Request, exc: Exception):
         },
     )
 
-# CORS
+# CORS: the frontend's own origin (settings.cors_origins_list). Only what the
+# frontend sends: it signs in with a bearer token, never a cookie, so no
+# credentials; the methods the routes use; and its two headers.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Routes — ALL registered on the SAME app

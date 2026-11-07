@@ -32,14 +32,18 @@ The cache clear matters — the old 3.14 venv is cached otherwise.
 
 ## CORS
 
-The backend MERGES `CORS_ORIGINS` (env) with a hardcoded allow-list that always
-includes `https://resumate-ui.onrender.com` and the local dev ports (see
-`app/core/config.py::cors_origins_list`). A blank or stale dashboard value can
-no longer lock the frontend out. Still, set it explicitly for clarity:
+The API answers the frontend at `FRONTEND_URL`, plus any origins listed in
+`CORS_ORIGINS` (see `app/core/config.py::cors_origins_list`). Production
+doesn't start without `FRONTEND_URL`, which is also where emailed links
+point. Localhost is allowed only on local runs (`DEBUG=true`).
 
 ```
-CORS_ORIGINS = https://resumate-ui.onrender.com,http://localhost:3006
+FRONTEND_URL = https://resumate-ui.onrender.com
+CORS_ORIGINS =            (blank, or a second domain)
 ```
+
+Because `FRONTEND_URL` is always allowed, a blank or stale `CORS_ORIGINS`
+can't lock the frontend out.
 
 Symptom of a CORS lockout: browser console shows
 `No 'Access-Control-Allow-Origin' header is present` and the preflight OPTIONS

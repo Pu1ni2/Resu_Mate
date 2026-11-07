@@ -20,11 +20,10 @@ def _settings(**env):
     return Settings(secret_key="x" * 40, debug=True, **env)
 
 
-def test_candidate_login_url_defaults_to_a_public_host():
-    url = _settings().candidate_login_url
-    assert url.startswith("https://"), url
-    assert "localhost" not in url and "127.0.0.1" not in url, url
-    assert url.endswith("/candidate/login"), url
+def test_without_frontend_url_a_link_names_no_host():
+    # Production doesn't start without FRONTEND_URL (test_cors.py). A local
+    # run's links are relative to the site showing them, never a localhost.
+    assert _settings().candidate_login_url == "/candidate/login"
 
 
 def test_frontend_url_is_configurable():
