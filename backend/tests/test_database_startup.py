@@ -37,6 +37,31 @@ def test_the_migration_head_is_the_revision_nothing_builds_on():
     assert revisions - parents == {database.migration_head()}
 
 
+def test_production_refuses_sqlite_and_an_unmigrated_postgres(monkeypatch):
+    # With DATABASE_URL unset, production kept its data in a SQLite file that
+    # every deploy wipes; a Postgres with no migration history was built from
+    # the models, hiding what a migration left out.
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "debug", False)
+    assert "DATABASE_URL" in database.production_refusal("sqlite")
+    assert "migration history" in database.production_refusal("postgresql", has_history=False)
+    assert database.production_refusal("postgresql") is None
+
+
+def test_local_runs_start_on_either():
+    # The tests run with DEBUG, as local development does.
+    assert database.production_refusal("sqlite") is None
+    assert database.production_refusal("postgresql", has_history=False) is None
+
+
+def test_production_does_not_start_on_sqlite(monkeypatch):
+    import asyncio
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "debug", False)
+    with pytest.raises(RuntimeError, match="Production needs Postgres"):
+        asyncio.get_event_loop().run_until_complete(database.init_db())
+
+
 def test_startup_stops_when_the_database_cannot_be_used(monkeypatch):
     import main
 
