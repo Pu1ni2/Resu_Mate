@@ -11,7 +11,7 @@ from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag, MAX_FILE_SIZE, OLD_WORD_FILE, RESUME_EXTENSIONS
 from app.core.database import get_db
 from app.core.errors import log_text
-from app.services import db_service
+from app.services import db_service, state_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
 
@@ -224,6 +224,8 @@ async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db
     theirs = (Candidate.id == candidate_id, Candidate.manager_id == user.id)
     files = await db_service.stored_file_keys(db, *theirs)
     await db_service.delete_candidates(db, *theirs)
+    # The chat's conversation may be about them; the page clears its copy too.
+    await state_service.forget_chats(db, [user.id])
     await db.commit()
     resume_rag.delete_candidate(candidate_id, manager_id=user.id)
     await _delete_stored_files(files)
@@ -243,6 +245,7 @@ async def delete_all_candidates(user=Depends(get_current_user), db: AsyncSession
     await db.execute(sql_delete(Interview).where(Interview.manager_id == user.id))
     await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.manager_id == user.id))
     await db_service.delete_candidates(db, Candidate.manager_id == user.id)
+    await state_service.forget_chats(db, [user.id])
     await db.commit()
     resume_rag.clear_all(manager_id=user.id)
     await _delete_stored_files(files)

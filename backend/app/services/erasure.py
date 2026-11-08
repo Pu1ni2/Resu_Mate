@@ -20,7 +20,8 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
 
     Interviews, portal grants, their own résumés (database, in-memory store
     and object storage), the career advisor's session, sign-in codes,
-    and anything a sourcing run kept about them. An audit record is written.
+    anything a sourcing run kept about them, and the chat conversations of
+    every manager who held them. An audit record is written.
     """
     from app.models.auth import OTPCode
     from app.models.candidate import Candidate, CandidateAccess, Interview
@@ -38,6 +39,12 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
     # before the grants are deleted, since the grants point at some of them.
     in_memory = resume_rag.candidates_with_email(email)
     cand_rows = await db_service.resumes_of(db, email, ids=[c["id"] for c in in_memory])
+    # Every manager who held them: their chat may have talked about them.
+    from sqlalchemy import select
+    from app.services import state_service
+    holders = {row.manager_id for row in cand_rows} | {c.get("manager_id") for c in in_memory}
+    holders |= set((await db.execute(select(Interview.manager_id).where(Interview.candidate_email == email))).scalars())
+    holders |= set((await db.execute(select(CandidateAccess.manager_id).where(CandidateAccess.email == email))).scalars())
 
     # Database first: if it fails, nothing is half-erased. Memory went first, so
     # a failed commit left the résumé in the database, and the startup warm-up
@@ -50,6 +57,7 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
     await db.execute(sql_delete(OTPCode).where(OTPCode.email == email))
     # In any case: a sourcing run keeps the address as it found it.
     await db.execute(sql_delete(SourcedProfile).where(func.lower(SourcedProfile.email) == email))
+    await state_service.forget_chats(db, holders)
     await db.commit()
 
     # Then the in-memory store and object storage, scoped to the row's

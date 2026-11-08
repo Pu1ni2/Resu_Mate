@@ -9,25 +9,47 @@ tenant's LLM context.
 
 These tests exercise the store directly rather than through /chat/send, because
 /chat/send needs a live OpenAI key and the isolation property is a property of
-the key, not of the model call.
+the key, not of the model call. The store is the database now (state_service).
 """
+import asyncio
+
 from conftest import register, auth_headers
 
 from app.api import chat as chat_api
 
 
-def _reset():
-    chat_api.chat_histories.clear()
+def _run(coro):
+    return asyncio.get_event_loop().run_until_complete(coro)
 
 
-def test_same_conversation_id_does_not_share_across_managers():
-    _reset()
+def _remember(manager_id, conversation, question, answer):
+    from app.core import database
+    from app.services import state_service
+
+    async def remember():
+        async with database.async_session() as db:
+            await state_service.remember_chat(db, chat_api._conversation(conversation), manager_id, question, answer)
+    _run(remember())
+
+
+def _history(manager_id, conversation="default"):
+    from app.core import database
+    from app.services import state_service
+
+    async def read():
+        async with database.async_session() as db:
+            return await state_service.read_chat_history(db, conversation, manager_id)
+    return _run(read())
+
+
+def test_same_conversation_id_does_not_share_across_managers(client):
+    _, one = register(client, "one@co.com")
+    _, two = register(client, "two@co.com")
     # Both managers use the default conversation id — the exact collision case.
-    chat_api._remember_chat(1, "default", "Is Maya strong?", "Yes, 92.")
-    chat_api._remember_chat(2, "default", "Who applied?", "Two people.")
+    _remember(one["id"], "default", "Is Maya strong?", "Yes, 92.")
+    _remember(two["id"], "default", "Who applied?", "Two people.")
 
-    a = chat_api.chat_histories[chat_api._chat_key(1, "default")]
-    b = chat_api.chat_histories[chat_api._chat_key(2, "default")]
+    a, b = _history(one["id"]), _history(two["id"])
 
     assert len(a) == 2 and len(b) == 2
     # Neither manager's text may appear in the other's history.
@@ -35,53 +57,45 @@ def test_same_conversation_id_does_not_share_across_managers():
     assert "applied" not in str(a)
 
 
-def test_history_lookup_is_scoped_to_the_caller():
-    _reset()
-    chat_api._remember_chat(1, "default", "secret question", "secret answer")
+def test_history_lookup_is_scoped_to_the_caller(client):
+    _, one = register(client, "one2@co.com")
+    _, two = register(client, "two2@co.com")
+    _remember(one["id"], "default", "secret question", "secret answer")
     # A different manager, same id, must see nothing.
-    assert chat_api.chat_histories.get(chat_api._chat_key(2, "default"), []) == []
+    assert _history(two["id"]) == []
 
 
-def test_key_includes_the_manager_id():
-    # Guards the shape itself: if someone reverts to a bare string key, the
-    # collision returns silently and no other test here would catch it.
-    key = chat_api._chat_key(7, "abc")
-    assert isinstance(key, tuple)
-    assert key[0] == 7
-    assert 7 in key
-
-
-def test_blank_conversation_id_still_scopes_by_manager():
-    _reset()
-    chat_api._remember_chat(1, "", "a", "b")
-    chat_api._remember_chat(2, None, "c", "d")
-    assert chat_api.chat_histories[chat_api._chat_key(1, "default")][0]["content"] == "a"
-    assert chat_api.chat_histories[chat_api._chat_key(2, "default")][0]["content"] == "c"
+def test_blank_conversation_id_is_the_default_one(client):
+    _, one = register(client, "one3@co.com")
+    _, two = register(client, "two3@co.com")
+    _remember(one["id"], "", "a", "b")
+    _remember(two["id"], None, "c", "d")
+    assert _history(one["id"])[0]["content"] == "a"
+    assert _history(two["id"])[0]["content"] == "c"
 
 
 def test_clear_only_removes_the_callers_history(client):
-    _reset()
     tok_a, user_a = register(client, "a@co.com")
     tok_b, user_b = register(client, "b@co.com")
 
-    chat_api._remember_chat(user_a["id"], "default", "mine", "ok")
-    chat_api._remember_chat(user_b["id"], "default", "theirs", "ok")
+    _remember(user_a["id"], "default", "mine", "ok")
+    _remember(user_b["id"], "default", "theirs", "ok")
 
     r = client.post("/api/chat/clear", headers=auth_headers(tok_a))
     assert r.status_code == 200, r.text
 
     # A's history is gone; B's survives. This previously called .clear() on the
-    # whole dict, so any authenticated user wiped everyone's conversations.
-    assert chat_api.chat_histories.get(chat_api._chat_key(user_a["id"], "default")) is None
-    assert chat_api.chat_histories.get(chat_api._chat_key(user_b["id"], "default")) is not None
+    # whole store, so any authenticated user wiped everyone's conversations.
+    assert _history(user_a["id"]) == []
+    assert _history(user_b["id"]) != []
 
 
-def test_per_conversation_message_cap_still_applies():
-    _reset()
+def test_per_conversation_message_cap_still_applies(client):
+    _, one = register(client, "cap@co.com")
     for i in range(30):
-        chat_api._remember_chat(1, "default", f"q{i}", f"a{i}")
-    convo = chat_api.chat_histories[chat_api._chat_key(1, "default")]
-    assert len(convo) == chat_api._CHAT_MAX_MESSAGES_PER_CONVO
+        _remember(one["id"], "default", f"q{i}", f"a{i}")
+    convo = _history(one["id"])
+    assert len(convo) == 20
     # Newest kept, oldest dropped.
     assert convo[-1]["content"] == "a29"
 

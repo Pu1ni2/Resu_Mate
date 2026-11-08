@@ -23,7 +23,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import log_text
 from app.services import db_service
-from app.services import email_quota, evaluations, interview_modes, interview_setup
+from app.services import email_quota, evaluations, interview_modes, interview_setup, state_service
 from app.services.experience import experience_text
 from app.services.hidden_names import NO_LOOKUP, hides_names, scrub
 from app.services.interview_report import write_report
@@ -159,54 +159,48 @@ def _get_candidate(candidate_id: int, candidate_data: dict = None, manager_id=No
 
 # ═══════ CHAT ENDPOINTS ═══════
 #
-# chat_histories is a bounded LRU keyed by (manager_id, conversation_id).
-#
-# The manager_id is not optional. Keyed by conversation_id alone — which is what
-# this was — every manager who did not set an explicit id shared the single
-# "default" bucket, and that history is replayed verbatim into the next
-# manager's prompt. One tenant's questions, and the model's answers about their
-# candidates, leaked into another tenant's context. The cap was already here;
-# the tenant key is the fix.
-#
-# For cross-restart persistence the advisor_sessions DB pattern is the right
-# answer. For the dashboard's free-form chat the value of persistence still is
-# not worth the DB hit, so this stays in memory — with the caveat that it is
-# per-process and therefore inconsistent across workers.
-from collections import OrderedDict
-_CHAT_MAX_CONVERSATIONS = 256
-_CHAT_MAX_MESSAGES_PER_CONVO = 20
-chat_histories: "OrderedDict[tuple, list]" = OrderedDict()
+# The selected-candidates chat's conversation is kept in the database, per
+# manager and conversation id (state_service). In this process's memory, a
+# restart, or the free plan's sleep, lost it, and each server process had
+# its own. The manager is always part of the key: keyed by conversation id
+# alone, every manager shared the "default" conversation, and one tenant's
+# questions, and the model's answers about their candidates, were replayed
+# into another's prompt.
 
-
-def _chat_key(manager_id, conversation_id: str) -> tuple:
-    """Tenant-scoped history key. manager_id first so it can never be omitted."""
-    return (manager_id, conversation_id or "default")
-
-
-def _remember_chat(manager_id, conversation_id: str, user_msg: str, assistant_msg: str) -> None:
-    key = _chat_key(manager_id, conversation_id)
-    convo = chat_histories.pop(key, [])
-    convo.append({"role": "user", "content": user_msg})
-    convo.append({"role": "assistant", "content": assistant_msg})
-    chat_histories[key] = convo[-_CHAT_MAX_MESSAGES_PER_CONVO:]
-    while len(chat_histories) > _CHAT_MAX_CONVERSATIONS:
-        chat_histories.popitem(last=False)  # drop the oldest conversation
+def _conversation(conversation_id: Optional[str]) -> str:
+    """The conversation's id; the page sends "default", and blank means the same."""
+    return conversation_id or "default"
 
 
 @router.post("/send")
 @limiter.limit("30/minute")
-async def send_message(request: Request, req: ChatRequest, user=Depends(get_current_user)):
+async def send_message(request: Request, req: ChatRequest, user=Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
     """Multi-candidate RAG chat"""
     try:
-        history = chat_histories.get(_chat_key(user.id, req.conversation_id), [])
+        conversation = _conversation(req.conversation_id)
+        history = await state_service.read_chat_history(db, conversation, user.id)
+        # Nothing held open while the model answers, which takes seconds.
+        await db.commit()
         response = await resume_rag.chat(req.message, req.candidate_ids, history, hides_names(user, req.anonymize),
                                          manager_id=user.id)
-        _remember_chat(user.id, req.conversation_id, req.message, response.get("response", ""))
+        await state_service.remember_chat(db, conversation, user.id, req.message, response.get("response", ""))
         return response
     except HTTPException:
         raise
     except Exception:
         raise _failed("chat send", "The assistant couldn't answer just now. Please try again.")
+
+
+@router.get("/history")
+async def chat_history(conversation_id: str = "default", user=Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
+    """The conversation so far, for the page to show again.
+
+    The page started afresh on every visit while the server remembered the
+    conversation, so the chat answered from things it no longer showed.
+    """
+    return {"messages": await state_service.read_chat_history(db, _conversation(conversation_id), user.id)}
 
 @router.get("/intro")
 @limiter.limit("30/minute")
@@ -215,14 +209,13 @@ async def get_intro(request: Request, count: int = 0, anonymize: bool = False, u
     return resume_rag.get_intro_message(count, hides_names(user, anonymize))
 
 @router.post("/clear")
-async def clear_chat(user=Depends(get_current_user)):
+async def clear_chat(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Clear THIS manager's chat history.
 
-    Previously called chat_histories.clear(), which wiped every tenant's
-    history — any authenticated user could erase everyone's conversations.
+    It once cleared every tenant's history: any authenticated user could
+    erase everyone's conversations.
     """
-    for key in [k for k in chat_histories if k[0] == user.id]:
-        chat_histories.pop(key, None)
+    await state_service.clear_chat_histories(db, user.id)
     return {"status": "cleared"}
 
 # ═══════ VOICE ENDPOINTS ═══════
