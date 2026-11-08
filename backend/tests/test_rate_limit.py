@@ -104,7 +104,7 @@ def test_sign_in_counts_per_address_on_the_real_routes(client, limits):
 SPENDING = {
     "app.api.chat": ["get_intro", "speech_to_text", "text_to_speech", "focus_chat", "draft_email",
                      "scan_resume", "resume_intelligence", "credibility_analysis",
-                     "automate_ranking", "interview_report", "export_report_pdf",
+                     "automate_ranking", "interview_report", "interview_report_pdf",
                      "send_message", "web_search", "hiring_agent", "github_analyze",
                      "create_interview"],
     "app.api.jarvis": ["jarvis_chat"],

@@ -39,8 +39,18 @@ async def _finished(manager_id, email, report, scores):
         await db.commit()
 
 
+async def _interview_for(email):
+    from sqlalchemy import select
+    from app.core import database
+    from app.models.candidate import Interview
+    async with database.async_session() as db:
+        return (await db.execute(select(Interview.id).where(Interview.candidate_email == email))).scalars().first()
+
+
 def _export(client, tok, email):
-    r = client.get(f"/api/chat/export-report/{email}", headers=auth_headers(tok))
+    # By the interview's id: the export's address held the email.
+    iid = _run(_interview_for(email))
+    r = client.get(f"/api/chat/interviews/{iid}/report.pdf", headers=auth_headers(tok))
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/pdf"
     text = "".join(page.extract_text() for page in pypdf.PdfReader(io.BytesIO(r.content)).pages)

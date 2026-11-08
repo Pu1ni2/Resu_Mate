@@ -58,10 +58,13 @@ def test_the_candidate_still_reads_their_first_report(client):
 
 
 def test_jarvis_still_finds_the_first_report(client):
+    # Jarvis reads the candidate's interviews by their id, newest first, and
+    # takes the newest finished one.
     tok, m = register(client, "r2@co.com")
-    _run(_rounds(m["id"], "two2@x.com"))
-    results = client.get("/api/chat/get-interview-results/two2@x.com", headers=auth_headers(tok)).json()["results"]
-    assert results[0]["report"]["report"] == FIRST_REPORT
+    first, _, cid = _run(_rounds(m["id"], "two2@x.com"))
+    interviews = client.get(f"/api/chat/candidates/{cid}/interviews", headers=auth_headers(tok)).json()["interviews"]
+    finished = next(iv for iv in interviews if iv["status"] == "completed" and iv["report"])
+    assert (finished["interview_id"], finished["report"]["report"]) == (first, FIRST_REPORT)
 
 
 def test_the_list_says_which_interview_each_report_is(client):
@@ -71,21 +74,21 @@ def test_the_list_says_which_interview_each_report_is(client):
     assert [r["interview_id"] for r in results] == [first]
 
 
-def test_the_pdf_is_of_the_interview_asked_for_or_the_latest_finished(client):
+def test_the_pdf_is_of_the_interview_asked_for(client):
     tok, m = register(client, "r4@co.com")
-    first, _, _ = _run(_rounds(m["id"], "two4@x.com"))
-    by_id = client.get(f"/api/chat/export-report/two4@x.com?interview_id={first}", headers=auth_headers(tok))
+    first, second, _ = _run(_rounds(m["id"], "two4@x.com"))
+    by_id = client.get(f"/api/chat/interviews/{first}/report.pdf", headers=auth_headers(tok))
     assert by_id.status_code == 200, by_id.text
     assert "Round one went well" in _pdf_text(by_id)
-    latest = client.get("/api/chat/export-report/two4@x.com", headers=auth_headers(tok))
-    assert "Round one went well" in _pdf_text(latest)
+    # The second round, still waiting, has nothing to export yet.
+    assert client.get(f"/api/chat/interviews/{second}/report.pdf", headers=auth_headers(tok)).status_code == 409
 
 
 def test_another_managers_interview_is_not_exported_by_its_id(client):
     _, a = register(client, "r5@co.com")
     tok_b, _ = register(client, "r6@co.com")
     first, _, _ = _run(_rounds(a["id"], "two5@x.com"))
-    r = client.get(f"/api/chat/export-report/two5@x.com?interview_id={first}", headers=auth_headers(tok_b))
+    r = client.get(f"/api/chat/interviews/{first}/report.pdf", headers=auth_headers(tok_b))
     assert r.status_code == 404
 
 

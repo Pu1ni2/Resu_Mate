@@ -1032,26 +1032,6 @@ async def candidate_my_report(
 
     return {"interview_completed": True, "interview_report": db_service.candidate_report(interview)}
 
-@router.get("/interview-status/{email}")
-async def interview_status(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    email = email.strip().lower()
-    interview = await db_service.get_interview_by_email(db, email, manager_id=user.id)
-    if interview:
-        return {
-            "exists": True,
-            "status": interview.status,
-            "completed": interview.status == "completed",
-            "mode": interview_modes.mode_of(interview),
-            "interview_id": interview.id,
-            "config": {
-                "role": interview.role, "level": interview.level,
-                "num_questions": interview.num_questions,
-                "mode": interview_modes.mode_of(interview),
-                "interview_id": interview.id,
-            }
-        }
-    return {"exists": False}
-
 # ═══════ INTERVIEW RESULTS (PostgreSQL-backed) ═══════
 
 class SaveInterviewResult(BaseModel):
@@ -1108,21 +1088,6 @@ async def candidate_delete_my_data(
     from app.services.erasure import erase_person
     removed = await erase_person(db, email, actor="candidate")
     return {"status": "deleted", "email": email, "records_removed": removed}
-
-@router.get("/get-interview-results/{email}")
-async def get_interview_results(email: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Get interview results for one of this manager's candidates."""
-    email = email.strip().lower()
-    # The latest finished one, not a newer interview still waiting.
-    interview = await db_service.finished_interview(db, email, manager_id=user.id)
-    if interview and interview.report:
-        report = interview.report
-        try:
-            report = json.loads(report) if isinstance(report, str) else report
-        except:
-            pass
-        return {"email": email, "results": [{"report": report, "timestamp": interview.completed_at.isoformat() if interview.completed_at else None}], "count": 1}
-    return {"email": email, "results": [], "count": 0}
 
 @router.get("/get-all-interview-results")
 async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -1329,28 +1294,9 @@ async def interview_report_pdf(request: Request, interview_id: int, user=Depends
     if interview.status != "completed":
         raise HTTPException(409, "This interview hasn't finished yet.")
     email = (interview.candidate_email or "").strip().lower()
-    candidate = resume_rag.get_candidate(interview.candidate_id, manager_id=user.id) if interview.candidate_id else None
-    # Interviews made before they named their candidate: by the résumé's address.
+    candidate = resume_rag.get_candidate(interview.candidate_id, manager_id=user.id)
+    # Not in this server's memory under that id: by the résumé's own address.
     return _report_pdf(candidate or _candidate_by_email(user.id, email), interview, email)
-
-
-@router.get("/export-report/{email}")
-@limiter.limit("20/minute")
-async def export_report_pdf(request: Request, email: str, interview_id: Optional[int] = None,
-                            user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Generate a branded PDF report for one of THIS manager's candidates.
-
-    Auth + ownership required — previously this was public and any email could
-    be guessed to download a candidate's full report (resume + interview).
-    interview_id is the interview the manager has open; without it, the
-    latest finished one.
-    """
-    email = email.strip().lower()
-    interview = await db_service.finished_interview(db, email, manager_id=user.id, interview_id=interview_id)
-    candidate = _candidate_by_email(user.id, email)
-    if not interview and not candidate:
-        raise HTTPException(404, "No data found for this email")
-    return _report_pdf(candidate, interview, email)
 
 
 def _report_pdf(candidate, interview, email: str):
