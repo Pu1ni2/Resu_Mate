@@ -152,6 +152,17 @@ describe('clearSession', () => {
     clearSession();
     expect(localStorage.getItem('resumate_hm_user')).toBeNull();
   });
+
+  // It outlived signing out: the next person on the tab found the last one's
+  // Jarvis conversation, with contact emails and interview reports.
+  it("removes Jarvis's saved session too, and only that from the tab's storage", () => {
+    sessionStorage.setItem('jarvis_session_v3', '{"messages":[{"content":"ada@x.com"}]}');
+    sessionStorage.setItem('something_else', 'kept');
+    clearSession();
+    expect(sessionStorage.getItem('jarvis_session_v3')).toBeNull();
+    expect(sessionStorage.getItem('something_else')).toBe('kept');
+    sessionStorage.clear();
+  });
 });
 
 describe('interviewAuthHeaders', () => {

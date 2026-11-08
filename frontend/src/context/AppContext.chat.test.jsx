@@ -54,3 +54,15 @@ describe('the chat, when it opens', () => {
     expect(app.messages).toEqual([{ role: 'assistant', content: 'Ask about them.' }]);
   });
 });
+
+describe('signing out', () => {
+  // The chat about the last manager's candidates stayed for the next one.
+  it('empties the chat', async () => {
+    vi.spyOn(chatAPI, 'history').mockResolvedValue({ data: { messages: [{ role: 'user', content: 'Is Ada strong?' }] } });
+    await act(async () => { await app.initChat(); });
+    expect(app.messages).toHaveLength(1);
+    act(() => { app.logoutHiringManager(); });
+    expect(app.messages).toEqual([]);
+    expect(app.suggestions).toEqual([]);
+  });
+});
