@@ -191,6 +191,21 @@ def test_deleting_one_candidate_leaves_the_others(client):
     assert resume_rag.get_candidate(grace, manager_id=user["id"]) is not None
 
 
+def test_a_candidate_this_servers_memory_lacks_is_still_deleted(client):
+    # Only memory was asked: one it didn't hold answered 404, which the page
+    # takes as already gone, and the row stayed.
+    from app.services.resume_rag import resume_rag
+    tok, user = register(client, "del12@co.com")
+    ada = _run(_candidate_with_interview(user["id"], "Ada", "ada@x.com"))
+    del resume_rag.candidates[user["id"]][ada]
+    r = client.delete(f"/api/candidates/{ada}", headers=auth_headers(tok))
+    assert r.status_code == 200, r.text
+    assert _run(_rows(user["id"])) == (0, 0)
+    # Someone else's, in their memory or not, is still not found.
+    other, _ = register(client, "del13@co.com")
+    assert client.delete(f"/api/candidates/{ada}", headers=auth_headers(other)).status_code == 404
+
+
 def test_a_delete_takes_the_candidates_portal_grants(client):
     """Grants have no foreign key: one left behind kept the portal open."""
     tok, user = register(client, "del8@co.com")
