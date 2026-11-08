@@ -58,7 +58,7 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
         try:
             resume_rag.delete_candidate(row.id, manager_id=row.manager_id)
         except Exception as exc:
-            logger.warning("in-memory delete failed for candidate %s: %s", row.id, exc)
+            logger.warning("in-memory delete failed for candidate %s: %s", row.id, log_text(exc))
         # Object storage (no-op if S3 unconfigured).
         try:
             from app.services.storage_service import storage_service
@@ -71,7 +71,7 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
         try:
             resume_rag.delete_candidate(cand["id"], manager_id=cand.get("manager_id"))
         except Exception as exc:
-            logger.warning("in-memory delete failed for candidate %s: %s", cand["id"], exc)
+            logger.warning("in-memory delete failed for candidate %s: %s", cand["id"], log_text(exc))
 
     try:
         from app.api.advisor_agent import _session_cache
