@@ -7,7 +7,9 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+# PyJWT, which the LiveKit routes already used: one token library, not two.
+# Tokens made by the other (python-jose) are the same standard, and decode.
+import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -101,7 +103,7 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         return payload
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

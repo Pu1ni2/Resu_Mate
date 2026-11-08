@@ -6,8 +6,8 @@ import asyncio
 import time
 from urllib.parse import parse_qs, urlparse
 
+import jwt
 import pytest
-from jose import jwt
 from sqlalchemy import select
 
 from conftest import register
@@ -125,7 +125,7 @@ def _link_token(email):
 def test_an_expired_link_is_refused(client):
     register(client, "fp6@co.com")
     token = _link_token("fp6@co.com")
-    claims = jwt.get_unverified_claims(token)
+    claims = jwt.decode(token, options={"verify_signature": False})
     claims["exp"] = int(time.time()) - 60
     expired = jwt.encode(claims, settings.secret_key, algorithm=settings.algorithm)
     r = _reset(client, expired)

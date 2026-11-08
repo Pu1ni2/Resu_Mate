@@ -5,8 +5,8 @@ Anyone could sign up with any address and email candidates from ResuMate.
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
+import jwt
 import pytest
-from jose import jwt
 
 from app.api.auth import VERIFY_LINK_INVALID
 from app.core.config import settings
