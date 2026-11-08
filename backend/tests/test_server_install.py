@@ -3,8 +3,9 @@ only the tests or the interview worker need.
 
 The test tools and the worker's LiveKit libraries were installed on the web
 server too, making each deploy bigger and slower, with more code to keep
-patched that the server never runs. They're in requirements-dev.txt now,
-which CI installs; the server installs requirements.txt alone.
+patched that the server never runs. They're in requirements-dev.in now, whose
+lock CI installs; the server installs requirements.txt alone, the lock of
+requirements.in.
 
 Since CI installs both, a module the server imports that only the developers'
 file installs would pass every test and fail on Render. So the last test
@@ -51,14 +52,24 @@ def _names(file):
     return {_name(r.name) for r in _requirements(file)}
 
 
+def _locked(lock):
+    """Every package a lock file installs."""
+    text = (BACKEND / lock).read_text(encoding="utf-8")
+    return {_name(name) for name in re.findall(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==", text, re.M)}
+
+
 def test_the_server_installs_neither_test_tools_nor_the_worker():
-    assert not _names("requirements.txt") & (TEST_TOOLS | WORKER_LIBRARIES)
+    assert not _names("requirements.in") & (TEST_TOOLS | WORKER_LIBRARIES)
+    # Nor does anything it needs bring them in. PyYAML and packaging are
+    # other packages' dependencies too, so they aren't checked here.
+    assert not _locked("requirements.txt") & ({"pytest", "pytest-asyncio"} | WORKER_LIBRARIES)
 
 
 def test_the_tests_install_the_server_the_worker_and_their_tools():
-    included = [line[3:].strip() for line in _lines("requirements-dev.txt") if line.startswith("-r ")]
-    assert included == ["requirements.txt", "requirements-agent.txt"]
-    assert TEST_TOOLS | WORKER_LIBRARIES <= _names("requirements-dev.txt")
+    included = [line[3:].strip() for line in _lines("requirements-dev.in") if line.startswith("-r ")]
+    assert included == ["requirements.in", "requirements-agent.in"]
+    assert TEST_TOOLS | WORKER_LIBRARIES <= _names("requirements-dev.in")
+    assert TEST_TOOLS | WORKER_LIBRARIES <= _locked("requirements-dev.txt")
 
 
 def _ci_installs(job):
@@ -95,27 +106,6 @@ SERVER_CODE = ["app", "main.py", "alembic", "cleanup_stale.py", "reset_password.
 WORKER_CODE = ["interview_agent.py"]
 
 
-def _installed_by(requirements):
-    """Every distribution these requirements install, by the installed
-    distributions' own metadata, extras and platform markers included."""
-    extras_of = {}
-    waiting = [(_name(r.name), set(r.extras)) for r in requirements]
-    while waiting:
-        name, extras = waiting.pop()
-        if name in extras_of and extras <= extras_of[name]:
-            continue
-        extras_of[name] = extras_of.get(name, set()) | extras
-        try:
-            needs = metadata.distribution(name).requires or []
-        except metadata.PackageNotFoundError:
-            continue
-        for text in needs:
-            need = Requirement(text)
-            if need.marker is None or any(need.marker.evaluate({"extra": e}) for e in ["", *extras_of[name]]):
-                waiting.append((_name(need.name), set(need.extras)))
-    return set(extras_of)
-
-
 def _imports(entries):
     """Each top-level module the code imports, anywhere in it, and one place
     that imports it."""
@@ -137,11 +127,11 @@ def _imports(entries):
     return found
 
 
-@pytest.mark.parametrize("code, file", [(SERVER_CODE, "requirements.txt"), (WORKER_CODE, "requirements-agent.txt")])
-def test_every_module_the_code_imports_is_installed_by_its_own_file(code, file):
+@pytest.mark.parametrize("code, lock", [(SERVER_CODE, "requirements.txt"), (WORKER_CODE, "requirements-agent.txt")])
+def test_every_module_the_code_imports_is_installed_by_its_own_file(code, lock):
     imported = _imports(code)
     ours = {"app"} | {path.stem for path in BACKEND.glob("*.py")}
-    installed = _installed_by(_requirements(file))
+    installed = _locked(lock)
     owners = metadata.packages_distributions()
     missing = [
         f"{module} ({where})" for module, where in sorted(imported.items())
@@ -149,6 +139,7 @@ def test_every_module_the_code_imports_is_installed_by_its_own_file(code, file):
         and not {_name(d) for d in owners.get(module, [])} & installed
     ]
     assert missing == []
-    # The check reads real imports: the server's PDF reader, the worker's
-    # LiveKit.
-    assert ("fitz" if file == "requirements.txt" else "livekit") in imported
+    # The check reads real imports and a real lock: the server's PDF reader,
+    # the worker's LiveKit.
+    assert ("fitz" if lock == "requirements.txt" else "livekit") in imported
+    assert len(installed) >= 10

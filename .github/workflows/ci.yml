@@ -20,7 +20,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"   # match Render; 3.14 breaks tokenizers wheels
-      # The server's requirements, the worker's and the test tools.
+      # The server's requirements, the worker's and the test tools, at the
+      # versions the server and the worker install.
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
       - name: Run tests

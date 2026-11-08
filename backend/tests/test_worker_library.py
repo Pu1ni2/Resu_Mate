@@ -33,7 +33,7 @@ def test_the_installed_worker_library_plays_every_part_of_a_reply():
 
 
 def test_the_worker_pins_its_packages_to_one_version_that_does():
-    worker = _pins("requirements-agent.txt")
+    worker = _pins("requirements-agent.in")
     assert set(worker) == set(WORKER_PACKAGES)
     assert len(set(worker.values())) == 1
     assert _parts(worker["livekit-agents"]) >= FIRST_THAT_PLAYS_EVERY_PART

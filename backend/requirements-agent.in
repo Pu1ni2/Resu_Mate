@@ -1,0 +1,12 @@
+# The interview worker's requirements, which the tests install too
+# (requirements-dev.in). Its image installs requirements-agent.txt, made
+# from this file: after changing it, run python scripts/lock_requirements.py
+#
+# One version for all three LiveKit packages. Before 1.5.12 the agent played
+# only the first part of a reply gpt-realtime-2 sends in parts, so the
+# interviewer's question was dropped.
+livekit-agents==1.8.6
+livekit-plugins-openai==1.8.6
+livekit-plugins-simli==1.8.6
+python-dotenv>=1.0.0
+requests>=2.31.0

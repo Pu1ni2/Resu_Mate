@@ -29,8 +29,10 @@ services:
     name: resumate-backend
     runtime: python
     rootDir: backend
-    # Install deps, then run any pending alembic migrations. Idempotent — a
-    # deploy with no new migrations is a no-op. The app refuses to start on a
+    # Install deps, then run any pending alembic migrations. requirements.txt
+    # pins every package to one version, checked against its hashes (it's
+    # made from requirements.in). The migrations are idempotent — a deploy
+    # with no new migrations is a no-op. The app refuses to start on a
     # Postgres that isn't migrated to the newest revision.
     buildCommand: pip install -r requirements.txt && alembic upgrade head
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT

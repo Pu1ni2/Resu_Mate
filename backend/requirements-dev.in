@@ -1,0 +1,19 @@
+# What the tests need: the server's requirements, the interview worker's
+# (the tests import the worker), and the test tools.
+#
+# CI installs requirements-dev.txt, made from this file at the versions the
+# server and the worker install, so CI tests what production runs: after
+# changing it, run python scripts/lock_requirements.py. To set up a
+# computer for development, on any system:
+#
+#   pip install -r requirements-dev.in
+-r requirements.in
+-r requirements-agent.in
+
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+# Read render.yaml and CI's settings (tests/test_site_headers.py,
+# tests/test_server_install.py).
+pyyaml>=6.0
+# Reads requirement lines (tests/test_server_install.py).
+packaging>=23.0

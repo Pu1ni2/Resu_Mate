@@ -11,7 +11,7 @@ BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _required():
-    with open(os.path.join(BACKEND, "requirements.txt"), encoding="utf-8") as f:
+    with open(os.path.join(BACKEND, "requirements.in"), encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
     return {re.split(r"[\[<>=!~ ]", line, maxsplit=1)[0].lower() for line in lines}
 
