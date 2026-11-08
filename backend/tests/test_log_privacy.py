@@ -80,6 +80,23 @@ def test_an_unexpected_errors_line_holds_none_of_its_text(monkeypatch, caplog):
     assert line.exc_info is None
 
 
+def test_any_record_made_with_an_exception_keeps_only_its_type_and_place(caplog):
+    # uvicorn logs every unexpected error again with its traceback, as does a
+    # library that logs one; a traceback ends with the exception's text.
+    import logging
+    from app.core.request_context import install_log_records
+    install_log_records()
+    try:
+        raise RuntimeError("Ada Lovelace's résumé broke it")
+    except RuntimeError as exc:
+        with caplog.at_level(logging.ERROR, logger="uvicorn.error"):
+            logging.getLogger("uvicorn.error").error("Exception in ASGI application\n", exc_info=exc)
+    record = caplog.records[-1]
+    assert record.exc_info is None and record.exc_text is None
+    assert record.getMessage().startswith("Exception in ASGI application (RuntimeError at tests/test_log_privacy.py:")
+    assert "Ada Lovelace" not in record.getMessage()
+
+
 def test_a_database_error_keeps_the_values_out_of_its_text(client):
     from sqlalchemy.exc import IntegrityError
     from app.core import database
