@@ -64,6 +64,16 @@ def test_each_request_gets_one_line_with_its_routes_pattern_never_its_address(cl
         assert "4711" not in line.getMessage() and "ada@x.com" not in line.getMessage()
 
 
+def test_every_route_knows_its_whole_address_on_any_fastapi():
+    # FastAPI from 0.16x keeps an included router's routes as declared, so
+    # the /api added when main.py included them went missing from each
+    # line: CI, on the newest FastAPI, logged GET /candidates/{candidate_id}.
+    import main
+    patterns = [route.path for router in main.ROUTERS for route in router.routes]
+    assert len(patterns) > 50
+    assert [p for p in patterns if not p.startswith("/api/")] == []
+
+
 def test_renders_health_checks_are_not_written_and_uvicorns_line_is_off(client, caplog):
     # Render asks /health every few seconds.
     with caplog.at_level(logging.INFO, logger="resumate.access"):
