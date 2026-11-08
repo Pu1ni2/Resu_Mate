@@ -129,7 +129,8 @@ describe('a terminated interview', () => {
 });
 
 describe('who sees what', () => {
-  const managerProps = { candidateId: 1, candidateEmail: 'jane@co.com', viewer: 'manager' };
+  // Every page that shows a manager a report names its interview.
+  const managerProps = { candidateId: 1, candidateEmail: 'jane@co.com', interviewId: 7, viewer: 'manager' };
 
   it('offers the manager the résumé comparison and a PDF export', () => {
     renderReport(managerProps);
@@ -228,7 +229,7 @@ describe('which interview the manager acts on', () => {
     renderReport(props);
     fireEvent.click(screen.getByRole('button', { name: /export pdf report/i }));
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/chat\/export-report\/jane%40co\.com\?interview_id=7$/);
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/chat\/interviews\/7\/report\.pdf$/);
   });
 
   it('compares the résumé with that interview', async () => {

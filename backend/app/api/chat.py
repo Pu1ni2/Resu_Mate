@@ -1304,6 +1304,36 @@ async def reissue_interview(request: Request, interview_id: int, user=Depends(ge
 
 # ═══════ PDF REPORT EXPORT ═══════
 
+def _candidate_by_email(manager_id: int, email: str):
+    """This manager's candidate whose résumé gives this address, or None.
+
+    By the résumé's own address. "The address appears in the text" picked
+    john@x.com's résumé for hn@x.com, or whoever named this person as a
+    reference.
+    """
+    from app.services.resume_rag import primary_email
+    return next((c for c in resume_rag.get_all_candidates(manager_id=manager_id) if primary_email(c) == email), None)
+
+
+@router.get("/interviews/{interview_id}/report.pdf")
+@limiter.limit("20/minute")
+async def interview_report_pdf(request: Request, interview_id: int, user=Depends(get_current_user),
+                               db: AsyncSession = Depends(get_db)):
+    """One of this manager's finished interviews as a PDF, with the
+    candidate's profile.
+
+    By the interview's id: the export's address held the candidate's email,
+    which the server's log printed.
+    """
+    interview = await _managers_interview(db, user.id, interview_id)
+    if interview.status != "completed":
+        raise HTTPException(409, "This interview hasn't finished yet.")
+    email = (interview.candidate_email or "").strip().lower()
+    candidate = resume_rag.get_candidate(interview.candidate_id, manager_id=user.id) if interview.candidate_id else None
+    # Interviews made before they named their candidate: by the résumé's address.
+    return _report_pdf(candidate or _candidate_by_email(user.id, email), interview, email)
+
+
 @router.get("/export-report/{email}")
 @limiter.limit("20/minute")
 async def export_report_pdf(request: Request, email: str, interview_id: Optional[int] = None,
@@ -1315,23 +1345,19 @@ async def export_report_pdf(request: Request, email: str, interview_id: Optional
     interview_id is the interview the manager has open; without it, the
     latest finished one.
     """
-    from app.services.pdf_safe import ReportPDF, ascii_filename
-    from app.services.resume_rag import primary_email
-    from app.services.scores import score_of
-    import re as re_mod
-
     email = email.strip().lower()
     interview = await db_service.finished_interview(db, email, manager_id=user.id, interview_id=interview_id)
-
-    # Find candidate data within THIS manager's drawer only, by the résumé's
-    # own address. "The address appears in the text" picked john@x.com's
-    # résumé for hn@x.com, or whoever named this person as a reference.
-    candidate = next(
-        (c for c in resume_rag.get_all_candidates(manager_id=user.id) if primary_email(c) == email), None
-    )
-
+    candidate = _candidate_by_email(user.id, email)
     if not interview and not candidate:
         raise HTTPException(404, "No data found for this email")
+    return _report_pdf(candidate, interview, email)
+
+
+def _report_pdf(candidate, interview, email: str):
+    """The branded PDF: the candidate's profile, and the interview when it's finished."""
+    from app.services.pdf_safe import ReportPDF, ascii_filename
+    from app.services.scores import score_of
+    import re as re_mod
 
     # The report as the candidate and the manager's screens read it: its
     # text, the scores (from the column, where they are saved), their

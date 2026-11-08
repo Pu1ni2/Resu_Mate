@@ -770,6 +770,18 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       return false;
     };
 
+    // A candidate's newest finished interview, by their id. It was asked for
+    // by the candidate's email in the address, which the server's log
+    // printed. undefined when the session expired (already said), null when
+    // there's none.
+    const latestFinishedInterview = async (candidateId) => {
+      const res = await authFetch(`${API_BASE}/api/chat/candidates/${encodeURIComponent(candidateId)}/interviews`);
+      if (handle401(res)) return undefined;
+      if (!res.ok) throw new Error(`Interviews ${res.status}`);
+      const { interviews = [] } = await res.json();
+      return interviews.find(iv => iv.status === 'completed' && iv.report) || null;
+    };
+
     // Email the drafts the manager reviewed, for the interviews already made.
     const sendInvites = async (invites, messageId) => {
       setStatus('SENDING INVITES…');
@@ -1266,24 +1278,20 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       setStatus('FETCHING REPORT…');
       try {
         focusCandidate(params.candidate_id, params.candidate_name);
-        const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
-        if (!candidateEmail) {
-          directSay(`I don't have an email for that candidate yet, so I can't fetch the interview report.`);
+        if (!params.candidate_id) {
+          directSay(`I don't know which candidate that is yet, so I can't fetch the interview report.`);
           setStatus('DONE');
           return;
         }
-        const res = await authFetch(`${API_BASE}/api/chat/get-interview-results/${encodeURIComponent(candidateEmail)}`, {
-          method: 'GET',
-        });
-        if (handle401(res)) return;
-        if (!res.ok) throw new Error(`Interview report ${res.status}`);
-        const d = await res.json();
-        const report = d.results?.[0]?.report;
+        const finished = await latestFinishedInterview(params.candidate_id);
+        if (finished === undefined) return;
+        const report = finished?.report;
         if (!report) {
           directSay(`There isn't a completed interview report for ${params.candidate_name || 'this candidate'} yet.`);
           setStatus('DONE');
           return;
         }
+        const candidateEmail = finished.email || params.candidate_email || getKnownEmail(params.candidate_id) || '';
         const artifact = buildInterviewReportArtifact(report, candidateEmail);
         cacheCandidateArtifact('interviewReports', params.candidate_id, artifact);
         updateContext({ lastAction: 'get_interview_report' });
@@ -1337,24 +1345,31 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
 
     } else if (action === 'export_report') {
-      const candidateEmail = params.candidate_email || getKnownEmail(params.candidate_id);
-      if (!candidateEmail) {
-        directSay(`I don't have the candidate email, so I can't export the PDF yet.`);
+      if (!params.candidate_id) {
+        directSay(`I don't know which candidate that is yet, so I can't export the PDF.`);
         setStatus('DONE');
         return;
       }
       // Export-report requires auth; fetch with the bearer token and download
-      // the blob (window.open can't carry an Authorization header).
+      // the blob (window.open can't carry an Authorization header). The PDF
+      // is of their newest finished interview, by its id.
       try {
+        const finished = await latestFinishedInterview(params.candidate_id);
+        if (finished === undefined) return;
+        if (!finished) {
+          directSay(`There isn't a finished interview to export for ${params.candidate_name || 'that candidate'} yet.`);
+          setStatus('DONE');
+          return;
+        }
         const resp = await authFetch(
-          `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}`
+          `${API_BASE}/api/chat/interviews/${encodeURIComponent(finished.interview_id)}/report.pdf`
         );
         if (handle401(resp)) return;
         if (!resp.ok) throw new Error(`Export ${resp.status}`);
         const blob = await resp.blob();
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `${candidateEmail}-report.pdf`;
+        link.download = `${finished.email || params.candidate_email || 'candidate'}-report.pdf`;
         document.body.appendChild(link);
         link.click();
         link.remove();

@@ -254,20 +254,22 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
         <p className="sr-report-meta">
           {scores.length > 0 && `${scores.length} questions answered · `}{mins}:{secs} duration
         </p>
-        {isManager && candidateEmail && (
+        {isManager && interviewId && (
           <button onClick={async () => {
             // Export-report now requires auth, so we fetch with the bearer
             // token and trigger a blob download instead of window.open (which
-            // can't carry an Authorization header).
+            // can't carry an Authorization header). By the interview's id:
+            // the address held the candidate's email, which the server's
+            // log printed.
             try {
               const resp = await authFetch(
-                `${API_BASE}/api/chat/export-report/${encodeURIComponent(candidateEmail)}${interviewId ? `?interview_id=${encodeURIComponent(interviewId)}` : ''}`
+                `${API_BASE}/api/chat/interviews/${encodeURIComponent(interviewId)}/report.pdf`
               );
               if (!resp.ok) { toast('Could not export report (you may not have access).', 'error'); return; }
               const blob = await resp.blob();
               const link = document.createElement('a');
               link.href = URL.createObjectURL(blob);
-              link.download = `${candidateEmail}-report.pdf`;
+              link.download = `${candidateEmail || 'interview'}-report.pdf`;
               document.body.appendChild(link);
               link.click();
               link.remove();

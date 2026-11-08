@@ -36,7 +36,9 @@ beforeEach(() => {
         ? { reply: 'Fetching it.', action: 'get_interview_report', action_params: { candidate_id: 7, candidate_name: 'Dana', candidate_email: 'dana@x.com' } }
         : { reply: 'Here it is.', action: null });
     }
-    if (path.startsWith('/api/chat/get-interview-results/')) return ok({ results: [{ report }] });
+    if (path === '/api/chat/candidates/7/interviews') {
+      return ok({ interviews: [{ interview_id: 3, status: 'completed', email: 'dana@x.com', report }] });
+    }
     return ok({});
   });
 });
