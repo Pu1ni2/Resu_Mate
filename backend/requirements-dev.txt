@@ -1,0 +1,15 @@
+# What the tests need: the server's requirements, the interview worker's
+# (the tests import the worker), and the test tools. CI installs this file;
+# the server installs requirements.txt alone, and the worker its own.
+#
+#   pip install -r requirements-dev.txt
+-r requirements.txt
+-r requirements-agent.txt
+
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+# Read render.yaml and CI's settings (tests/test_site_headers.py,
+# tests/test_server_install.py).
+pyyaml>=6.0
+# Reads requirement lines (tests/test_server_install.py).
+packaging>=23.0

@@ -1,3 +1,6 @@
+# The web server's requirements. The tests' are in requirements-dev.txt, and
+# the interview worker's in requirements-agent.txt.
+
 # Core
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
@@ -49,19 +52,5 @@ pypdf>=4.0.0
 # PDF Report Generation
 fpdf2>=2.7.0
 
-
-# LiveKit Interview Agent, which the tests import. Pinned to the version
-# requirements-agent.txt runs the worker on.
-livekit-agents==1.8.6
-livekit-plugins-openai==1.8.6
-livekit-plugins-simli==1.8.6
-
 # Object storage (optional — original resume files)
 boto3>=1.34.0
-
-# Testing
-pytest>=8.0.0
-pytest-asyncio>=0.23.0
-# Reads render.yaml (tests/test_site_headers.py); installed until now only
-# as another package's dependency.
-pyyaml>=6.0

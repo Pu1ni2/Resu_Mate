@@ -185,13 +185,14 @@ services:
   # for background workers, so it isn't deployed by default. To add it,
   # uncomment this block and pick a paid plan (starter). BACKEND_URL is the
   # backend's external URL, and AGENT_SHARED_SECRET must be the backend's
-  # value: copy it from the backend's Environment tab.
+  # value: copy it from the backend's Environment tab. It installs its own
+  # requirements: LiveKit isn't in the backend's.
   #
   # - type: worker
   #   name: resumate-interview
   #   runtime: python
   #   rootDir: backend
-  #   buildCommand: pip install -r requirements.txt
+  #   buildCommand: pip install -r requirements-agent.txt
   #   startCommand: python interview_agent.py start
   #   envVars:
   #     - key: PYTHON_VERSION

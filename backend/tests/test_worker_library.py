@@ -2,8 +2,8 @@
 
 gpt-realtime-2 can give one reply in parts: a lead-in, then the question.
 LiveKit agents before 1.5.12 played only the first part, so video interviews
-skipped questions. The worker's packages are pinned, to one version, in both
-requirements files.
+skipped questions. The worker's packages are pinned to one version in its
+own requirements, which the tests install too.
 """
 import re
 from importlib.metadata import version
@@ -32,8 +32,8 @@ def test_the_installed_worker_library_plays_every_part_of_a_reply():
     assert _parts(version("livekit-agents")) >= FIRST_THAT_PLAYS_EVERY_PART
 
 
-def test_both_requirements_pin_the_worker_to_one_version_that_does():
-    worker, server = _pins("requirements-agent.txt"), _pins("requirements.txt")
-    assert set(worker) == set(server) == set(WORKER_PACKAGES)
-    assert len(set(worker.values()) | set(server.values())) == 1
+def test_the_worker_pins_its_packages_to_one_version_that_does():
+    worker = _pins("requirements-agent.txt")
+    assert set(worker) == set(WORKER_PACKAGES)
+    assert len(set(worker.values())) == 1
     assert _parts(worker["livekit-agents"]) >= FIRST_THAT_PLAYS_EVERY_PART

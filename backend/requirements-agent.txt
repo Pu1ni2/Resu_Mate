@@ -1,6 +1,7 @@
-# One version for all three, as in requirements.txt. Before 1.5.12 the agent
-# played only the first part of a reply gpt-realtime-2 sends in parts, so the
-# interviewer's question was dropped.
+# The interview worker's requirements, which the tests install too
+# (requirements-dev.txt). One version for all three LiveKit packages. Before
+# 1.5.12 the agent played only the first part of a reply gpt-realtime-2 sends
+# in parts, so the interviewer's question was dropped.
 livekit-agents==1.8.6
 livekit-plugins-openai==1.8.6
 livekit-plugins-simli==1.8.6
