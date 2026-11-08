@@ -7,7 +7,7 @@ ResuMate AI — Advisor Agent (Candidate-facing)
 3. Career Advisor — Career path suggestions, strengths/weaknesses, market insights
 
 Add to your existing backend: from app.agents.advisor_agent import advisor_router
-Then: app.include_router(advisor_router, prefix="/api")
+Then: app.include_router(advisor_router)
 """
 import asyncio
 import logging
@@ -61,7 +61,7 @@ def _openai():
             print("⚠️ openai package not installed — advisor agent chat will not work")
     return _client
 
-router = APIRouter(prefix="/advisor", tags=["advisor"])
+router = APIRouter(prefix="/api/advisor", tags=["advisor"])
 
 
 def _resume_text(filename: str, content: bytes) -> str:

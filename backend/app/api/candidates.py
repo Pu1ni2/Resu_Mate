@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.errors import log_text
 from app.services import db_service, state_service
 
-router = APIRouter(prefix="/candidates", tags=["Candidates"])
+router = APIRouter(prefix="/api/candidates", tags=["Candidates"])
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)

@@ -35,7 +35,7 @@ from app.services.interview_script import build_instructions
 
 logger = logging.getLogger("resumate.realtime")
 
-router = APIRouter(prefix="/realtime", tags=["Realtime"])
+router = APIRouter(prefix="/api/realtime", tags=["Realtime"])
 
 OPENAI_REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets"
 

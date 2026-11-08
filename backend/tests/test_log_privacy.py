@@ -18,7 +18,10 @@ def _run(coro):
 def test_no_route_takes_an_email_in_its_address(client):
     # Three did, and the log printed the address, the email with it.
     import main
-    taken = sorted({name for route in main.app.routes for name in getattr(route, "param_convertors", {})})
+    # The routers' own routes: from FastAPI 0.16x, the app's list holds the
+    # routers it includes, not their routes.
+    routes = [route for router in main.ROUTERS for route in router.routes] + list(main.app.routes)
+    taken = sorted({name for route in routes for name in getattr(route, "param_convertors", {})})
     assert "interview_id" in taken  # the check reads the routes' parameters
     assert [name for name in taken if "email" in name] == []
     for gone in ("/api/chat/export-report/ada@x.com", "/api/chat/get-interview-results/ada@x.com",

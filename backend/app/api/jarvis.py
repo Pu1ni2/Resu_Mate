@@ -16,7 +16,7 @@ from app.services.hidden_names import hides_names, stand_ins
 
 logger = logging.getLogger("resumate.jarvis")
 
-router = APIRouter(prefix="/jarvis", tags=["jarvis"])
+router = APIRouter(prefix="/api/jarvis", tags=["jarvis"])
 
 
 JARVIS_SYSTEM_PROMPT = """You are Jarvis, an elite AI hiring chief-of-staff embedded in ResuMate.

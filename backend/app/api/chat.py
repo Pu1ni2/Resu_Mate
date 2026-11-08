@@ -49,7 +49,7 @@ def _failed(what: str, message: str) -> HTTPException:
     logger.error("%s failed: %s", what, log_text(sys.exc_info()[1]))
     return HTTPException(status_code=502, detail=message)
 
-router = APIRouter(prefix="/chat", tags=["Chat"])
+router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
 
 # ═══════ REQUEST MODELS ═══════

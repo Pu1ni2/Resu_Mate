@@ -221,16 +221,14 @@ from app.api.realtime import router as realtime_router
 from app.api.sourcer import router as sourcer_router
 from app.api.privacy import router as privacy_router
 
-app.include_router(auth_router, prefix="/api")
-app.include_router(chat_router, prefix="/api")
-app.include_router(candidates_router, prefix="/api")
-app.include_router(livekit_router)
-app.include_router(advisor_router, prefix="/api")
-app.include_router(pipeline_router, prefix="/api")
-app.include_router(jarvis_router, prefix="/api")
-app.include_router(realtime_router, prefix="/api")
-app.include_router(sourcer_router, prefix="/api")
-app.include_router(privacy_router, prefix="/api")
+# Each router's prefix is its whole address (/api/...), and each is
+# included as it is. FastAPI from 0.16x keeps an included router's routes
+# as they were declared, so a prefix added here was missing from the route
+# a request matched, and from its line in the log.
+ROUTERS = (auth_router, chat_router, candidates_router, livekit_router, advisor_router,
+           pipeline_router, jarvis_router, realtime_router, sourcer_router, privacy_router)
+for included in ROUTERS:
+    app.include_router(included)
 
 print("[OK] All routers registered (auth, chat, candidates, livekit, advisor, pipeline, jarvis, realtime, sourcer)")
 

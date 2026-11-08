@@ -21,7 +21,7 @@ from app.models.sourcing import SourcingRun, SourcedProfile
 from app.services import db_service
 from app.services.auth import get_current_user
 
-router = APIRouter(prefix="/sourcer", tags=["sourcer"])
+router = APIRouter(prefix="/api/sourcer", tags=["sourcer"])
 
 # Saves of stopped runs finish after their request is gone; holding them here
 # keeps them from being garbage-collected half way.

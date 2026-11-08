@@ -24,7 +24,7 @@ from app.services.email_service import email_service
 from app.models.candidate import Interview
 from app.models.screening import ScreeningRun
 
-router = APIRouter(prefix="/pipeline", tags=["pipeline"])
+router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
 
 
 # ── Request models ────────────────────────────────────────────────────────────
