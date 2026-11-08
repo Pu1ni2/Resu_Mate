@@ -15,7 +15,6 @@ from app.agents.base_agent import BaseAgent, AgentStep
 from app.services.experience import experience_text
 from app.tools.openai_tool import openai_tool
 from app.tools.tavily_tool import tavily_tool
-from app.services.scores import describe_average
 
 def clean_questions(questions) -> List[str]:
     """The model's questions as plain text: no numbering or bullets, no blanks."""
@@ -277,45 +276,6 @@ Return ONLY valid JSON:
                 "key_insights": ["The comparison could not be completed. Try again."],
                 "confidence_in_assessment": None,
             }
-
-    # ═══════ REPORT GENERATION ═══════
-
-    async def generate_report(self, candidate_name: str, candidate_email: str, role: str,
-                               questions: list, answers: list, scores: list, duration: int = 0) -> str:
-        """Generate comprehensive interview evaluation report"""
-        self.logs = []
-        self.log("start", f"Generating interview report for {candidate_name}")
-
-        qa_pairs = ""
-        for i, (q, a, s) in enumerate(zip(questions, answers, scores)):
-            score_val = s.get('score', '?') if isinstance(s, dict) else '?'
-            fb = s.get('feedback', '') if isinstance(s, dict) else ''
-            qa_pairs += f"\nQ{i+1}: {q}\nAnswer: {a or '(no answer)'}\nScore: {score_val}/10 — {fb}\n"
-
-
-        prompt = f"""Generate an interview evaluation report:
-
-Candidate: {candidate_name}
-Role: {role}
-Duration: {duration // 60}min {duration % 60}sec
-Average Score: {describe_average(scores)}
-
-Questions & Answers:
-{qa_pairs}
-
-Format:
-## Interview Summary (2-3 sentences)
-## Strengths Demonstrated (2-3 points)
-## Areas for Improvement (2-3 points, be KIND)
-## Overall Recommendation (Strong Hire / Hire / Consider / Pass)
-## Suggested Follow-up (1-2 questions for next round)
-
-Be professional, constructive, and fair. Never harsh."""
-
-        self.log("generate", "Generating report via AI...")
-        report = await openai_tool.structured_call(prompt, "You are a professional hiring manager writing fair evaluations.")
-        self.log("complete", "Report generated", "success")
-        return report
 
     async def _llm_call(self, params, context):
         return await openai_tool.call(params, context)

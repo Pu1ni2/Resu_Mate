@@ -102,16 +102,6 @@ class ScanRequest(BaseModel):
     anonymize: bool = False
     candidate_data: Optional[dict] = None
 
-class InterviewReportRequest(BaseModel):
-    candidate_name: str = Field(..., max_length=200)
-    candidate_email: str = Field(..., max_length=320)
-    role: str = Field(..., max_length=200)
-    questions: list = Field(..., max_length=50)
-    answers: list = Field(..., max_length=50)
-    scores: list = Field(..., max_length=50)
-    duration: int = Field(default=0, ge=0, le=24 * 60 * 60)
-    transcript: Optional[list] = Field(default=None, max_length=2000)
-
 class CreateInterviewRequest(BaseModel):
     candidate_id: int
     candidate_email: str = Field(..., max_length=320)
@@ -756,26 +746,6 @@ RULES:
     except Exception:
         raise _failed("automate ranking", "The ranking couldn't be completed. Please try again.")
 
-@router.post("/interview-report")
-@limiter.limit("10/minute")
-async def interview_report(request: Request, req: InterviewReportRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    # This manager's interview for that address, or nothing: the save used to
-    # look up by email alone, so any manager could overwrite another tenant's
-    # report. Checked before generating, so no report is written for a stranger.
-    if not await db_service.get_interview_by_email(db, req.candidate_email, manager_id=user.id):
-        raise HTTPException(404, "Interview not found")
-    report = await technical_agent.generate_report(
-        req.candidate_name, req.candidate_email, req.role,
-        req.questions, req.answers, req.scores, req.duration
-    )
-    # Save to database (include transcript if provided)
-    await db_service.save_interview_result(db, req.candidate_email, {
-        "report": report, "scores": req.scores, "timer": req.duration,
-        "transcript": req.transcript,
-    }, manager_id=user.id)
-    return {"report": report}
-
-
 class TranscriptCheckpoint(BaseModel):
     candidate_email: str = Field(..., max_length=320)
     room_name: str = Field(..., max_length=200)
@@ -849,10 +819,8 @@ async def save_transcript(
 
     interview.transcript = req.transcript
 
-    # Auto-generate a lightweight report from the transcript so the hiring
-    # manager has something to read immediately after the candidate disconnects.
-    # The full per-question scoring path runs via /interview-report when the
-    # frontend can provide question/answer pairs.
+    # A report from the transcript, so the hiring manager has something to
+    # read as soon as the candidate leaves.
     try:
         report_text = await write_report(req.transcript, interview.role or req.role)
         if report_text:

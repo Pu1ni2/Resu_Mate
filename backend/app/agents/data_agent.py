@@ -4,7 +4,7 @@ Data Agent — Extracts, scans, and enriches candidate profiles.
 This agent:
 1. Extracts text + links from resume PDF
 2. Finds GitHub/LinkedIn via embedded links, regex, or web search
-3. Scrapes GitHub profile (Playwright) + LinkedIn (Tavily)
+3. Reads the GitHub profile (its API) + LinkedIn (Tavily)
 4. Combines all data into enriched candidate profile
 5. Reflects: is the data complete? any conflicts?
 """
@@ -15,7 +15,6 @@ from app.agents.base_agent import BaseAgent, AgentStep
 from app.tools.pdf_tool import pdf_tool
 from app.tools.github_tool import github_tool
 from app.tools.tavily_tool import tavily_tool
-from app.tools.browser_tool import browser_tool
 from app.tools.openai_tool import openai_tool
 
 
@@ -27,9 +26,7 @@ class DataAgent(BaseAgent):
             tools={
                 "pdf": self._use_pdf,
                 "github_api": self._use_github_api,
-                "github_browser": self._use_github_browser,
                 "tavily": self._use_tavily,
-                "browser": self._use_browser,
                 "llm": self._use_llm,
             }
         )
@@ -314,15 +311,6 @@ Provide 3-5 sentences for a hiring manager."""
 
     async def _use_tavily(self, params, context):
         return await self._find_linkedin(params, context)
-
-    async def _use_github_browser(self, params, context):
-        username = params.get("username", "")
-        if not username:
-            return {}
-        return await browser_tool.scrape_github(username)
-
-    async def _use_browser(self, params, context):
-        return await browser_tool.call(params, context)
 
     async def _use_llm(self, params, context):
         return await self._summarize(context)

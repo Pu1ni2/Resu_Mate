@@ -10,7 +10,7 @@ import json
 import pytest
 
 from app.agents.technical_agent import technical_agent
-from app.services.scores import average_score, describe_average, score_of
+from app.services.scores import average_score, score_of
 from app.tools.openai_tool import openai_tool
 
 
@@ -46,8 +46,6 @@ def test_an_average_counts_only_the_scored_answers():
 def test_with_nothing_scored_there_is_no_average():
     assert average_score([]) is None
     assert average_score([{"score": None}]) is None
-    assert describe_average([{"score": None}]) == "not scored"
-    assert describe_average([{"score": 7}, {"score": 8}]) == "7.5/10"
 
 
 # ── when the model fails ──────────────────────────────────────────────────────
@@ -95,10 +93,3 @@ def test_without_a_transcript_the_comparison_says_so_and_reads_the_report(model)
     _run(technical_agent.analyze_credibility(CANDIDATE, {"report": "Clear answers about Python.", "scores": []}))
     assert "no transcript was saved" in model["prompts"][0]
     assert "Clear answers about Python." in model["prompts"][0]
-
-
-def test_a_report_with_an_unscored_answer_still_writes(model):
-    model["reply"] = "## Report"
-    _run(technical_agent.generate_report("Ada", "ada@x.com", "Engineer", ["Q1", "Q2"], ["A1", "A2"],
-                                         [{"score": 9, "feedback": "good"}, {"score": None, "feedback": "This answer couldn't be scored."}]))
-    assert "Average Score: 9.0/10" in model["prompts"][0]

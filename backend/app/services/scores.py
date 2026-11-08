@@ -21,8 +21,3 @@ def average_score(scores: Iterable) -> Optional[float]:
     numbers = [n for n in (score_of(s) for s in (scores or [])) if n is not None]
     return round(sum(numbers) / len(numbers), 1) if numbers else None
 
-
-def describe_average(scores: Iterable) -> str:
-    """For a prompt or a page: "7.5/10", or "not scored"."""
-    average = average_score(scores)
-    return f"{average:.1f}/10" if average is not None else "not scored"

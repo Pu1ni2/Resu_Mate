@@ -185,34 +185,6 @@ def test_sendgrids_own_requests_have_the_timeout(monkeypatch):
     assert service._sg.client.mail.send.timeout == settings.sendgrid_timeout_seconds == 10
 
 
-def test_a_slow_scrape_neither_freezes_the_server_nor_outlasts_its_timeout(monkeypatch):
-    from app.tools import browser_tool as bt
-    monkeypatch.setattr(bt, "SCRAPE_TIMEOUT", 0.3)
-    tool = bt.BrowserTool()
-    monkeypatch.setattr(tool, "_scrape_sync", lambda url, selectors: time.sleep(1.5) or {"ok": True})
-
-    async def scrape():
-        ticks = 0
-
-        async def ticker():
-            nonlocal ticks
-            while True:
-                await asyncio.sleep(0.02)
-                ticks += 1
-
-        running = asyncio.create_task(ticker())
-        start = time.perf_counter()
-        result = await tool.call({"url": "https://example.com"})
-        elapsed = time.perf_counter() - start
-        running.cancel()
-        return result, elapsed, ticks
-
-    result, elapsed, ticks = _run(scrape())
-    assert "error" in result, result
-    assert elapsed < 1.0, elapsed  # it gave up at the timeout
-    assert ticks >= 5, ticks       # and the loop kept running meanwhile
-
-
 def test_the_advisor_reads_and_analyses_an_upload_without_blocking(client, monkeypatch):
     from app.api import advisor_agent
     from app.services import state_service

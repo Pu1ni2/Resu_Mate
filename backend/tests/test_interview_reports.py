@@ -1,9 +1,10 @@
 """Who may write an interview's result, and what survives when several do.
 
-Three parties write Interview.report: the manager's scoring path, the interview
-worker and the candidate's own browser. Each used to replace the whole value,
-the manager path looked interviews up by email alone, and the candidate could
-post their own scores or reopen a finished interview.
+Two parties write Interview.report: the interview worker and the candidate's
+own browser. Each used to replace the whole value, and the candidate could
+post their own scores or reopen a finished interview. A third, the manager's
+scoring route, looked interviews up by email alone; nothing called it, and
+it went.
 """
 import asyncio
 import json
@@ -44,46 +45,6 @@ async def _read(iid):
 
 def _cand(email):
     return {"Authorization": f"Bearer {create_candidate_token(email)}"}
-
-
-# ── the manager's scoring path ────────────────────────────────────────────────
-
-def test_a_manager_cannot_write_another_managers_interview_report(client, monkeypatch):
-    from app.agents.technical_agent import technical_agent
-
-    async def fake_report(*a, **k):
-        return "## Written by B"
-
-    monkeypatch.setattr(technical_agent, "generate_report", fake_report)
-    _, a = register(client, "ra@co.com")
-    tok_b, _ = register(client, "rb@co.com")
-    iid = _run(_interview(a["id"], "shared@x.com", report=json.dumps({"report": "## A's report"})))
-
-    r = client.post("/api/chat/interview-report", headers=auth_headers(tok_b), json={
-        "candidate_name": "S", "candidate_email": "shared@x.com", "role": "Dev",
-        "questions": [], "answers": [], "scores": [],
-    })
-    assert r.status_code == 404
-    assert _run(_read(iid))["report"]["report"] == "## A's report"
-
-
-def test_a_manager_scores_their_own_interview_and_keeps_the_proctoring(client, monkeypatch):
-    from app.agents.technical_agent import technical_agent
-
-    async def fake_report(*a, **k):
-        return "## Scored"
-
-    monkeypatch.setattr(technical_agent, "generate_report", fake_report)
-    tok, m = register(client, "rc@co.com")
-    iid = _run(_interview(m["id"], "own@x.com", report=json.dumps({"violations": 2})))
-    r = client.post("/api/chat/interview-report", headers=auth_headers(tok), json={
-        "candidate_name": "O", "candidate_email": "own@x.com", "role": "Dev",
-        "questions": ["q"], "answers": ["a"], "scores": [{"score": 8}],
-    })
-    assert r.status_code == 200
-    saved = _run(_read(iid))
-    assert saved["status"] == "completed"
-    assert saved["report"]["report"] == "## Scored" and saved["report"]["violations"] == 2
 
 
 # ── the candidate's browser ───────────────────────────────────────────────────

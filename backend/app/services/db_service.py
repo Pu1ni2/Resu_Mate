@@ -350,37 +350,6 @@ def finish_interview(interview: Interview, duration=None) -> None:
         interview.duration = int(duration)
 
 
-async def save_interview_result(session: AsyncSession, email: str, report_data: dict,
-                                manager_id: int = None) -> Optional[Interview]:
-    """Save a scored interview result and mark the interview completed.
-
-    Scoped to `manager_id` when given, so one tenant can't write another's
-    interview for the same address. Returns None when there is no such
-    interview; it used to invent one with candidate_id=0, an orphan row that
-    breaks the foreign key on Postgres. The report is merged, so proctoring
-    numbers saved earlier survive.
-    """
-    email = email.strip().lower()
-    interview = await get_interview_by_email(session, email, manager_id=manager_id)
-    if not interview:
-        return None
-    merge_interview_report(interview, report_data)
-    finish_interview(interview, report_data.get("timer"))
-    if report_data.get("scores"):
-        interview.scores = report_data["scores"]
-    if report_data.get("transcript") is not None:
-        interview.transcript = report_data["transcript"]
-
-    try:
-        await session.commit()
-        await session.refresh(interview)
-        return interview
-    except Exception as e:
-        await session.rollback()
-        print(f"[WARN] DB save_interview_result error: {type(e).__name__}")
-        return None
-
-
 # What the candidate's own browser may record about their interview: the
 # proctoring it measured, nothing that judges them.
 PROCTORING_FIELDS = {
