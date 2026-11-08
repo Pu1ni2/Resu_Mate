@@ -22,23 +22,31 @@ const SCORED = { ...UNSCORED, scores: [{ question: 'A hard bug?', score: 8 }, { 
 
 let report;
 let sent;
+let asked;
+let action;
+let interviews;
 
 beforeEach(() => {
   // Jarvis keeps its conversation, and what it has fetched, for the session.
   sessionStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
   sent = [];
+  asked = [];
+  action = 'get_interview_report';
+  interviews = null;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
     const path = String(url).replace(/^.*?\/api\//, '/api/');
+    asked.push(path);
     if (path === '/api/jarvis/chat') {
       sent.push(JSON.parse(options.body).message);
       return ok(sent.length === 1
-        ? { reply: 'Fetching it.', action: 'get_interview_report', action_params: { candidate_id: 7, candidate_name: 'Dana', candidate_email: 'dana@x.com' } }
+        ? { reply: 'Fetching it.', action, action_params: { candidate_id: 7, candidate_name: 'Dana', candidate_email: 'dana@x.com' } }
         : { reply: 'Here it is.', action: null });
     }
     if (path === '/api/chat/candidates/7/interviews') {
-      return ok({ interviews: [{ interview_id: 3, status: 'completed', email: 'dana@x.com', report }] });
+      return ok({ interviews: interviews || [{ interview_id: 3, status: 'completed', email: 'dana@x.com', report }] });
     }
+    if (path.endsWith('/report.pdf')) return { ok: true, status: 200, blob: async () => new Blob(['%PDF']) };
     return ok({});
   });
 });
@@ -78,5 +86,47 @@ describe("an interview report in Jarvis", () => {
     expect(detail).toMatch(/AVG SCORE7/);
     expect(detail).toMatch(/QUESTIONS2/);
     expect(told).toMatch(/with an average answer score of 7\./);
+  });
+});
+
+describe('the interview, asked for by id', () => {
+  // By the candidate's email in the address, which the server's log printed.
+  function ask(text) {
+    render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
+    const input = screen.getByLabelText('Message Jarvis');
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+  }
+
+  it("reads the report of the candidate's newest finished interview", async () => {
+    report = UNSCORED;
+    interviews = [
+      { interview_id: 9, status: 'pending', email: 'dana@x.com', report: null },
+      { interview_id: 3, status: 'completed', email: 'dana@x.com', report },
+    ];
+    ask("How did Dana's interview go?");
+    await screen.findByText('INTERVIEW REPORT');
+    expect(asked).toContain('/api/chat/candidates/7/interviews');
+    expect(asked.some(path => path.includes('dana'))).toBe(false);
+  });
+
+  it('exports the PDF of that interview, by its id', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:report');
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    report = UNSCORED;
+    action = 'export_report';
+    ask("Export Dana's report");
+    await screen.findByText(/Exported PDF report for Dana/);
+    expect(asked).toContain('/api/chat/interviews/3/report.pdf');
+    expect(asked.some(path => path.includes('dana'))).toBe(false);
+  });
+
+  it('says when there is no finished interview to export', async () => {
+    action = 'export_report';
+    interviews = [{ interview_id: 9, status: 'pending', email: 'dana@x.com', report: null }];
+    ask("Export Dana's report");
+    expect(await screen.findByText(/There isn't a finished interview to export for Dana yet\./)).toBeTruthy();
+    expect(asked.some(path => path.endsWith('/report.pdf'))).toBe(false);
   });
 });

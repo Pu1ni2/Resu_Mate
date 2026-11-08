@@ -59,6 +59,27 @@ def test_any_text_makes_a_pdf(client):
     assert r.headers["content-disposition"] == 'attachment; filename="ResuMate-Report-Nunez.pdf"'
 
 
+def test_an_interviews_pdf_shows_its_own_candidate_and_report(client):
+    # Asked for by the interview's id; the candidate is the interview's own.
+    from sqlalchemy import select
+    from app.core import database
+    from app.models.candidate import Interview
+    tok, m = register(client, "pdf9@co.com")
+    _run(_finished(m["id"], "ada@x.com", {"report": "## Clear, careful answers"}, []))
+
+    async def ids():
+        async with database.async_session() as db:
+            iv = (await db.execute(select(Interview).where(Interview.manager_id == m["id"]))).scalars().first()
+            return iv.candidate_id, iv.id
+    cid, iid = _run(ids())
+    _seed(m["id"], cid, "Ada Lovelace", "ada@x.com")
+    r = client.get(f"/api/chat/interviews/{iid}/report.pdf", headers=auth_headers(tok))
+    assert r.status_code == 200, r.text
+    text = "".join(page.extract_text() for page in pypdf.PdfReader(io.BytesIO(r.content)).pages)
+    assert "Ada Lovelace" in text and "Clear, careful answers" in text
+    assert r.headers["content-disposition"] == 'attachment; filename="ResuMate-Report-Ada-Lovelace.pdf"'
+
+
 def test_nothing_scored_is_not_zero(client):
     tok, m = register(client, "pdf2@co.com")
     _seed(m["id"], 2, "Ada Lovelace", "ada@x.com")
