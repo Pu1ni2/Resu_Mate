@@ -319,6 +319,32 @@ def test_the_room_carries_the_interviews_time_limit(client, generator, livekit, 
     assert '"remaining_minutes": 12' in config["instructions"]
 
 
+def test_the_worker_gets_the_rooms_settings_from_the_interview_itself(client, generator, livekit):
+    # A copy in the server's memory was served first: never cleared, holding
+    # the candidate's name and address, and another process could have an
+    # older one.
+    from app.api import livekit_routes
+    from app.core import database
+    from app.models.candidate import Interview
+    tok, _ = register(client, "q10@co.com")
+    _create(client, tok, "q10@x.com", mode="avatar")
+    r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q10@x.com')}"},
+                    json={"candidate_email": "q10@x.com", "consent": True})
+    assert r.status_code == 200, r.text
+    saved = _interview("q10@x.com")
+
+    async def changed_elsewhere():
+        async with database.async_session() as db:
+            interview = await db.get(Interview, saved.id)
+            interview.room_config = {**interview.room_config, "max_minutes": 3}
+            await db.commit()
+    _run(changed_elsewhere())
+    got = client.get(f"/api/livekit/interview-room-config/{saved.room_name}", headers={"X-Agent-Token": "test-agent-secret"})
+    assert got.status_code == 200, got.text
+    assert got.json()["max_minutes"] == 3
+    assert not hasattr(livekit_routes, "room_configs")
+
+
 def test_the_worker_ends_the_interview_at_its_time_limit(monkeypatch):
     # Video ran until the candidate left, and is billed by the minute.
     import dotenv
