@@ -7,10 +7,14 @@ the log, and "it broke" led nowhere.
 import logging
 import re
 import secrets
+import time
 from contextvars import ContextVar
 
 # The id of the request being handled; "-" outside one (start-up, scripts).
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
+
+# One line per request, written when its answer is done.
+access_log = logging.getLogger("resumate.access")
 
 # An id a proxy in front may already have given the request, kept when it's
 # plain: letters, digits, dots, dashes and underscores, 8 to 64 of them.
@@ -41,8 +45,26 @@ def install_request_ids() -> None:
     logging.setLogRecordFactory(record_with_request_id)
 
 
+def log_answer(scope, status: int, started: float) -> None:
+    """The request's line: method, the route's pattern, status, time taken.
+
+    The pattern, e.g. /api/candidates/{candidate_id}, never the address
+    itself: uvicorn's line printed whole addresses, three of which held a
+    candidate's email. A path no route matched is "-", for the same reason.
+    Render asks /health every few seconds, so its good answers aren't
+    written.
+    """
+    pattern = getattr(scope.get("route"), "path", None) or "-"
+    if pattern == "/health" and status == 200:
+        return
+    level = logging.WARNING if status >= 500 else logging.INFO
+    took = (time.monotonic() - started) * 1000
+    access_log.log(level, "%s %s %s %dms", scope.get("method", "-"), pattern, status, took)
+
+
 class RequestContext:
-    """Gives each request its id, and answers with it in X-Request-ID.
+    """Gives each request its id, answers with it in X-Request-ID, and
+    writes the request's line (log_answer) when it's done.
 
     Plain ASGI, as SecurityHeaders is. The id isn't reset when the request
     is done: each request runs in a task of its own, and the error handler,
@@ -59,11 +81,19 @@ class RequestContext:
         given = dict(scope.get("headers") or []).get(b"x-request-id", b"").decode("latin-1")
         request_id = new_request_id(given)
         request_id_var.set(request_id)
+        started = time.monotonic()
+        # An error that escapes is answered outside, with a 500.
+        status = 500
 
         async def send_with_id(message):
+            nonlocal status
             if message["type"] == "http.response.start":
+                status = message["status"]
                 headers = [*message.get("headers", []), (b"x-request-id", request_id.encode())]
                 message = {**message, "headers": headers}
             await send(message)
 
-        await self.app(scope, receive, send_with_id)
+        try:
+            await self.app(scope, receive, send_with_id)
+        finally:
+            log_answer(scope, status, started)

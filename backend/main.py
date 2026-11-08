@@ -31,6 +31,10 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+# uvicorn's line for each request printed its whole address, a candidate's
+# email in three; resumate.access writes each request's line instead
+# (request_context.log_answer). Off here, whatever command starts the server.
+logging.getLogger("uvicorn.access").disabled = True
 logger = logging.getLogger("resumate")
 
 
