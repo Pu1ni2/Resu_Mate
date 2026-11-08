@@ -1,6 +1,4 @@
 import asyncio
-import os
-import shutil
 import json
 import hashlib
 import re
@@ -10,12 +8,9 @@ from typing import List, Dict, Optional, Set, Tuple
 from pathlib import Path
 
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_chroma import Chroma
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
-from langchain_core.documents import Document
 
 from app.core.config import settings
 from app.core.errors import log_text
@@ -60,16 +55,12 @@ def primary_email(candidate: Dict) -> str:
 
 class ResumeRAGService:
     def __init__(self):
-        self.chroma_dir = settings.chroma_dir
-        self.collection_name = settings.chroma_collection
-        self.embeddings = None
         self.llm = None
-        self.vectordb = None
         # Multi-tenant store: each hiring manager gets their own "drawer" so one
         # manager can never read another's candidates. Keyed manager_id ->
         # {candidate_id -> candidate_data}. The candidate_id space is GLOBAL
-        # (candidate_counter never resets) so DB ids and ChromaDB metadata stay
-        # unique across managers even though the dict is partitioned.
+        # (candidate_counter never resets) so DB ids stay unique across
+        # managers even though the dict is partitioned.
         self.candidates: Dict[int, Dict[int, Dict]] = {}
         # Per-manager set of uploaded file hashes (duplicate detection is scoped
         # to a manager — two managers may legitimately hold the same resume).
@@ -80,99 +71,31 @@ class ResumeRAGService:
         # state — concurrent upload + delete used to leave the dict half-written.
         self._sync_lock = threading.Lock()
         self._async_lock = asyncio.Lock()
-        
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", ". ", " ", ""]
-        )
-        
+
         self._init_services()
-    
+
     def _init_services(self):
-        """Initialize OpenAI and ChromaDB services"""
+        """The chat model that reads each résumé and answers the chat.
+
+        There was a search index too (ChromaDB): every upload was embedded
+        into it, nothing ever searched it, and when it failed to open,
+        uploads and the chat stopped.
+        """
         if not settings.openai_api_key:
             print("Warning: OpenAI API key not set")
             return
-        
+
         try:
-            # Initialize embeddings with correct parameters
-            self.embeddings = OpenAIEmbeddings(
-                model=settings.embedding_model,
-                openai_api_key=settings.openai_api_key  # Changed from openai_api_key
-            )
-            
-            # Initialize LLM
             self.llm = ChatOpenAI(
                 model=settings.openai_model,
                 temperature=0.2,
-                openai_api_key=settings.openai_api_key  # Changed from openai_api_key
+                openai_api_key=settings.openai_api_key,
             )
-            
-            self._init_vectordb()
             print("[OK] OpenAI services initialized successfully")
-            
         except Exception as e:
             print(f"[ERR] Error initializing services: {log_text(e)}")
-            self.embeddings = None
             self.llm = None
 
-
-    
-    def _init_vectordb(self):
-        """Initialize ChromaDB vector store.
-
-        ChromaDB on Windows is unstable — the Rust bindings panic on schema
-        mismatches and langchain-chroma raises KeyError on embedding-config
-        mismatches. Both failures are non-fatal for auth/chat-without-RAG, so
-        we catch BaseException (PanicException inherits from BaseException)
-        and fall back to vectordb=None. App continues to boot.
-        """
-        if not self.embeddings:
-            return
-
-        os.makedirs(self.chroma_dir, exist_ok=True)
-
-        def _clear_chroma_singletons():
-            """Drop cached chromadb clients so a wiped directory doesn't leave stale state."""
-            try:
-                from chromadb.api.shared_system_client import SharedSystemClient
-                SharedSystemClient.clear_system_cache()
-            except Exception:
-                pass
-
-        def _open():
-            return Chroma(
-                collection_name=self.collection_name,
-                persist_directory=self.chroma_dir,
-                embedding_function=self.embeddings,
-            )
-
-        # First attempt — open existing store.
-        try:
-            self.vectordb = _open()
-            print(f"[OK] ChromaDB initialized at {self.chroma_dir}")
-            return
-        except BaseException as e:
-            print(f"[WARN] ChromaDB open failed ({log_text(e)}); resetting store.")
-
-        # Second attempt — wipe directory + clear singletons, then open fresh.
-        try:
-            _clear_chroma_singletons()
-            shutil.rmtree(self.chroma_dir, ignore_errors=True)
-            os.makedirs(self.chroma_dir, exist_ok=True)
-            _clear_chroma_singletons()
-            self.vectordb = _open()
-            print(f"[OK] ChromaDB re-initialized at {self.chroma_dir} (fresh store)")
-            return
-        except BaseException as e:
-            print(f"[WARN] ChromaDB fresh-open failed ({log_text(e)}); disabling vector store.")
-
-        # Give up — the app boots without RAG. Upload/chat-with-RAG will be disabled
-        # until chromadb is reinstalled (see requirements.txt: chromadb<0.6.0).
-        self.vectordb = None
-        print("[ERR] ChromaDB disabled — run: pip uninstall -y chromadb chromadb-rust-bindings langchain-chroma && pip install -r requirements.txt")
-    
     # ── Per-manager drawer accessors ─────────────────────────────────────────
     # All candidate access goes through a manager_id so one tenant can never see
     # another's data. manager_id may be None for legacy/unauthenticated paths;
@@ -269,9 +192,9 @@ class ResumeRAGService:
             self._hash_drawer(manager_id).discard(file_hash)
 
     # Note: the real `delete_candidate` and `clear_all` are defined further
-    # below in this class (they also clean ChromaDB). The earlier stubs that
-    # used to live here were buggy duplicates that Python silently shadowed,
-    # so they have been removed.
+    # below in this class. The earlier stubs that used to live here were
+    # buggy duplicates that Python silently shadowed, so they have been
+    # removed.
 
     def _extract_text(self, file_path: str, file_name: str) -> str:
         ext = Path(file_name).suffix.lower()
@@ -384,11 +307,11 @@ class ResumeRAGService:
     
     async def add_resume(self, file_path: str, file_name: str, file_hash: str = None, manager_id=None) -> Dict:
         """Add a resume and store its hash, scoped to the owning manager."""
-        if not self.vectordb:
+        if not self.llm:
             return {"error": "Service not initialized. Check OpenAI API key."}
-    
-        # Parsing runs in a thread, like the embedding below: reading a PDF of up
-        # to 5 MB is slow Python work, and done here it held up every request.
+
+        # Parsing runs in a thread: reading a PDF of up to 5 MB is slow Python
+        # work, and done here it held up every request.
         text = await asyncio.to_thread(self._extract_text, file_path, file_name)
 
         if not text or len(text) < 50:
@@ -406,29 +329,8 @@ class ResumeRAGService:
         async with self._async_lock:
             self.candidate_counter += 1
             candidate_id = self.candidate_counter
-    
-        chunks = self.text_splitter.split_text(text)
-        documents = []
-    
-        mkey = self._mkey(manager_id)
-        for i, chunk in enumerate(chunks):
-            doc = Document(
-                page_content=chunk,
-                metadata={
-                    "candidate_id": candidate_id,
-                    "manager_id": mkey,  # so vector search can filter by tenant
-                    "candidate_name": name,
-                    "file_name": file_name,
-                    "chunk_index": i,
-                    "is_resume": is_resume,
-                }
-            )
-            documents.append(doc)
 
-        # In a thread: embedding the chunks is a blocking call to OpenAI, and
-        # made here it held up every other request on the server until it
-        # returned, a few seconds for a long résumé.
-        await asyncio.to_thread(self.vectordb.add_documents, documents)
+        mkey = self._mkey(manager_id)
         summary_data = await self._analyze_resume(text, name, is_resume)
 
         candidate_data = {
@@ -598,24 +500,14 @@ BADGES (pick 2-3):
                 self._hash_drawer(manager_id).discard(file_hash)
                 print(f"Removed file hash for candidate {candidate_id}")
 
-            # Remove from ChromaDB vector store (scoped by candidate + manager).
-            if self.vectordb:
-                try:
-                    self.vectordb._collection.delete(
-                        where={"candidate_id": candidate_id}
-                    )
-                except Exception as exc:
-                    print(f"ChromaDB delete failed for candidate {candidate_id}: {log_text(exc)}")
-
             del drawer[candidate_id]
             print(f"Deleted candidate {candidate_id}")
 
     def discard_upload(self, candidate_id: int, file_name: str, file_hash: str, manager_id=None):
         """Undo add_resume for an upload whose database row could not be saved.
 
-        Its chunks are matched by file name as well as id: when the save failed
-        because the id was taken, that id is also another candidate's, and their
-        chunks stay. Likewise the record goes only if it is still this upload's.
+        The record goes only if it is still this upload's: when the save
+        failed because the id was taken, that id is also another candidate's.
         """
         with self._sync_lock:
             drawer = self._drawer(manager_id)
@@ -623,29 +515,10 @@ BADGES (pick 2-3):
             if record is not None and record.get("file_name") == file_name:
                 del drawer[candidate_id]
             self._hash_drawer(manager_id).discard(file_hash)
-            if self.vectordb:
-                try:
-                    self.vectordb._collection.delete(
-                        where={"$and": [{"candidate_id": candidate_id}, {"file_name": file_name}]}
-                    )
-                except Exception as exc:
-                    print(f"ChromaDB delete failed for an upload: {type(exc).__name__}")
 
     def clear_all(self, manager_id=None):
-        """Clear ONLY this manager's candidates + hashes.
-
-        Note: ChromaDB chunks for this manager are removed per-candidate (we
-        don't wipe the whole vector store anymore, since it now holds multiple
-        tenants' data). The directory is left intact.
-        """
+        """Clear ONLY this manager's candidates + hashes."""
         with self._sync_lock:
-            drawer = self._drawer(manager_id)
-            if self.vectordb:
-                for cid in list(drawer.keys()):
-                    try:
-                        self.vectordb._collection.delete(where={"candidate_id": cid})
-                    except Exception as exc:
-                        print(f"ChromaDB delete failed for candidate {cid}: {log_text(exc)}")
             self.candidates[self._mkey(manager_id)] = {}
             self.uploaded_file_hashes[self._mkey(manager_id)] = set()
             print(f"Cleared all data for manager {self._mkey(manager_id)}")
@@ -692,7 +565,7 @@ BADGES (pick 2-3):
         manager_id=None
     ) -> Dict:
 
-        if not self.vectordb or not self.llm:
+        if not self.llm:
             return {
                 "response": "**Error:** Service not initialized. Check OpenAI API key.",
                 "suggestions": []

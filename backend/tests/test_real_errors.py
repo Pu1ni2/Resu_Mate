@@ -272,7 +272,6 @@ def test_the_chats_own_failure(client, manager, monkeypatch):
         ainvoke = staticmethod(fails)
     me = client.get("/api/auth/me", headers=manager).json()["id"]
     resume_rag.candidates.setdefault(me, {})[6] = {"id": 6, "name": "Ada", "is_resume": True, "skills": [], "text": "Ada"}
-    monkeypatch.setattr(resume_rag, "vectordb", object())
     monkeypatch.setattr(resume_rag, "llm", Broken())
     r = client.post("/api/chat/send", headers=manager, json={"message": "hi", "candidate_ids": [6]})
     assert asked

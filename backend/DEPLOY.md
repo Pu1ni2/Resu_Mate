@@ -2,10 +2,11 @@
 
 Hard-won gotchas. Read before touching the Render config.
 
-## Python version — MUST be 3.12, not 3.14
+## Python version — keep it at 3.12
 
-`tokenizers` (a transitive dep via langchain/chromadb) has **no pre-built wheel
-for Python 3.14**, so pip tries to compile it from Rust with `maturin`. That
+3.12 is what CI tests on. It was pinned first because `tokenizers`, which
+chromadb brought in (chromadb has since gone), had **no pre-built wheel for
+Python 3.14**, so pip tried to compile it from Rust with `maturin`. That
 fails on Render's free build container because `/usr/local/cargo` is mounted
 read-only:
 

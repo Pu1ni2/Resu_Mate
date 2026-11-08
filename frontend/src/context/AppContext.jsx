@@ -207,7 +207,7 @@ export const AppProvider = ({ children }) => {
   const deleteCandidate = useCallback(async (id) => {
     setDeleting(true);
     try {
-      // Wait for backend to fully delete (hash cleanup, ChromaDB)
+      // Wait for backend to fully delete (hash cleanup)
       await candidatesAPI.delete(id);
       // Small delay to ensure backend state is consistent
       await new Promise(r => setTimeout(r, 800));

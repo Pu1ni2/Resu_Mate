@@ -80,10 +80,6 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./resumate.db"
 
-    # ChromaDB
-    chroma_dir: str = "chroma_db"
-    chroma_collection: str = "resumes"
-
     # Server
     host: str = "0.0.0.0"
     port: int = 8000

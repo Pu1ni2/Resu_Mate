@@ -37,10 +37,10 @@ services:
     # Answers 503 when the database can't be reached, so a broken deploy shows.
     healthCheckPath: /health
     envVars:
-      # Pin Python to 3.12 so pip resolves pre-built wheels for tokenizers,
-      # chromadb, langchain-* etc. Python 3.14 has no wheels for tokenizers
-      # yet, which forces a Rust source build that fails on Render's
-      # read-only Cargo cache. Both runtime.txt AND this env var are kept in
+      # Pin Python to 3.12, the version CI tests on. It was pinned first
+      # because chromadb's tokenizers had no Python 3.14 wheels, which forced
+      # a Rust source build that fails on Render's read-only Cargo cache;
+      # chromadb is gone. Both runtime.txt AND this env var are kept in
       # sync — Render honours the env var even when the runtime file is
       # ignored due to a sticky cached version on an existing service.
       - key: PYTHON_VERSION

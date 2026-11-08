@@ -259,8 +259,8 @@ async def delete_account(
         raise HTTPException(status_code=403, detail="That password isn't right.")
     manager_id = current_user.id
     files = await db_service.delete_manager(db, manager_id)
-    # Then what lives outside the database: the in-memory store and ChromaDB,
-    # and the original files.
+    # Then what lives outside the database: the in-memory store, and the
+    # original files.
     from app.services.resume_rag import resume_rag
     from app.services.storage_service import storage_service
     import asyncio

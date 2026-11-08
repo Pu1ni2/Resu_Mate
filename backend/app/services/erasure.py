@@ -18,8 +18,8 @@ logger = logging.getLogger("resumate.erasure")
 async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -> int:
     """Delete all data held about `email`; returns how many résumés went.
 
-    Interviews, portal grants, their own résumés (database, in-memory store,
-    ChromaDB and object storage), the career advisor's session, sign-in codes,
+    Interviews, portal grants, their own résumés (database, in-memory store
+    and object storage), the career advisor's session, sign-in codes,
     and anything a sourcing run kept about them. An audit record is written.
     """
     from app.models.auth import OTPCode
@@ -52,7 +52,7 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
     await db.execute(sql_delete(SourcedProfile).where(func.lower(SourcedProfile.email) == email))
     await db.commit()
 
-    # Then the in-memory store + ChromaDB + object storage, scoped to the row's
+    # Then the in-memory store and object storage, scoped to the row's
     # owning manager so we hit the right drawer.
     for row in cand_rows:
         try:

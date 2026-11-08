@@ -95,14 +95,9 @@ def test_an_upload_never_sleeps_the_server(client, monkeypatch):
     assert r.status_code == 200, r.text
 
 
-def test_a_resume_is_read_and_embedded_off_the_event_loop(tmp_path, monkeypatch):
+def test_a_resume_is_read_off_the_event_loop(tmp_path, monkeypatch):
     from app.services.resume_rag import resume_rag
     seen = {}
-
-    class FakeIndex:
-        def add_documents(self, documents):
-            seen["thread"] = threading.get_ident()
-            seen["chunks"] = len(documents)
 
     async def analysed(*a, **k):
         return {"summary": "", "skills": []}
@@ -113,7 +108,8 @@ def test_a_resume_is_read_and_embedded_off_the_event_loop(tmp_path, monkeypatch)
         seen["reader"] = threading.get_ident()
         return read_text(*args)
 
-    monkeypatch.setattr(resume_rag, "vectordb", FakeIndex())
+    # A chat model is set up, as with an API key; the analysis is the fake.
+    monkeypatch.setattr(resume_rag, "llm", object())
     monkeypatch.setattr(resume_rag, "_analyze_resume", analysed)
     monkeypatch.setattr(resume_rag, "_extract_text", reading)
     monkeypatch.setattr(resume_rag, "candidates", {})
@@ -127,8 +123,6 @@ def test_a_resume_is_read_and_embedded_off_the_event_loop(tmp_path, monkeypatch)
 
     result = _run(upload())
     assert result["id"] == 1, result
-    assert seen["chunks"] >= 1
-    assert seen["thread"] != seen["loop"]
     assert seen["reader"] != seen["loop"]
 
 

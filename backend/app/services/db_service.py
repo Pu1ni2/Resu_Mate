@@ -38,10 +38,10 @@ async def log_event(
 # ═══════ CANDIDATE ═══════
 
 async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int = None) -> Optional[Candidate]:
-    """Persist a candidate to the database (alongside in-memory/ChromaDB storage).
+    """Persist a candidate to the database (alongside the in-memory store).
 
     The row takes the id the in-memory store gave the candidate (data["id"]),
-    which is also the id on their ChromaDB chunks and the one the frontend
+    which is also the one the frontend
     uses. Postgres used to number the row itself. The two agreed only until
     a gap: Postgres never reuses an id, so after the newest candidate was
     deleted (or Delete All ran) and the server restarted, the store's counter,
@@ -550,7 +550,7 @@ def _is_this_candidate(row: Candidate, email: str, access: Optional[CandidateAcc
     row's name. Anything else is a different person reached by a wrong id.
     With no grant, only the address counts.
     """
-    from app.services.resume_rag import primary_email  # lazy: resume_rag starts Chroma on import
+    from app.services.resume_rag import primary_email  # lazy: resume_rag makes its chat model on import
     own = primary_email({
         "email": row.email, "embedded_links": row.embedded_links or {},
         "text": row.full_text or row.raw_text or "",

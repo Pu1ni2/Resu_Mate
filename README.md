@@ -5,7 +5,6 @@
   <img src="https://img.shields.io/badge/OpenAI-API-412991?logo=openai&logoColor=white" alt="OpenAI API" />
   <img src="https://img.shields.io/badge/LiveKit-WebRTC-FF6B35?logo=webrtc&logoColor=white" alt="LiveKit WebRTC" />
   <img src="https://img.shields.io/badge/Simli-Avatar-8B5CF6" alt="Simli avatar" />
-  <img src="https://img.shields.io/badge/ChromaDB-Vector--Store-green" alt="ChromaDB vector store" />
   <img src="https://img.shields.io/badge/Jarvis-AI--Copilot-F59E0B?logo=openai&logoColor=white" alt="Jarvis AI copilot" />
 </p>
 
@@ -105,7 +104,7 @@ An AI career advisor for résumé coaching and interview prep, then the intervie
 
 The diagram predates two of the agents: **Jarvis**, which drives the others from one conversation, and
 the **Sourcer Agent**, behind Find Candidates. Around the backend sit PostgreSQL (SQLite locally),
-ChromaDB, where résumés are indexed, optional S3-compatible file storage, and the outside services: OpenAI,
+optional S3-compatible file storage, and the outside services: OpenAI,
 Tavily, the GitHub API and SendGrid. Avatar interviews run through a separate worker
 (`backend/interview_agent.py`) with LiveKit and Simli.
 
@@ -232,8 +231,7 @@ score, reports and analytics leave it out or show "—"; none is made up.
 | **Frontend** | React 18, Vite 6, React Router 7, Tailwind 4, Lucide icons; tests with Vitest. The fonts (DM Sans, Instrument Serif, JetBrains Mono) ship with the app |
 | **Backend** | FastAPI, Python 3.12, SQLAlchemy (async), Alembic, Uvicorn |
 | **Database** | PostgreSQL in production, SQLite locally and in tests |
-| **AI** | OpenAI (chat model set by `OPENAI_MODEL`, default `gpt-4o`), embeddings, Whisper, TTS, Realtime |
-| **Vector store** | ChromaDB with LangChain: résumés are indexed there, and removed with their candidate (the chat reads the candidates' profiles directly) |
+| **AI** | OpenAI (chat model set by `OPENAI_MODEL`, default `gpt-4o`), Whisper, TTS, Realtime |
 | **File storage** | Optional S3-compatible storage keeps the original résumé files; without it, they are read and then discarded |
 | **Interviews** | OpenAI Realtime (voice); LiveKit Cloud + Simli (avatar, optional) |
 | **Search** | Tavily (web), GitHub API |

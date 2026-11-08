@@ -1074,8 +1074,8 @@ async def candidate_delete_my_data(
     """GDPR erasure — a candidate deletes ALL their own data.
 
     Authenticated by the candidate's own session token (type=candidate, sub=email)
-    issued at OTP login. Removes interviews, portal access, the in-memory +
-    ChromaDB candidate record, and the stored resume file (object storage), then
+    issued at OTP login. Removes interviews, portal access, the in-memory
+    candidate record, and the stored resume file (object storage), then
     writes an audit record.
     """
     if not authorization or not authorization.lower().startswith("bearer "):
