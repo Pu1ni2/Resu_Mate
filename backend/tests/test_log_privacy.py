@@ -26,6 +26,60 @@ def test_no_route_takes_an_email_in_its_address(client):
         assert client.get(gone).status_code == 404, gone
 
 
+# ── errors in the log: their type and where, never their text ────────────────
+
+def test_the_log_keeps_an_errors_type_and_place_never_its_text():
+    from app.core.errors import log_text
+
+    def check_address():
+        raise ValueError("ada@x.com isn't a valid address")
+    try:
+        check_address()
+    except ValueError as exc:
+        kept = log_text(exc)
+    assert kept.startswith("ValueError at tests/test_log_privacy.py:")
+    assert "in check_address" in kept
+    assert "ada@x.com" not in kept
+
+
+def test_no_logging_line_puts_an_errors_text_or_traceback_in_the_log():
+    # About thirty did: an exception's text, or a traceback, which ends with it.
+    import os
+    import re
+    backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    text_of_error = re.compile(
+        r"\{(e|exc|err|error|ex)\}|\{str\((e|exc|err)\)\}|%s\"?,\s*(e|exc|err)\)|"
+        r"logger\.exception\(|print_exc\(|exc_info=True")
+    files = [os.path.join(backend, "main.py"), os.path.join(backend, "cleanup_stale.py")]
+    for folder, _, names in os.walk(os.path.join(backend, "app")):
+        files += [os.path.join(folder, n) for n in names if n.endswith(".py")]
+    found = []
+    for path in files:
+        with open(path, encoding="utf-8") as f:
+            for number, line in enumerate(f, 1):
+                if re.search(r"print\(|logger\.|logging\.", line) and text_of_error.search(line):
+                    found.append(f"{os.path.relpath(path, backend)}:{number}")
+    assert len(files) > 40  # the walk reached the app's modules
+    assert found == []
+
+
+def test_an_unexpected_errors_line_holds_none_of_its_text(monkeypatch, caplog):
+    import logging
+    from fastapi.testclient import TestClient
+    import main
+    from app.services import interview_modes
+
+    def broken():
+        raise RuntimeError("Ada Lovelace's résumé broke it")
+    monkeypatch.setattr(interview_modes, "avatar_available", broken)
+    with caplog.at_level(logging.ERROR, logger="resumate"), TestClient(main.app, raise_server_exceptions=False) as c:
+        assert c.get("/api/features").status_code == 500
+    line = next(r for r in caplog.records if r.getMessage().startswith("Unhandled error"))
+    assert line.getMessage().startswith("Unhandled error: RuntimeError at ")
+    assert "Ada Lovelace" not in line.getMessage()
+    assert line.exc_info is None
+
+
 def test_a_database_error_keeps_the_values_out_of_its_text(client):
     from sqlalchemy.exc import IntegrityError
     from app.core import database
