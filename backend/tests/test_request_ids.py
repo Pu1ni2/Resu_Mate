@@ -7,7 +7,7 @@ import re
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.core.request_context import RequestContext, install_request_ids, new_request_id
+from app.core.request_context import RequestContext, install_log_records, new_request_id
 
 
 def test_every_answer_has_its_own_id(client):
@@ -25,7 +25,7 @@ def test_a_plain_id_from_a_proxy_is_kept_and_anything_else_replaced(client):
 
 
 def test_a_requests_log_lines_carry_its_id(caplog):
-    install_request_ids()
+    install_log_records()
     app = FastAPI()
 
     @app.get("/work")
@@ -40,7 +40,7 @@ def test_a_requests_log_lines_carry_its_id(caplog):
 
 
 def test_lines_outside_a_request_say_so(caplog):
-    install_request_ids()
+    install_log_records()
     with caplog.at_level(logging.INFO):
         logging.getLogger("resumate.test").info("starting")
     assert caplog.records[-1].request_id == "-"

@@ -21,12 +21,12 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.database import init_db
 from app.core.errors import log_text
-from app.core.request_context import RequestContext, install_request_ids, request_id_var
+from app.core.request_context import RequestContext, install_log_records, request_id_var
 
 # Configure logging. Each line names the request it came from ("-" outside
 # one), and its date: the time alone couldn't tell one day's lines from the
-# next.
-install_request_ids()
+# next. No line carries an exception's text (install_log_records).
+install_log_records()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s",

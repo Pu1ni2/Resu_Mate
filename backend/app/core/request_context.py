@@ -10,6 +10,8 @@ import secrets
 import time
 from contextvars import ContextVar
 
+from app.core.errors import log_text
+
 # The id of the request being handled; "-" outside one (start-up, scripts).
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
@@ -27,22 +29,38 @@ def new_request_id(given: str = "") -> str:
     return given if _GIVEN.fullmatch(given or "") else secrets.token_hex(6)
 
 
-def install_request_ids() -> None:
-    """Give every log record the current request's id, as `request_id`.
+def install_log_records() -> None:
+    """Every log record gets the current request's id, as `request_id`, and
+    keeps no exception's text.
 
-    Set when a record is made, not by a handler, so it's there whichever
+    A record made with an exception (logger.exception, exc_info=, and
+    uvicorn's "Exception in ASGI application", which every unexpected error
+    reaches) printed a traceback, which ends with the exception's own text,
+    and that could hold a person's data. Its message gets the exception's
+    type and where it happened instead (errors.log_text), and the traceback
+    goes.
+
+    Done as each record is made, not by a handler, so it holds whichever
     handler writes the record: the app's, uvicorn's or the tests'.
     """
     make = logging.getLogRecordFactory()
-    if getattr(make, "adds_request_id", False):
+    if getattr(make, "resumate_records", False):
         return
 
-    def record_with_request_id(*args, **kwargs):
+    def resumate_record(*args, **kwargs):
         record = make(*args, **kwargs)
         record.request_id = request_id_var.get()
+        if record.exc_info and record.exc_info[1] is not None:
+            try:
+                message = record.getMessage()
+            except Exception:
+                message = str(record.msg)
+            record.msg = f"{message.rstrip()} ({log_text(record.exc_info[1])})"
+            record.args = None
+            record.exc_info = record.exc_text = None
         return record
-    record_with_request_id.adds_request_id = True
-    logging.setLogRecordFactory(record_with_request_id)
+    resumate_record.resumate_records = True
+    logging.setLogRecordFactory(resumate_record)
 
 
 def log_answer(scope, status: int, started: float) -> None:
