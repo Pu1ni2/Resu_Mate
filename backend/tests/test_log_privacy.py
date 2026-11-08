@@ -47,8 +47,10 @@ def test_no_logging_line_puts_an_errors_text_or_traceback_in_the_log():
     import os
     import re
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # An exception in an f-string, or passed as any of the call's arguments
+    # (two passed it after an id); `error` is a plain message the tools write.
     text_of_error = re.compile(
-        r"\{(e|exc|err|error|ex)\}|\{str\((e|exc|err)\)\}|%s\"?,\s*(e|exc|err)\)|"
+        r"\{(e|exc|err|error|ex)\}|\{str\((e|exc|err)\)\}|,\s*(e|exc|err|ex)\)|"
         r"logger\.exception\(|print_exc\(|exc_info=True")
     files = [os.path.join(backend, "main.py"), os.path.join(backend, "cleanup_stale.py")]
     for folder, _, names in os.walk(os.path.join(backend, "app")):
