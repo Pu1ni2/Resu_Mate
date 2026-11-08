@@ -304,6 +304,19 @@ export const AppProvider = ({ children }) => {
 
   const initChat = useCallback(async () => {
     if (messages.length > 0) return;
+    // The conversation so far, which the server keeps. The page started
+    // afresh on every visit while the chat remembered, so it answered from
+    // things the page no longer showed.
+    try {
+      const kept = (await chatAPI.history()).data?.messages || [];
+      if (kept.length) {
+        setMessages(kept);
+        setSuggestions([]);
+        return;
+      }
+    } catch (_) {
+      // Without it, the greeting below opens the chat as before.
+    }
     try {
       const res = await chatAPI.getIntro(selectedCandidates.length, anonymize);
       setMessages([{ role: 'assistant', content: res.data.response }]);

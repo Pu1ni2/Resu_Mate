@@ -84,6 +84,8 @@ export const chatAPI = {
   // FastAPI silently ignored, so the intro message was always generated as if
   // zero candidates were selected.
   getIntro: (count, anonymize = false) => api.get(`/chat/intro?count=${count}&anonymize=${anonymize}`),
+  // The conversation so far, which the server keeps.
+  history: () => api.get('/chat/history'),
   // POST, not DELETE. The backend registers POST /chat/clear, so this returned
   // 405 on every call — invisible, because the caller ignores the rejection and
   // clears local state anyway, leaving the server's history intact.

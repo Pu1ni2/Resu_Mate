@@ -286,6 +286,11 @@ async def set_preferences(req: PreferencesRequest, current_user: HiringManager =
     """The manager's settings, kept on the account. "Hide names" was only the
     page's, so the server couldn't keep names from the AI when a request
     didn't ask it to. Returns the profile."""
+    if current_user.hide_names != req.hide_names:
+        # The chat's kept conversation was had with the other setting: shown
+        # again, or read by the model, it would bring the names back.
+        from app.services import state_service
+        await state_service.forget_chats(db, [current_user.id])
     current_user.hide_names = req.hide_names
     await db.commit()
     return current_user.to_dict()
