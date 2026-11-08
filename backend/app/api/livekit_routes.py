@@ -41,9 +41,6 @@ print(f"LiveKit URL: {'set' if LIVEKIT_URL else 'MISSING'}")
 print(f"LiveKit API Key: {'set' if LIVEKIT_API_KEY else 'MISSING'}")
 print(f"LiveKit API Secret: {'set' if LIVEKIT_API_SECRET else 'MISSING'}")
 
-# In-memory fallback (for rooms created without a DB Interview record)
-room_configs = {}
-
 
 def create_livekit_token(room_name: str, participant_name: str, is_agent: bool = False) -> str:
     """Generate a LiveKit JWT token"""
@@ -209,9 +206,6 @@ async def create_room(
         interview.status = "in_progress"
     await db.commit()
 
-    # Also keep in-memory as fast fallback
-    room_configs[room_name] = config
-
     token = create_livekit_token(room_name, candidate_name)
     print(f"🏠 LiveKit room created: {room_name} ({len(config['verification_targets'])} verification targets)")
 
@@ -275,16 +269,14 @@ async def get_room_config(
     """
     verify_agent_token(x_agent_token)
 
-    # Try in-memory cache first (fast path)
-    if room_name in room_configs:
-        return room_configs[room_name]
-
+    # From the interview itself. A copy kept in this process's memory was
+    # never cleared, held candidates' names and addresses, and another
+    # process could hand out an older one.
     result = await db.execute(
         select(Interview).where(Interview.room_name == room_name)
     )
     interview = result.scalars().first()
     if interview and interview.room_config:
-        room_configs[room_name] = interview.room_config  # Warm the cache
         return interview.room_config
 
     # Explicit 404 rather than a fabricated default config. Returning a generic
@@ -299,5 +291,4 @@ async def livekit_status(actor: Actor = Depends(get_current_actor)):
     return {
         "configured": bool(LIVEKIT_URL and LIVEKIT_API_KEY and LIVEKIT_API_SECRET),
         "url": LIVEKIT_URL[:30] + "..." if LIVEKIT_URL else "not set",
-        "active_rooms": len(room_configs),
     }
