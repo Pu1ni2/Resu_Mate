@@ -20,12 +20,16 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.request_context import RequestContext, install_request_ids, request_id_var
 
-# Configure logging
+# Configure logging. Each line names the request it came from ("-" outside
+# one), and its date: the time alone couldn't tell one day's lines from the
+# next.
+install_request_ids()
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S"
+    format="%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("resumate")
 
@@ -163,15 +167,20 @@ async def _validation_exception_handler(_request: _Request, exc: RequestValidati
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(_request: _Request, exc: Exception):
     logger.exception("Unhandled error: %s", exc)
+    # The request's id, which its log lines carry: the pages show `detail`,
+    # so a person can quote it, and the failure can be found.
+    reference = request_id_var.get()
     return JSONResponse(
         status_code=500,
         content={
             "error": {
                 "type": exc.__class__.__name__,
                 "message": "Internal server error",
+                "reference": reference,
             },
-            "detail": "Internal server error",
+            "detail": f"Something went wrong on our side. If it keeps happening, quote reference {reference}.",
         },
+        headers={"X-Request-ID": reference},
     )
 
 # CORS: the frontend's own origin (settings.cors_origins_list). Only what the
@@ -189,6 +198,10 @@ app.add_middleware(
 # HSTS only in production, which is served over HTTPS.
 from app.core.security_headers import SecurityHeaders
 app.add_middleware(SecurityHeaders, hsts=not settings.debug)
+
+# Added last, so it's outermost: every request has its id before anything
+# else runs, and every answer carries it.
+app.add_middleware(RequestContext)
 
 # Routes — ALL registered on the SAME app
 from app.api.auth import router as auth_router
