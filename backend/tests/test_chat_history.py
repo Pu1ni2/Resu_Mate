@@ -100,3 +100,17 @@ def test_an_erasure_forgets_the_conversations_of_the_managers_who_held_them(clie
     assert _rows(holder["id"]) == []
     # A manager who never held them keeps theirs.
     assert len(_rows(other["id"])) == 1
+
+
+def test_switching_hide_names_forgets_the_conversation(client, monkeypatch):
+    # Had with the names shown, and shown again, or read by the model, after
+    # they're hidden, it would bring them back.
+    tok, m, _, say = _chatting(client, monkeypatch, "hide@co.com")
+    say("Is Ada strong?")
+    assert len(_rows(m["id"])) == 1
+    assert client.put("/api/auth/preferences", headers=auth_headers(tok), json={"hide_names": True}).status_code == 200
+    assert _rows(m["id"]) == []
+    # Saving the setting it already has keeps the conversation.
+    say("Who else?")
+    client.put("/api/auth/preferences", headers=auth_headers(tok), json={"hide_names": True})
+    assert len(_rows(m["id"])) == 1
