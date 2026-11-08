@@ -3,13 +3,26 @@ __pycache__/
 *.pyc
 *.pyo
 venv/
+.venv/
+.coverage
+htmlcov/
+# Settings with secrets: .env, and its variants (.env.local, .env.production),
+# which only .env was. The example, with no secrets, is kept.
 .env
+.env.*
+!.env.example
+# Local databases, which hold candidates' data.
 *.db
+*.sqlite
+*.sqlite3
+*.log
+# Private keys.
+*.pem
+# Left by older versions: the résumé search index (ChromaDB) and the agents'
+# memory file are gone, and nothing reads the interview files, superseded by
+# the interviews table. They held candidate emails, names and full interview
+# transcripts, so they must never be committed.
 chroma_db/
-# Local interview data — these are runtime artefacts of an older, pre-Postgres
-# implementation, superseded by the interviews table. No code reads them, and
-# they accumulate candidate emails, names and full interview transcripts, so
-# they must never be committed.
 interviews_data.json
 interview_results.json
 agent_memory.json
