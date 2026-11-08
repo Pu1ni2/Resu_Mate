@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 
 from app.core.config import settings
+from app.core.errors import log_text
 from app.core.database import get_db
 from app.services import state_service
 from app.services.auth import get_current_candidate
@@ -314,10 +315,10 @@ async def advisor_chat(
         return {"reply": reply, "mode": req.mode, "suggestions": suggestions}
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
         # Logged, and a real error: the reply used to be the exception's own
         # text, shown to the candidate as the advisor's answer.
-        logger.exception("advisor chat failed")
+        logger.error("advisor chat failed: %s", log_text(exc))
         raise HTTPException(status_code=502, detail="Sorry, I couldn't answer that just now. Please try again.")
 
 

@@ -10,7 +10,6 @@ Base Agent Framework v3 — Production-grade agent with:
 import json
 import time
 import asyncio
-import traceback
 import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Callable
@@ -20,7 +19,7 @@ from enum import Enum
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
-from app.core.errors import friendly_error
+from app.core.errors import friendly_error, log_text
 from app.core.config import settings
 
 logger = logging.getLogger("resumate.agents")
@@ -109,7 +108,7 @@ class AgentMemoryStore:
         except FileNotFoundError:
             return {}
         except Exception as exc:
-            print(f"[memory_store] could not load {self.FILE}: {exc}")
+            print(f"[memory_store] could not load {self.FILE}: {log_text(exc)}")
             return {}
 
     def _save(self):
@@ -117,7 +116,7 @@ class AgentMemoryStore:
             with open(self.FILE, 'w', encoding='utf-8') as f:
                 json.dump(self._store, f, indent=2, default=str)
         except Exception as exc:
-            print(f"[memory_store] could not save {self.FILE}: {exc}")
+            print(f"[memory_store] could not save {self.FILE}: {log_text(exc)}")
 
     def get(self, agent: str) -> List[Dict]:
         return self._store.get(agent, [])
@@ -321,7 +320,7 @@ class BaseAgent:
             err = str(e)
             # The scan's steps show this: plain words, not the exception's.
             self.log("error", friendly_error(e, "The work couldn't be finished."), "error")
-            traceback.print_exc()
+            print(f"[ERROR] {self.name} failed: {log_text(e)}")
             memory_store.add(self.name, {"task": task[:200], "success": False, "error": err[:200]})
             return AgentResult(output=None, logs=list(self.logs), steps=list(self.steps), metrics=self.metrics, success=False, error=err, agent_name=self.name, task=task[:200])
 
@@ -361,7 +360,7 @@ class BaseAgent:
                 # undefined name in hr_agent's prompt went unnoticed.
                 last_err = f"{type(e).__name__}: {e}"[:150]
                 self.log(f"step_{idx}_bug", "This step failed, and won't be tried again.", "error")
-                traceback.print_exc()
+                print(f"[ERROR] {self.name} step {idx}, a bug: {log_text(e)}")
                 break
             except Exception as e:
                 last_err = str(e)[:150]

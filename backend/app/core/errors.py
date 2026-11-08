@@ -3,10 +3,13 @@ exception's own text.
 
 That text was shown as it was: a library's message, an outside service's raw
 reply, or a stack's details, which could hold someone's data and read as
-gibberish anyway. The server's log keeps the details.
+gibberish anyway. The server's log keeps where it happened (log_text), and
+not the text either.
 """
+import os
+import traceback
 
-BUSY = "The service it depends on is busy. Try again in a minute."
+BUSY ="The service it depends on is busy. Try again in a minute."
 SLOW = "It took too long. Try again."
 UNREACHABLE = "A service it depends on couldn't be reached. Try again in a moment."
 AGAIN = "Try again in a moment."
@@ -43,3 +46,34 @@ def friendly_error(exc: BaseException, failed: str, again: str = AGAIN) -> str:
 def friendly_status(status: int, failed: str) -> str:
     """The same, for an outside service that answered with an error status."""
     return f"{failed} {BUSY if status == 429 else AGAIN}"
+
+
+# The backend's own folder: frames in it are named from here, the libraries'
+# by their file alone.
+_OWN = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def log_text(exc) -> str:
+    """What the server's log keeps of an exception: its type, and where it
+    was raised, deepest first: the backend's own lines it passed through,
+    and the library's line it came from.
+
+    Never its message, nor a traceback, which ends with the message. Either
+    could hold a person's data: an address, a name, a résumé's text, the
+    name of the file someone uploaded.
+    """
+    if exc is None:
+        return "no exception"
+    frames = traceback.extract_tb(exc.__traceback__)
+    own = [f for f in frames if os.path.abspath(f.filename).startswith(_OWN + os.sep)
+           and "site-packages" not in f.filename]
+    shown = own[-3:]
+    if frames and frames[-1] not in shown:
+        shown.append(frames[-1])
+
+    def place(frame):
+        path = os.path.abspath(frame.filename)
+        named = os.path.relpath(path, _OWN) if frame in own else os.path.basename(path)
+        return f"{named.replace(os.sep, '/')}:{frame.lineno} in {frame.name}"
+    where = " < ".join(place(f) for f in reversed(shown))
+    return f"{type(exc).__name__} at {where}" if where else type(exc).__name__

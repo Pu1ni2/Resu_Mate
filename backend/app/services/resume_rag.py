@@ -18,6 +18,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.documents import Document
 
 from app.core.config import settings
+from app.core.errors import log_text
 from app.services.experience import experience_text, known_years
 from app.tools.pdf_tool import pdf_tool
 
@@ -112,7 +113,7 @@ class ResumeRAGService:
             print("[OK] OpenAI services initialized successfully")
             
         except Exception as e:
-            print(f"[ERR] Error initializing services: {e}")
+            print(f"[ERR] Error initializing services: {log_text(e)}")
             self.embeddings = None
             self.llm = None
 
@@ -153,7 +154,7 @@ class ResumeRAGService:
             print(f"[OK] ChromaDB initialized at {self.chroma_dir}")
             return
         except BaseException as e:
-            print(f"[WARN] ChromaDB open failed ({type(e).__name__}: {e}); resetting store.")
+            print(f"[WARN] ChromaDB open failed ({log_text(e)}); resetting store.")
 
         # Second attempt — wipe directory + clear singletons, then open fresh.
         try:
@@ -165,7 +166,7 @@ class ResumeRAGService:
             print(f"[OK] ChromaDB re-initialized at {self.chroma_dir} (fresh store)")
             return
         except BaseException as e:
-            print(f"[WARN] ChromaDB fresh-open failed ({type(e).__name__}: {e}); disabling vector store.")
+            print(f"[WARN] ChromaDB fresh-open failed ({log_text(e)}); disabling vector store.")
 
         # Give up — the app boots without RAG. Upload/chat-with-RAG will be disabled
         # until chromadb is reinstalled (see requirements.txt: chromadb<0.6.0).
@@ -604,7 +605,7 @@ BADGES (pick 2-3):
                         where={"candidate_id": candidate_id}
                     )
                 except Exception as exc:
-                    print(f"ChromaDB delete failed for candidate {candidate_id}: {exc}")
+                    print(f"ChromaDB delete failed for candidate {candidate_id}: {log_text(exc)}")
 
             del drawer[candidate_id]
             print(f"Deleted candidate {candidate_id}")
@@ -644,7 +645,7 @@ BADGES (pick 2-3):
                     try:
                         self.vectordb._collection.delete(where={"candidate_id": cid})
                     except Exception as exc:
-                        print(f"ChromaDB delete failed for candidate {cid}: {exc}")
+                        print(f"ChromaDB delete failed for candidate {cid}: {log_text(exc)}")
             self.candidates[self._mkey(manager_id)] = {}
             self.uploaded_file_hashes[self._mkey(manager_id)] = set()
             print(f"Cleared all data for manager {self._mkey(manager_id)}")

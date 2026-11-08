@@ -16,6 +16,7 @@ import time
 from typing import AsyncIterator, Dict, List, Tuple
 
 from app.core.config import settings
+from app.core.errors import log_text
 from app.services.resume_rag import resume_rag
 from app.tools.github_tool import github_tool
 from app.tools.openai_tool import openai_tool
@@ -620,7 +621,7 @@ class SourcerAgent:
         except Exception as e:
             # A timeout or quota error here would otherwise end the run before
             # anyone was read.
-            print(f"[WARN] sourcer plan call failed: {e}")
+            print(f"[WARN] sourcer plan call failed: {log_text(e)}")
             return _fallback_plan(description), usage
         try:
             plan = _normalise_plan(_parse_json(raw))
@@ -679,7 +680,7 @@ class SourcerAgent:
                 print(f"[WARN] sourcer judge reply unreadable: {type(e).__name__}")
                 failure = "Could not be judged: the model's reply was unreadable."
             except Exception as e:
-                print(f"[WARN] sourcer judge failed: {e}")
+                print(f"[WARN] sourcer judge failed: {log_text(e)}")
                 failure = "Could not be judged: the model call failed."
 
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -766,7 +767,7 @@ class SourcerAgent:
                         await out.put({"type": "warning", "message": payload})
             except Exception as e:
                 # One source failing shouldn't end the run for the others.
-                print(f"[WARN] sourcer {label} failed: {e}")
+                print(f"[WARN] sourcer {label} failed: {log_text(e)}")
                 await out.put({"type": "warning", "message": f"Searching {label} failed; carrying on without it."})
 
         async def gather():
@@ -811,7 +812,7 @@ class SourcerAgent:
                 await gatherer
                 await asyncio.gather(*workers)
             except Exception as e:
-                print(f"[ERROR] sourcer run failed: {e}")
+                print(f"[ERROR] sourcer run failed: {log_text(e)}")
                 await out.put({"type": "error", "message": "The search stopped unexpectedly."})
             finally:
                 await out.put(_DONE)

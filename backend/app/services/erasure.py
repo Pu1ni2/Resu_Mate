@@ -9,6 +9,7 @@ import logging
 from sqlalchemy import delete as sql_delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import log_text
 from app.services import db_service
 
 logger = logging.getLogger("resumate.erasure")
@@ -64,7 +65,7 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
             if getattr(row, "file_object_key", None):
                 storage_service.delete(row.file_object_key)
         except Exception as exc:
-            logger.warning("object-store delete failed: %s", exc)
+            logger.warning("object-store delete failed: %s", log_text(exc))
     # And any in-memory copy kept under an id the database doesn't share.
     for cand in in_memory:
         try:
@@ -76,7 +77,7 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
         from app.api.advisor_agent import _session_cache
         _session_cache.pop(email, None)
     except Exception as exc:
-        logger.warning("advisor cache clear failed: %s", exc)
+        logger.warning("advisor cache clear failed: %s", log_text(exc))
 
     await db_service.log_event(
         db, action="candidate.delete", actor=actor, target_email=email,

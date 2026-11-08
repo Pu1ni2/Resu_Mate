@@ -20,6 +20,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.errors import log_text
 from app.core.request_context import RequestContext, install_request_ids, request_id_var
 
 # Configure logging. Each line names the request it came from ("-" outside
@@ -87,7 +88,7 @@ async def lifespan(app: FastAPI):
         # Each manager's list, read from the database, puts their candidates
         # back (GET /candidates), so a failure here no longer leaves every
         # list empty until a restart.
-        print(f"[WARN] Could not warm candidate cache: {e}")
+        print(f"[WARN] Could not warm candidate cache: {log_text(e)}")
 
     print("✅ All agents registered")
     print(f"✅ ResuMate AI ready!\n")
@@ -170,7 +171,8 @@ async def _validation_exception_handler(_request: _Request, exc: RequestValidati
 
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(_request: _Request, exc: Exception):
-    logger.exception("Unhandled error: %s", exc)
+    # Where, not what: the message and traceback could hold a person's data.
+    logger.error("Unhandled error: %s", log_text(exc))
     # The request's id, which its log lines carry: the pages show `detail`,
     # so a person can quote it, and the failure can be found.
     reference = request_id_var.get()

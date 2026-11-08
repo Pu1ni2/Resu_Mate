@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.hr_agent import hr_agent
 from app.agents.sourcer_agent import sourcer_agent
 from app.core.database import async_session, get_db
+from app.core.errors import log_text
 from app.models.sourcing import SourcingRun, SourcedProfile
 from app.services import db_service
 from app.services.auth import get_current_user
@@ -80,7 +81,7 @@ async def _save_stopped_run(*args) -> None:
     try:
         await _save_run(*args)
     except Exception as e:
-        print(f"[WARN] could not save stopped sourcing run: {e}")
+        print(f"[WARN] could not save stopped sourcing run: {log_text(e)}")
 
 
 async def _own_run(db: AsyncSession, run_id: int, manager_id: int) -> SourcingRun:

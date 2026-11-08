@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.errors import log_text
 from app.core.rate_limit import limiter
 from app.services.auth import get_current_user
 from app.services.hidden_names import hides_names, stand_ins
@@ -741,7 +742,7 @@ async def jarvis_chat(
 
     except json.JSONDecodeError as exc:
         # Not the reply itself: it is about the manager's candidates.
-        logger.warning("Jarvis JSON parse error: %s", exc)
+        logger.warning("Jarvis JSON parse error: %s", log_text(exc))
         return JarvisChatResponse(reply=raw[:300] if raw else "Something went wrong. Try again.")
 
     except Exception as exc:

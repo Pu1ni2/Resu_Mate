@@ -12,6 +12,7 @@ import logging
 from typing import Optional
 
 from app.core.config import settings
+from app.core.errors import log_text
 
 logger = logging.getLogger("resumate.storage")
 
@@ -35,7 +36,7 @@ class StorageService:
             logger.info("Object storage enabled (bucket=%s)", self.bucket)
         except Exception as e:
             self._client = None
-            logger.warning("Object storage init failed, running without it: %s", e)
+            logger.warning("Object storage init failed, running without it: %s", log_text(e))
 
     @property
     def enabled(self) -> bool:
@@ -54,7 +55,7 @@ class StorageService:
             self._client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
             return key
         except Exception as e:
-            logger.warning("S3 upload failed: %s", e)
+            logger.warning("S3 upload failed: %s", log_text(e))
             return None
 
     def presigned_url(self, key: str, expires: int = 300) -> Optional[str]:
@@ -68,7 +69,7 @@ class StorageService:
                 ExpiresIn=expires,
             )
         except Exception as e:
-            logger.warning("S3 presign failed: %s", e)
+            logger.warning("S3 presign failed: %s", log_text(e))
             return None
 
     def download(self, key: str) -> Optional[bytes]:
@@ -79,7 +80,7 @@ class StorageService:
             obj = self._client.get_object(Bucket=self.bucket, Key=key)
             return obj["Body"].read()
         except Exception as e:
-            logger.warning("S3 download failed: %s", e)
+            logger.warning("S3 download failed: %s", log_text(e))
             return None
 
     def delete(self, key: str) -> bool:
@@ -89,7 +90,7 @@ class StorageService:
             self._client.delete_object(Bucket=self.bucket, Key=key)
             return True
         except Exception as e:
-            logger.warning("S3 delete failed: %s", e)
+            logger.warning("S3 delete failed: %s", log_text(e))
             return False
 
 

@@ -10,6 +10,7 @@ from app.core.rate_limit import limiter
 from app.services.auth import get_current_user
 from app.services.resume_rag import resume_rag, MAX_FILE_SIZE, OLD_WORD_FILE, RESUME_EXTENSIONS
 from app.core.database import get_db
+from app.core.errors import log_text
 from app.services import db_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
@@ -101,7 +102,7 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
                     await db.commit()
                     result["file_object_key"] = key
         except Exception as exc:
-            print(f"[WARN] resume object-store upload failed: {exc}")
+            print(f"[WARN] resume object-store upload failed: {log_text(exc)}")
 
         await db_service.log_event(
             db, action="candidate.create", actor="manager",

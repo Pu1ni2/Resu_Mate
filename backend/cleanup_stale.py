@@ -29,7 +29,7 @@ async def run(days: int, apply: bool) -> None:
         print(f"Cutoff: {cutoff.isoformat()}  ({days} days)")
         print(f"Stale candidates: {len(stale)}")
         for c in stale:
-            print(f"  - id={c.id} email={c.email} updated={c.updated_at}")
+            print(f"  - id={c.id} updated={c.updated_at}")
 
         if not apply:
             print("\nDry run — nothing deleted. Re-run with --apply to delete.")
@@ -44,7 +44,7 @@ async def run(days: int, apply: bool) -> None:
             await db_service.delete_candidates(db, Candidate.id.in_(ids))
             await db.commit()
         print(f"\nDeleted {len(ids)} candidate(s) and their interviews/access.")
-        print("Note: in-memory store + ChromaDB are refreshed on next app restart.")
+        print("Note: a running server keeps them in memory until it restarts.")
 
 
 def main() -> None:

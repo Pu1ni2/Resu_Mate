@@ -23,6 +23,7 @@ from sqlalchemy.orm import selectinload
 from app.core.rate_limit import limiter
 
 from app.core.config import settings
+from app.core.errors import log_text
 from app.core.errors import friendly_error, friendly_status
 from app.core.database import get_db
 from app.models.candidate import CandidateAccess, Interview
@@ -225,7 +226,7 @@ async def create_realtime_session(
                 json={"session": session_cfg},
             )
     except Exception as exc:
-        logger.exception("realtime client_secrets request failed")
+        logger.error("realtime client_secrets request failed: %s", log_text(exc))
         raise HTTPException(status_code=502, detail=friendly_error(exc, INTERVIEW_NOT_STARTED))
 
     if resp.status_code >= 400:

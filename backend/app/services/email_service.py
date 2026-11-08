@@ -3,6 +3,7 @@ import asyncio
 import html
 import logging
 from app.core.config import settings
+from app.core.errors import log_text
 
 logger = logging.getLogger("resumate.email")
 
@@ -17,7 +18,7 @@ class EmailService:
                 # Each request the client makes takes its timeout from here.
                 self._sg.client.timeout = settings.sendgrid_timeout_seconds
             except Exception as e:
-                logger.warning("SendGrid init failed: %s", e)
+                logger.warning("SendGrid init failed: %s", log_text(e))
 
     @property
     def configured(self) -> bool:
@@ -77,7 +78,7 @@ class EmailService:
             if isinstance(e, TimeoutError) or isinstance(getattr(e, "reason", None), TimeoutError):
                 logger.warning("SendGrid didn't answer within %ss", settings.sendgrid_timeout_seconds)
                 return False
-            logger.exception("SendGrid send error: %s", e)
+            logger.error("SendGrid send error: %s", log_text(e))
             return False
 
     async def send_otp(self, to_email: str, code: str) -> bool:

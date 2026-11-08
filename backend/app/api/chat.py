@@ -4,6 +4,7 @@ Same endpoint URLs as before — frontend doesn't need to change.
 """
 import os
 import re
+import sys
 import json
 import logging
 from datetime import datetime
@@ -20,6 +21,7 @@ from app.services.auth import get_current_user, get_current_candidate, decode_to
 from app.services.resume_rag import resume_rag
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.errors import log_text
 from app.services import db_service
 from app.services import email_quota, evaluations, interview_modes, interview_setup
 from app.services.experience import experience_text
@@ -40,8 +42,11 @@ logger = logging.getLogger("resumate.chat")
 def _failed(what: str, message: str) -> HTTPException:
     """Log what went wrong, and answer with a plain message and a real error
     status. These endpoints answered 200 with the exception's own text, which
-    the pages showed as if it were the answer."""
-    logger.exception("%s failed", what)
+    the pages showed as if it were the answer.
+
+    Called while an exception is being handled: the log keeps its type and
+    where it happened, not its text, which could hold a person's data."""
+    logger.error("%s failed: %s", what, log_text(sys.exc_info()[1]))
     return HTTPException(status_code=502, detail=message)
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
