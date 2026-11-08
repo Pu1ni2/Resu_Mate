@@ -215,13 +215,18 @@ async def _delete_stored_files(keys) -> None:
 @router.delete("/{candidate_id}")
 async def delete_candidate(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Delete one of THIS manager's candidates, with their interviews, from memory and DB."""
+    from sqlalchemy import select
     from app.models.candidate import Candidate
-    # Only delete if the candidate is in this manager's drawer.
-    if not resume_rag.get_candidate(candidate_id, manager_id=user.id):
+    theirs = (Candidate.id == candidate_id, Candidate.manager_id == user.id)
+    # This manager's, in the database or in this server's memory. Only memory
+    # was asked: a candidate it didn't hold (another process's upload, or
+    # memory not filled at start-up) answered 404, which the page takes as
+    # already gone, and the row stayed.
+    in_database = (await db.execute(select(Candidate.id).where(*theirs))).scalar_one_or_none()
+    if in_database is None and not resume_rag.get_candidate(candidate_id, manager_id=user.id):
         raise HTTPException(404, "Candidate not found")
     # Database first: if it fails, the candidate is still everywhere, rather
     # than gone from the list but kept in the database and back after a restart.
-    theirs = (Candidate.id == candidate_id, Candidate.manager_id == user.id)
     files = await db_service.stored_file_keys(db, *theirs)
     await db_service.delete_candidates(db, *theirs)
     # The chat's conversation may be about them; the page clears its copy too.
