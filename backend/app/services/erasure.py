@@ -81,12 +81,6 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
         except Exception as exc:
             logger.warning("in-memory delete failed for candidate %s: %s", cand["id"], log_text(exc))
 
-    try:
-        from app.api.advisor_agent import _session_cache
-        _session_cache.pop(email, None)
-    except Exception as exc:
-        logger.warning("advisor cache clear failed: %s", log_text(exc))
-
     await db_service.log_event(
         db, action="candidate.delete", actor=actor, target_email=email,
         detail=f"{actor}-initiated erasure of {len(cand_rows)} record(s)",

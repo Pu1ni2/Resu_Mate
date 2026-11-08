@@ -63,9 +63,6 @@ def _openai():
 
 router = APIRouter(prefix="/advisor", tags=["advisor"])
 
-# In-memory cache (warm path — avoids DB hit for same-request-cycle access)
-_session_cache = {}
-
 
 def _resume_text(filename: str, content: bytes) -> str:
     """The text of an uploaded resume, falling back to the raw bytes as text.
@@ -158,7 +155,6 @@ async def candidate_upload_resume(
 
     # Persist to DB
     await state_service.update_advisor_session(db, email, resume_text=text[:8000], resume_metadata=metadata)
-    _session_cache[email] = {"text": text[:8000], **metadata}
 
     return {"success": True, "data": metadata}
 
@@ -250,15 +246,14 @@ async def advisor_chat(
     """
     email = candidate_email
 
-    # Load session from cache or DB
-    cached = _session_cache.get(email)
-    if not cached:
-        session = await state_service.get_or_create_advisor_session(db, email)
-        cached = {"text": session.resume_text or "", **(session.resume_metadata or {})}
-        _session_cache[email] = cached
+    # Their résumé, from their session in the database. A copy kept in this
+    # process's memory had no limit, and outlived an upload or an erasure
+    # that another process handled.
+    session = await state_service.get_or_create_advisor_session(db, email)
+    saved = {"text": session.resume_text or "", **(session.resume_metadata or {})}
 
-    resume_text = cached.get("text", "No resume uploaded yet.")
-    candidate_name = cached.get("name", email.split("@")[0].title())
+    resume_text = saved.get("text", "No resume uploaded yet.")
+    candidate_name = saved.get("name", email.split("@")[0].title())
 
     # Fallback: the candidate's own resume in the hiring manager store. Only a
     # resume whose OWN address is exactly theirs: matching `email in text` put

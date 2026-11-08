@@ -101,19 +101,16 @@ async def _counts_everything_else(email):
 
 
 def test_erasure_also_removes_advisor_sessions_codes_and_sourced_profiles(client):
-    from app.api.advisor_agent import _session_cache
     _tok, user = register(client, "mgr3-gdpr@co.com")
     email = "erin@x.com"
     loop = asyncio.get_event_loop()
     loop.run_until_complete(_seed(user["id"], email))
     loop.run_until_complete(_seed_everything_else(user["id"], email))
-    _session_cache[email] = {"text": "cached resume"}
     assert loop.run_until_complete(_counts_everything_else(email)) == (1, 1, 1)
 
     r = client.post("/api/chat/candidate/delete-my-data", headers=_candidate_headers(email))
     assert r.status_code == 200, r.text
     assert loop.run_until_complete(_counts_everything_else(email)) == (0, 0, 0)
-    assert email not in _session_cache
 
 
 # ── which résumés are theirs ──────────────────────────────────────────────────

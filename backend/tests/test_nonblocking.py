@@ -232,7 +232,6 @@ def test_the_advisor_reads_and_analyses_an_upload_without_blocking(client, monke
     monkeypatch.setattr(advisor_agent, "_resume_text", reading)
     monkeypatch.setattr(state_service, "update_advisor_session", saving)
     monkeypatch.setattr(advisor_agent, "_client", _fake_openai('{"predicted_role": "Compiler Engineer"}'))
-    monkeypatch.setitem(advisor_agent._session_cache, "nb-advisor@x.com", None)
     r = client.post(
         "/api/advisor/upload-resume",
         headers={"Authorization": f"Bearer {create_candidate_token('nb-advisor@x.com')}"},
