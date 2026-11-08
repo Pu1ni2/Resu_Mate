@@ -82,6 +82,9 @@ export const AppProvider = ({ children }) => {
     setCandidatesStatus('loading');
     setSelectedIds([]);
     setHideNames(false);
+    // The chat about the last manager's candidates, shown to the next one.
+    setMessages([]);
+    setSuggestions([]);
   }, []);
 
   /* Turn "Hide names" on or off, and keep it on the account. The switch moves

@@ -11,8 +11,10 @@ import { pressable } from '../ui/pressable';
 import { keepTabInside, useModalFocus } from '../ui/modalFocus';
 import { knownYears } from '../../services/experience';
 import { useAvatarInterviews } from '../../services/features';
+import { JARVIS_SESSION_KEY } from '../../services/session';
 
-const SESSION_KEY = 'jarvis_session_v3';
+// One name with the sign-out that clears it (services/session.js).
+const SESSION_KEY = JARVIS_SESSION_KEY;
 const AUTO_LISTEN_DELAY_MS = 900;
 const AUTO_RETRY_DELAY_MS = 650;
 // Off until the manager presses the orb or the mic: Jarvis opened the

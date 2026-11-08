@@ -24,6 +24,9 @@ const CANDIDATE_CACHE_KEY = 'resumate_candidates';
 // The candidate portal's own token. A different principal entirely: it must
 // never be cleared by a manager's expiry, nor sent on a manager's request.
 export const CANDIDATE_TOKEN_KEY = 'resumate_candidate_token';
+// Jarvis's conversation and what it fetched, kept for the tab's session
+// (sessionStorage): contact emails and interview reports among them.
+export const JARVIS_SESSION_KEY = 'jarvis_session_v3';
 
 export function getToken() {
   try {
@@ -96,6 +99,13 @@ export function clearSession() {
     } catch {
       // Nothing useful to do; carry on and clear the rest.
     }
+  }
+  // Jarvis's too: it outlived signing out, so the next person to sign in on
+  // the tab found the last one's conversation, contacts and reports.
+  try {
+    sessionStorage.removeItem(JARVIS_SESSION_KEY);
+  } catch {
+    // Storage blocked: nothing was kept there.
   }
 }
 
