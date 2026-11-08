@@ -15,6 +15,17 @@ def _run(coro):
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
+def test_no_route_takes_an_email_in_its_address(client):
+    # Three did, and the log printed the address, the email with it.
+    import main
+    taken = sorted({name for route in main.app.routes for name in getattr(route, "param_convertors", {})})
+    assert "interview_id" in taken  # the check reads the routes' parameters
+    assert [name for name in taken if "email" in name] == []
+    for gone in ("/api/chat/export-report/ada@x.com", "/api/chat/get-interview-results/ada@x.com",
+                 "/api/chat/interview-status/ada@x.com"):
+        assert client.get(gone).status_code == 404, gone
+
+
 def test_a_database_error_keeps_the_values_out_of_its_text(client):
     from sqlalchemy.exc import IntegrityError
     from app.core import database
