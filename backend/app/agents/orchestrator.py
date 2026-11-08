@@ -68,15 +68,7 @@ class Orchestrator:
         """Get monitoring/health data"""
         agent_stats = {}
         for name, agent in self._agents.items():
-            from app.agents.base_agent import memory_store
-            mems = memory_store.get(name)
-            recent = mems[-5:] if mems else []
-            agent_stats[name] = {
-                "status": agent.status.value,
-                "total_memories": len(mems),
-                "recent_runs": len([m for m in recent if m.get("success")]),
-                "recent_failures": len([m for m in recent if not m.get("success")]),
-            }
+            agent_stats[name] = {"status": agent.status.value}
 
         return {
             "total_runs": self._total_runs,

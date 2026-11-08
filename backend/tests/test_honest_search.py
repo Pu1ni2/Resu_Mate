@@ -89,9 +89,6 @@ def test_the_summary_is_of_what_this_run_found(model):
 
 
 def test_with_nothing_found_there_is_nothing_to_summarise(model):
-    from app.agents.base_agent import memory_store
     from app.agents.data_agent import data_agent
-    # Another candidate's run, remembered by the agent.
-    memory_store.add(data_agent.name, {"action": "find_github", "result_summary": "Grace Hopper: 40 repos"})
     assert _run(data_agent._summarize({"name": "Ada"})) == {"ai_summary": ""}
     assert model == []

@@ -282,13 +282,10 @@ async def monitoring(x_agent_token: str = Header(default=None, alias="X-Agent-To
     uses): it covers every company's activity, and it was open to anyone.
     """
     from app.agents.orchestrator import orchestrator
-    from app.agents.base_agent import memory_store
     from app.services.auth import verify_agent_token
     verify_agent_token(x_agent_token)
     return {
         "orchestrator": orchestrator.get_monitoring_data(),
-        "memory_agents": list(memory_store._store.keys()),
-        "memory_entries": {k: len(v) for k, v in memory_store._store.items()},
         "integrations": {
             "llm": bool(settings.openai_api_key),
             "search": bool(settings.tavily_api_key),

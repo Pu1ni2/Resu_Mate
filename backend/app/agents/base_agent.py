@@ -2,7 +2,6 @@
 Base Agent Framework v3 — Production-grade agent with:
 - Plan → Execute → Reflect → Output pipeline
 - Step-level retry with exponential backoff
-- Persistent memory (saves to file, DB-ready)
 - Structured logging with timestamps
 - Performance metrics and monitoring
 - Fallback strategies per step
@@ -87,67 +86,6 @@ class AgentResult:
     agent_name: str = ""
     task: str = ""
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-
-
-# ═══════ PERSISTENT MEMORY ═══════
-
-class AgentMemoryStore:
-    """Persistent agent memory — JSON file backed, DB-ready interface"""
-    FILE = "agent_memory.json"
-
-    def __init__(self):
-        self._store = self._load()
-
-    def _load(self) -> Dict:
-        try:
-            # Explicit encoding: without it Python uses the platform default,
-            # which is cp1252 on Windows. Safe only while json.dump keeps
-            # ensure_ascii=True below.
-            with open(self.FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            return {}
-        except Exception as exc:
-            print(f"[memory_store] could not load {self.FILE}: {log_text(exc)}")
-            return {}
-
-    def _save(self):
-        try:
-            with open(self.FILE, 'w', encoding='utf-8') as f:
-                json.dump(self._store, f, indent=2, default=str)
-        except Exception as exc:
-            print(f"[memory_store] could not save {self.FILE}: {log_text(exc)}")
-
-    def get(self, agent: str) -> List[Dict]:
-        return self._store.get(agent, [])
-
-    def add(self, agent: str, entry: Dict):
-        if agent not in self._store:
-            self._store[agent] = []
-        self._store[agent].append({**entry, "ts": datetime.utcnow().isoformat()})
-        self._store[agent] = self._store[agent][-50:]
-        self._save()
-
-    def get_relevant(self, agent: str, task: str, limit: int = 5) -> List[Dict]:
-        words = set(task.lower().split())
-        scored = []
-        for mem in self.get(agent):
-            score = sum(1 for w in words if w in json.dumps(mem, default=str).lower())
-            if score > 0:
-                scored.append((score, mem))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [m for _, m in scored[:limit]]
-
-    def clear(self, agent: str = None):
-        if agent:
-            self._store.pop(agent, None)
-        else:
-            self._store = {}
-        self._save()
-
-
-memory_store = AgentMemoryStore()
-
 
 
 # ═══════ PER-RUN STATE ═══════
@@ -266,12 +204,6 @@ class BaseAgent:
 
         self.log("start", f"Agent '{self.name}' activated | {task[:80]}...")
 
-        # Load memories
-        mems = memory_store.get_relevant(self.name, task)
-        if mems:
-            context["_memories"] = mems
-            self.log("memory", f"Loaded {len(mems)} relevant memories")
-
         try:
             # 1. PLAN
             self.log("plan", "Creating plan...")
@@ -308,8 +240,6 @@ class BaseAgent:
             self.metrics.total_duration = time.time() - start
             self.log("complete", f"Done in {self.metrics.total_duration:.1f}s | {self.metrics.steps_succeeded}/{self.metrics.steps_total} steps", "success")
 
-            memory_store.add(self.name, {"task": task[:200], "success": True, "duration": round(self.metrics.total_duration, 2)})
-
             # Copies, so a caller holding the result cannot be mutated by
             # anything that runs afterwards.
             return AgentResult(output=output, logs=list(self.logs), steps=list(self.steps), metrics=self.metrics, success=True, agent_name=self.name, task=task[:200])
@@ -321,7 +251,6 @@ class BaseAgent:
             # The scan's steps show this: plain words, not the exception's.
             self.log("error", friendly_error(e, "The work couldn't be finished."), "error")
             print(f"[ERROR] {self.name} failed: {log_text(e)}")
-            memory_store.add(self.name, {"task": task[:200], "success": False, "error": err[:200]})
             return AgentResult(output=None, logs=list(self.logs), steps=list(self.steps), metrics=self.metrics, success=False, error=err, agent_name=self.name, task=task[:200])
 
     async def _execute_with_retry(self, step: AgentStep, idx: int, context: Dict) -> Any:
@@ -382,8 +311,7 @@ class BaseAgent:
             return [AgentStep(action="llm_call", tool="openai", params={"prompt": task}, reason="Direct call")]
 
         tools = list(self.tools.keys())
-        mems = json.dumps(context.get("_memories", [])[-3:], default=str)[:300]
-        prompt = f"You are {self.name}.\nTASK: {task}\nTOOLS: {', '.join(tools)}\nMEMORY: {mems}\nPlan 3-7 steps. JSON array only:\n[{{\"action\":\"\",\"tool\":\"\",\"params\":{{}},\"reason\":\"\"}}]"
+        prompt = f"You are {self.name}.\nTASK: {task}\nTOOLS: {', '.join(tools)}\nPlan 3-7 steps. JSON array only:\n[{{\"action\":\"\",\"tool\":\"\",\"params\":{{}},\"reason\":\"\"}}]"
 
         resp = await self.llm.ainvoke([SystemMessage(content="Planning AI. JSON only."), HumanMessage(content=prompt)])
         self.metrics.llm_calls += 1
