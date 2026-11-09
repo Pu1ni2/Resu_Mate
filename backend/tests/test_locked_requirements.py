@@ -96,3 +96,13 @@ def test_ci_tests_the_versions_production_runs(production):
     tested, runs = _pins("requirements-dev.txt"), _pins(production)
     assert set(runs) <= set(tested)
     assert {name: versions for name, versions in runs.items() if versions != tested[name]} == {}
+
+
+def test_the_worker_image_runs_the_python_its_lock_is_made_for():
+    # It ran 3.11 while its lock needed 3.12 (av 19), and no longer built.
+    dockerfile = (BACKEND / "Dockerfile.agent").read_text(encoding="utf-8")
+    image = re.search(r"^FROM python:(\d+\.\d+)", dockerfile, re.M).group(1)
+    runtime = (BACKEND / "runtime.txt").read_text(encoding="utf-8").strip().removeprefix("python-")
+    assert image == ".".join(runtime.split(".")[:2])
+    lock = (BACKEND / "requirements-agent.txt").read_text(encoding="utf-8")
+    assert re.search(rf"--python-version {re.escape(image)}\s", lock)
