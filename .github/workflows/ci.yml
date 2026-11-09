@@ -6,6 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+# The jobs only read the code. A step that runs something it shouldn't (a
+# changed dependency, say) gets a token that can't push or change settings.
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the run it makes
+# out of date, instead of both running to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     # Pinned, not ubuntu-latest, which moves to Ubuntu 26.04 from 2026-10-19:
