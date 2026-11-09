@@ -62,3 +62,8 @@ def test_the_server_sets_up_no_tracing_which_the_ignored_flaw_needs():
     setting_up = [path.name for path in [BACKEND / "main.py", *sorted((BACKEND / "app").rglob("*.py"))]
                   if re.search(r"^\s*(from|import)\s+opentelemetry\b", path.read_text(encoding="utf-8"), re.M)]
     assert setting_up == []
+
+
+def test_ci_audits_the_sites_packages_before_building_it():
+    runs = _runs("frontend")
+    assert runs.index("npm ci") < runs.index("npm audit --audit-level=high") < runs.index("npm run build")
