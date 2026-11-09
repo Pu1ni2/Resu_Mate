@@ -80,3 +80,9 @@ def test_ci_scans_new_commits_for_secrets_and_never_shows_them():
     assert "--redact" in scan and "--log-opts=" in scan
     # No report kept: the repository is public.
     assert not any("upload-artifact" in step.get("uses", "") for step in job["steps"])
+
+
+def test_ci_builds_the_workers_image_and_imports_the_worker_in_it():
+    runs = _runs("worker-image")
+    assert "docker build --tag resumate-worker --file backend/Dockerfile.agent backend" in runs
+    assert 'docker run --rm --entrypoint python resumate-worker -c "import interview_agent"' in runs
