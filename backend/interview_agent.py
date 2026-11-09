@@ -8,9 +8,13 @@ import sys
 import time
 import logging
 import requests
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
-load_dotenv(override=True)
+# The settings file the server reads (RESUMATE_ENV_FILE, as in
+# app/api/livekit_routes.py), and never over a setting already made: the
+# platform's, or a test's. It used to override them, so any test that
+# imported the worker loaded the real .env, OpenAI key and all.
+load_dotenv(os.environ.get("RESUMATE_ENV_FILE") or find_dotenv(), override=False)
 
 logger = logging.getLogger("resumate-interview-agent")
 logger.setLevel(logging.INFO)
