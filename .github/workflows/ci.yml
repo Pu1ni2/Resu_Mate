@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"   # match Render; 3.14 breaks tokenizers wheels
+          python-version: "3.12"   # Render's (runtime.txt), which the locks are made for
       # The server's requirements, the worker's and the test tools, at the
       # versions the server and the worker install.
       - name: Install dependencies

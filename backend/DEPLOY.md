@@ -4,11 +4,15 @@ Hard-won gotchas. Read before touching the Render config.
 
 ## Python version — keep it at 3.12
 
-3.12 is what CI tests on. It was pinned first because `tokenizers`, which
-chromadb brought in (chromadb has since gone), had **no pre-built wheel for
-Python 3.14**, so pip tried to compile it from Rust with `maturin`. That
-fails on Render's free build container because `/usr/local/cargo` is mounted
-read-only:
+3.12 is what CI tests on, and what the locked requirements
+(`requirements.txt`, made from `requirements.in`) are made for: they cover
+Python 3.12 and newer only, and the worker's need 3.12 (`av`, for one). An
+older Python can't install them.
+
+It was pinned first because `tokenizers`, which chromadb brought in
+(chromadb has since gone), had **no pre-built wheel for Python 3.14**, so pip
+tried to compile it from Rust with `maturin`. That failed on Render's free
+build container because `/usr/local/cargo` is mounted read-only:
 
 ```
 error: failed to create directory `/usr/local/cargo/registry/cache/...`

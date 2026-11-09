@@ -253,8 +253,9 @@ score, reports and analytics leave it out or show "—"; none is made up.
 | **Sourcer Agent** | Finds people beyond your uploads and judges every one | GitHub API, Tavily, OpenAI |
 | **Advisor Agent** | Career coaching for candidates (a general chat and 3 focused modes) | OpenAI, résumé context |
 
-Jarvis and the Advisor use `gpt-4o`; the other agents use `OPENAI_MODEL` (default `gpt-4o`), and the
-Sourcer can use its own cheaper model (`SOURCER_MODEL`).
+The agents use `OPENAI_MODEL` (default `gpt-4o`), and the Sourcer can use its own cheaper model
+(`SOURCER_MODEL`). The interviews' own models, such as `REALTIME_MODEL`, are set the same way:
+[`backend/.env.example`](backend/.env.example) lists them.
 
 ---
 
