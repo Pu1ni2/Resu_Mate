@@ -17,3 +17,5 @@ pytest-asyncio>=0.23.0
 pyyaml>=6.0
 # Reads requirement lines (tests/test_server_install.py).
 packaging>=23.0
+# Checks the backend's Python in CI (ruff.toml).
+ruff>=0.17

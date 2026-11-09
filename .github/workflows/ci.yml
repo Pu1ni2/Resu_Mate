@@ -35,6 +35,11 @@ jobs:
       # versions the server and the worker install.
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      # Mistakes that break code when it runs, such as a name that isn't
+      # defined, which a test misses unless it runs that very line.
+      # ruff.toml has the rules.
+      - name: Lint
+        run: ruff check .
       - name: Run tests
         env:
           SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890

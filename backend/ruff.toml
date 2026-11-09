@@ -1,0 +1,10 @@
+# Ruff checks the backend's Python in CI: ruff check . from backend/.
+#
+# For now, only mistakes that break code when it runs: syntax errors (E9,
+# F7), comparisons that are always wrong (F63), and names that aren't
+# defined (F82). Wider rules can follow one at a time, each with its
+# findings fixed first.
+target-version = "py312"
+
+[lint]
+select = ["E9", "F63", "F7", "F82"]
