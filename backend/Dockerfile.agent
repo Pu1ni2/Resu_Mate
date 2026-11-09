@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+# Python 3.12, as the server runs on (runtime.txt): requirements-agent.txt is
+# locked for 3.12, and some of its packages (av, for one) need it.
+FROM python:3.12-slim
 
 WORKDIR /app
 
