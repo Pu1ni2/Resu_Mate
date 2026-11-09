@@ -67,3 +67,16 @@ def test_the_server_sets_up_no_tracing_which_the_ignored_flaw_needs():
 def test_ci_audits_the_sites_packages_before_building_it():
     runs = _runs("frontend")
     assert runs.index("npm ci") < runs.index("npm audit --audit-level=high") < runs.index("npm run build")
+
+
+def test_ci_scans_new_commits_for_secrets_and_never_shows_them():
+    job = _ci()["jobs"]["secrets"]
+    checkout = job["steps"][0]
+    assert checkout["uses"].startswith("actions/checkout@") and checkout["with"]["fetch-depth"] == 0
+    runs = "\n".join(step.get("run", "") for step in job["steps"])
+    # gitleaks' own release, checked against the checksum it publishes.
+    assert re.search(r'echo "[0-9a-f]{64}  gitleaks\.tar\.gz" \| sha256sum -c -', runs)
+    scan = next(line for line in runs.splitlines() if '/gitleaks" git ' in line)
+    assert "--redact" in scan and "--log-opts=" in scan
+    # No report kept: the repository is public.
+    assert not any("upload-artifact" in step.get("uses", "") for step in job["steps"])
