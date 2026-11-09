@@ -131,6 +131,18 @@ jobs:
       - name: Test
         run: npm run test
 
+  # The interview worker's image, as Fly.io builds it (backend/fly.toml): a
+  # change that breaks it shows here, not at the next deploy. The worker
+  # must import in it; it isn't started, which needs LiveKit's keys.
+  worker-image:
+    runs-on: ubuntu-24.04  # pinned, as for the backend job
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the worker's image
+        run: docker build --tag resumate-worker --file backend/Dockerfile.agent backend
+      - name: The worker imports in it
+        run: docker run --rm --entrypoint python resumate-worker -c "import interview_agent"
+
   # Secrets, such as an API key, in the commits a push or pull request adds.
   # The history before them is known and left as it is. A finding is printed
   # with the secret itself hidden, and nothing is kept as an artifact: the
