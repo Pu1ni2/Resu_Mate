@@ -40,6 +40,17 @@ jobs:
       # ruff.toml has the rules.
       - name: Lint
         run: ruff check .
+      # Known vulnerabilities in anything the server, the worker or the tests
+      # install: requirements-dev.txt has all of it, at the same versions.
+      # Each one ignored is a decision, with its reason:
+      # - CVE-2026-114603, in opentelemetry-api below 1.45.1, which the
+      #   worker's LiveKit 1.8.6 needs. A long tracestate header on a request
+      #   costs seconds of CPU, but only where tracing is set up. The server,
+      #   which takes requests from the internet, sets up none
+      #   (tests/test_ci_settings.py); the worker takes none from it. Drop
+      #   this once LiveKit allows 1.45.1.
+      - name: Audit dependencies
+        run: pip-audit --disable-pip --require-hashes -r requirements-dev.txt --ignore-vuln CVE-2026-114603
       - name: Run tests
         env:
           SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890

@@ -19,3 +19,5 @@ pyyaml>=6.0
 packaging>=23.0
 # Checks the backend's Python in CI (ruff.toml).
 ruff>=0.17
+# Checks every locked package for known vulnerabilities in CI (ci.yml).
+pip-audit>=2.10
