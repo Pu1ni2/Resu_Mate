@@ -39,3 +39,18 @@ def test_putting_it_online_names_the_settings_production_requires():
     for setting in ("FRONTEND_URL", "VITE_API_URL", "OPENAI_API_KEY", "SENDGRID_API_KEY"):
         assert f"`{setting}`" in online, setting
     assert "backend/DEPLOY.md" in online and "render.yaml" in online
+
+
+def test_notes_elsewhere_describe_what_the_code_does_now():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    # Jarvis and the Advisor read OPENAI_MODEL too, since the models moved
+    # into the settings.
+    assert "Jarvis and the Advisor use `gpt-4o`" not in readme
+    # Nothing is printed without SendGrid: the server says only that it
+    # didn't send.
+    assert "printed to the console" not in (ROOT / "backend" / ".env.example").read_text(encoding="utf-8")
+    # tokenizers went with ChromaDB; Python 3.12 now holds for the locks.
+    assert "tokenizers" not in (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    deploy = (ROOT / "backend" / "DEPLOY.md").read_text(encoding="utf-8")
+    start = deploy.index("## Python version")
+    assert "locked requirements" in deploy[start:deploy.index("\n## ", start + 1)]
