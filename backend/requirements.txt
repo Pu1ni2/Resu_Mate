@@ -2686,12 +2686,6 @@ pypdf==7.0.0 \
     # via
     #   -c requirements-dev.txt
     #   -r requirements.in
-pypdf2==3.0.1 \
-    --hash=sha256:a74408f69ba6271f71b9352ef4ed03dc53a31aa404d29b5d31f53bfecfee1440 \
-    --hash=sha256:d16e4205cfee272fbdc0568b68d82be796540b1537508cef59388f839c191928
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427

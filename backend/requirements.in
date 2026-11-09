@@ -46,14 +46,14 @@ asyncpg>=0.29.0
 # Web Search
 tavily-python>=0.5.0
 
-# PDF Processing
+# PDF Processing. pypdf reads the candidate advisor's uploads: PyPDF2, which
+# did, is abandoned, and a crafted PDF made its text extraction loop forever.
 PyMuPDF>=1.23.0
-PyPDF2>=3.0.0
+pypdf>=4.0.0
 python-docx>=1.1.0
 
 # Document Loaders
 docx2txt>=0.8
-pypdf>=4.0.0
 
 # PDF Report Generation
 fpdf2>=2.7.0

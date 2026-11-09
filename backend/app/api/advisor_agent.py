@@ -73,9 +73,11 @@ def _resume_text(filename: str, content: bytes) -> str:
     name = filename.lower()
     if name.endswith('.pdf'):
         try:
-            import PyPDF2
+            # pypdf: PyPDF2, which read them before it, is abandoned, and a
+            # crafted PDF made its text extraction loop forever.
+            from pypdf import PdfReader
             import io
-            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            reader = PdfReader(io.BytesIO(content))
             return "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception:
             return content.decode('utf-8', errors='ignore')
