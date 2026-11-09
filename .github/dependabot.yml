@@ -1,0 +1,33 @@
+# Dependabot opens pull requests that update the dependencies every week, so
+# they don't fall far behind, and CI checks each like any change. Minor and
+# patch updates come together, one pull request a week for each part; major
+# ones come one at a time.
+version: 2
+updates:
+  # The backend's locked requirements, backend/requirements*.in and .txt,
+  # remade with uv as scripts/lock_requirements.py makes them. LiveKit's are
+  # pinned on purpose: before merging an update to them, test a video
+  # interview.
+  - package-ecosystem: "uv"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    groups:
+      backend:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      frontend:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        update-types: ["minor", "patch"]
