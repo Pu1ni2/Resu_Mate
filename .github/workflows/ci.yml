@@ -130,3 +130,34 @@ jobs:
         run: npm run build
       - name: Test
         run: npm run test
+
+  # Secrets, such as an API key, in the commits a push or pull request adds.
+  # The history before them is known and left as it is. A finding is printed
+  # with the secret itself hidden, and nothing is kept as an artifact: the
+  # repository is public.
+  secrets:
+    runs-on: ubuntu-24.04  # pinned, as for the backend job
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # gitleaks' own release, checked against the checksum it publishes.
+      - name: Install gitleaks
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+      - name: Scan the new commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # A push's earlier commit can be missing (a branch's first push):
+          # then the newest commit alone.
+          if git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            range="$BASE..$HEAD"
+          else
+            range="-1 $HEAD"
+          fi
+          "$RUNNER_TEMP/gitleaks" git --redact --verbose --no-banner --log-opts="$range" .
