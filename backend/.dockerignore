@@ -1,0 +1,7 @@
+# What Docker may read when it builds the worker's image (Dockerfile.agent):
+# the two files the image copies, nothing else. Without this, it sends the
+# whole backend folder to the builder, the .env with its keys, databases and
+# uploaded résumés among it, and Fly.io builds on its own servers.
+*
+!requirements-agent.txt
+!interview_agent.py
