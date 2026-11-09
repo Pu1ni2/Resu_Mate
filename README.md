@@ -305,6 +305,67 @@ Report → transcript, AI-written evaluation, time (and proctoring, for video)
 
 ---
 
+## Run It on Your Computer
+
+You need Python 3.12 or newer, Node.js 24 (20 and 22 work too), and an OpenAI API key.
+
+**The backend**, from `backend/`:
+
+```bash
+python -m venv venv
+source venv/bin/activate              # Windows: venv\Scripts\activate
+python -m pip install -r requirements-dev.txt
+cp .env.example .env                  # Windows: copy .env.example .env
+```
+
+In `.env`, set `OPENAI_API_KEY`, and `DEBUG=true`: without email set up, sign-in codes and links then
+come back on the page instead. Then start it:
+
+```bash
+uvicorn main:app --reload --port 8006
+```
+
+It makes a SQLite database the first time it starts.
+
+**The site**, from `frontend/`:
+
+```bash
+npm ci
+npm run dev
+```
+
+It opens on http://localhost:3006 and passes the `/api` calls to the backend on port 8006.
+
+**The tests**, as CI runs them: `pytest -q` and `ruff check .` in `backend/`; `npm run lint`,
+`npm run build` and `npm test` in `frontend/`.
+
+**The avatar interview worker** is optional: with `AVATAR_INTERVIEWS=false`, every interview runs
+voice-only. With LiveKit and Simli keys in `.env`, start it with `python interview_agent.py dev`.
+
+`requirements-dev.txt` pins every package to the version CI tests and the server runs, on Windows,
+macOS and Linux alike. Install it with `python -m pip`, as above: it updates pip too. To change a
+requirement, edit its `.in` file, then run `python scripts/lock_requirements.py`, which needs Docker.
+
+## Put It Online
+
+[`render.yaml`](render.yaml) describes the whole setup on Render: the API, the site and a Postgres
+database. Create it as a Blueprint from this repository, then fill in the settings it marks
+`sync: false`. These it can't do without:
+
+- `FRONTEND_URL`, the site's address. The API doesn't start without it, and takes calls only from that
+  site (and any in `CORS_ORIGINS`).
+- `VITE_API_URL`, the API's address, read when the site is built. The build stops without it.
+- `OPENAI_API_KEY`, and `SENDGRID_API_KEY` with a `FROM_EMAIL` that SendGrid has verified. The API
+  doesn't start in production without email.
+
+Each deploy installs the locked requirements and brings the database up to date before it starts. The
+avatar worker runs elsewhere: on Fly.io (`backend/fly.toml`), or as a paid Render worker (the block
+at the end of `render.yaml`).
+
+[`backend/DEPLOY.md`](backend/DEPLOY.md) has the details, and the pitfalls already met.
+
+---
+
 ## Configuration
 
 The backend's settings are listed, most with a comment, in [`backend/.env.example`](backend/.env.example).

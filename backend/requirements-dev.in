@@ -4,9 +4,9 @@
 # CI installs requirements-dev.txt, made from this file at the versions the
 # server and the worker install, so CI tests what production runs: after
 # changing it, run python scripts/lock_requirements.py. To set up a
-# computer for development, on any system:
+# computer for development, with those same versions, on any system:
 #
-#   pip install -r requirements-dev.in
+#   python -m pip install -r requirements-dev.txt
 -r requirements.in
 -r requirements-agent.in
 
