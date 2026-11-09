@@ -11,5 +11,10 @@ RUN pip install --no-cache-dir -r requirements-agent.txt
 # Copy agent
 COPY interview_agent.py .
 
+# A user of its own, not root: the worker needs no more, so a flaw in it, or
+# in a package it uses, gets no more either.
+RUN useradd --create-home --uid 10001 worker
+USER worker
+
 # LiveKit agent start command
 CMD ["python", "interview_agent.py", "start"]
