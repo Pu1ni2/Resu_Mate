@@ -115,6 +115,11 @@ jobs:
           node-version: "24"
       - name: Install dependencies
         run: npm ci
+      # Known vulnerabilities, high or critical, in what the site is built
+      # from or runs. Moderate ones don't stop it: the four left now are in
+      # ESLint, a development tool that never reaches the site.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
       # Lint before build. no-undef is the rule that matters here: a real
       # ReferenceError shipped because a context function was called without
       # being destructured, and a bundler cannot catch that — the reference is
