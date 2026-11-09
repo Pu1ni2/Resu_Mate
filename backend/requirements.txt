@@ -3,9 +3,6 @@
 aiohappyeyeballs==2.7.1 \
     --hash=sha256:065665c041c42a5938ed220bdcd7230f22527fbec085e1853d2402c8a3615d9d \
     --hash=sha256:9243213661e29250eb41368e5daa826fc017156c3b8a11440826b2e3ed376472
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
 aiohttp==3.14.5 \
     --hash=sha256:0133c3c3b54a0bf1e71fa5c1ad95c93f07fd54e24ef1fe182f5122e1573d2bf1 \
     --hash=sha256:038c2c7e8caa26b6c8423779b5eaf1893904048a512c19b32fe841ffa5592b50 \
@@ -168,50 +165,24 @@ aiohttp==3.14.5 \
     --hash=sha256:fbdc5ec49f9ca3cd24955cf3520b10a4d4c901ba2572094c84274e9e7eb30534 \
     --hash=sha256:fce9523df31cea6284f3e2c479876750d7687cf671d7b25d32b19effc0e86441 \
     --hash=sha256:ff75a7537413a86e7cafe98e0e1d6e3dc4b15c6349896e7d5c6b881bfdb6d550
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-community
 aiosignal==1.4.0 \
     --hash=sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e \
     --hash=sha256:f47eecd9468083c2029cc99945502cb7708b082c232f9aca65da147157b251c7
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
 aiosqlite==0.22.1 \
     --hash=sha256:043e0bd78d32888c0a9ca90fc788b38796843360c855a7262a532813133a0650 \
     --hash=sha256:21c002eb13823fad740196c5a2e9d8e62f6243bd9e7e4a1f87fb5e44ecb4fceb
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 alembic==1.20.1 \
     --hash=sha256:83490def1f723413db5096591f7609ac52544805be93849170088ed04f5a2e0b \
     --hash=sha256:9970712cfb81ea26c8658d378aaa5b8f6ff9146e5bb111d70497c164016cf598
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 annotated-doc==0.0.5 \
     --hash=sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101 \
     --hash=sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb
-    # via
-    #   -c requirements-dev.txt
-    #   fastapi
 annotated-types==0.8.0 \
     --hash=sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7 \
     --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
-    # via
-    #   -c requirements-dev.txt
-    #   pydantic
 anyio==4.16.0 \
     --hash=sha256:59bb03251907983d1603d27c3087ddb1e93299ea2163adcdba37899a4fb12ffb \
     --hash=sha256:c66ae634e0b8228396b801741beb3294326d4b6102f7bba4041c0dfb58c29026
-    # via
-    #   -c requirements-dev.txt
-    #   httpx
-    #   httpx2
-    #   langsmith
-    #   openai
-    #   starlette
-    #   watchfiles
 asyncpg==0.32.0 \
     --hash=sha256:0549af18b697221d1992b7def18aa61652a85ecbe6e19ba2a75277560efe6016 \
     --hash=sha256:057ed2455e4e14ad9949f1ac1829112c7d0454c9810b124f36de1486febe6824 \
@@ -295,15 +266,9 @@ asyncpg==0.32.0 \
     --hash=sha256:fbe1f8c788fb5df18ea8a5432dfa2473fd8f7f088025fb83d089a7c7b37e37b0 \
     --hash=sha256:fd5adfb01cea16908d617af55b00a84c9e581964b77d4301c29fd735bb7850c3 \
     --hash=sha256:fe3036fb6e7b61159f554af153824786999142b69fea081acf8cb0958603ea26
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 attrs==26.1.0 \
     --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309 \
     --hash=sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
 bcrypt==5.0.0 \
     --hash=sha256:046ad6db88edb3c5ece4369af997938fb1c19d6a699b9c1b27b0db432faae4c4 \
     --hash=sha256:0c418ca99fd47e9c59a301744d63328f17798b5947b0f791e9af3c1c499c2d0a \
@@ -368,32 +333,15 @@ bcrypt==5.0.0 \
     --hash=sha256:f748f7c2d6fd375cc93d3fba7ef4a9e3a092421b8dbf34d8d4dc06be9492dfdd \
     --hash=sha256:f8429e1c410b4073944f03bd778a9e066e7fad723564a52ff91841d278dfc822 \
     --hash=sha256:fc746432b951e92b58317af8e0ca746efe93e66555f1b40888865ef5bf56446b
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 boto3==1.43.126 \
     --hash=sha256:5fda4a3dd2782c134a01d1678911962c2860dd8de8cd10bef168ba1507b371a9 \
     --hash=sha256:dd701a973b02a73930e546a6a15d13edbfbedc3180bb3d55b0a88678c284ccd6
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 botocore==1.43.126 \
     --hash=sha256:2f2239a47025a2fa173cd145ab8803ac02b76114864bf5b66475ff1cb88e6b0a \
     --hash=sha256:96996af07d8b703c3cdf44863f69c0b4b8b2d1cb6976c641986ced3e38c072f3
-    # via
-    #   -c requirements-dev.txt
-    #   boto3
-    #   s3transfer
 certifi==2026.10.23 \
     --hash=sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd \
     --hash=sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1
-    # via
-    #   -c requirements-dev.txt
-    #   httpcore
-    #   httpx
-    #   langchain-core
-    #   langchain-openai
-    #   requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy' \
     --hash=sha256:046bfc24911b37851ee1b51aab8bffe713d89c68c6a057b09484ce9fd5f69b4e \
     --hash=sha256:06c72bb76605a4b0cd0aad6930b69d4baf7dd5d806cfc409b824191099700e66 \
@@ -495,9 +443,6 @@ cffi==2.1.1 ; platform_python_implementation != 'PyPy' \
     --hash=sha256:f8ec5e643a9a937f64e1999eb9f75d072263751912dc5cd06d3c85f8f44be7c3 \
     --hash=sha256:fb92203a88b3d3053034db775110081c49d28be6551923805e039924093761e4 \
     --hash=sha256:fcd22650c908d7b7da162bbfaab594a1227a15d1643a98c68b122ac642fa2264
-    # via
-    #   -c requirements-dev.txt
-    #   cryptography
 charset-normalizer==3.5.2 \
     --hash=sha256:01077390b03f7988f11d700a2194e69b119741a86b1a638b1db88891e3eced8e \
     --hash=sha256:01b0c0d2262a9e28e8484a278c7e1b5d650e3ac8cf2683d2967e25899f208bdf \
@@ -671,21 +616,12 @@ charset-normalizer==3.5.2 \
     --hash=sha256:fcff63213e8e6e47770541a4607175404f47cbb3ebea7b6058cc82d524a0e424 \
     --hash=sha256:fd1fbe0f116b6e55da77aca2c6ddcddcfac2186cbf78bdebf40fc156efca389d \
     --hash=sha256:fe9753dfee015c570d73df76f899f18444d41388bffcde097deba51c4fadbb9f
-    # via
-    #   -c requirements-dev.txt
-    #   requests
 click==8.5.1 \
     --hash=sha256:8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37 \
     --hash=sha256:9bbfada76703fd1d784b83eea012e3e8c6a001a876543ef104fa56aaaeb072b4
-    # via
-    #   -c requirements-dev.txt
-    #   uvicorn
 colorama==0.4.6 ; sys_platform == 'win32' \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
-    # via
-    #   -c requirements-dev.txt
-    #   tqdm
 cryptography==50.0.2 \
     --hash=sha256:0ddc924c04591c2811ca024d62ecad4f7f6f08af8939c211438f48a16bd23602 \
     --hash=sha256:0ec5f09541743261e66e291b4a0cbf0fb2997aeaab6d9e9c740b9dba1b58d1c2 \
@@ -746,39 +682,20 @@ cryptography==50.0.2 \
     --hash=sha256:f9f6143a8c75945eb960d9eb98905a441394abfa24afaae239d514ffb2586480 \
     --hash=sha256:fa8f5efb344d6908a1ce62f4a24e2e5780f825d6f53f5f50ec5ffacac72936cb \
     --hash=sha256:fdd28f912fccfec1846a94e2e1e8f9b0012f557f0c46fe4f3eb0d7a87afcf90b
-    # via
-    #   -c requirements-dev.txt
-    #   sendgrid
 deprecated==3.0.1 \
     --hash=sha256:2f5a9fecc9961e26462846cf1e57f73a612b1d0b79c27dceeed8de647beadcee \
     --hash=sha256:eda314c115e8bc0fe52b90a6869e19240ac3cedb7449adfdba5981cf9ef693e1
-    # via
-    #   -c requirements-dev.txt
-    #   limits
 distro==1.9.0 \
     --hash=sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed \
     --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
-    # via
-    #   -c requirements-dev.txt
-    #   langsmith
-    #   openai
 docx2txt==0.9 \
     --hash=sha256:18013f6229b14909028b19aa7bf4f8f3d6e4632d7b089ab29f7f0a4d1f660e28 \
     --hash=sha256:e3718c0653fd6f2fcf4b51b02a61452ad1c38a4c163bcf0a6fd9486cd38f529a
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 fastapi==0.162.2 \
     --hash=sha256:9ebd2a69b579141315b2447d8e3f518e6fd909abd6c01cac5cc6b06d5c8841f4 \
     --hash=sha256:d0584f9662317e01140df94c64f4bed1d8b059fe35496e30c9c92f70e6e5ff15
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 flatbuffers==25.12.19 \
     --hash=sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4
-    # via
-    #   -c requirements-dev.txt
-    #   onnxruntime
 fonttools==4.68.0 \
     --hash=sha256:039142b75a068c93f8596ef68787f82c74940b9153d24c224ab31e750eb083a2 \
     --hash=sha256:03c9ef1272e464747f67c623f76449b888da6d5de7fb46275bb36488b9ceedba \
@@ -845,15 +762,9 @@ fonttools==4.68.0 \
     --hash=sha256:fde43b9785c7f105aa563b6b5481edabea4ab6be7d9ef14ff4d76225950923e8 \
     --hash=sha256:fe80d05dd85e6ac58d0cd4fa10ddb96252a6f1046ee0fd00cd1d48f0c25921ac \
     --hash=sha256:fedc183bdbc3fdbfbdca26e0e04566d089cbb404712509a4e824608e9304cc77
-    # via
-    #   -c requirements-dev.txt
-    #   fpdf2
 fpdf2==2.9.0 \
     --hash=sha256:af2e7e06a5a2f9e32e24b146b56f58166142dfff45f55370ab03bfac9c8e3e21 \
     --hash=sha256:e57f9eb183a61bbfc1a16ccb3eb68654f9ef3de0d9a78e37015a0df2eb29ab89
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 frozenlist==1.8.0 \
     --hash=sha256:0325024fe97f94c41c08872db482cf8ac4800d80e79222c6b0b7b162d5b13686 \
     --hash=sha256:032efa2674356903cd0261c4317a561a6850f3ac864a63fc1583147fb05a79b0 \
@@ -985,10 +896,6 @@ frozenlist==1.8.0 \
     --hash=sha256:fa47e444b8ba08fffd1c18e8cdb9a75db1b6a27f17507522834ad13ed5922b93 \
     --hash=sha256:fb30f9626572a76dfe4293c7194a09fb1fe93ba94c7d4f720dfae3b646b45027 \
     --hash=sha256:fe3c58d2f5db5fbd18c2987cba06d51b0529f52bc3a6cdc33d3f4eab725104bd
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
-    #   aiosignal
 greenlet==3.5.6 \
     --hash=sha256:0616b8f878098c5681fd8f0dc92d887551717402342a70f0abcbfea5f5ad8a44 \
     --hash=sha256:06c0e933290fba8ffe53ead4ae1b8044b0e9754b75cebf381aa2bc3e50d82fac \
@@ -1069,29 +976,15 @@ greenlet==3.5.6 \
     --hash=sha256:fdacf26402389bdd89857ad3c045a26fe8f3314f9a8b28226f82f88463a65b77 \
     --hash=sha256:fe3170a69fe039b18ad18171e66faa9a75f6fe9d78f968fd9b54e09fbd714d81 \
     --hash=sha256:fea4427d1ffdb3b523d7daa6712038428a4c16c450b9777bdd1221cfee0eab49
-    # via
-    #   -c requirements-dev.txt
-    #   sqlalchemy
 h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
     --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
-    # via
-    #   -c requirements-dev.txt
-    #   httpcore
-    #   httpcore2
-    #   uvicorn
 httpcore==1.0.9 \
     --hash=sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55 \
     --hash=sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8
-    # via
-    #   -c requirements-dev.txt
-    #   httpx
 httpcore2==2.16.0 ; sys_platform != 'emscripten' \
     --hash=sha256:5c4358319f2602d984ad93182c9fee5160f22e9da7babdda870a5e7c4e2dc34f \
     --hash=sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643
-    # via
-    #   -c requirements-dev.txt
-    #   httpx2
 httptools==0.9.0 \
     --hash=sha256:02bc5b3dcb6394b9d825fd62a7bfa0b2943063a3c89abc4492ad45e334a20eb5 \
     --hash=sha256:050f7ab098121873c8f13e35857f97ab60a76185c8302bde9a384939bb7c3b96 \
@@ -1211,47 +1104,21 @@ httptools==0.9.0 \
     --hash=sha256:f9489c1d87160c126f73b004742fe8654fa1ce37ed89e9e01330a1c10aaecde4 \
     --hash=sha256:f9ccc9884241efceb4547a92955d128574c864681f11b7ea3ecbde295fafbe8b \
     --hash=sha256:fc1a4f9d18d32a6e0a0a0a382986a60a2126f5144dd08715be7adb8df18e8a46
-    # via
-    #   -c requirements-dev.txt
-    #   uvicorn
 httpx==0.28.1 \
     --hash=sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc \
     --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   langchain-core
-    #   langgraph-sdk
-    #   openai
-    #   tavily-python
 httpx-sse==0.4.3 \
     --hash=sha256:0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc \
     --hash=sha256:9b1ed0127459a66014aec3c56bebd93da3c1bc8bb6618c8082039a44889a755d
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-community
 httpx2==2.16.0 \
     --hash=sha256:0d54c98128e8f2ff7fbbde0fca8c359e5f032edeaaaac443cdb7f31f685bcd7f \
     --hash=sha256:fd2c5d7909e8d86fe92d53020c310ca0e4e431b838c207c5754b9bbf0308d49a
-    # via
-    #   -c requirements-dev.txt
-    #   langsmith
 httpx2-jsfetch==1.0 ; sys_platform == 'emscripten' \
     --hash=sha256:70a0e3eabfef7cce5ad9c629f7d01ca05e418f586646f4ddf14782e4c1454c60 \
     --hash=sha256:cb916b707601e69a07721aabc8f3f6659be3a6893bc1ff5c6f9e02241df2da32
-    # via
-    #   -c requirements-dev.txt
-    #   httpx2
 idna==3.20 \
     --hash=sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44 \
     --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
-    # via
-    #   -c requirements-dev.txt
-    #   anyio
-    #   httpx
-    #   httpx2
-    #   requests
-    #   yarl
 jiter==0.19.0 \
     --hash=sha256:0282eae10bbccfabcb6001ced6a20abc5e05e26c6316e7729c8fc1510bd3b8e1 \
     --hash=sha256:050dd505e407c028aa76b9b4a379a06f79f484c3b256d99a7fea118d863c9a79 \
@@ -1358,118 +1225,54 @@ jiter==0.19.0 \
     --hash=sha256:fcce75459e06cf811395581f6d256e2535d165ec4d223b809115a59b4ea6f398 \
     --hash=sha256:fdc0a6ddcc9228a0955b350509041c9321af91e928c918402d0212d5fd315355 \
     --hash=sha256:fe16c8e0caf7513c6b4e1c6466761b153aa16c4e18a84ddcf6dcf731b2bace1a
-    # via
-    #   -c requirements-dev.txt
-    #   openai
 jmespath==1.1.0 \
     --hash=sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d \
     --hash=sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64
-    # via
-    #   -c requirements-dev.txt
-    #   boto3
-    #   botocore
 jsonpatch==1.44 \
     --hash=sha256:801f9238740d19eb101f9f7cea9c1c4810dbc4746f3edc89f7751d1798b917ff \
     --hash=sha256:88fc1d9728168b4a9be27bb00de469dfb3cd28e8e5b568b24efb2ac583cba7b9
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-core
 jsonpointer==3.10 \
     --hash=sha256:3b08b9e5239f1b683e31c9561c350d75ce3fa8cdd407130ca8491fdb0c9e56f3 \
     --hash=sha256:69349c0e738c93e9efa501397091f49ad302ae686293effd05d7755c06f88ef0
-    # via
-    #   -c requirements-dev.txt
-    #   jsonpatch
 langchain==1.4.9 \
     --hash=sha256:449905dd841442562f897267ceaa05f80f42daa2cf019549b2650a9b02e85d8b \
     --hash=sha256:87cf3c15dfddaebd0e421d253e3b4abf70b70d6e18e56c45b9eb1873cc46f154
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 langchain-classic==1.0.8 \
     --hash=sha256:1a11ea7fbe630c4f2af2f3873d27718ceac9488cf32d0821030be7cf039a6213 \
     --hash=sha256:ada0cc341a8a5b80fb24d73bdfaaeb849056ee2d8a41cc468355163fd3667484
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-community
 langchain-community==0.4.2 \
     --hash=sha256:84dd8c5122532394d5b6849a5fc9995ef28e4f77227daeb09f24b3d942e9e466 \
     --hash=sha256:a99308160d53d7e9b5965ee665e5173709914338210089fd5788ad724432c21e
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 langchain-core==1.7.6 \
     --hash=sha256:0833781e3a8e6fe83073c8412c21180a0545d5ccdf3437889951caf9589ece6c \
     --hash=sha256:f61908be526fbeb5da8cc1ffd9d24bce3b50cf45b3a2f1737c1a7a2958046ce6
-    # via
-    #   -c requirements-dev.txt
-    #   langchain
-    #   langchain-classic
-    #   langchain-community
-    #   langchain-openai
-    #   langchain-text-splitters
-    #   langgraph
-    #   langgraph-checkpoint
-    #   langgraph-prebuilt
-    #   langgraph-sdk
 langchain-openai==1.7.4 \
     --hash=sha256:8fd90e41588526d990f32262447adf8e130d7ce28ed66cefa315e64cc9dd12ce \
     --hash=sha256:aaee93369765bac7ebf640aab62f8ae16df403ed982737ae51f88f6a24a151ab
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 langchain-protocol==0.0.21 \
     --hash=sha256:04b3e80852233a8db39b39d3ad2438d892531dc0ecd41459e857a139ee0e601c \
     --hash=sha256:7f42f9eae7c08bb9d74850057da50b5483970a3df91b7a8a5aadec6a3dfa4d12
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-core
-    #   langgraph-sdk
 langchain-text-splitters==1.1.3 \
     --hash=sha256:50edeb318b3be6a6308dddd7d616ab82823a9ccbea59a9c14c58a7b91df60295 \
     --hash=sha256:929b6c76f99d611a5b1d8f5591ef302909b86a436ceb3217034d24e4757868d8
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-classic
 langgraph==1.2.20 \
     --hash=sha256:2b9fd01c3d5e0652e6c9b436dc0341413788010eb279ac8c46a733cf485d848b \
     --hash=sha256:79f86df92f2dd17d5ec464cab68dbb685439ab102ca39f0b1b7b198025a2414c
-    # via
-    #   -c requirements-dev.txt
-    #   langchain
 langgraph-checkpoint==4.3.1 \
     --hash=sha256:215a826935c8db4d9676e79fd95943e5b3847d78604390898e1d98581cc594e5 \
     --hash=sha256:625e7c78a72b33e7c47f7e87ca051060fb90aa66f5fd551c472c08376fb669cb
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph
-    #   langgraph-prebuilt
 langgraph-prebuilt==1.1.1 \
     --hash=sha256:f1b1a4772e7f9f15ba736411aad3877183ad40cd9349748df76bd2b9f58a83c7 \
     --hash=sha256:fae17c22562e501940eb7aa052a15c58a431febbabf33f8ad172e1b44354a7e4
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph
 langgraph-sdk==0.4.14 \
     --hash=sha256:13eb1fee92504d87c1f0f43c8e213e7ba0a46bd23a07e3198e413d48efac5833 \
     --hash=sha256:d47a6755890ae537aa80613a3138680ac77f5d256a2d3953af95a96328e6964d
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph
 langsmith==0.14.17 \
     --hash=sha256:0aa2c79936c93c7cea9c55656f05e21cc5da715fecbdbda439d084adc08429be \
     --hash=sha256:53efa2db8293d0a8d60efebe0945c595b635873774b302066ed0a746ddf87562
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-classic
-    #   langchain-community
-    #   langchain-core
 limits==5.8.0 \
     --hash=sha256:ae1b008a43eb43073c3c579398bd4eb4c795de60952532dc24720ab45e1ac6b8 \
     --hash=sha256:c9e0d74aed837e8f6f50d1fcebcf5fd8130957287206bc3799adaee5092655da
-    # via
-    #   -c requirements-dev.txt
-    #   slowapi
 lxml==6.1.3 \
     --hash=sha256:032a0a97eed428bd143c75a11118238546424ceb2fa311cca5f073aa44658dc4 \
     --hash=sha256:05f5bce9af14fd1506997594bd81cee6d9c6b58ea80a39c058327aa6371ed9e9 \
@@ -1647,15 +1450,9 @@ lxml==6.1.3 \
     --hash=sha256:fe91993149523aa59941b9e3c90e2eb45f57ad014697aef6c8b13339a59c019e \
     --hash=sha256:febd35ef45f603c2d74b74655efdbf45e14f55fc0aef4ac82b663ca829b283e0 \
     --hash=sha256:ff88a92cafde90888511242d1c54afcc1a8adbb6dc0a88fa7f87e29e92400d4a
-    # via
-    #   -c requirements-dev.txt
-    #   python-docx
 mako==1.4.3 \
     --hash=sha256:723296007c870bfd6b3f0c3230dba7198096e5269297ebf5e4eff9e7ffa39d4f \
     --hash=sha256:cd6537fe88d5fec315c55c2f8529bc4ce7a9a352ad7db3eeaa6a66e2dd4ec37a
-    # via
-    #   -c requirements-dev.txt
-    #   alembic
 markupsafe==3.0.4 \
     --hash=sha256:007e1ffd9bf65bb6ee96df7b258fc632a4868dd5566037986c64781f35a36e98 \
     --hash=sha256:02fa4acbc6a3fc5c693c34d4dd8c1130b7fe99cc915181b0ddd6f72aeb296002 \
@@ -1808,10 +1605,6 @@ markupsafe==3.0.4 \
     --hash=sha256:fa95848c929b6a75f6848d3c9793e59db365ee436776e57db835cdbfa79ba977 \
     --hash=sha256:fd9f8797427910198f95bced71ddfed61130d7e349213bfb8466c9c99e2c46a8 \
     --hash=sha256:fdb4ca07ab75ffadab4a8b135ad59cdbb3156b99310f3d565370da74a15d6bd3
-    # via
-    #   -c requirements-dev.txt
-    #   mako
-    #   werkzeug
 multidict==7.2.1 \
     --hash=sha256:02009b402129a73e1f3da68f48eb999afbacd29f25aef0d5052b84ff5c2786a2 \
     --hash=sha256:02d9c04d395a36eeebe89e45f2269614a4675b8e83fddcba15bba2be903971e5 \
@@ -1964,16 +1757,9 @@ multidict==7.2.1 \
     --hash=sha256:fc45ff19520bc5321dcd9c6dd7df6f35ddd894eed35e5be65d1828a9c3f5e7fb \
     --hash=sha256:fcfebcb537f419e415b6e2bfc77ddbd33abe3c036f0105410a25a14741df9c31 \
     --hash=sha256:fd24c4425fdb8e822601335602375c6d0cb020f7a368e1d5842eb7925a9c8748
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
-    #   yarl
 networkx==3.7 \
     --hash=sha256:e3fd2c13a7814cee3746340d8d7f8598a67f16a58bf47fb7f8793fab6efca1b0 \
     --hash=sha256:fd77a511bd90f39f3d016351345b52cf5319b813bdca01de3f755d3cca62e96a
-    # via
-    #   -c requirements-dev.txt
-    #   pymupdf
 numpy==2.5.4 \
     --hash=sha256:067374eb538c34c745436365cf7b0112595c1d326f21ce4ff340f61230239fbb \
     --hash=sha256:0b4724a19de67bea8cfc4970798efa78bcbbe2ac2613cfac16721a42d44de2a5 \
@@ -2041,11 +1827,6 @@ numpy==2.5.4 \
     --hash=sha256:fbde6962867ee75b48b0ee29b2b9372ec5d617799dbaf38e82dc0596f2f7738a \
     --hash=sha256:fe4d21ab149f15e4e6043dfb0de87e6e5f34ac176cde83060e9802981fca2ac2 \
     --hash=sha256:ffa6ce09a1c6a08e9667dd9c97aa0b14184e8d18f2a14b78b2a2328c9147f076
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-community
-    #   onnxruntime
-    #   pymupdf
 onnxruntime==1.31.1 \
     --hash=sha256:0558f29d5f6ac09957390c9c5495931485ee8ae7f0ce781ccee86a0ae5c2348b \
     --hash=sha256:075147c2e2430b4b29c436bffa78537b902a6ed58ed66f99ae3c6795e2081cb5 \
@@ -2071,22 +1852,12 @@ onnxruntime==1.31.1 \
     --hash=sha256:e4ad067d36e2220218e085d7223283b2ee1bc73d887e811fd14d21cf901a11ee \
     --hash=sha256:fc01b4e7c0a81778fb741bcf5c16b7871d196275f6240720a8b8bfd9f0c0af14 \
     --hash=sha256:fe8b9ac1ae8e894e12c47ee82e4f6dfc1835768133687257866469fda80d0bf1
-    # via
-    #   -c requirements-dev.txt
-    #   pymupdf
 openai==2.54.0 \
     --hash=sha256:89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b \
     --hash=sha256:e3e6f8bc1ba30ddf381ace1a14340eed381cb984a1a59bd0f34b5be3b5d49cfa
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   langchain-openai
 opentelemetry-api==1.44.0 \
     --hash=sha256:67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a \
     --hash=sha256:94b98c893a91b88657eaac1e3ba89618cdb85be6918196705354f34728b2cdef
-    # via
-    #   -c requirements-dev.txt
-    #   fastapi
 orjson==3.13.0 \
     --hash=sha256:0526a3456db67b264c6d661b5f090077f326b6cd074d0ef53a72763595dec5d7 \
     --hash=sha256:08bf722f923d2100bc5e5a5dcf72c656db557049c1bea26582fdd5dd9d5395a1 \
@@ -2147,10 +1918,6 @@ orjson==3.13.0 \
     --hash=sha256:f5c05a8fee59309f537590a1ff12d3c1009c485e96a50a9ac60dd085c09d0fc0 \
     --hash=sha256:fb8644dc6d705e1269ed2842bf4dbe2b4e50d670de503bf79d5cef3a5148a4c7 \
     --hash=sha256:fbbad6b9b1da43f25c1f5b20cd5a268e028a2fc95d5a8d1ade6059973bc71584
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph-sdk
-    #   langsmith
 ormsgpack==1.13.1 \
     --hash=sha256:0597d6c2952ea1713351d7672db07d2ab6bbf17a0ef67c17ca49a3c22808f748 \
     --hash=sha256:08484c34f5e176bb8eca5a5621d25f5d7801cbbdcabc1a0f43f3c16112cc093b \
@@ -2201,18 +1968,9 @@ ormsgpack==1.13.1 \
     --hash=sha256:f04de5ba8e2119e2816227bf01fb585bac7709c1fa93d88432939761312d6a25 \
     --hash=sha256:f0be5b1955eca8f9a69f408a7170a5ad0bb05f7bda79a5a5ee6df441a5ec1e5d \
     --hash=sha256:f817950f3c268af028bcd764a7d9c7c9743f358d00f34ea0962a9dbfee3b3889
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph-checkpoint
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-core
-    #   langsmith
-    #   limits
-    #   onnxruntime
 pillow==13.0.0 \
     --hash=sha256:02464da86f561f410e13b061ec37c3068a9cb557a095494157742d07b3c24a27 \
     --hash=sha256:04a63720f79e22fd54d897c233a68314c50ca0603360f54ce2bd5db8f0f43782 \
@@ -2297,9 +2055,6 @@ pillow==13.0.0 \
     --hash=sha256:fc481f742ccda20e9ed760b8f978dff50f2a4e9bc253ac167fb0a05b0783ef52 \
     --hash=sha256:ff3fe9eb621fbb9db4c4be33ab946f6bac5f98ab50ca8d3260503653656c961b \
     --hash=sha256:ffea6b2986a797c84b6d1d27d4f43e0b83c73fc16281a930891cd237cf0d08fe
-    # via
-    #   -c requirements-dev.txt
-    #   fpdf2
 propcache==0.5.4 \
     --hash=sha256:004e685b315646c410771836e72a44f143bbe624f29653a42687815069a303d5 \
     --hash=sha256:02c0a34f16889cf800f10f0247a564d8ce6eeab6ffcd7c87198f769067eb8432 \
@@ -2439,10 +2194,6 @@ propcache==0.5.4 \
     --hash=sha256:f85915e00dcb1cd9f2f890ead064ed40a27df06f0db65be427b29482ae357572 \
     --hash=sha256:fc2461ecc45f17893f8207e73b46ea8ba93e33630e51cf4af3fbc21d47462b1a \
     --hash=sha256:ff6b113f50bc066a698db5d944d2c6dc7507168dd3341e255a8892fd0715a558
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
-    #   yarl
 protobuf==7.36.2 \
     --hash=sha256:497d0463ff3316681da6c0b9e8d06cb465d61abce00b613ab42226175644d1bb \
     --hash=sha256:89f23aa53c24553a2416fd4fd1ec06f74fa42b14b546d8883128813f775bbfd2 \
@@ -2452,9 +2203,6 @@ protobuf==7.36.2 \
     --hash=sha256:cbc70b17ee27e28894c7fee8bb04be1abead49e936bc70eb60052531eee2079e \
     --hash=sha256:e11e1f0180583a2af89db6a2ecd9e8dc40aa6d2988ca175bfd0e6d12ea72d74e \
     --hash=sha256:f4fee11ec330d238b34a05c9b675f693c20415d1c5bd7d5320cc2f8a798eb9cf
-    # via
-    #   -c requirements-dev.txt
-    #   onnxruntime
 psutil==7.2.2 \
     --hash=sha256:0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372 \
     --hash=sha256:076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9 \
@@ -2477,29 +2225,12 @@ psutil==7.2.2 \
     --hash=sha256:ed0cace939114f62738d808fdcecd4c869222507e266e574799e9c0faa17d486 \
     --hash=sha256:eed63d3b4d62449571547b60578c5b2c4bcccc5387148db46e0c2313dad0ee00 \
     --hash=sha256:fd04ef36b4a6d599bbdb225dd1d3f51e00105f6d48a28f006da7f9822f2606d8
-    # via
-    #   -c requirements-dev.txt
-    #   pymupdf
 pycparser==3.12 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' \
     --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e \
     --hash=sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6
-    # via
-    #   -c requirements-dev.txt
-    #   cffi
 pydantic==2.14.3 \
     --hash=sha256:1054f237f4d4733e5a30e1e2333bd33a2004ab9ab1510bd053a9a31bb48e232d \
     --hash=sha256:3f7b347782ab7e4cf4c798496ae3a82787d9f21ec12676a9c564355eeef8daa8
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   fastapi
-    #   langchain
-    #   langchain-classic
-    #   langchain-core
-    #   langgraph
-    #   langsmith
-    #   openai
-    #   pydantic-settings
 pydantic-core==2.50.4 \
     --hash=sha256:0001d6920e3a5d92758cda460d6dc9f918a78ad6d5d092f1c8b5395e6b775356 \
     --hash=sha256:0574866e05f6adeecc520d87e87dd06210c0a51706341f6ef8421572f5a64444 \
@@ -2641,83 +2372,40 @@ pydantic-core==2.50.4 \
     --hash=sha256:fb2bb5b557080da398b866408117d98fe9731a12334afd0cdff221b458cdc5dc \
     --hash=sha256:fc04affef30be98c1f36f0c422a4061ef618fdc1dde79f5ad5458dd496fecffa \
     --hash=sha256:ffb616d8d55965839670301dc3bae3abacff560a7e137a89056058a8a9da4d96
-    # via
-    #   -c requirements-dev.txt
-    #   pydantic
 pydantic-settings==2.16.2 \
     --hash=sha256:3dc08ffabed2bbd5dc2dd55ead7b78b4e4c5cd776aecd04310db5f1224caaf46 \
     --hash=sha256:8d523e5c129b097686bde019bd6109bff53f4c8c3f63f1ddf9933ffa42e5ab4f
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   langchain-community
 pyjwt==2.15.1 \
     --hash=sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193 \
     --hash=sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 pymupdf==2.1 \
     --hash=sha256:1bb2284bde6067f05f83961ea678480060870dc966ad520bcf97da0b0eccf40c \
     --hash=sha256:5a1a1fee36d5598013614e06eef25aaa68819d828f5401170dbcaf6f2714d1dd \
     --hash=sha256:9ac95f98016e83eafb8f1d786396f9c60e400d559590596e5b2df9eb6384948b \
     --hash=sha256:a9efa2e9e5f469d3b5749199329739cfef1ff1d1846538ced4885c544eecbcd9 \
     --hash=sha256:e1122bbc3a1212396f0d70d19f78e084991b59ebdfc9d846c28ca8b509de01ad
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   pymupdf-layout
-    #   pymupdf4llm
 pymupdf-layout==2.1 \
     --hash=sha256:e7e00bc50ec9113d36bdbb0dd5cdafa5f4d61e22e598960fc187ee4f721f5095
-    # via
-    #   -c requirements-dev.txt
-    #   pymupdf
-    #   pymupdf4llm
 pymupdf4llm==2.1 \
     --hash=sha256:2fe8bb344444c6a8ef41fd745d2d10f6da59df6e104ef20f35d51dd26914b5fb
-    # via
-    #   -c requirements-dev.txt
-    #   pymupdf
-    #   pymupdf-layout
 pypdf==7.0.0 \
     --hash=sha256:061aa78dec270854c912dde80c6bc060486fa955399d643da27ea30afeb6571b \
     --hash=sha256:112a2c7cbabefd8dfe498f7a13977e575e762d58cdb0d832acb8886922602c6f
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
-    # via
-    #   -c requirements-dev.txt
-    #   botocore
 python-docx==1.2.0 \
     --hash=sha256:3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7 \
     --hash=sha256:7bc9d7b7d8a69c9c02ca09216118c86552704edc23bac179283f2e38f86220ce
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 python-dotenv==1.2.4 \
     --hash=sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc \
     --hash=sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   pydantic-settings
-    #   uvicorn
 python-http-client==3.3.7 \
     --hash=sha256:ad371d2bbedc6ea15c26179c6222a78bc9308d272435ddf1d5c84f068f249a36 \
     --hash=sha256:bf841ee45262747e00dec7ee9971dfb8c7d83083f5713596488d67739170cea0
-    # via
-    #   -c requirements-dev.txt
-    #   sendgrid
 python-multipart==0.0.33 \
     --hash=sha256:8f16c07b36add9da6b2ee87d3efcaf0a45a6de9c3d0a5dd94e9ccf7675a7bc45 \
     --hash=sha256:b8112424a6abd162ec08d390565dd113ad699f2fe6fef3c987b8bbcbfe9e390d
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 pyyaml==6.0.3 \
     --hash=sha256:00c4bdeba853cc34e7dd471f16b4114f4162dc03e6b7afcc2128711f0eca823c \
     --hash=sha256:0150219816b6a1fa26fb4699fb7daa9caf09eb1999f3b70fb6e786805e80375a \
@@ -2792,13 +2480,6 @@ pyyaml==6.0.3 \
     --hash=sha256:f7057c9a337546edc7973c0d3ba84ddcdf0daa14533c2065749c9075001090e6 \
     --hash=sha256:fa160448684b4e94d80416c0fa4aac48967a969efe22931448d853ada8baf926 \
     --hash=sha256:fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-classic
-    #   langchain-community
-    #   langchain-core
-    #   pymupdf
-    #   uvicorn
 regex==2026.11.8 \
     --hash=sha256:0114c1dabfd37a180c85604459f29df2329754139798d4fcfd5bcb1ee7f17da3 \
     --hash=sha256:07341b9e1253ff166fce2642b79ab76dc618d99d6858c09fe57d3b655ad3b7ec \
@@ -2914,58 +2595,27 @@ regex==2026.11.8 \
     --hash=sha256:fba653fa6c48f29f03ba60d5cc466d03c75b9fed74816c5b2a79cfcfb79e9348 \
     --hash=sha256:ff13ceff549fa84620ac03842194d764d797654a0e810b6c15425c6e64538856 \
     --hash=sha256:ffd2d7e30794c1d46499ce953551fc63bde9eedfe7bb9dc369a31f8d99346924
-    # via
-    #   -c requirements-dev.txt
-    #   tiktoken
 requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   langchain-classic
-    #   langchain-community
-    #   langsmith
-    #   requests-toolbelt
-    #   tavily-python
-    #   tiktoken
 requests-toolbelt==1.0.0 \
     --hash=sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6 \
     --hash=sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06
-    # via
-    #   -c requirements-dev.txt
-    #   langsmith
 s3transfer==0.19.3 \
     --hash=sha256:24eb7535804306355e31c952a90022bf5b2f9d760f9a11062c7493a217c08553 \
     --hash=sha256:8326acc3d056d7f7b8a37110c7d2aea41f67e83f6ae79cd3b5fbcca34c726406
-    # via
-    #   -c requirements-dev.txt
-    #   boto3
 sendgrid==6.12.5 \
     --hash=sha256:96f92cc91634bf552fdb766b904bbb53968018da7ae41fdac4d1090dc0311ca8 \
     --hash=sha256:ea9aae30cd55c332e266bccd11185159482edfc07c149b6cd15cf08869fabdb7
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
-    # via
-    #   -c requirements-dev.txt
-    #   python-dateutil
 slowapi==0.1.10 \
     --hash=sha256:3acb61561dc9d687e3d3669362ff6a439de9ba44e2fed3a9c165da26b4b83e28 \
     --hash=sha256:d320d5bc04d9f171a77fb16700faf3036d85b00f420f22924c8a225f95bd14f9
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 sniffio==1.3.1 \
     --hash=sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2 \
     --hash=sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc
-    # via
-    #   -c requirements-dev.txt
-    #   langsmith
-    #   openai
 sqlalchemy==2.1.8 \
     --hash=sha256:06ba41b90d1cf018cbe9a5474958dbdd2a72ec946ace8d314021d24e42ae2f39 \
     --hash=sha256:06e30b673ec8a89b398e95052c2c42d9e0bc0163940cdb7d32f36a79c0d12f3b \
@@ -3039,37 +2689,18 @@ sqlalchemy==2.1.8 \
     --hash=sha256:e4e2bfa6ce7916776afd3db02006c56d90a7362ed72774afd9071ffe03cd8188 \
     --hash=sha256:f50e34ebdf4ad7c96d89cfb05418e11ed23d3ac46f1f59f3d2e1d8da8091a0eb \
     --hash=sha256:ffe69b75459d90529f603d9594255c41d6a503f69220740510373374198735f6
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
-    #   alembic
-    #   langchain-classic
-    #   langchain-community
 starlette==1.10.0 \
     --hash=sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4 \
     --hash=sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b
-    # via
-    #   -c requirements-dev.txt
-    #   fastapi
 tabulate==0.10.0 \
     --hash=sha256:e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d \
     --hash=sha256:f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3
-    # via
-    #   -c requirements-dev.txt
-    #   pymupdf
 tavily-python==0.8.5 \
     --hash=sha256:1795965c3ffe5654856244d637daa816a4ee947aca57d0588b731c69e75e71fe \
     --hash=sha256:f8d2880f5aa67cf3ee2eb1f7c9336ea50dc331eb1e406688391badb0140599a7
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 tenacity==9.2.1 \
     --hash=sha256:9e56f17539296baab7beabb08b92f6ee3d7be92d8be72d763360677c2ad6580e \
     --hash=sha256:a606b5c808d0cded4a359d5b9932d867ff2a6a6b64d37350260fd01bbdf83839
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-community
-    #   langchain-core
 tiktoken==0.14.0 \
     --hash=sha256:087538c080e5ff421abd3a0785ed63c5111d06af98e6cd0d374dbe5969147ca3 \
     --hash=sha256:10f31e63e40313f2e518d87f7086cfa44e45f64cc14d8ae14103b41220c30a14 \
@@ -3135,62 +2766,21 @@ tiktoken==0.14.0 \
     --hash=sha256:f3d6cf93fbe2e7117eb7bedca684216fbe328a41f0843ce34245451d8eb2df1c \
     --hash=sha256:f5e7665f6624e052e5e7f6a36919ab69279decdc976d7b16b4fa15e1897d0513 \
     --hash=sha256:f702e0aeeb6506e57687e881c59e844ebe8f0a6a097ddafe20e3ab25f387be4e
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-openai
-    #   tavily-python
 tqdm==4.70.1 \
     --hash=sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73 \
     --hash=sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4
-    # via
-    #   -c requirements-dev.txt
-    #   openai
 truststore==0.10.5 ; sys_platform != 'emscripten' \
     --hash=sha256:30d36967ccaded5cbb38d602c433f53600036c79d502f4533a49b60a03bbefcd \
     --hash=sha256:9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c
-    # via
-    #   -c requirements-dev.txt
-    #   httpcore2
-    #   httpx2
 typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
-    #   aiosignal
-    #   alembic
-    #   anyio
-    #   fastapi
-    #   httpx2
-    #   langchain-core
-    #   langchain-protocol
-    #   langsmith
-    #   limits
-    #   openai
-    #   opentelemetry-api
-    #   pydantic
-    #   pydantic-core
-    #   pydantic-settings
-    #   python-docx
-    #   sqlalchemy
-    #   starlette
-    #   typing-inspection
 typing-inspection==0.4.5 \
     --hash=sha256:7f16c411e7930dc79596d42ab44672a3fe5f60eb34b781a1647e7872363120c7 \
     --hash=sha256:bc210535442b39e1bf2805e0c7a17dfd6a4ace760c84c7f7d16245d23a6b1c39
-    # via
-    #   -c requirements-dev.txt
-    #   fastapi
-    #   pydantic
-    #   pydantic-settings
 urllib3==2.8.0 \
     --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
-    # via
-    #   -c requirements-dev.txt
-    #   botocore
-    #   requests
 uuid-utils==0.19.0 \
     --hash=sha256:0cff166cf6348e9a705740e6575ce7bc727554a71a6add60b9ceceaaf169002a \
     --hash=sha256:0da57ba80366ae75307b686376bf437bdc76b3710d52e6ffe012c99a5c800927 \
@@ -3245,16 +2835,9 @@ uuid-utils==0.19.0 \
     --hash=sha256:f3828e1fc0831a9d539e702992e9fcfeb400e80f737467b8e557921cdc8ae067 \
     --hash=sha256:f629f2a4f95e46d99ee673536ab9706899696cdc6686e93314ea756d3b394ce4 \
     --hash=sha256:fd3bcc556e249bb70b1c7fd78e659a1ebfb5572e7ff2091d096aecbac62edb1c
-    # via
-    #   -c requirements-dev.txt
-    #   langchain-core
-    #   langsmith
 uvicorn==0.54.0 \
     --hash=sha256:505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf \
     --hash=sha256:a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620
-    # via
-    #   -c requirements-dev.txt
-    #   -r requirements.in
 uvloop==0.23.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32' \
     --hash=sha256:0305871ac712f54b62af73f943dbf21ae3ce80a44bc0f0151424484affa85645 \
     --hash=sha256:090865d8ce7a03986755a3ce711b7dd0d4b44eb14ab74368b717f3fad1180208 \
@@ -3317,9 +2900,6 @@ uvloop==0.23.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     --hash=sha256:fa8ed556fcc87a4091cf61587ef172fa104323dc89ecc085a618ba7ff8629a8f \
     --hash=sha256:fefea5cf8cdda9053b962ca8a90216fb0b1d40907dcb6819382b42e483e6e9f6 \
     --hash=sha256:ff7144d8167e513fe39fbb46bffb4f6f192dfb1f4b0b4e9102e1fd4f212e4747
-    # via
-    #   -c requirements-dev.txt
-    #   uvicorn
 watchfiles==1.3.0 \
     --hash=sha256:000b9688fc8133037a8b075c8ebf98f32844ff8964dda61e85c1db547dafc441 \
     --hash=sha256:025b108f2d5cc2799cb941f79380df3e8b22bfb589c218e801767fe78d598c95 \
@@ -3354,9 +2934,6 @@ watchfiles==1.3.0 \
     --hash=sha256:eb94e40b9a0db19636b5e3fed0a9803452ecc7381df13b385272abb779ee83ca \
     --hash=sha256:ec3cd4bb181a7b6329134204c2277c7144ab5f62cce9c5335d6f901ee7ce8d6a \
     --hash=sha256:f0c9865240e065a2247f4b5248528ae3d01e0e8ae071462c250c884dc16e3ee3
-    # via
-    #   -c requirements-dev.txt
-    #   uvicorn
 websockets==17.4 \
     --hash=sha256:00ad98e4bb0df7a6711c645eec16d5a9fdf99f0692bd4f5b6cb85a68677ba8df \
     --hash=sha256:0132e3cbd3f5cfc1ec77588961b302d72a02e2603b82c2c23fd5fb59dc4fa206 \
@@ -3512,17 +3089,9 @@ websockets==17.4 \
     --hash=sha256:f5b1d315a615cec81a79e2ce3a94221dc5c23e7fd4012897085d3b5e5a5638d0 \
     --hash=sha256:f5f06f59e19aa0770aaf651ce91c196fa620b35aed49a7e6c36e7335f3f83db7 \
     --hash=sha256:fcac44d917672ad6257ad64b80b5168306f168a78cab5c0612e4c699caed18cf
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph-sdk
-    #   langsmith
-    #   uvicorn
 werkzeug==3.1.9 \
     --hash=sha256:55ca7c70a75689be937aa27f8ff4b018f06ff4838fc73045560bf0f5a1291060 \
     --hash=sha256:6392e50c78460ba618e5b21f08a71f59c99ce99cdc6cf6e3dd7e6ccca8754fab
-    # via
-    #   -c requirements-dev.txt
-    #   sendgrid
 wrapt==2.5.2 \
     --hash=sha256:01ace38a377198e0b981b027a46cbdb5502d0123bd39c1a0f60a83a5eab7698e \
     --hash=sha256:035cd71e2aadfc0ad366ab4785b49e62093370885ea4b527b61b308b7a92ff14 \
@@ -3625,9 +3194,6 @@ wrapt==2.5.2 \
     --hash=sha256:f01f56a6ddffd89179bf0424c3b5bbd187690cfa2f972472aa2d563a4e0a7fdb \
     --hash=sha256:fa642d3781c061579cb138773add4a55b16f99de9ebc41603e89a756cf9e62c6 \
     --hash=sha256:fabc60720d1e4a36bbe8aaf1c32024f04c6674991313f5acaca5eeadb564c600
-    # via
-    #   -c requirements-dev.txt
-    #   deprecated
 xxhash==4.0.2 \
     --hash=sha256:00329536c281e13725283421dcdf4633f5710123e06a608b910d6a6f3bc891cf \
     --hash=sha256:03b1e97d14fd1b185c75808f72dfc7d9ea5866df3f8661566f2a23d0d07dcf7e \
@@ -3853,10 +3419,6 @@ xxhash==4.0.2 \
     --hash=sha256:fe5a0d96cb339d383d3f720ffe94d8a7a51ccc8abf4d348a3ee058b5625f948e \
     --hash=sha256:fe765b3c7e7fcd14ef9b77836295847cb73229cdbe7eced958ed013d2f1c4025 \
     --hash=sha256:fe86ae86241d0aee7561b19bf892c9250a976e4a56fc052405cd537180e7af15
-    # via
-    #   -c requirements-dev.txt
-    #   langgraph
-    #   langsmith
 yarl==1.25.1 \
     --hash=sha256:0136d640dfa9b0523853e411430a99f8a91eca85774c6420285a33b755bc6de3 \
     --hash=sha256:03dd38de09bc213e9a8b29761eec33ee1d5318dac0e49d8af36e4d27830e23a7 \
@@ -3996,9 +3558,6 @@ yarl==1.25.1 \
     --hash=sha256:f53dcd26694f148f738edc052b5a69234833e739f10f4c3287bdfd8ec0f7b326 \
     --hash=sha256:f61964f235a43738bfac50da46fc4254943a7eea3051aeb0b6fc7c992c29fadc \
     --hash=sha256:fe01645169a2112aa1d4ebc3e4c5f029c5c8f97adfc32e5d37c993b39a994d75
-    # via
-    #   -c requirements-dev.txt
-    #   aiohttp
 zstandard==0.25.0 \
     --hash=sha256:011d388c76b11a0c165374ce660ce2c8efa8e5d87f34996aa80f9c0816698b64 \
     --hash=sha256:01582723b3ccd6939ab7b3a78622c573799d5d8737b534b86d0e06ac18dbde4a \
@@ -4099,6 +3658,3 @@ zstandard==0.25.0 \
     --hash=sha256:f67e8f1a324a900e75b5e28ffb152bcac9fbed1cc7b43f99cd90f395c4375344 \
     --hash=sha256:fd7a5004eb1980d3cefe26b2685bcb0b17989901a70a1040d1ac86f1d898c551 \
     --hash=sha256:ffef5a74088f1e09947aecf91011136665152e0b4b359c42be3373897fb39b01
-    # via
-    #   -c requirements-dev.txt
-    #   langsmith
