@@ -86,3 +86,10 @@ def test_ci_builds_the_workers_image_and_imports_the_worker_in_it():
     runs = _runs("worker-image")
     assert "docker build --tag resumate-worker --file backend/Dockerfile.agent backend" in runs
     assert 'docker run --rm --entrypoint python resumate-worker -c "import interview_agent"' in runs
+
+
+def test_no_update_bot_is_set_up_updates_are_our_own_commits():
+    # Dependabot opened a branch and a pull request for every update, and
+    # merged, its commits would have been dependabot[bot]'s.
+    for name in ("dependabot.yml", "dependabot.yaml"):
+        assert not (ROOT / ".github" / name).exists(), name
