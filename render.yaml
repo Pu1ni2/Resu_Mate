@@ -29,6 +29,10 @@ services:
     name: resumate-backend
     runtime: python
     rootDir: backend
+    # Deploy a commit only once CI has passed on it, never one whose tests
+    # (or audits) fail. A service made by hand in the dashboard ignores this
+    # file: there, set Auto-Deploy to "After CI Checks Pass" (DEPLOY.md).
+    autoDeployTrigger: checksPass
     # Install deps, then run any pending alembic migrations. requirements.txt
     # pins every package to one version, checked against its hashes (it's
     # made from requirements.in). The migrations are idempotent — a deploy
@@ -134,6 +138,8 @@ services:
     name: resumate-frontend
     runtime: static
     rootDir: frontend
+    # Only once CI has passed, as for the backend.
+    autoDeployTrigger: checksPass
     # npm ci installs exactly the lock file, as CI does.
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
@@ -194,6 +200,7 @@ services:
   #   name: resumate-interview
   #   runtime: python
   #   rootDir: backend
+  #   autoDeployTrigger: checksPass
   #   buildCommand: pip install -r requirements-agent.txt
   #   startCommand: python interview_agent.py start
   #   envVars:
