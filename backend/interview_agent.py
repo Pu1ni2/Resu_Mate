@@ -370,7 +370,24 @@ async def entrypoint(ctx: JobContext):
     await asyncio.Event().wait()
 
 
+def missing_for_start(argv, environ):
+    """The settings a deployed worker (`start`) can't do without, if unset.
+
+    It sends each interview's transcript to BACKEND_URL, signed with
+    AGENT_SHARED_SECRET: without them, it ran, and the transcripts went to
+    an address on its own machine, or were refused. Run locally (`dev`),
+    the backend on this computer will do.
+    """
+    if argv[1:2] != ["start"]:
+        return []
+    return [name for name in ("BACKEND_URL", "AGENT_SHARED_SECRET") if not environ.get(name, "").strip()]
+
+
 if __name__ == "__main__":
+    missing = missing_for_start(sys.argv, os.environ)
+    if missing:
+        sys.exit(f"The interview worker can't start without {' and '.join(missing)}: "
+                 f"set {'it' if len(missing) == 1 else 'them'} where it runs (backend/DEPLOY.md).")
     cli.run_app(
         WorkerOptions(
             entrypoint_fnc=entrypoint,

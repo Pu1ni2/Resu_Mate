@@ -12,8 +12,12 @@ kill_timeout = '300s'
 [build]
   dockerfile = 'Dockerfile.agent'
 
-[env]
-  BACKEND_URL = "https://resumate-api-74dm.onrender.com"
+# Its settings are set with fly secrets set NAME=value, not written here:
+# BACKEND_URL, the API's address (https://<your API>.onrender.com), and
+# AGENT_SHARED_SECRET, the API's own value, without which it doesn't start;
+# then OPENAI_API_KEY, LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET,
+# SIMLI_API_KEY and SIMLI_FACE_ID. (BACKEND_URL was written here, so a moved
+# API kept being sent its transcripts at the old address.)
 
 [[vm]]
   memory = '512mb'
