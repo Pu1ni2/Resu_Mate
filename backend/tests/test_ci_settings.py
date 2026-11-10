@@ -86,11 +86,3 @@ def test_ci_builds_the_workers_image_and_imports_the_worker_in_it():
     runs = _runs("worker-image")
     assert "docker build --tag resumate-worker --file backend/Dockerfile.agent backend" in runs
     assert 'docker run --rm --entrypoint python resumate-worker -c "import interview_agent"' in runs
-
-
-def test_dependabot_proposes_updates_for_every_part_every_week():
-    config = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
-    covered = {(update["package-ecosystem"], update["directory"]) for update in config["updates"]}
-    # uv, not pip: it remakes the backend's locks as the lock script does.
-    assert covered == {("uv", "/backend"), ("npm", "/frontend"), ("github-actions", "/")}
-    assert {update["schedule"]["interval"] for update in config["updates"]} == {"weekly"}

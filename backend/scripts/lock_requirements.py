@@ -5,8 +5,8 @@ that work. This pins all of it, every dependency included, at one exact
 version with the hashes of its files, into the .txt file of the same name:
 what Render, CI and the worker's image install. It runs uv's pip compile, in
 Docker with a fixed uv, for runtime.txt's Python on every system: the same
-files install on Linux, macOS and Windows. Dependabot updates them with uv
-too, keeping those options.
+files install on Linux, macOS and Windows. Updates are made with this script
+too, in our own commits.
 
     python backend/scripts/lock_requirements.py               # after changing a .in file
     python backend/scripts/lock_requirements.py -P fastapi    # fastapi to its newest allowed
