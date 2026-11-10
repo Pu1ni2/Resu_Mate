@@ -187,7 +187,7 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-    plan: free
+    # No plan: a static site has none, and Render's schema refuses one.
 
   # LiveKit interview worker, for avatar interviews. Render has no free plan
   # for background workers, so it isn't deployed by default. To add it,
