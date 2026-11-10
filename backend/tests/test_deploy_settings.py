@@ -28,3 +28,8 @@ def _worker_block():
 def test_render_deploys_only_commits_ci_has_passed():
     for service in (_service("resumate-backend"), _service("resumate-frontend"), _worker_block()):
         assert service["autoDeployTrigger"] == "checksPass", service["name"]
+
+
+def test_the_static_site_names_no_plan():
+    # Render's schema refuses one: a static site has no plans.
+    assert "plan" not in _service("resumate-frontend")
