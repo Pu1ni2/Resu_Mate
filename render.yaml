@@ -39,7 +39,12 @@ services:
     # with no new migrations is a no-op. The app refuses to start on a
     # Postgres that isn't migrated to the newest revision.
     buildCommand: pip install -r requirements.txt && alembic upgrade head
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # On a deploy or restart, Render asks the process to stop, then ends it
+    # after maxShutdownDelaySeconds. Uvicorn gives the requests under way up
+    # to 10 seconds to finish; the app's own shutdown then runs, all within
+    # Render's 30.
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --timeout-graceful-shutdown 10
+    maxShutdownDelaySeconds: 30
     # Answers 503 when the database can't be reached, so a broken deploy shows.
     healthCheckPath: /health
     envVars:
@@ -203,6 +208,9 @@ services:
   #   autoDeployTrigger: checksPass
   #   buildCommand: pip install -r requirements-agent.txt
   #   startCommand: python interview_agent.py start
+  #   # Asked to stop, the worker takes no new interviews and finishes the
+  #   # ones under way: give it Render's longest wait, 5 minutes.
+  #   maxShutdownDelaySeconds: 300
   #   envVars:
   #     - key: PYTHON_VERSION
   #       value: 3.12.8

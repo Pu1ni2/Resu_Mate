@@ -2,6 +2,13 @@
 app = 'resumate-interview-agent'
 primary_region = 'iad'
 
+# On a deploy, Fly asks the worker to stop, then ends it after kill_timeout.
+# The worker takes no new interviews and finishes the ones under way, so it
+# gets Fly's longest wait, 5 minutes. Deploy it between interviews: a longer
+# one would still be cut.
+kill_signal = 'SIGTERM'
+kill_timeout = '300s'
+
 [build]
   dockerfile = 'Dockerfile.agent'
 
