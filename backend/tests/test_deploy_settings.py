@@ -46,3 +46,10 @@ def test_a_deploy_lets_the_api_and_the_worker_finish_their_work():
     assert _worker_block()["maxShutdownDelaySeconds"] == 300
     fly = tomllib.loads((ROOT / "backend" / "fly.toml").read_text(encoding="utf-8"))
     assert (fly["kill_signal"], fly["kill_timeout"]) == ("SIGTERM", "300s")
+
+
+def test_fly_toml_writes_down_no_server_address():
+    # It held the API's address, so a moved API kept being sent transcripts
+    # at the old one. It's a setting given at deploy now.
+    fly = tomllib.loads((ROOT / "backend" / "fly.toml").read_text(encoding="utf-8"))
+    assert "BACKEND_URL" not in fly.get("env", {})
