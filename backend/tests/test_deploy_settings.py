@@ -53,3 +53,20 @@ def test_fly_toml_writes_down_no_server_address():
     # at the old one. It's a setting given at deploy now.
     fly = tomllib.loads((ROOT / "backend" / "fly.toml").read_text(encoding="utf-8"))
     assert "BACKEND_URL" not in fly.get("env", {})
+
+
+def _deploy_section(title):
+    deploy = (ROOT / "backend" / "DEPLOY.md").read_text(encoding="utf-8")
+    start = deploy.index(f"\n## {title}\n")
+    return deploy[start:deploy.index("\n## ", start + 1)]
+
+
+def test_the_checklist_names_what_production_cant_start_without():
+    checklist = _deploy_section("Going live: the checklist")
+    for setting in ("FRONTEND_URL", "SENDGRID_API_KEY", "FROM_EMAIL", "DATABASE_URL", "SECRET_KEY",
+                    "DEBUG=false", "VITE_API_URL", "BACKEND_URL", "AGENT_SHARED_SECRET"):
+        assert f"`{setting}" in checklist, setting
+    # What a service made by hand needs, as render.yaml has it.
+    assert "After CI Checks Pass" in checklist
+    assert "--timeout-graceful-shutdown 10" in checklist
+    assert "--timeout-graceful-shutdown 10" in _service("resumate-backend")["startCommand"]
