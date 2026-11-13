@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
 from app.models.evaluation import CandidateEvaluation
+from app.models.job import Job
 from app.services.scores import is_number, average_score
 
 
@@ -96,8 +97,8 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
 
     Their candidates (with their interviews, portal grants and evaluations),
     any interview or grant they filed elsewhere, sourcing runs and the
-    profiles found, screening runs, chat histories, the audit records of their account, and
-    the account. Returns the stored-file keys of the candidates' original
+    profiles found, screening runs, chat histories, background jobs, the audit
+    records of their account, and the account. Returns the stored-file keys of the candidates' original
     files, to remove from object storage once this has committed. Commits.
     """
     from app.models.auth import HiringManager
@@ -108,7 +109,7 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     for model in (Interview, CandidateAccess):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await delete_candidates(session, Candidate.manager_id == manager_id)
-    for model in (SourcedProfile, SourcingRun, ScreeningRun, CandidateEvaluation, ChatHistory, AuditLog):
+    for model in (SourcedProfile, SourcingRun, ScreeningRun, CandidateEvaluation, ChatHistory, Job, AuditLog):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await session.execute(delete(HiringManager).where(HiringManager.id == manager_id))
     await session.commit()
