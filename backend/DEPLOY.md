@@ -2,6 +2,70 @@
 
 Hard-won gotchas. Read before touching the Render config.
 
+## Going live: the checklist
+
+Before the first deploy, and again when moving to paid hosting.
+
+**The settings production can't start without.** Without one, the API
+refuses to start, and Render keeps running the version before it: the
+service's **Events** page shows the failed deploy, and its log says which
+setting is missing.
+
+- `FRONTEND_URL`, the site's address (see CORS below);
+- `SENDGRID_API_KEY`, with a `FROM_EMAIL` that SendGrid has verified (see Email);
+- `DATABASE_URL`, a Postgres; the build command brings it up to date;
+- `SECRET_KEY`, long and random (the Blueprint generates one);
+- `DEBUG=false`.
+
+The site needs `VITE_API_URL`, the API's address: its build stops without it.
+
+**A service made by hand.** Render applies `render.yaml` only to the services
+a Blueprint created from it. For one made in the dashboard, set the same
+things there:
+
+- the Build and Start Commands as `render.yaml` has them, the start command's
+  `--timeout-graceful-shutdown 10` included;
+- Health Check Path `/health`;
+- Auto-Deploy: **After CI Checks Pass**;
+- `PYTHON_VERSION=3.12.8` (see Python version below);
+- for the site, its headers and its rewrite rule.
+
+**After each deploy, check the new version is the one answering.** A failed
+deploy leaves the old one running, which looks fine at a glance:
+
+```
+curl https://<your API>.onrender.com/          # {"status":"running"}, and nothing more
+curl -I https://<your API>.onrender.com/docs   # 404: no public API docs in production
+curl -I https://<your API>.onrender.com/health # 200, with an X-Request-ID header
+```
+
+**The interview worker on Fly.io**, from `backend/`:
+
+```
+fly secrets set BACKEND_URL=https://<your API>.onrender.com AGENT_SHARED_SECRET=<the API's value> \
+  OPENAI_API_KEY=... LIVEKIT_URL=... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... \
+  SIMLI_API_KEY=... SIMLI_FACE_ID=...
+fly deploy
+```
+
+It doesn't start without `BACKEND_URL` and `AGENT_SHARED_SECRET`. A deploy
+gives the interviews under way up to 5 minutes to finish, so deploy it
+between interviews.
+
+**Moving to paid hosting:**
+
+- A paid Postgres, which Render backs up itself. Then close it to the
+  internet: under the database in `render.yaml`, `ipAllowList: []`, so only
+  Render's own services can connect. `scripts/backup_db.py` connects from
+  outside, so Render's backups replace it.
+- Move `alembic upgrade head` from the build command to `preDeployCommand`
+  (paid plans only): it runs before the new version takes over, and a
+  failure stops the deploy.
+- Choose how long to keep candidates' data, and run
+  `python cleanup_stale.py --days <N> --apply` on a schedule (the Retention
+  note below).
+- An always-on plan, so the API no longer sleeps after 15 idle minutes.
+
 ## Python version — keep it at 3.12
 
 3.12 is what CI tests on, and what the locked requirements
