@@ -196,8 +196,11 @@ Render keeps serving the site it has.
 Sign-in codes, interview invitations, password resets and deletion codes are
 sent with SendGrid. Set `SENDGRID_API_KEY`, and `FROM_EMAIL` to a sender
 SendGrid has verified (Settings → Sender Authentication), or it refuses to
-send. Without email, managers get the candidate sign-in link to pass on; with
-`DEBUG=true` (local only) the codes appear in the app.
+send. Production doesn't start without email. When an invitation still
+isn't sent (the manager's address not yet confirmed, the day's limit
+reached, or SendGrid refusing it), the manager is shown the candidate's
+sign-in link to pass on. With `DEBUG=true` (local only), sign-in codes and
+links appear in the app instead of being emailed.
 
 ## Avatar interviews (needs a paid worker)
 
@@ -260,13 +263,24 @@ removes the object too.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+`.github/workflows/ci.yml` runs on every push and pull request to `main`. Its
+jobs get a token that can only read the code, and a newer push cancels the
+run it makes out of date.
 
-- **backend**: `pytest -q` on Python 3.12;
-- **migrations**: a Postgres 16 database built from empty with
-  `alembic upgrade head`, `alembic check` against the models, the app's startup
-  check, then `alembic downgrade base` and up again;
-- **frontend**: `npm ci`, lint, build and the tests on Node 24.
+- **backend**, on Python 3.12: installs `requirements-dev.txt`, then
+  `ruff check .`, `pip-audit` over the locked packages (one exception, with
+  its reason written beside it), and `pytest -q`;
+- **migrations**: on the server's own install (`requirements.txt`), a
+  Postgres 16 database built from empty with `alembic upgrade head`,
+  `alembic check` against the models, the app's startup check, then
+  `alembic downgrade base` and up again;
+- **frontend**, on Node 24: `npm ci`, `npm audit --audit-level=high`, lint,
+  build and the tests;
+- **worker-image**: builds the worker's image from `Dockerfile.agent`, as
+  Fly.io does, and imports the worker in it;
+- **secrets**: gitleaks over the commits a push or pull request adds.
+
+Render deploys a commit only once all of these have passed on it.
 
 ## Verify a deploy
 
