@@ -70,3 +70,11 @@ def test_the_checklist_names_what_production_cant_start_without():
     assert "After CI Checks Pass" in checklist
     assert "--timeout-graceful-shutdown 10" in checklist
     assert "--timeout-graceful-shutdown 10" in _service("resumate-backend")["startCommand"]
+
+
+def test_deploy_md_names_every_ci_job_and_says_email_is_required():
+    ci = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    listed = _deploy_section("CI")
+    assert [job for job in ci["jobs"] if f"**{job}**" not in listed] == []
+    # It said production ran without email: it doesn't start without it.
+    assert "Production doesn't start without email" in _deploy_section("Email")
