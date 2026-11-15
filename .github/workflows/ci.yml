@@ -101,6 +101,44 @@ jobs:
       - name: The migrations roll back and forward
         run: alembic downgrade base && alembic upgrade head
 
+  # What only Postgres shows, such as workers claiming background jobs at
+  # the same time, each job taken by one of them (backend/pgtests). The main
+  # tests run on SQLite.
+  postgres:
+    runs-on: ubuntu-24.04  # pinned, as for the backend job
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: resumate
+          POSTGRES_PASSWORD: resumate
+          POSTGRES_DB: resumate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resumate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://resumate:resumate@localhost:5432/resumate
+      SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890
+      RESUMATE_ENV_FILE: /dev/null
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Migrate an empty database
+        run: alembic upgrade head
+      - name: Postgres-only tests
+        run: pytest -q pgtests
+
   frontend:
     runs-on: ubuntu-24.04  # pinned, as for the backend job
     defaults:

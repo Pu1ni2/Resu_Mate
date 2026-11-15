@@ -21,7 +21,7 @@ async def _add(**fields):
     from app.core import database
     from app.models.job import Job
     async with database.async_session() as db:
-        job = Job(kind="test.kind", **fields)
+        job = Job(**{"kind": "test.kind", **fields})
         db.add(job)
         await db.commit()
         return job.id
@@ -130,3 +130,57 @@ def test_its_lane_is_woken_once_the_transaction_commits(client):
     finally:
         jobs.on_queued("work", None)
         jobs.on_queued("email", None)
+
+
+# ── claiming ──────────────────────────────────────────────────────────────────
+
+async def _claim(kinds=("test.kind",), limit=10, now=None, worker="host:1:abcd1234", lease_seconds=60):
+    from app.core import database
+    from app.services import jobs
+    async with database.async_session() as db:
+        return await jobs.claim(db, kinds, limit=limit, now=now or datetime.utcnow(), worker=worker,
+                                lease_seconds=lease_seconds)
+
+
+def test_the_most_urgent_due_jobs_are_taken_first(client):
+    now = datetime.utcnow()
+    later = _run(_add(priority=100, run_at=now - timedelta(minutes=1)))
+    sooner = _run(_add(priority=100, run_at=now - timedelta(minutes=5)))
+    code = _run(_add(priority=0, run_at=now))
+    _run(_add(run_at=now + timedelta(hours=1)))  # not due yet
+    _run(_add(kind="other.kind"))  # a kind this process doesn't do
+    taken = _run(_claim(limit=2, now=now))
+    assert [row.id for row in taken] == [code, sooner]
+    assert [row.id for row in _run(_claim(limit=10, now=now))] == [later]
+    assert _run(_claim(now=now)) == []
+
+
+def test_a_taken_job_is_marked_running_by_its_worker_until_its_lease_ends(client):
+    now = datetime.utcnow()
+    job_id = _run(_add(payload={"interview_id": 7}, run_at=now))
+    (row,) = _run(_claim(now=now, worker="host:42:feedbeef", lease_seconds=120))
+    assert (row.id, row.kind, row.payload, row.attempts) == (job_id, "test.kind", {"interview_id": 7}, 1)
+    (job,) = _run(_jobs())
+    assert (job.status, job.locked_by, job.attempts) == ("running", "host:42:feedbeef", 1)
+    assert job.locked_until == now + timedelta(seconds=120) and job.started_at == now
+
+
+def test_a_job_whose_worker_stopped_is_taken_up_again_once_its_lease_runs_out(client):
+    now = datetime.utcnow()
+    _run(_add(run_at=now))
+    _run(_claim(now=now, worker="host:1:gone0000", lease_seconds=60))
+    # Its lease still holds: no one else takes it.
+    assert _run(_claim(now=now + timedelta(seconds=59), worker="host:2:next0000")) == []
+    (row,) = _run(_claim(now=now + timedelta(seconds=61), worker="host:2:next0000"))
+    assert row.attempts == 2
+    assert _run(_jobs())[0].locked_by == "host:2:next0000"
+
+
+def test_a_job_past_its_last_attempt_fails_instead_of_running_again(client):
+    now = datetime.utcnow()
+    _run(_add(max_attempts=1, dedupe_key="report:7", run_at=now))
+    _run(_claim(now=now, lease_seconds=60))
+    assert _run(_claim(now=now + timedelta(seconds=61))) == []
+    (job,) = _run(_jobs())
+    assert (job.status, job.last_error, job.locked_by, job.dedupe_key) == ("failed", "lease_expired", None, None)
+    assert job.finished_at == now + timedelta(seconds=61)

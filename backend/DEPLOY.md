@@ -274,6 +274,8 @@ run it makes out of date.
   Postgres 16 database built from empty with `alembic upgrade head`,
   `alembic check` against the models, the app's startup check, then
   `alembic downgrade base` and up again;
+- **postgres**: `backend/pgtests` on a migrated Postgres 16, for what only
+  Postgres shows, such as workers claiming background jobs at once;
 - **frontend**, on Node 24: `npm ci`, `npm audit --audit-level=high`, lint,
   build and the tests;
 - **worker-image**: builds the worker's image from `Dockerfile.agent`, as
