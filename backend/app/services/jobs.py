@@ -8,10 +8,10 @@ exactly when the request's other changes do, and the request answers at
 once.
 """
 import re
-from datetime import datetime
-from typing import Callable, Optional
+from datetime import datetime, timedelta
+from typing import Callable, Iterable, Optional
 
-from sqlalchemy import event, insert
+from sqlalchemy import and_, event, insert, or_, select, update
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session
 
@@ -97,6 +97,56 @@ async def enqueue(db, kind: str, payload: Optional[dict] = None, *, dedupe_key: 
     if job_id is not None:
         db.sync_session.info.setdefault(_QUEUED, set()).add(lane_of(kind))
     return job_id
+
+
+def _due(kinds: Iterable[str], now: datetime):
+    """Queued jobs whose time has come, and running ones whose worker's lease
+    ran out: it stopped, or lost the job."""
+    return and_(
+        Job.kind.in_(list(kinds)),
+        or_(
+            and_(Job.status == "queued", Job.run_at <= now),
+            and_(Job.status == "running", Job.locked_until < now),
+        ),
+    )
+
+
+async def claim(db, kinds: Iterable[str], *, limit: int, now: datetime, worker: str, lease_seconds: int) -> list:
+    """Take up to `limit` due jobs of these kinds for this worker, and commit.
+
+    Each is marked running, by `worker`, until now plus the lease, and its
+    attempt is counted. On Postgres, processes claiming at once never take
+    the same job (FOR UPDATE SKIP LOCKED); SQLite writes one at a time. The
+    kinds are those this process can do, so an older process, during a
+    deploy, never takes a kind it doesn't know. A job past its last attempt
+    fails as lease_expired instead of running again. Returns the rest, most
+    urgent first.
+    """
+    picked = (select(Job.id).where(_due(kinds, now))
+              .order_by(Job.priority, Job.run_at, Job.id).limit(limit))
+    if db.get_bind().dialect.name == "postgresql":
+        next_jobs = picked.with_for_update(skip_locked=True).cte("next_jobs")
+        statement = update(Job).where(Job.id == next_jobs.c.id)
+    else:
+        statement = update(Job).where(Job.id.in_(picked))
+    statement = (
+        statement.values(status="running", locked_by=worker, heartbeat_at=now, started_at=now,
+                         locked_until=now + timedelta(seconds=lease_seconds), attempts=Job.attempts + 1)
+        .returning(Job.id, Job.kind, Job.payload, Job.attempts, Job.max_attempts, Job.priority,
+                   Job.run_at, Job.manager_id, Job.created_at)
+        .execution_options(synchronize_session=False)
+    )
+    rows = (await db.execute(statement)).all()
+    spent = [row.id for row in rows if row.attempts > row.max_attempts]
+    if spent:
+        await db.execute(
+            update(Job).where(Job.id.in_(spent), Job.locked_by == worker)
+            .values(status="failed", last_error="lease_expired", dedupe_key=None, finished_at=now,
+                    locked_by=None, locked_until=None)
+            .execution_options(synchronize_session=False)
+        )
+    await db.commit()
+    return sorted((row for row in rows if row.id not in spent), key=lambda row: (row.priority, row.run_at, row.id))
 
 
 @event.listens_for(Session, "after_commit")
