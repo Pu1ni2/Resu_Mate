@@ -239,3 +239,31 @@ def test_a_lane_keeps_going_when_claiming_fails(client, kinds, monkeypatch, capl
     assert failed == [True] and ran == [{"interview_id": 7}]
     assert "claiming failed: OperationalError" in caplog.text
     assert "db.internal" not in caplog.text  # its type and place, never its text
+
+
+# ── started and stopped with the server ───────────────────────────────────────
+
+def test_the_server_runs_jobs_and_lets_a_running_one_end_on_shutdown(client, kinds, monkeypatch):
+    from fastapi.testclient import TestClient
+    import main
+    from app.core.config import settings
+
+    async def write_report(payload):
+        await asyncio.sleep(0.5)
+    kinds("test.report", write_report)
+    monkeypatch.setattr(settings, "jobs_runner", True)
+    monkeypatch.setattr(settings, "jobs_shutdown_grace_seconds", 5)
+    # A second copy of the app, with the runner on (client's has it off).
+    with TestClient(main.app):
+        runner = main.app.state.job_runner
+        assert [lane.name for lane in runner.lanes] == ["email", "work"]
+        job_id = _run(_queue("test.report"))
+        _run(_until_status(job_id, "running"))
+    # The shutdown let it end, rather than cutting it off.
+    assert _run(_job(job_id)).status == "done"
+    assert all(lane.taking.done() for lane in runner.lanes)
+
+
+def test_the_tests_app_has_no_runner_of_its_own(client):
+    import main
+    assert main.app.state.job_runner is None
