@@ -7,9 +7,12 @@ queues a job instead (enqueue), inside its own transaction: the job exists
 exactly when the request's other changes do, and the request answers at
 once.
 """
+import logging
+import random
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Callable, Iterable, Optional
+from typing import Awaitable, Callable, Iterable, Optional
 
 from sqlalchemy import and_, event, insert, or_, select, update
 from sqlalchemy.dialects import postgresql, sqlite
@@ -27,6 +30,8 @@ EMAIL_LANE, WORK_LANE = "email", "work"
 
 _wakers: dict = {}
 _QUEUED = "resumate_jobs_queued_lanes"
+
+logger = logging.getLogger("resumate.jobs")
 
 
 class UnsafePayload(ValueError):
@@ -65,18 +70,24 @@ def on_queued(lane: str, wake: Optional[Callable[[], None]]) -> None:
 
 
 async def enqueue(db, kind: str, payload: Optional[dict] = None, *, dedupe_key: Optional[str] = None,
-                  run_at: Optional[datetime] = None, priority: int = 100, max_attempts: int = 5,
-                  manager_id: Optional[int] = None) -> Optional[int]:
+                  run_at: Optional[datetime] = None, priority: Optional[int] = None,
+                  max_attempts: Optional[int] = None, manager_id: Optional[int] = None) -> Optional[int]:
     """Queue a job in the caller's transaction; its id, or None when a job
     with this dedupe_key is already queued or running.
 
     Nothing is committed here: the job is queued when the caller commits,
     with the rest of what the request changed, and its lane is woken then.
+    Its priority and attempts are its kind's (handler), unless given.
     """
     if not KIND.match(kind or "") or len(kind) > 64:
         raise ValueError("a job's kind is a short dotted name, such as report.write")
     if dedupe_key is not None and not CODE.match(dedupe_key):
         raise UnsafePayload("dedupe_key isn't a short code")
+    declared = _handlers.get(kind)
+    if priority is None:
+        priority = declared.priority if declared else 100
+    if max_attempts is None:
+        max_attempts = declared.max_attempts if declared else 5
     now = datetime.utcnow()
     values = dict(
         kind=kind, payload=check_payload(dict(payload or {})), status="queued", priority=priority,
@@ -147,6 +158,131 @@ async def claim(db, kinds: Iterable[str], *, limit: int, now: datetime, worker: 
         )
     await db.commit()
     return sorted((row for row in rows if row.id not in spent), key=lambda row: (row.priority, row.run_at, row.id))
+
+
+class PermanentError(Exception):
+    """Raised by a handler for a failure no retry would fix; `code` (a short
+    code) is what the job records."""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class Handler:
+    kind: str
+    run: Callable[[dict], Awaitable[None]]
+    lane: str
+    max_attempts: int
+    lease_seconds: int
+    timeout_seconds: float
+    backoff_base: float
+    backoff_cap: float
+    priority: int
+    concurrency: Optional[int]
+    on_failure: Optional[Callable]
+
+
+_handlers: dict = {}
+
+
+def handler(kind: str, *, max_attempts: int = 5, lease_seconds: int = 120, timeout_seconds: float = 600,
+            backoff: tuple = (10, 600), priority: int = 100, concurrency: Optional[int] = None,
+            on_failure: Optional[Callable] = None):
+    """Register what a kind of job does: `async def run(payload)`.
+
+    It opens its own database sessions, and holds none across a call to the
+    AI or the email service. on_failure(db, job, code) runs when the job
+    fails for good, in the same transaction that records the failure.
+    """
+    if not KIND.match(kind) or len(kind) > 64:
+        raise ValueError("a job's kind is a short dotted name, such as report.write")
+
+    def register(run):
+        _handlers[kind] = Handler(kind, run, lane_of(kind), max_attempts, lease_seconds, timeout_seconds,
+                                  backoff[0], backoff[1], priority, concurrency, on_failure)
+        return run
+    return register
+
+
+def kinds_in(lane: str) -> list:
+    return sorted(kind for kind, h in _handlers.items() if h.lane == lane)
+
+
+def _retryable(exc: BaseException) -> bool:
+    """A failure that a later try may not meet: a service busy or out of
+    reach, a timeout, the database briefly unavailable."""
+    import httpx
+    import openai
+    from sqlalchemy.exc import OperationalError
+    return isinstance(exc, (
+        TimeoutError, ConnectionError, OperationalError, httpx.TransportError,
+        openai.RateLimitError, openai.APITimeoutError, openai.APIConnectionError, openai.InternalServerError,
+    ))
+
+
+def error_code(prefix: str, exc: BaseException) -> str:
+    """What a job records about a failure: the kind of failure and the
+    exception's class, never its text, which can hold anyone's data."""
+    return f"{prefix}:{type(exc).__name__}"[:200]
+
+
+def backoff_seconds(attempt: int, base: float, cap: float) -> float:
+    """The wait before the next try: doubling from `base`, at most `cap`,
+    give or take a fifth, so jobs that failed together don't all retry
+    together."""
+    return min(cap, base * 2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
+
+
+async def _settle(row, worker: str, values: dict, outcome: str, code: Optional[str] = None,
+                  on_failure: Optional[Callable] = None) -> str:
+    """Write a claimed job's next state, if `worker` still holds it.
+
+    The where clause is the fence: a worker whose lease ran out, and whose
+    job another worker took up, changes nothing, and reports the job lost.
+    """
+    from app.core.database import async_session
+    async with async_session() as db:
+        result = await db.execute(
+            update(Job).where(Job.id == row.id, Job.locked_by == worker, Job.status == "running")
+            .values(**values).execution_options(synchronize_session=False)
+        )
+        if result.rowcount != 1:
+            await db.rollback()
+            logger.warning("job %s %s lost -", row.id, row.kind)
+            return "lost"
+        if on_failure is not None:
+            await on_failure(db, row, code)
+        await db.commit()
+    logger.info("job %s %s %s %s", row.id, row.kind, outcome, code or "-")
+    return outcome
+
+
+async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.utcnow) -> str:
+    """Run one job this worker claimed, and write where it ends up: done,
+    retry (queued again, after a wait), failed, or lost. Returns that."""
+    found = _handlers.get(row.kind)
+    released = dict(locked_by=None, locked_until=None, heartbeat_at=None)
+    if found is None:
+        return await _settle(row, worker, dict(status="failed", last_error="unknown_kind", dedupe_key=None,
+                                               finished_at=now(), **released), "failed", "unknown_kind")
+    try:
+        await found.run(dict(row.payload))
+    except PermanentError as stop:
+        code = stop.code[:200]
+    except Exception as exc:
+        if _retryable(exc) and row.attempts < row.max_attempts:
+            code = error_code("retry", exc)
+            wait = timedelta(seconds=backoff_seconds(row.attempts, found.backoff_base, found.backoff_cap))
+            return await _settle(row, worker, dict(status="queued", run_at=now() + wait, last_error=code,
+                                                   **released), "retry", code)
+        code = error_code("error", exc)
+    else:
+        return await _settle(row, worker, dict(status="done", dedupe_key=None, last_error=None,
+                                               finished_at=now(), **released), "done")
+    return await _settle(row, worker, dict(status="failed", last_error=code, dedupe_key=None,
+                                           finished_at=now(), **released), "failed", code, found.on_failure)
 
 
 @event.listens_for(Session, "after_commit")
