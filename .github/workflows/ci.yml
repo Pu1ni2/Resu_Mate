@@ -53,7 +53,7 @@ jobs:
         run: pip-audit --disable-pip --require-hashes -r requirements-dev.txt --ignore-vuln CVE-2026-114603 --ignore-vuln CVE-2026-126360
       - name: Run tests
         env:
-          SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890
+          SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890  # gitleaks:allow (CI's stand-in, not a secret)
           DEBUG: "true"
         run: pytest -q
 
@@ -82,7 +82,7 @@ jobs:
         working-directory: backend
     env:
       DATABASE_URL: postgresql://resumate:resumate@localhost:5432/resumate
-      SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890
+      SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890  # gitleaks:allow (CI's stand-in, not a secret)
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -125,7 +125,7 @@ jobs:
         working-directory: backend
     env:
       DATABASE_URL: postgresql://resumate:resumate@localhost:5432/resumate
-      SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890
+      SECRET_KEY: ci-secret-key-that-is-definitely-long-enough-1234567890  # gitleaks:allow (CI's stand-in, not a secret)
       RESUMATE_ENV_FILE: /dev/null
     steps:
       - uses: actions/checkout@v7
