@@ -93,6 +93,12 @@ class Interview(Base):
     answers = Column(JSON, default=list)
     scores = Column(JSON, default=list)
     report = Column(Text)
+    # Where its report stands: a background job writes it once the interview
+    # ends (app/services/interview_report.py), "pending" until then, then
+    # "done", or "failed" with report_error, a short code, never an error's
+    # text. None for an interview finished before there were such jobs.
+    report_status = Column(String(16), nullable=True)
+    report_error = Column(String(200), nullable=True)
     status = Column(String(20), default="pending")  # pending, in_progress, interrupted, completed
     # Interview format: "avatar" (existing LiveKit + Simli flow with the
     # camera + lip-synced face) or "conversational" (audio-only OpenAI Realtime
