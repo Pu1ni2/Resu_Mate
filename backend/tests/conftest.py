@@ -103,6 +103,21 @@ def client():
         yield c
 
 
+@pytest.fixture()
+def kinds():
+    """Register kinds of background job for one test: kinds(kind, run, **options),
+    as app.services.jobs.handler takes them. They're gone after the test."""
+    from app.services import jobs
+    added = []
+
+    def register(kind, run, **options):
+        jobs.handler(kind, **options)(run)
+        added.append(kind)
+    yield register
+    for kind in added:
+        jobs._handlers.pop(kind, None)
+
+
 def register(client, email, password="pw12345678", name="Mgr", verified=True):
     """Register a hiring manager, return (token, user_dict).
 

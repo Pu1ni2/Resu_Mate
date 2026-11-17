@@ -194,20 +194,7 @@ def test_a_job_past_its_last_attempt_fails_instead_of_running_again(client, kind
 
 
 # ── running a job ─────────────────────────────────────────────────────────────
-
-@pytest.fixture()
-def kinds():
-    """Register kinds of job for one test: kinds(kind, run, **options)."""
-    from app.services import jobs
-    added = []
-
-    def register(kind, run, **options):
-        jobs.handler(kind, **options)(run)
-        added.append(kind)
-    yield register
-    for kind in added:
-        jobs._handlers.pop(kind, None)
-
+# (kinds, the fixture that registers kinds of job for a test, is in conftest.py.)
 
 async def _run_due(kind_names, now, worker="host:1:abcd1234"):
     """Claim the due jobs of these kinds, as `worker`, and run each to its
