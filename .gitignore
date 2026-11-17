@@ -11,8 +11,12 @@ htmlcov/
 .env
 .env.*
 !.env.example
-# Local databases, which hold candidates' data.
+# Local databases, which hold candidates' data, and the files SQLite keeps
+# beside one while it writes (WAL mode's -wal and -shm, the -journal).
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 *.sqlite
 *.sqlite3
 *.log

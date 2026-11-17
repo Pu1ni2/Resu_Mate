@@ -1,5 +1,6 @@
 """Database connection and session management"""
 import os
+from sqlalchemy import event
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
@@ -50,6 +51,21 @@ def engine_options(url: str) -> dict:
 
 engine = create_async_engine(DATABASE_URL, **engine_options(DATABASE_URL))
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+
+def use_wal(dbapi_connection, _record) -> None:
+    """Work in WAL mode (write-ahead logging) on a SQLite file: readers
+    don't wait for the writer, nor the writer for readers. The job runner's
+    lanes write every few seconds, and in SQLite's default mode a request
+    reading at that moment could hold up their commit, or they its read.
+    The file keeps the mode; Postgres works this way already."""
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.close()
+
+
+if engine.dialect.name == "sqlite" and make_url(DATABASE_URL).database not in (None, "", ":memory:"):
+    event.listen(engine.sync_engine, "connect", use_wal)
 
 
 def migration_head() -> str:

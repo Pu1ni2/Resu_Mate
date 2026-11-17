@@ -11,12 +11,15 @@ import pytest
 
 # Configure env BEFORE importing the app so settings + the DB engine pick it up.
 _TMP_DB = os.path.join(tempfile.gettempdir(), "resumate_pytest.db")
-# Start from a clean file every session.
-if os.path.exists(_TMP_DB):
-    try:
-        os.remove(_TMP_DB)
-    except OSError:
-        pass
+# Start from a clean file every session, without the files SQLite keeps beside
+# it in WAL mode: a -wal left by an earlier run would be replayed into the new
+# file, rows and all.
+for _leftover in (_TMP_DB, _TMP_DB + "-wal", _TMP_DB + "-shm"):
+    if os.path.exists(_leftover):
+        try:
+            os.remove(_leftover)
+        except OSError:
+            pass
 
 # No settings file: backend/.env holds a developer's real keys, and with them a
 # test run could send real email and reach OpenAI and S3.
