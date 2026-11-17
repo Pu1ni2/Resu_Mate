@@ -176,11 +176,18 @@ def test_a_job_whose_worker_stopped_is_taken_up_again_once_its_lease_runs_out(cl
     assert _run(_jobs())[0].locked_by == "host:2:next0000"
 
 
-def test_a_job_past_its_last_attempt_fails_instead_of_running_again(client):
+def test_a_job_past_its_last_attempt_fails_instead_of_running_again(client, kinds):
+    ran = []
+
+    async def write_report(payload):
+        ran.append(payload)
+    kinds("test.kind", write_report)
     now = datetime.utcnow()
     _run(_add(max_attempts=1, dedupe_key="report:7", run_at=now))
     _run(_claim(now=now, lease_seconds=60))
-    assert _run(_claim(now=now + timedelta(seconds=61))) == []
+    # Its worker stopped during its one try, and its lease ran out.
+    assert _run(_run_due(["test.kind"], now + timedelta(seconds=61))) == ["failed"]
+    assert ran == []
     (job,) = _run(_jobs())
     assert (job.status, job.last_error, job.locked_by, job.dedupe_key) == ("failed", "lease_expired", None, None)
     assert job.finished_at == now + timedelta(seconds=61)

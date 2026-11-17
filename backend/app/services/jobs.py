@@ -138,9 +138,9 @@ async def claim(db, kinds: Iterable[str], *, limit: int, now: datetime, worker: 
     attempt is counted. On Postgres, processes claiming at once never take
     the same job (FOR UPDATE SKIP LOCKED); SQLite writes one at a time. The
     kinds are those this process can do, so an older process, during a
-    deploy, never takes a kind it doesn't know. A job past its last attempt
-    fails as lease_expired instead of running again. Returns the rest, most
-    urgent first.
+    deploy, never takes a kind it doesn't know. Returns them, most urgent
+    first, for run_claimed: it also ends the jobs that mustn't run again,
+    such as one past its last attempt.
     """
     picked = (select(Job.id).where(_due(kinds, now))
               .order_by(Job.priority, Job.run_at, Job.id).limit(limit))
@@ -156,16 +156,8 @@ async def claim(db, kinds: Iterable[str], *, limit: int, now: datetime, worker: 
         .execution_options(synchronize_session=False)
     )
     rows = (await db.execute(statement)).all()
-    spent = [row.id for row in rows if row.attempts > row.max_attempts]
-    if spent:
-        await db.execute(
-            update(Job).where(Job.id.in_(spent), Job.locked_by == worker)
-            .values(status="failed", last_error="lease_expired", dedupe_key=None, finished_at=now,
-                    locked_by=None, locked_until=None)
-            .execution_options(synchronize_session=False)
-        )
     await db.commit()
-    return sorted((row for row in rows if row.id not in spent), key=lambda row: (row.priority, row.run_at, row.id))
+    return sorted(rows, key=lambda row: (row.priority, row.run_at, row.id))
 
 
 class PermanentError(Exception):
@@ -369,7 +361,9 @@ async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.u
 
     A job asked to stop never runs again: one asked before this worker
     took it up isn't run, and a run that then ends any way but done ends
-    cancelled.
+    cancelled. A job past its last attempt, whose worker stopped during
+    it, isn't run either: it fails as lease_expired, with its kind's
+    on_failure.
     """
     found = _handlers.get(row.kind)
     if found is None:
@@ -378,6 +372,10 @@ async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.u
                 or _lost(row))
     if row.cancel_requested:
         return await _cancel(found, row, worker, now)
+    if row.attempts > row.max_attempts:
+        return await _unfinished(found, row, worker, now, dict(
+            status="failed", last_error="lease_expired", dedupe_key=None, finished_at=now()),
+            "failed", "lease_expired", found.on_failure)
     try:
         stopped = await _run_watched(found, row, worker, now)
     except Defer as wait:
