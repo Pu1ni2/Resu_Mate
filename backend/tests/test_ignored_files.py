@@ -25,6 +25,9 @@ def _ignored(path):
 @pytest.mark.parametrize("path", [
     ".env", ".env.local", "backend/.env.production", "frontend/.env.development.local",
     "backend/resumate.db", "local.sqlite", "backend/resumate.sqlite3",
+    # What SQLite keeps beside a database while it writes: WAL mode's two
+    # files, and the default mode's journal. Each holds the database's rows.
+    "backend/resumate.db-wal", "backend/resumate.db-shm", "backend/resumate.db-journal",
     ".venv/lib/x.py", "backend/server.log", "backend/.coverage", "backend/htmlcov/index.html",
     "deploy/key.pem", "backend/backups/2026-11-08.dump", "backend/uploads/cv.pdf",
 ])

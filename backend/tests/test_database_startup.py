@@ -81,3 +81,36 @@ def test_startup_stops_when_the_database_cannot_be_used(monkeypatch):
     with pytest.raises(RuntimeError, match="the code needs y"):
         with TestClient(main.app):
             pass
+
+
+def test_local_sqlite_lets_a_write_commit_while_a_read_is_under_way(client):
+    # WAL mode. In SQLite's default one, a commit waits for every read under
+    # way to end: the job runner's lanes, writing every few seconds, and the
+    # requests reading, held one another up.
+    import asyncio
+    import sqlite3
+    from sqlalchemy.engine import make_url
+
+    async def mode():
+        async with database.engine.connect() as conn:
+            return (await conn.exec_driver_sql("PRAGMA journal_mode")).scalar()
+    assert asyncio.get_event_loop().run_until_complete(mode()) == "wal"
+    path = make_url(database.DATABASE_URL).database
+    setup = sqlite3.connect(path)
+    setup.execute("CREATE TABLE wal_check (n INTEGER)")
+    setup.commit()
+    reader, writer = sqlite3.connect(path, timeout=0.2), sqlite3.connect(path, timeout=0.2)
+    try:
+        reader.execute("BEGIN")
+        assert reader.execute("SELECT count(*) FROM wal_check").fetchone() == (0,)
+        writer.execute("INSERT INTO wal_check VALUES (1)")
+        writer.commit()  # the default mode: "database is locked", after 0.2 s
+        # The read goes on seeing what was there when it began.
+        assert reader.execute("SELECT count(*) FROM wal_check").fetchone() == (0,)
+    finally:
+        reader.rollback()
+        for conn in (reader, writer):
+            conn.close()
+        setup.execute("DROP TABLE wal_check")
+        setup.commit()
+        setup.close()
