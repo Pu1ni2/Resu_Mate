@@ -307,3 +307,49 @@ def test_a_kind_of_job_is_registered_by_a_short_dotted_name(client):
     from app.services import jobs
     with pytest.raises(ValueError):
         jobs.handler("Write the report")
+
+
+# ── waiting, and time limits ──────────────────────────────────────────────────
+
+def test_a_job_that_cant_run_yet_waits_without_using_a_try(client, kinds):
+    from app.services.jobs import Defer
+
+    async def not_yet(payload):
+        raise Defer(30)
+    kinds("test.wait", not_yet)
+    now = datetime.utcnow()
+    _run(_enqueue(kind="test.wait", run_at=now))
+    assert _run(_run_due(["test.wait"], now)) == ["deferred"]
+    (job,) = _run(_jobs())
+    assert (job.status, job.attempts, job.run_at, job.locked_by) == ("queued", 0, now + timedelta(seconds=30), None)
+
+
+def test_a_job_still_waiting_after_half_an_hour_fails(client, kinds):
+    from app.services.jobs import Defer
+
+    async def not_yet(payload):
+        raise Defer(30)
+    kinds("test.wait", not_yet)
+    long_ago = datetime.utcnow() - timedelta(minutes=31)
+    _run(_add(kind="test.wait", created_at=long_ago, run_at=long_ago))
+    assert _run(_run_due(["test.wait"], datetime.utcnow())) == ["failed"]
+    (job,) = _run(_jobs())
+    assert (job.status, job.last_error) == ("failed", "waited_too_long")
+
+
+def test_a_run_past_its_time_limit_is_stopped_and_tried_again(client, kinds):
+    stopped = []
+
+    async def stuck(payload):
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            stopped.append(True)
+            raise
+    kinds("test.stuck", stuck, timeout_seconds=0.05)
+    now = datetime.utcnow()
+    _run(_enqueue(kind="test.stuck", run_at=now))
+    assert _run(_run_due(["test.stuck"], now)) == ["retry"]
+    assert stopped == [True]
+    (job,) = _run(_jobs())
+    assert (job.status, job.last_error) == ("queued", "retry:TimeoutError")
