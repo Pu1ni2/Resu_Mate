@@ -26,6 +26,9 @@ os.environ["SECRET_KEY"] = "test-secret-key-that-is-definitely-long-enough-12345
 os.environ["DEBUG"] = "true"
 os.environ["AGENT_SHARED_SECRET"] = "test-agent-secret"
 os.environ.pop("OPENAI_API_KEY", None)
+# No background job runner in the app: tests run due jobs themselves, at the
+# moment they choose (tests/test_job_runner.py starts its own runners).
+os.environ["JOBS_RUNNER"] = "false"
 
 # Import the app ONCE (no reload — reloading creates a second engine the routers
 # don't use, which was the source of stale-data flakiness).

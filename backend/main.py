@@ -90,13 +90,25 @@ async def lifespan(app: FastAPI):
         # list empty until a restart.
         print(f"[WARN] Could not warm candidate cache: {log_text(e)}")
 
+    # Background jobs run in this process (app/services/job_runner.py),
+    # started once what they use is ready: the candidate store, the agents.
+    # Off in tests (JOBS_RUNNER=false), which run due jobs themselves.
+    runner = None
+    if settings.jobs_runner:
+        from app.services import job_runner
+        runner = job_runner.start(settings.jobs_work_concurrency, settings.jobs_email_concurrency)
+    app.state.job_runner = runner
+
     print("✅ All agents registered")
     print(f"✅ ResuMate AI ready!\n")
 
-    
     yield
-    
+
     print("👋 Shutting down...")
+    # The running jobs get a grace period to end; the rest go back in the
+    # queue, for the next process to take up.
+    if runner is not None:
+        await runner.stop(settings.jobs_shutdown_grace_seconds)
     
     
 
