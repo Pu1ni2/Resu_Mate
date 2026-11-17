@@ -353,3 +353,160 @@ def test_a_run_past_its_time_limit_is_stopped_and_tried_again(client, kinds):
     assert stopped == [True]
     (job,) = _run(_jobs())
     assert (job.status, job.last_error) == ("queued", "retry:TimeoutError")
+
+
+# ── the heartbeat, and stopping a job ─────────────────────────────────────────
+
+def test_a_long_job_keeps_its_lease_while_it_runs(client, kinds):
+    from app.services import jobs
+    seen = []
+
+    async def long_report(payload):
+        await asyncio.sleep(0.5)
+        (job,) = await _jobs()
+        seen.append(job.locked_until)
+    kinds("test.long", long_report, lease_seconds=0.2)
+    _run(_enqueue(kind="test.long"))
+    claimed_at = datetime.utcnow()
+    (row,) = _run(_claim(kinds=["test.long"], now=claimed_at, lease_seconds=0.2))
+    assert _run(jobs.run_claimed(row, "host:1:abcd1234")) == "done"
+    # Without the heartbeat, the lease would have run out 0.2 s after the claim.
+    assert seen[0] > claimed_at + timedelta(seconds=0.3)
+
+
+def test_a_job_another_worker_took_up_is_stopped_here(client, kinds):
+    from app.services import jobs
+    stopped = []
+
+    async def endless(payload):
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            stopped.append(True)
+            raise
+    kinds("test.endless", endless, lease_seconds=0.2)
+
+    async def scenario():
+        await _enqueue(kind="test.endless")
+        (row,) = await _claim(kinds=["test.endless"], worker="host:1:first000", lease_seconds=0.2)
+        running = asyncio.ensure_future(jobs.run_claimed(row, "host:1:first000"))
+        await asyncio.sleep(0.1)
+        await _take_over(row.id, "host:2:second00")
+        return await asyncio.wait_for(running, timeout=5)
+    assert _run(scenario()) == "lost"
+    assert stopped == [True]
+    (job,) = _run(_jobs())
+    assert (job.status, job.locked_by) == ("running", "host:2:second00")
+
+
+def test_a_running_job_asked_to_stop_stops_and_tidies_up(client, kinds):
+    from app.core import database
+    from app.services import jobs
+    tidied = []
+
+    async def endless(payload):
+        await asyncio.sleep(30)
+
+    async def tidy_up(db, job, code):
+        tidied.append((job.kind, code))
+    kinds("test.search", endless, lease_seconds=0.2, on_cancel=tidy_up)
+
+    async def scenario():
+        job_id = await _enqueue(kind="test.search", dedupe_key="search:7")
+        (row,) = await _claim(kinds=["test.search"], lease_seconds=0.2)
+        running = asyncio.ensure_future(jobs.run_claimed(row, "host:1:abcd1234"))
+        await asyncio.sleep(0.05)
+        async with database.async_session() as db:
+            assert await jobs.request_cancel(db, job_id) == "running"
+            await db.commit()
+        return await asyncio.wait_for(running, timeout=5)
+    assert _run(scenario()) == "cancelled"
+    assert tidied == [("test.search", "cancelled")]
+    (job,) = _run(_jobs())
+    assert (job.status, job.dedupe_key, job.locked_by) == ("cancelled", None, None)
+
+
+def test_a_queued_job_asked_to_stop_is_cancelled_at_once_and_never_runs(client, kinds):
+    from app.core import database
+    from app.models.job import Job
+    from app.services import jobs
+    ran, tidied = [], []
+
+    async def search(payload):
+        ran.append(payload)
+
+    async def tidy_up(db, job, code):
+        tidied.append((job.kind, job.payload, code))
+        db.add(Job(kind="test.followup", payload={}))  # in the asking request's transaction
+    kinds("test.search", search, on_cancel=tidy_up)
+
+    async def ask(job_id, then="commit"):
+        async with database.async_session() as db:
+            status = await jobs.request_cancel(db, job_id)
+            await (db.commit() if then == "commit" else db.rollback())
+            return status
+    job_id = _run(_enqueue(kind="test.search", payload={"run_id": 7}, dedupe_key="search:7"))
+    # Nothing is committed but by the request that asks.
+    _run(ask(job_id, then="rollback"))
+    assert [job.status for job in _run(_jobs())] == ["queued"]
+    tidied.clear()
+    assert _run(ask(job_id)) == "cancelled"
+    assert tidied == [("test.search", {"run_id": 7}, "cancelled")]
+    job, followup = _run(_jobs())
+    assert (job.status, job.dedupe_key, job.cancel_requested) == ("cancelled", None, True)
+    assert followup.kind == "test.followup"
+    assert _run(_run_due(["test.search"], datetime.utcnow())) == [] and ran == []
+    assert _run(ask(job_id)) == "cancelled"  # asked again: as it was
+    assert _run(ask(9999)) is None
+
+
+@pytest.mark.parametrize("ending, outcome", [
+    ("busy", "cancelled"), ("not_yet", "cancelled"), ("gone", "cancelled"), ("finished", "done"),
+])
+def test_a_job_asked_to_stop_while_it_runs_never_runs_again(client, kinds, ending, outcome):
+    from app.core import database
+    from app.services import jobs
+    from app.services.jobs import Defer, PermanentError
+    asked, tidied = [], []
+
+    async def search(payload):
+        # Asked to stop, then the run ends before its heartbeat notices.
+        async with database.async_session() as db:
+            await jobs.request_cancel(db, asked[0])
+            await db.commit()
+        if ending == "busy":
+            raise TimeoutError  # would be tried again
+        if ending == "not_yet":
+            raise Defer(30)  # would wait
+        if ending == "gone":
+            raise PermanentError("run_gone")
+
+    async def tidy_up(db, job, code):
+        tidied.append(code)
+    kinds("test.search", search, on_cancel=tidy_up)
+    now = datetime.utcnow()
+    asked.append(_run(_enqueue(kind="test.search", run_at=now, dedupe_key="search:7")))
+    assert _run(_run_due(["test.search"], now)) == [outcome]
+    (job,) = _run(_jobs())
+    assert (job.status, job.dedupe_key, job.locked_by) == (outcome, None, None)
+    # A run that finished its work is kept as done; any other ending is the stop.
+    assert tidied == ([] if outcome == "done" else ["cancelled"])
+
+
+def test_a_job_asked_to_stop_after_its_worker_stopped_isnt_run(client, kinds):
+    ran, tidied = [], []
+
+    async def search(payload):
+        ran.append(payload)
+
+    async def tidy_up(db, job, code):
+        tidied.append(code)
+    kinds("test.search", search, on_cancel=tidy_up)
+    now = datetime.utcnow()
+    # Its worker stopped mid-run; then someone asked it to stop.
+    _run(_add(kind="test.search", status="running", attempts=1, cancel_requested=True, run_at=now,
+              locked_by="host:1:gone0000", locked_until=now - timedelta(seconds=1)))
+    assert _run(_run_due(["test.search"], now)) == ["cancelled"]
+    assert ran == [] and tidied == ["cancelled"]
+    (job,) = _run(_jobs())
+    assert (job.status, job.locked_by) == ("cancelled", None)
