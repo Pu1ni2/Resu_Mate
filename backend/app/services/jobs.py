@@ -196,27 +196,39 @@ class Handler:
     concurrency: Optional[int]
     on_failure: Optional[Callable]
     on_cancel: Optional[Callable]
+    every: Optional[timedelta]
 
 
 _handlers: dict = {}
 
 
+def cron_key(kind: str) -> str:
+    """The dedupe_key a periodic kind's runs hold: one queued or running at
+    a time."""
+    return f"cron:{kind}"
+
+
 def handler(kind: str, *, max_attempts: int = 5, lease_seconds: float = 120, timeout_seconds: float = 600,
             backoff: tuple = (10, 600), priority: int = 100, concurrency: Optional[int] = None,
-            on_failure: Optional[Callable] = None, on_cancel: Optional[Callable] = None):
+            on_failure: Optional[Callable] = None, on_cancel: Optional[Callable] = None,
+            every: Optional[timedelta] = None):
     """Register what a kind of job does: `async def run(payload)`.
 
     It opens its own database sessions, and holds none across a call to the
     AI or the email service. on_failure(db, job, code) runs when the job
     fails for good, and on_cancel(db, job, code) when it's stopped on
     request (request_cancel), each in the same transaction that records it.
+
+    A kind with `every` runs on a schedule, with an empty payload: each run,
+    however it ends, queues the next one `every` later, in the transaction
+    that records its end, and ensure_schedules starts one that has none.
     """
-    if not KIND.match(kind) or len(kind) > 64:
+    if not KIND.match(kind) or len(kind) > 64 or (every is not None and not CODE.match(cron_key(kind))):
         raise ValueError("a job's kind is a short dotted name, such as report.write")
 
     def register(run):
         _handlers[kind] = Handler(kind, run, lane_of(kind), max_attempts, lease_seconds, timeout_seconds,
-                                  backoff[0], backoff[1], priority, concurrency, on_failure, on_cancel)
+                                  backoff[0], backoff[1], priority, concurrency, on_failure, on_cancel, every)
         return run
     return register
 
@@ -261,6 +273,7 @@ async def _settle(row, worker: str, values: dict, outcome: str, code: Optional[s
                   then: Optional[Callable] = None, unless_stopped: bool = False) -> Optional[str]:
     """Write a claimed job's next state, if `worker` still holds it, and run
     `then` (its kind's on_failure or on_cancel) in the same transaction.
+    A periodic kind's run that ends there queues its next run in it too.
     Returns the outcome, or None when nothing was written.
 
     The where clause is the fence: a worker whose lease ran out, and whose
@@ -280,6 +293,10 @@ async def _settle(row, worker: str, values: dict, outcome: str, code: Optional[s
             return None
         if then is not None:
             await then(db, row, code)
+        found = _handlers.get(row.kind)
+        if found is not None and found.every is not None and values["status"] in ("done", "failed", "cancelled"):
+            # The ended run gave up its key in the update above.
+            await enqueue(db, row.kind, dedupe_key=cron_key(row.kind), run_at=values["finished_at"] + found.every)
         await db.commit()
     logger.info("job %s %s %s %s", row.id, row.kind, outcome, code or "-")
     return outcome
@@ -420,6 +437,22 @@ async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.u
                 or _lost(row))
     return await _unfinished(found, row, worker, now, dict(
         status="failed", last_error=code, dedupe_key=None, finished_at=now()), "failed", code, found.on_failure)
+
+
+async def ensure_schedules(now: Optional[datetime] = None) -> int:
+    """Queue a run, due now, of each periodic kind that has none queued or
+    running, and commit; how many were queued. The runner calls this when
+    it starts and every few minutes, so a schedule starts on a new database,
+    and starts again if its chain of runs broke."""
+    from app.core.database import async_session
+    queued = 0
+    async with async_session() as db:
+        for kind, found in sorted(_handlers.items()):
+            if found.every is not None and await enqueue(db, kind, dedupe_key=cron_key(kind),
+                                                         run_at=now or datetime.utcnow()) is not None:
+                queued += 1
+        await db.commit()
+    return queued
 
 
 async def release(row, worker: str) -> bool:
