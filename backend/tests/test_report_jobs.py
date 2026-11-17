@@ -70,7 +70,7 @@ SAID = [{"role": "interviewer", "text": "Tell me about a hard bug."},
         {"role": "candidate", "text": "A race between two workers. " * 12}]
 
 
-async def _started(manager_id, email, **fields):
+async def _started(manager_id, email, transcript=SAID, **fields):
     from app.core import database
     from app.models.candidate import Candidate, Interview
     async with database.async_session() as db:
@@ -78,7 +78,7 @@ async def _started(manager_id, email, **fields):
         db.add(cand)
         await db.flush()
         interview = Interview(candidate_id=cand.id, manager_id=manager_id, candidate_email=email, role="Dev",
-                              mode="conversational", status="in_progress", transcript=SAID, **fields)
+                              mode="conversational", status="in_progress", transcript=transcript, **fields)
         db.add(interview)
         await db.commit()
         return interview.id
@@ -236,3 +236,58 @@ def test_an_interview_deleted_while_its_report_is_written_is_left_alone(client, 
         return "## A report"
     monkeypatch.setattr(interview_report, "write_report", write_report)
     assert run_jobs() == ["done"]
+
+
+# ── voice ─────────────────────────────────────────────────────────────────────
+
+def _as_candidate(email):
+    from app.services.auth import create_candidate_token
+    return {"Authorization": f"Bearer {create_candidate_token(email)}"}
+
+
+def _emails(monkeypatch):
+    """The managers' 'interview completed' emails, by interview."""
+    from app.api import chat
+    sent = []
+
+    async def notify(db, interview):
+        sent.append(interview.id)
+    monkeypatch.setattr(chat, "_notify_manager_interview_complete", notify)
+    return sent
+
+
+def test_voice_finalize_answers_without_waiting_for_the_ai(client, run_jobs, monkeypatch):
+    calls, sent = _writer(monkeypatch, "## A report"), _emails(monkeypatch)
+    _, m = register(client, "v1@co.com")
+    iid = _run(_started(m["id"], "v1@x.com", transcript=None))
+    r = client.post("/api/realtime/finalize", headers=_as_candidate("v1@x.com"),
+                    json={"interview_id": iid, "transcript": SAID, "duration": 300})
+    assert r.status_code == 200 and r.json() == {"saved": True, "turns": 2, "report_status": "pending"}
+    assert calls == [] and sent == [iid]  # the AI not yet asked; the manager told once
+    assert run_jobs() == ["done"]
+    assert _run(_state(iid)) == ("completed", "done", None, "## A report", 300)
+
+
+def test_a_finalize_that_loses_the_race_keeps_nothing_of_its_own(client, monkeypatch):
+    from app.services import db_service
+    sent = _emails(monkeypatch)
+    _, m = register(client, "v2@co.com")
+    iid = _run(_started(m["id"], "v2@x.com"))
+    real = db_service.complete_interview
+
+    async def finished_meanwhile(db, interview, duration=None, report=None):
+        # Another request finishes it between this one's look and its update.
+        from app.core import database
+        from app.models.candidate import Interview
+        async with database.async_session() as other:
+            await real(other, await other.get(Interview, iid), 111)
+            await other.commit()
+        return await real(db, interview, duration, report=report)
+    monkeypatch.setattr(db_service, "complete_interview", finished_meanwhile)
+    sent_again = [{"role": "candidate", "text": "The same interview, sent again"}]
+    r = client.post("/api/realtime/finalize", headers=_as_candidate("v2@x.com"),
+                    json={"interview_id": iid, "transcript": sent_again, "duration": 999})
+    assert r.status_code == 200
+    assert r.json() == {"saved": False, "already_completed": True, "turns": 2, "report_status": "pending"}
+    assert _run(_state(iid))[4] == 111 and sent == []
+    assert len(_run(_jobs())) == 1  # the first one's report job only
