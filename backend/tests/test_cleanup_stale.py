@@ -17,7 +17,8 @@ def _run(coro):
 
 
 async def _person(manager_id, updated_at):
-    """Maya as one manager's candidate, invited and interviewed by them."""
+    """Maya as one manager's candidate, invited and interviewed by them, both
+    as long ago as `updated_at`: a newer interview makes her current."""
     from app.core import database
     from app.models.candidate import Candidate
     from app.services import db_service
@@ -27,9 +28,11 @@ async def _person(manager_id, updated_at):
         await db.commit()
         await db.refresh(row)
         await db_service.create_candidate_access(db, "maya@x.com", "Maya", row.id, manager_id=manager_id)
-        await db_service.create_interview(db, {
+        interview = await db_service.create_interview(db, {
             "candidate_id": row.id, "manager_id": manager_id, "candidate_email": "maya@x.com", "role": "Dev",
         })
+        interview.created_at = updated_at
+        await db.commit()
 
 
 async def _held_by(manager_id):

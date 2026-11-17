@@ -10,7 +10,7 @@ import os
 import time
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, or_
+from sqlalchemy import and_, delete, or_, select
 
 from app.core.config import settings
 from app.models.auth import OTPCode
@@ -79,6 +79,71 @@ async def remove_left_uploads() -> None:
     take: each server process's runner calls it, at start and hourly. The
     log has the count, never a name: the names come from people's files."""
     logger.info("cleanup: %s left upload files removed", await asyncio.to_thread(_remove_left_uploads))
+
+
+# Candidates deleted per transaction: a first run can find years of them.
+RETENTION_BATCH = 500
+
+
+def _untouched_since(cutoff: datetime):
+    """Candidates nothing has happened to since `cutoff`: their row unchanged,
+    and no interview of theirs made, started or finished since. A row alone
+    would have taken someone interviewed yesterday, uploaded long ago."""
+    from app.models.candidate import Candidate, Interview
+    recent = select(Interview.id).where(
+        Interview.candidate_id == Candidate.id,
+        or_(Interview.created_at >= cutoff, Interview.consented_at >= cutoff, Interview.completed_at >= cutoff),
+    ).exists()
+    return and_(Candidate.updated_at < cutoff, ~recent)
+
+
+async def untouched_candidates(db, cutoff: datetime, limit: int = None) -> list:
+    """(id, manager_id, updated_at) of each candidate untouched since `cutoff`."""
+    from app.models.candidate import Candidate
+    query = (select(Candidate.id, Candidate.manager_id, Candidate.updated_at)
+             .where(_untouched_since(cutoff)).order_by(Candidate.id))
+    return (await db.execute(query.limit(limit) if limit else query)).all()
+
+
+async def delete_untouched(cutoff: datetime) -> int:
+    """Delete the candidates untouched since `cutoff` with everything of theirs,
+    as deleting one on the Candidates page does (app/api/candidates.py): their
+    interviews, portal access and kept evaluations, and their managers'
+    assistant chats, which may be about them, in the database first; then the
+    server's in-memory copy, and their original files in object storage.
+    How many it deleted."""
+    from app.core.database import async_session
+    from app.models.candidate import Candidate
+    from app.services import db_service, state_service
+    from app.services.resume_rag import resume_rag
+    from app.services.storage_service import storage_service
+    deleted = 0
+    while True:
+        async with async_session() as db:
+            rows = await untouched_candidates(db, cutoff, RETENTION_BATCH)
+            if not rows:
+                return deleted
+            theirs = Candidate.id.in_([row.id for row in rows])
+            files = await db_service.stored_file_keys(db, theirs)
+            await db_service.delete_candidates(db, theirs)
+            await state_service.forget_chats(db, [row.manager_id for row in rows])
+            await db.commit()
+        for row in rows:
+            resume_rag.delete_candidate(row.id, manager_id=row.manager_id)
+        for key in files:
+            await asyncio.to_thread(storage_service.delete, key)  # boto3 blocks
+        deleted += len(rows)
+
+
+@jobs.handler("cleanup.retention", every=timedelta(days=1))
+async def apply_retention(payload: dict) -> None:
+    """Delete the candidates nothing has happened to in RETENTION_DAYS, with
+    everything of theirs (delete_untouched). Off (0) until you choose how
+    long to keep candidates' data."""
+    if settings.retention_days <= 0:
+        return
+    deleted = await delete_untouched(datetime.utcnow() - timedelta(days=settings.retention_days))
+    logger.info("cleanup: %s candidates past RETENTION_DAYS deleted", deleted)
 
 
 @jobs.handler("cleanup.old_jobs", every=timedelta(days=1))

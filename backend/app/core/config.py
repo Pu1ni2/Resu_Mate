@@ -153,6 +153,10 @@ class Settings(BaseSettings):
     # A job that ended is kept this many days, for looking into what went
     # wrong, then deleted (app/services/cleanup.py).
     jobs_keep_days: int = 14
+    # Candidates nothing has happened to in this many days are deleted, with
+    # everything of theirs, daily (app/services/cleanup.py). 0 keeps them for
+    # good: choose how long before going live (DEPLOY.md).
+    retention_days: int = 0
 
     @property
     def cors_origins_list(self) -> List[str]:

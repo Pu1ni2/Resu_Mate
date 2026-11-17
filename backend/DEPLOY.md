@@ -61,9 +61,9 @@ between interviews.
 - Move `alembic upgrade head` from the build command to `preDeployCommand`
   (paid plans only): it runs before the new version takes over, and a
   failure stops the deploy.
-- Choose how long to keep candidates' data, and run
-  `python cleanup_stale.py --days <N> --apply` on a schedule (the Retention
-  note below).
+- Choose how long to keep candidates' data, and set `RETENTION_DAYS` to it:
+  the server then deletes, daily, the candidates untouched that long (the
+  Retention note below).
 - An always-on plan, so the API no longer sleeps after 15 idle minutes.
 
 ## Python version — keep it at 3.12
@@ -257,9 +257,12 @@ removes the object too.
 - **Consent**: sign-up records when the manager agreed to the Terms and which
   version (`hiring_managers.terms_accepted_at`, `terms_version`); an interview
   records when the candidate agreed to how it works (`interviews.consented_at`).
-- **Retention**: `python cleanup_stale.py --days 180 --apply` deletes
-  candidates/interviews untouched for N days. Dry-run by default. Run via cron
-  if you want automatic retention.
+- **Retention**: with `RETENTION_DAYS` set (0, the default, keeps everything),
+  the server deletes, daily, each candidate untouched for that many days,
+  with everything of theirs: interviews, portal access, evaluations, original
+  files. Untouched: their record unchanged, and no interview of theirs made,
+  started or finished in that time. `python cleanup_stale.py --days <N>` lists
+  whom that would delete, without deleting; `--apply` deletes them now.
 
 ## CI
 
