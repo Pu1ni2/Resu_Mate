@@ -95,8 +95,12 @@ async def lifespan(app: FastAPI):
     # Off in tests (JOBS_RUNNER=false), which run due jobs themselves.
     runner = None
     if settings.jobs_runner:
-        from app.services import job_runner
-        runner = job_runner.start(settings.jobs_work_concurrency, settings.jobs_email_concurrency)
+        from app.services import cleanup, job_runner
+        runner = job_runner.start(
+            settings.jobs_work_concurrency, settings.jobs_email_concurrency,
+            # This machine's own leftovers, which no other process can see.
+            local=((cleanup.remove_left_uploads, cleanup.UPLOADS_EVERY_SECONDS),),
+        )
     app.state.job_runner = runner
 
     print("✅ All agents registered")

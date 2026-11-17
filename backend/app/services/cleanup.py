@@ -4,7 +4,10 @@ Each task is a periodic kind of background job (app/services/jobs.py): one
 run at a time, even with several server processes, and each run queues the
 next as it ends. main.py imports this module, which registers them.
 """
+import asyncio
 import logging
+import os
+import time
 from datetime import datetime, timedelta
 
 from sqlalchemy import delete, or_
@@ -43,6 +46,39 @@ async def finish_abandoned_interviews(payload: dict) -> None:
     finished only when their manager opened the interviews page."""
     from app.services.interview_report import finish_abandoned
     logger.info("cleanup: %s left interviews finished", await finish_abandoned())
+
+
+# An upload is read within its own request (app/api/candidates.py), then
+# deleted; a file this old in the folder was left behind.
+LEFT_UPLOAD_AGE = timedelta(hours=1)
+UPLOADS_EVERY_SECONDS = 3600.0
+
+
+def _remove_left_uploads() -> int:
+    from app.api.candidates import UPLOAD_DIR
+    cutoff = time.time() - LEFT_UPLOAD_AGE.total_seconds()
+    removed = 0
+    with os.scandir(UPLOAD_DIR) as entries:
+        for entry in entries:
+            if entry.name.startswith(".") or not entry.is_file() or entry.stat().st_mtime >= cutoff:
+                continue
+            try:
+                os.remove(entry.path)
+                removed += 1
+            except OSError:
+                pass  # still open (Windows), say: tried again at the next sweep
+    return removed
+
+
+async def remove_left_uploads() -> None:
+    """Remove the résumé files left in the uploads folder: one an upload
+    couldn't delete (on Windows, a reader still had it open: "will be
+    cleaned up later", and nothing did), or whose server stopped midway.
+
+    Each machine has its own folder, so this isn't a job any process might
+    take: each server process's runner calls it, at start and hourly. The
+    log has the count, never a name: the names come from people's files."""
+    logger.info("cleanup: %s left upload files removed", await asyncio.to_thread(_remove_left_uploads))
 
 
 @jobs.handler("cleanup.old_jobs", every=timedelta(days=1))

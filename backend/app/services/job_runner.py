@@ -121,25 +121,29 @@ class Lane:
             logger.error("job %s %s not settled: %s", row.id, row.kind, log_text(exc))
 
 
-async def _keep_schedules(stopped: asyncio.Event, every_seconds: float) -> None:
-    """Every periodic kind's next run queued (jobs.ensure_schedules): now,
-    then every few minutes, until the runner stops."""
+async def _every(stopped: asyncio.Event, seconds: float, step) -> None:
+    """step() now, then every `seconds`, until the runner stops. A step that
+    fails is logged, and tried again next time."""
     while not stopped.is_set():
         try:
-            await jobs.ensure_schedules()
+            await step()
         except Exception as exc:
-            logger.error("jobs schedules not checked: %s", log_text(exc))
+            logger.error("jobs %s failed: %s", step.__name__, log_text(exc))
         with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stopped.wait(), timeout=every_seconds)
+            await asyncio.wait_for(stopped.wait(), timeout=seconds)
 
 
 class Runner:
-    """This process's lanes, and the check that keeps the schedules."""
+    """This process's lanes, and its steps done every so often: the check
+    that each periodic kind has its next run queued (jobs.ensure_schedules),
+    and the `local` ones, (step, seconds) pairs, for what only this process
+    can do, such as tidying its own disk."""
 
-    def __init__(self, lanes: list, schedules_seconds: float = SCHEDULES_SECONDS):
+    def __init__(self, lanes: list, schedules_seconds: float = SCHEDULES_SECONDS, local: tuple = ()):
         self.lanes = lanes
         self._stopped = asyncio.Event()
-        self.keeping = asyncio.create_task(_keep_schedules(self._stopped, schedules_seconds))
+        self.periodic = [asyncio.create_task(_every(self._stopped, seconds, step))
+                         for step, seconds in ((jobs.ensure_schedules, schedules_seconds), *local)]
 
     def running(self) -> int:
         return sum(len(lane.running) for lane in self.lanes)
@@ -151,9 +155,9 @@ class Runner:
         self._stopped.set()
         for lane in self.lanes:
             lane.stop_taking()
-        taking = [task for task in (self.keeping, *(lane.taking for lane in self.lanes)) if task is not None]
+        taking = [task for task in (*self.periodic, *(lane.taking for lane in self.lanes)) if task is not None]
         if taking:
-            # A claim or a schedules check under way finishes first, so no
+            # A claim or a periodic step under way finishes first, so no
             # job is claimed and left.
             _, stuck = await asyncio.wait(taking, timeout=grace_seconds)
             for task in stuck:
@@ -170,10 +174,10 @@ class Runner:
 
 
 def start(work_slots: int, email_slots: int, poll_seconds: Optional[dict] = None,
-          schedules_seconds: float = SCHEDULES_SECONDS) -> Runner:
-    """Start this process's lanes, in the running event loop, then the
-    check that queues each periodic kind's next run: the lanes are woken
-    when it commits."""
+          schedules_seconds: float = SCHEDULES_SECONDS, local: tuple = ()) -> Runner:
+    """Start this process's lanes, in the running event loop, then its
+    periodic steps (Runner): the lanes are woken when the schedules check
+    commits."""
     poll = poll_seconds or POLL_SECONDS
     worker = worker_name()
     lanes = [Lane(jobs.EMAIL_LANE, email_slots, worker, poll[jobs.EMAIL_LANE]),
@@ -181,4 +185,4 @@ def start(work_slots: int, email_slots: int, poll_seconds: Optional[dict] = None
     for lane in lanes:
         lane.start()
     logger.info("jobs runner started as %s", worker)
-    return Runner(lanes, schedules_seconds)
+    return Runner(lanes, schedules_seconds, local)
