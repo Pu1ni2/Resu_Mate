@@ -93,3 +93,52 @@ def test_one_run_finishes_every_managers_left_interviews(client):
     left_b = _run(_interview(b["id"], "ab4@x.com", status="interrupted", created_at=_days_ago(5)))
     _finish_left()
     assert [_run(_read(left))[0] for left in (left_a, left_b)] == ["completed", "completed"]
+
+
+def test_the_statuses_page_finishes_nothing_itself(client):
+    # It started the AI's work after answering, for whoever opened it.
+    from conftest import auth_headers
+    tok, m = register(client, "ab5@co.com")
+    left = _run(_interview(m["id"], "ab5@x.com", status="in_progress", created_at=_days_ago(3)))
+    assert client.get("/api/chat/interview-statuses", headers=auth_headers(tok)).status_code == 200
+    assert _run(_read(left)) == ("in_progress", None)
+
+
+def test_no_database_connection_is_held_while_a_report_is_written(client, monkeypatch):
+    # The AI can take a minute; the connection held all that time was one
+    # of the few the pool has, kept from every request.
+    from app.core import database
+    from app.services import interview_report
+    held = []
+
+    async def write_report(transcript, role):
+        held.append(database.engine.sync_engine.pool.checkedout())
+        return "## A report"
+    monkeypatch.setattr(interview_report, "write_report", write_report)
+    _, m = register(client, "ab6@co.com")
+    left = _run(_interview(m["id"], "ab6@x.com", status="interrupted", created_at=_days_ago(3)))
+    _finish_left()
+    assert held == [0]
+    status, report = _run(_read(left))
+    assert status == "completed" and json.loads(report)["report"] == "## A report"
+
+
+def test_one_its_candidate_came_back_to_meanwhile_is_left_open(client, monkeypatch):
+    import time
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services import interview_report
+    _, m = register(client, "ab7@co.com")
+    left = _run(_interview(m["id"], "ab7@x.com", status="interrupted", created_at=_days_ago(3)))
+
+    async def write_report(transcript, role):
+        # While the report is written, the candidate continues the interview.
+        async with database.async_session() as db:
+            interview = await db.get(Interview, left)
+            interview.status = "in_progress"
+            interview.transcript = [{"role": "candidate", "text": "I'm back", "ts": time.time() * 1000}]
+            await db.commit()
+        return "## A report"
+    monkeypatch.setattr(interview_report, "write_report", write_report)
+    _finish_left()
+    assert _run(_read(left)) == ("in_progress", None)

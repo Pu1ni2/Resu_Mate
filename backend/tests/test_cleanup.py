@@ -33,6 +33,7 @@ def test_the_server_registers_each_clean_up_task_on_its_schedule():
     from app.services import jobs
     assert jobs.handler_for("cleanup.old_jobs").every == timedelta(days=1)
     assert jobs.handler_for("cleanup.sign_in_codes").every == timedelta(hours=1)
+    assert jobs.handler_for("interviews.finish_abandoned").every == timedelta(minutes=15)
 
 
 # ── old jobs ──────────────────────────────────────────────────────────────────
