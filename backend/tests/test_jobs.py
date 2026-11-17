@@ -403,6 +403,37 @@ def test_a_long_job_keeps_its_lease_while_it_runs(client, kinds):
     assert seen[0] > claimed_at + timedelta(seconds=0.3)
 
 
+def test_a_run_that_ends_during_a_lease_renewal_lets_the_renewal_finish(client, kinds, monkeypatch):
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from app.core import database
+    from app.services import jobs
+    renewing, cut_off = asyncio.Event(), []
+
+    class SlowRenewals(AsyncSession):
+        async def execute(self, statement, *args, **kwargs):
+            result = await super().execute(statement, *args, **kwargs)
+            if "RETURNING jobs.cancel_requested" in str(statement):  # a lease renewal
+                renewing.set()
+                try:
+                    await asyncio.sleep(0.2)  # written, not yet committed
+                except asyncio.CancelledError:
+                    cut_off.append(True)
+                    raise
+            return result
+
+    async def report(payload):
+        await renewing.wait()  # the run ends while a renewal is under way
+    kinds("test.report", report, lease_seconds=0.2, timeout_seconds=5)
+    _run(_enqueue(kind="test.report"))
+    (row,) = _run(_claim(kinds=["test.report"], lease_seconds=0.2))
+    monkeypatch.setattr(database, "async_session",
+                        async_sessionmaker(database.engine, class_=SlowRenewals, expire_on_commit=False))
+    assert _run(jobs.run_claimed(row, "host:1:abcd1234")) == "done"
+    assert cut_off == []
+    (job,) = _run(_jobs())
+    assert (job.status, job.locked_by) == ("done", None)
+
+
 def test_a_job_another_worker_took_up_is_stopped_here(client, kinds):
     from app.services import jobs
     stopped = []
