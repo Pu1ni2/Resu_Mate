@@ -66,7 +66,10 @@ def test_the_server_sets_up_no_tracing_which_the_ignored_flaw_needs():
 
 def test_ci_audits_the_sites_packages_before_building_it():
     runs = _runs("frontend")
-    assert runs.index("npm ci") < runs.index("npm audit --audit-level=high") < runs.index("npm run build")
+    audit = next(index for index, run in enumerate(runs) if "node scripts/audit.mjs" in run)
+    assert runs.index("npm ci") < audit < runs.index("npm run build")
+    # npm's own report, which the script reads (frontend/scripts/audit.test.mjs).
+    assert "npm audit --json >" in runs[audit]
 
 
 def test_ci_scans_new_commits_for_secrets_and_never_shows_them():

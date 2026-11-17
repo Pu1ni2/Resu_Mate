@@ -276,8 +276,10 @@ run it makes out of date.
   `alembic downgrade base` and up again;
 - **postgres**: `backend/pgtests` on a migrated Postgres 16, for what only
   Postgres shows, such as workers claiming background jobs at once;
-- **frontend**, on Node 24: `npm ci`, `npm audit --audit-level=high`, lint,
-  build and the tests;
+- **frontend**, on Node 24: `npm ci`, then npm's audit, read by
+  `frontend/scripts/audit.mjs`, which fails on any high or critical
+  vulnerability it doesn't excuse with a reason, then lint, build and the
+  tests;
 - **worker-image**: builds the worker's image from `Dockerfile.agent`, as
   Fly.io does, and imports the worker in it;
 - **secrets**: gitleaks over the commits a push or pull request adds.
