@@ -225,6 +225,10 @@ def kinds_in(lane: str) -> list:
     return sorted(kind for kind, h in _handlers.items() if h.lane == lane)
 
 
+def handler_for(kind: str) -> Optional[Handler]:
+    return _handlers.get(kind)
+
+
 def _retryable(exc: BaseException) -> bool:
     """A failure that a later try may not meet: a service busy or out of
     reach, a timeout, the database briefly unavailable."""
@@ -416,6 +420,25 @@ async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.u
                 or _lost(row))
     return await _unfinished(found, row, worker, now, dict(
         status="failed", last_error=code, dedupe_key=None, finished_at=now()), "failed", code, found.on_failure)
+
+
+async def release(row, worker: str) -> bool:
+    """Put a job this worker claimed back in the queue, its try not
+    counted: the worker is stopping (a deploy, a restart) before the run
+    ended. The next process to look takes it up at once. False when this
+    worker no longer held it."""
+    from app.core.database import async_session
+    async with async_session() as db:
+        result = await db.execute(
+            update(Job).where(Job.id == row.id, Job.locked_by == worker, Job.status == "running")
+            .values(status="queued", attempts=row.attempts - 1, run_at=datetime.utcnow(), **_RELEASED)
+            .execution_options(synchronize_session=False)
+        )
+        await db.commit()
+    if result.rowcount != 1:
+        return False
+    logger.info("job %s %s released -", row.id, row.kind)
+    return True
 
 
 async def request_cancel(db, job_id: int) -> Optional[str]:

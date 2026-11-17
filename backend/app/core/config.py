@@ -139,7 +139,18 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_access_key: str = ""
     s3_secret_key: str = ""
-    
+
+    # Background jobs (app/services/job_runner.py): the server runs them
+    # itself, in two lanes of a few slots each. JOBS_RUNNER=false leaves
+    # them queued, as the tests do, which run due jobs themselves. On
+    # shutdown, the running jobs get JOBS_SHUTDOWN_GRACE_SECONDS to end, and
+    # the rest go back in the queue. Uvicorn's own 10 s, then this, stay
+    # within the 30 s Render allows a shutdown (render.yaml).
+    jobs_runner: bool = True
+    jobs_work_concurrency: int = 2
+    jobs_email_concurrency: int = 2
+    jobs_shutdown_grace_seconds: float = 15
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Origins allowed by CORS: FRONTEND_URL's, CORS_ORIGINS, and on local
