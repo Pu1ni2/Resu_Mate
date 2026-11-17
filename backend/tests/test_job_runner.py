@@ -50,9 +50,17 @@ async def _until(check, seconds=5.0):
 async def _until_status(job_id, status, seconds=5.0):
     loop = asyncio.get_running_loop()
     deadline = loop.time() + seconds
-    while (await _job(job_id)).status != status:
+    while getattr(await _job(job_id), "status", None) != status:
         assert loop.time() < deadline, f"job {job_id} isn't {status}"
         await asyncio.sleep(0.02)
+
+
+async def _jobs():
+    from sqlalchemy import select
+    from app.core import database
+    from app.models.job import Job
+    async with database.async_session() as db:
+        return list((await db.execute(select(Job).order_by(Job.id))).scalars())
 
 
 def test_a_queued_job_runs_in_the_background_once_its_request_commits(client, kinds):
@@ -211,6 +219,18 @@ def test_stopping_lets_running_jobs_end_then_puts_the_rest_back(client, kinds):
     assert stopped == [True]
 
 
+def test_stopping_an_idle_runner_takes_no_grace(client):
+    async def scenario():
+        runner = _start()
+        await asyncio.sleep(0.2)
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        await runner.stop(grace_seconds=5)
+        return loop.time() - started
+    # Nothing was running: a deploy's shutdown waits for nothing.
+    assert _run(scenario()) < 1
+
+
 def test_a_lane_keeps_going_when_claiming_fails(client, kinds, monkeypatch, caplog):
     from sqlalchemy.exc import OperationalError
     from app.services import jobs
@@ -239,6 +259,41 @@ def test_a_lane_keeps_going_when_claiming_fails(client, kinds, monkeypatch, capl
     assert failed == [True] and ran == [{"interview_id": 7}]
     assert "claiming failed: OperationalError" in caplog.text
     assert "db.internal" not in caplog.text  # its type and place, never its text
+
+
+def test_a_schedule_starts_with_the_runner_and_keeps_going_after_a_failed_check(client, kinds, monkeypatch):
+    from app.services import jobs
+    real_ensure, failed, ran = jobs.ensure_schedules, [], []
+
+    async def ensure_once_unreachable(*args, **kwargs):
+        if not failed:
+            failed.append(True)
+            raise ConnectionError
+        return await real_ensure(*args, **kwargs)
+    monkeypatch.setattr(jobs, "ensure_schedules", ensure_once_unreachable)
+
+    async def tidy(payload):
+        ran.append(payload)
+    kinds("test.tidy", tidy, every=timedelta(hours=1))
+
+    async def scenario():
+        from app.services import job_runner
+        runner = job_runner.start(work_slots=1, email_slots=1, schedules_seconds=0.1,
+                                  poll_seconds={jobs.EMAIL_LANE: 30, jobs.WORK_LANE: 30})
+        try:
+            await _until(lambda: ran == [{}])
+            # Then its next run is queued, an hour on.
+            deadline = asyncio.get_running_loop().time() + 5
+            while [job.status for job in await _jobs()] != ["done", "queued"]:
+                assert asyncio.get_running_loop().time() < deadline, "its next run wasn't queued"
+                await asyncio.sleep(0.02)
+        finally:
+            await runner.stop(grace_seconds=1)
+        return await _jobs()
+    done, following = _run(scenario())
+    assert failed == [True]
+    assert (done.status, following.dedupe_key) == ("done", "cron:test.tidy")
+    assert timedelta(minutes=59) < following.run_at - done.finished_at <= timedelta(hours=1)
 
 
 # ── started and stopped with the server ───────────────────────────────────────

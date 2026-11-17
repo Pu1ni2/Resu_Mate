@@ -577,3 +577,78 @@ def test_a_job_asked_to_stop_during_its_last_try_ends_cancelled_not_failed(clien
               run_at=now, locked_by="host:1:gone0000", locked_until=now - timedelta(seconds=1)))
     assert _run(_run_due(["test.search"], now)) == ["cancelled"]
     assert (tidied, failed) == (["cancelled"], [])
+
+
+# ── schedules ─────────────────────────────────────────────────────────────────
+
+def test_a_periodic_kinds_run_queues_the_next_one_as_it_ends(client, kinds):
+    from app.services import jobs
+    from app.services.jobs import PermanentError
+    endings = iter(["done", "fail"])
+
+    async def tidy(payload):
+        assert payload == {}
+        if next(endings) == "fail":
+            raise PermanentError("nothing_to_tidy")
+    kinds("test.tidy", tidy, every=timedelta(hours=1))
+    now = datetime.utcnow()
+    assert _run(jobs.ensure_schedules(now)) == 1
+    assert _run(_run_due(["test.tidy"], now)) == ["done"]
+    first, second = _run(_jobs())
+    assert (first.status, first.dedupe_key) == ("done", None)
+    assert (second.status, second.dedupe_key, second.run_at) == ("queued", "cron:test.tidy", now + timedelta(hours=1))
+    assert _run(_run_due(["test.tidy"], now + timedelta(minutes=59))) == []  # not before its time
+    # A run that fails queues the next one too.
+    later = now + timedelta(hours=1)
+    assert _run(_run_due(["test.tidy"], later)) == ["failed"]
+    assert [(job.status, job.run_at) for job in _run(_jobs())][2] == ("queued", later + timedelta(hours=1))
+
+
+def test_a_stopped_periodic_run_still_queues_the_next_one(client, kinds):
+    async def tidy(payload):
+        pass
+    kinds("test.tidy", tidy, every=timedelta(hours=1))
+    now = datetime.utcnow()
+    _run(_add(kind="test.tidy", status="running", attempts=1, cancel_requested=True, run_at=now,
+              locked_by="host:1:gone0000", locked_until=now - timedelta(seconds=1)))
+    assert _run(_run_due(["test.tidy"], now)) == ["cancelled"]
+    assert [(job.status, job.dedupe_key) for job in _run(_jobs())] == [("cancelled", None),
+                                                                       ("queued", "cron:test.tidy")]
+
+
+def test_a_periodic_run_tried_again_or_lost_queues_no_second_one(client, kinds):
+    from app.services import jobs
+
+    async def busy(payload):
+        raise TimeoutError
+    kinds("test.tidy", busy, every=timedelta(hours=1))
+    now = datetime.utcnow()
+    _run(jobs.ensure_schedules(now))
+    assert _run(_run_due(["test.tidy"], now)) == ["retry"]
+    # The run itself is queued again, and still holds the key.
+    assert [(job.status, job.dedupe_key) for job in _run(_jobs())] == [("queued", "cron:test.tidy")]
+    (row,) = _run(_claim(kinds=["test.tidy"], now=now + timedelta(minutes=5), worker="host:1:first000"))
+    _run(_take_over(row.id, "host:2:second00"))
+    assert _run(jobs.run_claimed(row, "host:1:first000", now=lambda: now)) == "lost"
+    assert len(_run(_jobs())) == 1  # the worker that has it queues the next one
+
+
+def test_a_schedule_is_started_once_and_only_where_it_has_no_run(client, kinds):
+    from app.services import jobs
+
+    async def tidy(payload):
+        pass
+    kinds("test.tidy", tidy, every=timedelta(hours=1))
+    kinds("test.report", tidy)  # not periodic
+    now = datetime.utcnow()
+    assert _run(jobs.ensure_schedules(now)) == 1
+    assert _run(jobs.ensure_schedules(now)) == 0  # one queued
+    _run(_claim(kinds=["test.tidy"], now=now))
+    assert _run(jobs.ensure_schedules(now)) == 0  # one running
+    assert [(job.kind, job.run_at) for job in _run(_jobs())] == [("test.tidy", now)]
+
+
+def test_a_periodic_kind_is_a_name_short_enough_for_its_key(client):
+    from app.services import jobs
+    with pytest.raises(ValueError):
+        jobs.handler("a" * 60, every=timedelta(hours=1))
