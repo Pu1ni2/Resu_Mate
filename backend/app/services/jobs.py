@@ -8,6 +8,7 @@ exactly when the request's other changes do, and the request answers at
 once.
 """
 import asyncio
+import contextlib
 import logging
 import random
 import re
@@ -19,6 +20,7 @@ from sqlalchemy import and_, event, insert, or_, select, update
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session
 
+from app.core.errors import log_text
 from app.models.job import Job
 
 # A kind names what to do: "report.write", "email.sign_in_code".
@@ -111,6 +113,12 @@ async def enqueue(db, kind: str, payload: Optional[dict] = None, *, dedupe_key: 
     return job_id
 
 
+# What a worker is handed about each job it claims, and what a kind's
+# on_failure and on_cancel are given.
+_ROW = (Job.id, Job.kind, Job.payload, Job.attempts, Job.max_attempts, Job.priority, Job.run_at,
+        Job.manager_id, Job.created_at, Job.cancel_requested)
+
+
 def _due(kinds: Iterable[str], now: datetime):
     """Queued jobs whose time has come, and running ones whose worker's lease
     ran out: it stopped, or lost the job."""
@@ -144,8 +152,7 @@ async def claim(db, kinds: Iterable[str], *, limit: int, now: datetime, worker: 
     statement = (
         statement.values(status="running", locked_by=worker, heartbeat_at=now, started_at=now,
                          locked_until=now + timedelta(seconds=lease_seconds), attempts=Job.attempts + 1)
-        .returning(Job.id, Job.kind, Job.payload, Job.attempts, Job.max_attempts, Job.priority,
-                   Job.run_at, Job.manager_id, Job.created_at)
+        .returning(*_ROW)
         .execution_options(synchronize_session=False)
     )
     rows = (await db.execute(statement)).all()
@@ -196,26 +203,28 @@ class Handler:
     priority: int
     concurrency: Optional[int]
     on_failure: Optional[Callable]
+    on_cancel: Optional[Callable]
 
 
 _handlers: dict = {}
 
 
-def handler(kind: str, *, max_attempts: int = 5, lease_seconds: int = 120, timeout_seconds: float = 600,
+def handler(kind: str, *, max_attempts: int = 5, lease_seconds: float = 120, timeout_seconds: float = 600,
             backoff: tuple = (10, 600), priority: int = 100, concurrency: Optional[int] = None,
-            on_failure: Optional[Callable] = None):
+            on_failure: Optional[Callable] = None, on_cancel: Optional[Callable] = None):
     """Register what a kind of job does: `async def run(payload)`.
 
     It opens its own database sessions, and holds none across a call to the
     AI or the email service. on_failure(db, job, code) runs when the job
-    fails for good, in the same transaction that records the failure.
+    fails for good, and on_cancel(db, job, code) when it's stopped on
+    request (request_cancel), each in the same transaction that records it.
     """
     if not KIND.match(kind) or len(kind) > 64:
         raise ValueError("a job's kind is a short dotted name, such as report.write")
 
     def register(run):
         _handlers[kind] = Handler(kind, run, lane_of(kind), max_attempts, lease_seconds, timeout_seconds,
-                                  backoff[0], backoff[1], priority, concurrency, on_failure)
+                                  backoff[0], backoff[1], priority, concurrency, on_failure, on_cancel)
         return run
     return register
 
@@ -249,50 +258,133 @@ def backoff_seconds(attempt: int, base: float, cap: float) -> float:
     return min(cap, base * 2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
 
 
+_RELEASED = dict(locked_by=None, locked_until=None, heartbeat_at=None)
+
+
 async def _settle(row, worker: str, values: dict, outcome: str, code: Optional[str] = None,
-                  on_failure: Optional[Callable] = None) -> str:
-    """Write a claimed job's next state, if `worker` still holds it.
+                  then: Optional[Callable] = None, unless_stopped: bool = False) -> Optional[str]:
+    """Write a claimed job's next state, if `worker` still holds it, and run
+    `then` (its kind's on_failure or on_cancel) in the same transaction.
+    Returns the outcome, or None when nothing was written.
 
     The where clause is the fence: a worker whose lease ran out, and whose
-    job another worker took up, changes nothing, and reports the job lost.
+    job another worker took up, changes nothing. With unless_stopped,
+    neither does one whose job someone asked to stop.
     """
     from app.core.database import async_session
+    fence = [Job.id == row.id, Job.locked_by == worker, Job.status == "running"]
+    if unless_stopped:
+        fence.append(Job.cancel_requested.is_(False))
     async with async_session() as db:
         result = await db.execute(
-            update(Job).where(Job.id == row.id, Job.locked_by == worker, Job.status == "running")
-            .values(**values).execution_options(synchronize_session=False)
+            update(Job).where(*fence).values(**values).execution_options(synchronize_session=False)
         )
         if result.rowcount != 1:
             await db.rollback()
-            logger.warning("job %s %s lost -", row.id, row.kind)
-            return "lost"
-        if on_failure is not None:
-            await on_failure(db, row, code)
+            return None
+        if then is not None:
+            await then(db, row, code)
         await db.commit()
     logger.info("job %s %s %s %s", row.id, row.kind, outcome, code or "-")
     return outcome
 
 
+def _lost(row) -> str:
+    logger.warning("job %s %s lost -", row.id, row.kind)
+    return "lost"
+
+
+async def _cancel(found, row, worker: str, now: Callable[[], datetime]) -> str:
+    """End a job someone asked to stop: cancelled, its key free, and its
+    kind's on_cancel run."""
+    return (await _settle(row, worker, dict(status="cancelled", dedupe_key=None, finished_at=now(), **_RELEASED),
+                          "cancelled", "cancelled", found.on_cancel)
+            or _lost(row))
+
+
+async def _unfinished(found, row, worker: str, now: Callable[[], datetime], values: dict, outcome: str,
+                      code: Optional[str] = None, then: Optional[Callable] = None) -> str:
+    """Write a run that didn't finish its work (queued again, or failed),
+    unless someone asked the job to stop meanwhile: then it's cancelled
+    instead, and never runs again."""
+    return (await _settle(row, worker, {**values, **_RELEASED}, outcome, code, then, unless_stopped=True)
+            or await _cancel(found, row, worker, now))
+
+
+async def _heartbeat(row, worker: str, lease_seconds: float, now: Callable[[], datetime]) -> str:
+    """Renew this worker's lease on a running job every quarter of it, so a
+    long job isn't taken up by another worker halfway. Returns "lost" when
+    another worker holds the job now, or "cancelled" when someone asked it
+    to stop. A renewal the database refuses is tried again next time."""
+    from app.core.database import async_session
+    while True:
+        await asyncio.sleep(lease_seconds / 4)
+        try:
+            async with async_session() as db:
+                held = (await db.execute(
+                    update(Job).where(Job.id == row.id, Job.locked_by == worker, Job.status == "running")
+                    .values(locked_until=now() + timedelta(seconds=lease_seconds), heartbeat_at=now())
+                    .returning(Job.cancel_requested).execution_options(synchronize_session=False)
+                )).first()
+                await db.commit()
+        except Exception as exc:
+            logger.warning("job %s %s heartbeat failed: %s", row.id, row.kind, log_text(exc))
+            continue
+        if held is None:
+            return "lost"
+        if held.cancel_requested:
+            return "cancelled"
+
+
+async def _run_watched(found, row, worker: str, now: Callable[[], datetime]) -> Optional[str]:
+    """The kind's run, within its time limit, with the heartbeat beside it.
+
+    Returns None when the run ended, raising whatever it raised, or "lost"
+    or "cancelled" when the heartbeat stopped it first.
+    """
+    work = asyncio.ensure_future(asyncio.wait_for(found.run(dict(row.payload)), timeout=found.timeout_seconds))
+    beat = asyncio.ensure_future(_heartbeat(row, worker, found.lease_seconds, now))
+    try:
+        await asyncio.wait({work, beat}, return_when=asyncio.FIRST_COMPLETED)
+        if work.done():
+            work.result()
+            return None
+        return beat.result()
+    finally:
+        for task in (beat, work):
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(BaseException):
+                    await task
+
+
 async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.utcnow) -> str:
     """Run one job this worker claimed, and write where it ends up: done,
     retry (queued again, after a wait), deferred (queued again, the try
-    not counted), failed, or lost. Returns that.
+    not counted), failed, cancelled (stopped on request), or lost. Returns
+    that.
 
     A run longer than its kind's timeout is stopped, and tried again like
     any timeout: a stuck call to the AI can't hold a worker forever.
+
+    A job asked to stop never runs again: one asked before this worker
+    took it up isn't run, and a run that then ends any way but done ends
+    cancelled.
     """
     found = _handlers.get(row.kind)
-    released = dict(locked_by=None, locked_until=None, heartbeat_at=None)
     if found is None:
-        return await _settle(row, worker, dict(status="failed", last_error="unknown_kind", dedupe_key=None,
-                                               finished_at=now(), **released), "failed", "unknown_kind")
+        return (await _settle(row, worker, dict(status="failed", last_error="unknown_kind", dedupe_key=None,
+                                                finished_at=now(), **_RELEASED), "failed", "unknown_kind")
+                or _lost(row))
+    if row.cancel_requested:
+        return await _cancel(found, row, worker, now)
     try:
-        await asyncio.wait_for(found.run(dict(row.payload)), timeout=found.timeout_seconds)
+        stopped = await _run_watched(found, row, worker, now)
     except Defer as wait:
         if now() - row.created_at <= DEFER_LIMIT:
-            return await _settle(row, worker, dict(status="queued", attempts=row.attempts - 1,
-                                                   run_at=now() + timedelta(seconds=wait.seconds), **released),
-                                 "deferred")
+            return await _unfinished(found, row, worker, now, dict(
+                status="queued", attempts=row.attempts - 1, run_at=now() + timedelta(seconds=wait.seconds)),
+                "deferred")
         code = "waited_too_long"
     except PermanentError as stop:
         code = stop.code[:200]
@@ -300,14 +392,44 @@ async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.u
         if _retryable(exc) and row.attempts < row.max_attempts:
             code = error_code("retry", exc)
             wait = timedelta(seconds=backoff_seconds(row.attempts, found.backoff_base, found.backoff_cap))
-            return await _settle(row, worker, dict(status="queued", run_at=now() + wait, last_error=code,
-                                                   **released), "retry", code)
+            return await _unfinished(found, row, worker, now, dict(
+                status="queued", run_at=now() + wait, last_error=code), "retry", code)
         code = error_code("error", exc)
     else:
-        return await _settle(row, worker, dict(status="done", dedupe_key=None, last_error=None,
-                                               finished_at=now(), **released), "done")
-    return await _settle(row, worker, dict(status="failed", last_error=code, dedupe_key=None,
-                                           finished_at=now(), **released), "failed", code, found.on_failure)
+        if stopped == "lost":
+            return _lost(row)
+        if stopped == "cancelled":
+            return await _cancel(found, row, worker, now)
+        return (await _settle(row, worker, dict(status="done", dedupe_key=None, last_error=None,
+                                                finished_at=now(), **_RELEASED), "done")
+                or _lost(row))
+    return await _unfinished(found, row, worker, now, dict(
+        status="failed", last_error=code, dedupe_key=None, finished_at=now()), "failed", code, found.on_failure)
+
+
+async def request_cancel(db, job_id: int) -> Optional[str]:
+    """Ask a job to stop, in the caller's transaction: nothing is committed
+    here. A queued one is cancelled at once, and its kind's on_cancel runs
+    in that transaction. A running one stops at its worker's next
+    heartbeat, within a quarter of its lease, and on_cancel runs then.
+    Returns the job's status now, or None when there's no such job."""
+    queued = (await db.execute(
+        update(Job).where(Job.id == job_id, Job.status == "queued")
+        .values(status="cancelled", cancel_requested=True, dedupe_key=None, finished_at=datetime.utcnow())
+        .returning(*_ROW).execution_options(synchronize_session=False)
+    )).first()
+    if queued is not None:
+        found = _handlers.get(queued.kind)
+        if found is not None and found.on_cancel is not None:
+            await found.on_cancel(db, queued, "cancelled")
+        return "cancelled"
+    running = (await db.execute(
+        update(Job).where(Job.id == job_id, Job.status == "running").values(cancel_requested=True)
+        .returning(Job.id).execution_options(synchronize_session=False)
+    )).scalar_one_or_none()
+    if running is not None:
+        return "running"
+    return (await db.execute(select(Job.status).where(Job.id == job_id))).scalar_one_or_none()
 
 
 @event.listens_for(Session, "after_commit")
