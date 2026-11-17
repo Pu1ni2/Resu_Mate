@@ -8,6 +8,7 @@ and none of the questions, one report recommended "Pass".
 """
 import logging
 
+from app.services import jobs
 from app.tools.openai_tool import openai_tool
 
 logger = logging.getLogger("resumate.interview_report")
@@ -61,6 +62,47 @@ async def write_report(transcript, role) -> str:
         prompt=prompt,
         system="You are a senior hiring manager. Be concise, fair, and evidence-grounded.",
     )
+
+
+async def _report_failed(db, job, code) -> None:
+    """The report couldn't be written, for good: the interview says so, and
+    why, as a short code; its manager can have it written again."""
+    from sqlalchemy import update
+    from app.models.candidate import Interview
+    await db.execute(update(Interview).where(
+        Interview.id == job.payload["interview_id"], Interview.report_status == "pending",
+    ).values(report_status="failed", report_error=code))
+
+
+@jobs.handler("report.write", backoff=(30, 600), on_failure=_report_failed)
+async def write_interview_report(payload: dict) -> None:
+    """Write a finished interview's report (db_service.complete_interview
+    queues this). The AI busy or out of reach is tried again later; a
+    report it can't write leaves the interview's report_status "failed".
+
+    No database session is held while the AI writes, which can take a
+    minute. The interview is read again before its report is kept: one
+    deleted meanwhile, or already written, is left as it is.
+    """
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services import db_service
+    interview_id = payload["interview_id"]
+    async with database.async_session() as db:
+        interview = await db.get(Interview, interview_id)
+        if interview is None or interview.report_status != "pending":
+            return
+        transcript, role = interview.transcript or [], interview.role
+    report = await write_report(transcript, role)
+    if not report:
+        raise jobs.PermanentError("report_empty")  # no AI key, or nothing came back
+    async with database.async_session() as db:
+        interview = await db.get(Interview, interview_id)
+        if interview is None or interview.report_status != "pending":
+            return
+        db_service.merge_interview_report(interview, {"report": report})
+        interview.report_status, interview.report_error = "done", None
+        await db.commit()
 
 
 async def finish_abandoned() -> int:

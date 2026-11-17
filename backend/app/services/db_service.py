@@ -356,6 +356,40 @@ def finish_interview(interview: Interview, duration=None) -> None:
         interview.duration = int(duration)
 
 
+async def complete_interview(session: AsyncSession, interview: Interview, duration=None,
+                             report: Optional[str] = None) -> bool:
+    """Finish an interview, once: completed, when, and how long it took (a
+    length of 0, or none, keeps what's saved). True for the call that
+    finished it; False when it was finished already, and nothing changes.
+
+    The check and the change are one conditional update: read first and
+    written after the AI's report, two posts of one transcript both passed
+    the check, and both wrote a report and emailed the manager.
+
+    Its report is queued, a background job (report.write, in
+    app/services/interview_report.py), in the same transaction: the
+    interview is complete when this commits, and the report follows. A
+    fixed `report`, such as a terminated interview's note, is kept at once
+    instead. Doesn't commit.
+    """
+    from app.services import jobs
+    values = dict(status="completed", completed_at=datetime.utcnow(), report_error=None,
+                  report_status="done" if report is not None else "pending")
+    if duration:
+        values["duration"] = int(duration)
+    finished = await session.execute(
+        update(Interview).where(Interview.id == interview.id, Interview.status != "completed").values(**values)
+    )
+    if finished.rowcount != 1:
+        return False
+    if report is not None:
+        merge_interview_report(interview, {"report": report})
+    else:
+        await jobs.enqueue(session, "report.write", {"interview_id": interview.id},
+                           dedupe_key=f"report:{interview.id}", manager_id=interview.manager_id)
+    return True
+
+
 # What the candidate's own browser may record about their interview: the
 # proctoring it measured, nothing that judges them.
 PROCTORING_FIELDS = {
