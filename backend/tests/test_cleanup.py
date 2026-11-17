@@ -7,7 +7,7 @@ import os
 import time
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 
 def _run(coro):
@@ -37,6 +37,7 @@ def test_the_server_registers_each_clean_up_task_on_its_schedule():
     assert jobs.handler_for("cleanup.old_jobs").every == timedelta(days=1)
     assert jobs.handler_for("cleanup.sign_in_codes").every == timedelta(hours=1)
     assert jobs.handler_for("interviews.finish_abandoned").every == timedelta(minutes=15)
+    assert jobs.handler_for("cleanup.retention").every == timedelta(days=1)
 
 
 # ── old jobs ──────────────────────────────────────────────────────────────────
@@ -169,3 +170,101 @@ def test_the_server_sweeps_its_own_uploads_when_it_starts(client, kinds, monkeyp
         while left.exists() and time.time() < deadline:
             time.sleep(0.05)
     assert not left.exists()
+
+
+# ── retention ─────────────────────────────────────────────────────────────────
+
+async def _candidate(manager_id, name, changed_days_ago, interview_days_ago=None, file_key=None):
+    """A candidate last changed `changed_days_ago`, with portal access and,
+    if given, an interview made `interview_days_ago`."""
+    from app.core import database
+    from app.models.candidate import Candidate, CandidateAccess, Interview
+    from app.models.state import ChatHistory
+    now = datetime.utcnow()
+    async with database.async_session() as db:
+        row = Candidate(manager_id=manager_id, name=name, email=f"{name.lower()}@x.com",
+                        updated_at=now - timedelta(days=changed_days_ago), file_object_key=file_key)
+        db.add(row)
+        await db.flush()
+        db.add(CandidateAccess(manager_id=manager_id, email=row.email, candidate_id=row.id, name=name))
+        if interview_days_ago is not None:
+            db.add(Interview(candidate_id=row.id, manager_id=manager_id, candidate_email=row.email, role="Dev",
+                             mode="conversational", created_at=now - timedelta(days=interview_days_ago)))
+        db.add(ChatHistory(session_id=f"chat-{name}", manager_id=manager_id, messages=[]))
+        await db.commit()
+        return row.id
+
+
+async def _left(model):
+    from app.core import database
+    async with database.async_session() as db:
+        return (await db.execute(select(func.count()).select_from(model))).scalar()
+
+
+async def _candidate_ids():
+    from app.core import database
+    from app.models.candidate import Candidate
+    async with database.async_session() as db:
+        return set((await db.execute(select(Candidate.id))).scalars())
+
+
+def test_retention_is_off_until_its_days_are_chosen(client):
+    from conftest import register
+    from app.core.config import settings
+    from app.services import cleanup
+    assert settings.retention_days == 0
+    _, m = register(client, "keep@co.com")
+    ancient = _run(_candidate(m["id"], "Ada", changed_days_ago=3000, interview_days_ago=3000))
+    _run(cleanup.apply_retention({}))
+    assert _run(_candidate_ids()) == {ancient}
+
+
+def test_a_candidate_untouched_for_the_retention_days_goes_with_everything_of_theirs(client, monkeypatch):
+    from conftest import register
+    from app.core.config import settings
+    from app.models.candidate import CandidateAccess, Interview
+    from app.models.state import ChatHistory
+    from app.services import cleanup
+    from app.services.resume_rag import resume_rag
+    from app.services.storage_service import storage_service
+    monkeypatch.setattr(settings, "retention_days", 180)
+    files, forgotten = [], []
+    monkeypatch.setattr(storage_service, "delete", lambda key: files.append(key))
+    monkeypatch.setattr(resume_rag, "delete_candidate", lambda cid, manager_id=None: forgotten.append((cid, manager_id)))
+    _, old_mgr = register(client, "old@co.com")
+    _, new_mgr = register(client, "new@co.com")
+    stale = _run(_candidate(old_mgr["id"], "Ada", 200, interview_days_ago=200, file_key=f"{old_mgr['id']}/ada.pdf"))
+    changed = _run(_candidate(new_mgr["id"], "Bo", 10))
+    # Uploaded long ago, but interviewed last week: current, not untouched.
+    interviewed = _run(_candidate(new_mgr["id"], "Cy", 300, interview_days_ago=5))
+    _run(cleanup.apply_retention({}))
+    assert _run(_candidate_ids()) == {changed, interviewed}
+    assert (_run(_left(Interview)), _run(_left(CandidateAccess))) == (1, 2)
+    # The server's in-memory copy, the original file, and the chat that may be about them.
+    assert forgotten == [(stale, old_mgr["id"])] and files == [f"{old_mgr['id']}/ada.pdf"]
+    assert _run(_left(ChatHistory)) == 2  # only the old manager's went
+
+
+def test_a_big_first_run_goes_in_batches(client, monkeypatch):
+    from conftest import register
+    from app.core.config import settings
+    from app.services import cleanup
+    monkeypatch.setattr(settings, "retention_days", 180)
+    monkeypatch.setattr(cleanup, "RETENTION_BATCH", 2)
+    _, m = register(client, "many@co.com")
+    for n in range(5):
+        _run(_candidate(m["id"], f"Old{n}", 400))
+    assert _run(cleanup.delete_untouched(datetime.utcnow() - timedelta(days=180))) == 5
+    assert _run(_candidate_ids()) == set()
+
+
+def test_the_dry_run_lists_whom_the_server_would_delete(client, capsys):
+    import cleanup_stale
+    from conftest import register
+    _, m = register(client, "dry@co.com")
+    stale = _run(_candidate(m["id"], "Ada", 200))
+    current = _run(_candidate(m["id"], "Cy", 300, interview_days_ago=5))
+    _run(cleanup_stale.run(days=180, apply=False))
+    listed = capsys.readouterr().out
+    assert f"id={stale} " in listed and f"id={current} " not in listed
+    assert _run(_candidate_ids()) == {stale, current}
