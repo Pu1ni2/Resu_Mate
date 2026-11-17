@@ -184,3 +184,126 @@ def test_a_job_past_its_last_attempt_fails_instead_of_running_again(client):
     (job,) = _run(_jobs())
     assert (job.status, job.last_error, job.locked_by, job.dedupe_key) == ("failed", "lease_expired", None, None)
     assert job.finished_at == now + timedelta(seconds=61)
+
+
+# ── running a job ─────────────────────────────────────────────────────────────
+
+@pytest.fixture()
+def kinds():
+    """Register kinds of job for one test: kinds(kind, run, **options)."""
+    from app.services import jobs
+    added = []
+
+    def register(kind, run, **options):
+        jobs.handler(kind, **options)(run)
+        added.append(kind)
+    yield register
+    for kind in added:
+        jobs._handlers.pop(kind, None)
+
+
+async def _run_due(kind_names, now, worker="host:1:abcd1234"):
+    """Claim the due jobs of these kinds, as `worker`, and run each to its
+    next state; their outcomes."""
+    from app.services import jobs
+    rows = await _claim(kinds=kind_names, now=now, worker=worker)
+    return [await jobs.run_claimed(row, worker, now=lambda: now) for row in rows]
+
+
+async def _take_over(job_id, worker):
+    from app.core import database
+    from app.models.job import Job
+    from sqlalchemy import update
+    async with database.async_session() as db:
+        await db.execute(update(Job).where(Job.id == job_id).values(locked_by=worker))
+        await db.commit()
+
+
+def test_a_job_that_finishes_is_done_and_frees_its_key(client, kinds):
+    seen = []
+
+    async def write_report(payload):
+        seen.append(payload)
+    kinds("test.report", write_report)
+    now = datetime.utcnow()
+    _run(_enqueue(kind="test.report", payload={"interview_id": 7}, dedupe_key="report:7", run_at=now))
+    assert _run(_run_due(["test.report"], now)) == ["done"]
+    assert seen == [{"interview_id": 7}]
+    (job,) = _run(_jobs())
+    assert (job.status, job.finished_at, job.dedupe_key, job.locked_by, job.last_error) == \
+        ("done", now, None, None, None)
+    # The key is free again: the same work can be queued once more.
+    assert _run(_enqueue(kind="test.report", dedupe_key="report:7")) is not None
+
+
+def test_a_passing_failure_is_tried_again_after_a_growing_wait(client, kinds):
+    async def busy(payload):
+        raise TimeoutError
+    kinds("test.busy", busy, backoff=(10, 600))
+    now = datetime.utcnow()
+    _run(_enqueue(kind="test.busy", run_at=now))
+    assert _run(_run_due(["test.busy"], now)) == ["retry"]
+    (job,) = _run(_jobs())
+    assert (job.status, job.attempts, job.last_error, job.locked_by) == ("queued", 1, "retry:TimeoutError", None)
+    assert 8 <= (job.run_at - now).total_seconds() <= 12  # 10 s, give or take a fifth
+    assert _run(_run_due(["test.busy"], now)) == []  # not before its time
+    then = job.run_at
+    assert _run(_run_due(["test.busy"], then)) == ["retry"]
+    (job,) = _run(_jobs())
+    assert job.attempts == 2 and 16 <= (job.run_at - then).total_seconds() <= 24  # then 20 s
+
+
+def test_a_job_fails_for_good_on_a_lasting_error_or_its_last_attempt(client, kinds):
+    from app.models.job import Job
+    from app.services.jobs import PermanentError
+    failed = []
+
+    async def note_failure(db, job, code):
+        failed.append((job.kind, code))
+        # Written in the same transaction as the failure.
+        db.add(Job(kind="test.followup", payload={}))
+
+    async def gone(payload):
+        raise PermanentError("interview_gone")
+
+    async def wrong(payload):
+        raise ValueError("ada@x.com isn't a valid address")  # its text is never kept
+
+    async def busy(payload):
+        raise TimeoutError
+    kinds("test.gone", gone, on_failure=note_failure)
+    kinds("test.wrong", wrong, on_failure=note_failure)
+    kinds("test.busy", busy, max_attempts=1, on_failure=note_failure)
+    now = datetime.utcnow()
+    for kind in ("test.gone", "test.wrong", "test.busy"):
+        _run(_enqueue(kind=kind, run_at=now, dedupe_key=kind.replace(".", ":")))
+    assert _run(_run_due(["test.gone", "test.wrong", "test.busy"], now)) == ["failed"] * 3
+    assert sorted(failed) == [("test.busy", "error:TimeoutError"), ("test.gone", "interview_gone"),
+                              ("test.wrong", "error:ValueError")]
+    done_with = [job for job in _run(_jobs()) if job.kind != "test.followup"]
+    assert len(done_with) == 3 and len(_run(_jobs())) == 6
+    for job in done_with:
+        assert (job.status, job.dedupe_key, job.locked_by, job.finished_at) == ("failed", None, None, now)
+        assert "ada@x.com" not in job.last_error
+
+
+def test_a_worker_that_lost_its_job_changes_nothing(client, kinds):
+    from app.services import jobs
+
+    async def write_report(payload):
+        pass
+    kinds("test.report", write_report)
+    now = datetime.utcnow()
+    _run(_enqueue(kind="test.report", run_at=now))
+    (row,) = _run(_claim(kinds=["test.report"], now=now, worker="host:1:first000"))
+    # Its lease ran out meanwhile, and another worker took the job up.
+    _run(_take_over(row.id, "host:2:second00"))
+    assert _run(jobs.run_claimed(row, "host:1:first000", now=lambda: now)) == "lost"
+    (job,) = _run(_jobs())
+    assert (job.status, job.locked_by, job.finished_at) == ("running", "host:2:second00", None)
+
+
+def test_a_kind_of_job_is_registered_by_a_short_dotted_name(client):
+    from app.services import jobs
+    with pytest.raises(ValueError):
+        jobs.handler("Write the report")
