@@ -2,6 +2,9 @@
 as long as it needs them.
 """
 import asyncio
+import logging
+import os
+import time
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -109,3 +112,60 @@ def test_a_code_still_open_signs_in_after_the_clean_up(client):
             return left, await codes.redeem_code(db, "e@x.com", newer)
     left, outcome = _run(scenario())
     assert len(left) == 1 and outcome is codes.Outcome.REDEEMED
+
+
+# ── files left in the uploads folder ──────────────────────────────────────────
+
+def _file(folder, name, hours_old):
+    path = folder / name
+    path.write_bytes(b"%PDF-1.4 a resume")
+    stamp = time.time() - hours_old * 3600
+    os.utime(path, (stamp, stamp))
+    return path
+
+
+def test_upload_files_left_over_an_hour_are_removed(tmp_path, monkeypatch, caplog):
+    from app.api import candidates
+    from app.services import cleanup
+    monkeypatch.setattr(candidates, "UPLOAD_DIR", str(tmp_path))
+    _file(tmp_path, "1a2b3c4d_Ada_Lovelace_CV.pdf", hours_old=2)
+    _file(tmp_path, "5e6f7a8b_Grace_Hopper.pdf", hours_old=0.1)  # an upload being read
+    _file(tmp_path, ".gitkeep", hours_old=500)
+    (tmp_path / "a_folder").mkdir()
+    with caplog.at_level(logging.INFO, logger="resumate.cleanup"):
+        _run(cleanup.remove_left_uploads())
+    assert sorted(path.name for path in tmp_path.iterdir()) == [".gitkeep", "5e6f7a8b_Grace_Hopper.pdf", "a_folder"]
+    # The count, never a name: the names come from people's files.
+    assert "1 left upload files removed" in caplog.text and "Lovelace" not in caplog.text
+
+
+def test_a_file_that_cant_be_removed_yet_waits_for_the_next_sweep(tmp_path, monkeypatch):
+    from app.api import candidates
+    from app.services import cleanup
+    monkeypatch.setattr(candidates, "UPLOAD_DIR", str(tmp_path))
+    locked = _file(tmp_path, "1a2b3c4d_locked.pdf", hours_old=2)
+    _file(tmp_path, "5e6f7a8b_free.pdf", hours_old=2)
+    real_remove = os.remove
+
+    def remove(path):
+        if "locked" in str(path):
+            raise PermissionError("in use by another process")  # what Windows says
+        real_remove(path)
+    monkeypatch.setattr(os, "remove", remove)
+    _run(cleanup.remove_left_uploads())
+    assert [path.name for path in tmp_path.iterdir()] == [locked.name]
+
+
+def test_the_server_sweeps_its_own_uploads_when_it_starts(client, kinds, monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    import main
+    from app.api import candidates
+    from app.core.config import settings
+    monkeypatch.setattr(candidates, "UPLOAD_DIR", str(tmp_path))
+    monkeypatch.setattr(settings, "jobs_runner", True)
+    left = _file(tmp_path, "1a2b3c4d_cv.pdf", hours_old=2)
+    with TestClient(main.app):
+        deadline = time.time() + 5
+        while left.exists() and time.time() < deadline:
+            time.sleep(0.05)
+    assert not left.exists()

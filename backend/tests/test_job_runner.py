@@ -322,3 +322,21 @@ def test_the_server_runs_jobs_and_lets_a_running_one_end_on_shutdown(client, kin
 def test_the_tests_app_has_no_runner_of_its_own(client):
     import main
     assert main.app.state.job_runner is None
+
+
+def test_a_runners_own_steps_run_when_it_starts_and_every_so_often(client, kinds):
+    from app.services import job_runner, jobs
+    calls = []
+
+    async def tidy_this_machine():
+        calls.append(asyncio.get_running_loop().time())
+
+    async def scenario():
+        runner = job_runner.start(work_slots=1, email_slots=1, local=((tidy_this_machine, 0.1),),
+                                  poll_seconds={jobs.EMAIL_LANE: 30, jobs.WORK_LANE: 30})
+        try:
+            await _until(lambda: len(calls) >= 3)
+        finally:
+            await runner.stop(grace_seconds=1)
+    _run(scenario())
+    assert len(calls) >= 3
