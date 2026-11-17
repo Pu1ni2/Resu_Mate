@@ -818,25 +818,20 @@ async def save_transcript(
         return {"saved": False, "already_completed": True}
 
     interview.transcript = req.transcript
+    if not interview.role and req.role:
+        interview.role = req.role  # what its report job reads
 
-    # A report from the transcript, so the hiring manager has something to
-    # read as soon as the candidate leaves.
-    try:
-        report_text = await write_report(req.transcript, interview.role or req.role)
-        if report_text:
-            # Merged, so the proctoring numbers the candidate's browser saved stay.
-            db_service.merge_interview_report(interview, {"report": report_text})
-    except Exception as exc:
-        # Don't fail the transcript save if report generation hiccups.
-        print(f"[save-transcript] report generation failed: {type(exc).__name__}")
-
-    # The interview is over whether or not its report could be written: left
-    # unfinished, it stayed "in progress" for good, as a voice interview's
-    # doesn't. A missing report can be written again.
-    db_service.finish_interview(interview, req.duration)
+    # Completed now, its report queued: a background job writes it
+    # (app/services/interview_report.py), merged with the proctoring numbers
+    # the candidate's browser saved. The worker waited on the AI, gave up
+    # after 10 seconds, and could post again. Once only, though two posts
+    # arrive at once: the second changes nothing.
+    if not await db_service.complete_interview(db, interview, req.duration):
+        await db.rollback()
+        return {"saved": False, "already_completed": True}
     await db.commit()
     await _notify_manager_interview_complete(db, interview)
-    return {"saved": True, "turns": len(req.transcript), "report_generated": bool(interview.report)}
+    return {"saved": True, "turns": len(req.transcript), "report_status": interview.report_status}
 
 
 async def _notify_manager_interview_complete(db, interview) -> None:

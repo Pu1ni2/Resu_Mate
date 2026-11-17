@@ -106,13 +106,14 @@ def test_a_video_interview_finishes_though_its_report_cannot_be_written(client, 
     r = client.post("/api/chat/save-transcript", headers=AGENT, json={
         "candidate_email": "f4@x.com", "room_name": "interview-f4", "duration": 300, "transcript": transcript,
     })
-    assert r.status_code == 200 and r.json()["report_generated"] is False
+    # Completed at once; its report is a background job's, tried again later.
+    assert r.status_code == 200 and r.json()["report_status"] == "pending"
     status, finished, seconds = _run(_read(iid))
     assert (status, seconds) == ("completed", 300)
     assert finished is not None
 
 
-def test_a_second_post_of_a_video_transcript_changes_nothing(client, monkeypatch):
+def test_a_second_post_of_a_video_transcript_changes_nothing(client, monkeypatch, run_jobs):
     # After a timeout the worker tried a second address, and each post wrote
     # the report again and emailed the manager again.
     from app.services.email_service import email_service
@@ -141,6 +142,7 @@ def test_a_second_post_of_a_video_transcript_changes_nothing(client, monkeypatch
     assert again.status_code == 200
     assert again.json() == {"saved": False, "already_completed": True}
     assert (_run(_transcript(iid)), _run(_read(iid))) == first
+    assert run_jobs() == ["done"]  # its one report, written by a background job
     assert (len(written), len(emailed)) == (1, 1)
 
 
