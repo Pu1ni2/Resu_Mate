@@ -70,7 +70,7 @@ SAID = [{"role": "interviewer", "text": "Tell me about a hard bug."},
         {"role": "candidate", "text": "A race between two workers. " * 12}]
 
 
-async def _started(manager_id, email, transcript=SAID, **fields):
+async def _started(manager_id, email, transcript=SAID, mode="conversational", **fields):
     from app.core import database
     from app.models.candidate import Candidate, Interview
     async with database.async_session() as db:
@@ -78,7 +78,7 @@ async def _started(manager_id, email, transcript=SAID, **fields):
         db.add(cand)
         await db.flush()
         interview = Interview(candidate_id=cand.id, manager_id=manager_id, candidate_email=email, role="Dev",
-                              mode="conversational", status="in_progress", transcript=transcript, **fields)
+                              mode=mode, status="in_progress", transcript=transcript, **fields)
         db.add(interview)
         await db.commit()
         return interview.id
@@ -291,3 +291,96 @@ def test_a_finalize_that_loses_the_race_keeps_nothing_of_its_own(client, monkeyp
     assert r.json() == {"saved": False, "already_completed": True, "turns": 2, "report_status": "pending"}
     assert _run(_state(iid))[4] == 111 and sent == []
     assert len(_run(_jobs())) == 1  # the first one's report job only
+
+
+# ── video ─────────────────────────────────────────────────────────────────────
+
+AGENT = {"X-Agent-Token": "test-agent-secret"}
+
+
+def _video(m, email, **fields):
+    return _run(_started(m["id"], email, transcript=None, mode="avatar", room_name=f"interview-{email}", **fields))
+
+
+def _post(email, **body):
+    from fastapi.testclient import TestClient  # noqa: F401  (the client fixture's app)
+    return {"candidate_email": email, "room_name": f"interview-{email}", "duration": 240, "transcript": SAID, **body}
+
+
+def test_video_save_transcript_answers_without_waiting_for_the_ai(client, run_jobs, monkeypatch):
+    calls, sent = _writer(monkeypatch, "## A report"), _emails(monkeypatch)
+    _, m = register(client, "vd1@co.com")
+    iid = _video(m, "vd1@x.com")
+    r = client.post("/api/chat/save-transcript", headers=AGENT, json=_post("vd1@x.com"))
+    assert r.status_code == 200 and r.json() == {"saved": True, "turns": 2, "report_status": "pending"}
+    assert calls == [] and sent == [iid]  # the worker no longer waits on the AI
+    assert run_jobs() == ["done"]
+    assert _run(_state(iid)) == ("completed", "done", None, "## A report", 240)
+
+
+def test_what_the_candidates_browser_measured_stays_with_the_report(client, run_jobs, monkeypatch):
+    import json
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services import db_service
+    _writer(monkeypatch, "## A report")
+    _, m = register(client, "vd2@co.com")
+    iid = _video(m, "vd2@x.com")
+
+    async def measured():
+        async with database.async_session() as db:
+            db_service.merge_interview_report(await db.get(Interview, iid), {"violations": 1, "eyeContact": 92.0})
+            await db.commit()
+
+    async def stored():
+        async with database.async_session() as db:
+            return json.loads((await db.get(Interview, iid)).report)
+    _run(measured())
+    client.post("/api/chat/save-transcript", headers=AGENT, json=_post("vd2@x.com"))
+    run_jobs()
+    assert _run(stored()) == {"violations": 1, "eyeContact": 92.0, "report": "## A report"}
+
+
+def test_an_interview_with_no_role_is_reported_on_for_the_workers(client, run_jobs, monkeypatch):
+    from app.services import interview_report
+    asked = []
+
+    async def write_report(transcript, role):
+        asked.append(role)
+        return "## A report"
+    monkeypatch.setattr(interview_report, "write_report", write_report)
+    _, m = register(client, "vd3@co.com")
+    iid = _video(m, "vd3@x.com")
+
+    async def no_role():
+        from app.core import database
+        from app.models.candidate import Interview
+        async with database.async_session() as db:
+            (await db.get(Interview, iid)).role = None
+            await db.commit()
+    _run(no_role())
+    client.post("/api/chat/save-transcript", headers=AGENT, json=_post("vd3@x.com", role="Data Engineer"))
+    run_jobs()
+    assert asked == ["Data Engineer"]
+
+
+def test_a_transcript_post_that_loses_the_race_changes_nothing(client, monkeypatch):
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services import db_service
+    sent = _emails(monkeypatch)
+    _, m = register(client, "vd4@co.com")
+    iid = _video(m, "vd4@x.com")
+    real = db_service.complete_interview
+
+    async def finished_meanwhile(db, interview, duration=None, report=None):
+        # The worker's second post, at the same moment, finishes it first.
+        async with database.async_session() as other:
+            await real(other, await other.get(Interview, iid), 111)
+            await other.commit()
+        return await real(db, interview, duration, report=report)
+    monkeypatch.setattr(db_service, "complete_interview", finished_meanwhile)
+    r = client.post("/api/chat/save-transcript", headers=AGENT, json=_post("vd4@x.com", duration=999))
+    assert r.json() == {"saved": False, "already_completed": True}
+    assert _run(_state(iid))[4] == 111 and sent == []
+    assert len(_run(_jobs())) == 1
