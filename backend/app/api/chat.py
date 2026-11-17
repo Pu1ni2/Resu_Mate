@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header, Request
 from app.core.rate_limit import limiter
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -1063,8 +1063,7 @@ async def get_all_interview_results(user=Depends(get_current_user), db: AsyncSes
 
 
 @router.get("/interview-statuses")
-async def interview_statuses(background: BackgroundTasks, user=Depends(get_current_user),
-                             db: AsyncSession = Depends(get_db)):
+async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Compact email -> {status, mode, id, created_at, completed_at} map for
     the ATS results badges and the Interviews queue.
 
@@ -1074,12 +1073,9 @@ async def interview_statuses(background: BackgroundTasks, user=Depends(get_curre
     the Interviews view, which says when each was made and finished: it had
     no dates at all.
 
-    Interviews started and left for good are finished after the answer, on
-    what was said (interview_report.finish_abandoned), so the next look
-    shows them done.
+    Interviews started and left for good are finished by a background job
+    every 15 minutes (app/services/cleanup.py), not here.
     """
-    from app.services.interview_report import finish_abandoned
-    background.add_task(finish_abandoned, user.id)
     from sqlalchemy import select
     from app.models.candidate import Interview
     rows = (await db.execute(

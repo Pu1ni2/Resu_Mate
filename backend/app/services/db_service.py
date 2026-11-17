@@ -328,13 +328,18 @@ def last_activity(interview: Interview) -> datetime:
     return max(times) if times else datetime.utcnow()
 
 
-async def abandoned_interviews(session: AsyncSession, manager_id: int) -> list:
-    """This manager's started interviews that nothing has happened in since ABANDONED_AFTER."""
+def is_abandoned(interview: Interview) -> bool:
+    """Started, and nothing has happened in it since ABANDONED_AFTER."""
+    return (interview.status in ("in_progress", "interrupted")
+            and last_activity(interview) < datetime.utcnow() - ABANDONED_AFTER)
+
+
+async def abandoned_interviews(session: AsyncSession) -> list:
+    """Every manager's started interviews that nothing has happened in since ABANDONED_AFTER."""
     rows = (await session.execute(select(Interview).where(
-        Interview.manager_id == manager_id, Interview.status.in_(("in_progress", "interrupted")),
+        Interview.status.in_(("in_progress", "interrupted")),
     ))).scalars().all()
-    cutoff = datetime.utcnow() - ABANDONED_AFTER
-    return [iv for iv in rows if last_activity(iv) < cutoff]
+    return [iv for iv in rows if is_abandoned(iv)]
 
 
 def finish_interview(interview: Interview, duration=None) -> None:

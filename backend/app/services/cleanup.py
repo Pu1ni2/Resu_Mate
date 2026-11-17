@@ -36,6 +36,15 @@ async def forget_spent_codes(payload: dict) -> None:
     logger.info("cleanup: %s spent sign-in codes deleted", gone.rowcount)
 
 
+@jobs.handler("interviews.finish_abandoned", every=timedelta(minutes=15))
+async def finish_abandoned_interviews(payload: dict) -> None:
+    """Finish the interviews started and left for 48 hours, every manager's,
+    each on what was said (interview_report.finish_abandoned). They were
+    finished only when their manager opened the interviews page."""
+    from app.services.interview_report import finish_abandoned
+    logger.info("cleanup: %s left interviews finished", await finish_abandoned())
+
+
 @jobs.handler("cleanup.old_jobs", every=timedelta(days=1))
 async def forget_old_jobs(payload: dict) -> None:
     """Delete the jobs that ended more than JOBS_KEEP_DAYS ago. Each report,

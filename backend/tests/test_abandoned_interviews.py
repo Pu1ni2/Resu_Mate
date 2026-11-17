@@ -7,7 +7,7 @@ import asyncio
 import json
 from datetime import datetime, timedelta
 
-from conftest import auth_headers, register
+from conftest import register
 
 from app.services.db_service import last_activity
 from app.services.interview_report import NOT_ENOUGH
@@ -60,28 +60,36 @@ def test_the_last_activity_is_the_last_line_or_the_start():
     assert last_activity(_Interview(made)) == made
 
 
-def test_an_interview_left_for_days_is_finished_when_the_statuses_load(client):
-    tok, m = register(client, "ab1@co.com")
+def _finish_left():
+    """One run of the 15-minute task (app/services/cleanup.py)."""
+    from app.services import cleanup
+    _run(cleanup.finish_abandoned_interviews({}))
+
+
+def test_an_interview_left_for_days_is_finished_by_the_15_minute_task(client):
+    _, m = register(client, "ab1@co.com")
     left = _run(_interview(m["id"], "ab1@x.com", status="interrupted", created_at=_days_ago(3),
                            transcript=[{"role": "candidate", "text": "Hello"}]))
-    assert client.get("/api/chat/interview-statuses", headers=auth_headers(tok)).status_code == 200
+    _finish_left()
     status, report = _run(_read(left))
     assert status == "completed"
     assert json.loads(report)["report"] == NOT_ENOUGH  # written from what was said: too little here
 
 
 def test_a_recent_one_and_one_not_started_are_left_alone(client):
-    tok, m = register(client, "ab2@co.com")
+    _, m = register(client, "ab2@co.com")
     recent = _run(_interview(m["id"], "ab2@x.com", status="interrupted", created_at=_days_ago(1)))
     waiting = _run(_interview(m["id"], "ab2b@x.com", status="pending", created_at=_days_ago(10)))
-    client.get("/api/chat/interview-statuses", headers=auth_headers(tok))
+    _finish_left()
     assert _run(_read(recent)) == ("interrupted", None)
     assert _run(_read(waiting)) == ("pending", None)
 
 
-def test_another_managers_load_finishes_none_of_them(client):
+def test_one_run_finishes_every_managers_left_interviews(client):
+    # Each manager's waited for that manager to open the interviews page.
     _, a = register(client, "ab3@co.com")
-    tok_b, _ = register(client, "ab4@co.com")
-    left = _run(_interview(a["id"], "ab3@x.com", status="in_progress", created_at=_days_ago(3)))
-    client.get("/api/chat/interview-statuses", headers=auth_headers(tok_b))
-    assert _run(_read(left)) == ("in_progress", None)
+    _, b = register(client, "ab4@co.com")
+    left_a = _run(_interview(a["id"], "ab3@x.com", status="in_progress", created_at=_days_ago(3)))
+    left_b = _run(_interview(b["id"], "ab4@x.com", status="interrupted", created_at=_days_ago(5)))
+    _finish_left()
+    assert [_run(_read(left))[0] for left in (left_a, left_b)] == ["completed", "completed"]
