@@ -303,14 +303,24 @@ async def _unfinished(found, row, worker: str, now: Callable[[], datetime], valu
             or await _cancel(found, row, worker, now))
 
 
-async def _heartbeat(row, worker: str, lease_seconds: float, now: Callable[[], datetime]) -> str:
+async def _heartbeat(row, worker: str, lease_seconds: float, now: Callable[[], datetime],
+                     ended: asyncio.Event) -> Optional[str]:
     """Renew this worker's lease on a running job every quarter of it, so a
-    long job isn't taken up by another worker halfway. Returns "lost" when
-    another worker holds the job now, or "cancelled" when someone asked it
-    to stop. A renewal the database refuses is tried again next time."""
+    long job isn't taken up by another worker halfway, until the run ends.
+    Returns "lost" when another worker holds the job now, "cancelled" when
+    someone asked it to stop, or None once the run has ended. A renewal the
+    database refuses is tried again next time.
+
+    It stops between renewals, never during one: a write cut off halfway
+    can leave the database locked, and its connection never handed back.
+    """
     from app.core.database import async_session
     while True:
-        await asyncio.sleep(lease_seconds / 4)
+        try:
+            await asyncio.wait_for(ended.wait(), timeout=lease_seconds / 4)
+            return None
+        except TimeoutError:
+            pass
         try:
             async with async_session() as db:
                 held = (await db.execute(
@@ -332,10 +342,12 @@ async def _run_watched(found, row, worker: str, now: Callable[[], datetime]) -> 
     """The kind's run, within its time limit, with the heartbeat beside it.
 
     Returns None when the run ended, raising whatever it raised, or "lost"
-    or "cancelled" when the heartbeat stopped it first.
+    or "cancelled" when the heartbeat stopped it first; in each case, once
+    both have ended.
     """
+    ended = asyncio.Event()
     work = asyncio.ensure_future(asyncio.wait_for(found.run(dict(row.payload)), timeout=found.timeout_seconds))
-    beat = asyncio.ensure_future(_heartbeat(row, worker, found.lease_seconds, now))
+    beat = asyncio.ensure_future(_heartbeat(row, worker, found.lease_seconds, now, ended))
     try:
         await asyncio.wait({work, beat}, return_when=asyncio.FIRST_COMPLETED)
         if work.done():
@@ -343,11 +355,12 @@ async def _run_watched(found, row, worker: str, now: Callable[[], datetime]) -> 
             return None
         return beat.result()
     finally:
-        for task in (beat, work):
-            if not task.done():
-                task.cancel()
-                with contextlib.suppress(BaseException):
-                    await task
+        ended.set()
+        if not work.done():
+            work.cancel()
+        for task in (work, beat):
+            with contextlib.suppress(BaseException):
+                await task
 
 
 async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.utcnow) -> str:
