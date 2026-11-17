@@ -294,6 +294,28 @@ def test_a_job_fails_for_good_on_a_lasting_error_or_its_last_attempt(client, kin
         assert "ada@x.com" not in job.last_error
 
 
+def test_a_job_whose_worker_stopped_during_its_last_try_fails_with_its_kinds_failure_step(client, kinds):
+    from app.models.job import Job
+    failed = []
+
+    async def write_report(payload):
+        pass
+
+    async def note_failure(db, job, code):
+        failed.append((job.kind, code))
+        db.add(Job(kind="test.followup", payload={}))  # in the same transaction as the failure
+    kinds("test.report", write_report, max_attempts=1, on_failure=note_failure)
+    now = datetime.utcnow()
+    _run(_enqueue(kind="test.report", run_at=now, dedupe_key="report:7"))
+    _run(_claim(kinds=["test.report"], now=now, worker="host:1:gone0000"))
+    # Its worker stopped during the job's one try, and the lease ran out.
+    assert _run(_run_due(["test.report"], now + timedelta(seconds=61))) == ["failed"]
+    assert failed == [("test.report", "lease_expired")]
+    job, followup = _run(_jobs())
+    assert (job.status, job.last_error, job.dedupe_key) == ("failed", "lease_expired", None)
+    assert followup.kind == "test.followup"
+
+
 def test_a_worker_that_lost_its_job_changes_nothing(client, kinds):
     from app.services import jobs
 
@@ -517,3 +539,23 @@ def test_a_job_asked_to_stop_after_its_worker_stopped_isnt_run(client, kinds):
     assert ran == [] and tidied == ["cancelled"]
     (job,) = _run(_jobs())
     assert (job.status, job.locked_by) == ("cancelled", None)
+
+
+def test_a_job_asked_to_stop_during_its_last_try_ends_cancelled_not_failed(client, kinds):
+    tidied, failed = [], []
+
+    async def search(payload):
+        pass
+
+    async def tidy_up(db, job, code):
+        tidied.append(code)
+
+    async def note_failure(db, job, code):
+        failed.append(code)
+    kinds("test.search", search, on_cancel=tidy_up, on_failure=note_failure)
+    now = datetime.utcnow()
+    # Asked to stop during its last try; its worker stopped before noticing.
+    _run(_add(kind="test.search", status="running", attempts=1, max_attempts=1, cancel_requested=True,
+              run_at=now, locked_by="host:1:gone0000", locked_until=now - timedelta(seconds=1)))
+    assert _run(_run_due(["test.search"], now)) == ["cancelled"]
+    assert (tidied, failed) == (["cancelled"], [])
