@@ -30,7 +30,6 @@ from app.models.candidate import CandidateAccess, Interview
 from app.services import db_service
 from app.services.consent import require_consent
 from app.services.auth import Actor, get_current_actor
-from app.services.interview_report import write_report
 from app.services.interview_script import build_instructions
 
 logger = logging.getLogger("resumate.realtime")
@@ -336,46 +335,37 @@ async def finalize(
     db: AsyncSession = Depends(get_db),
     actor: Actor = Depends(get_current_actor),
 ):
-    """End the conversational interview, generate a report, mark completed.
-
-    The report is written as the avatar interview's /save-transcript writes
-    it (app/services/interview_report.py) and stored on interview.report. The
-    hiring manager's existing get_interview_report path then just works for
-    both modes.
+    """End the conversational interview: its transcript saved, completed,
+    and its report queued, which a background job writes
+    (app/services/interview_report.py). It answered only once the AI had
+    written the report, with the candidate waiting on the page.
     """
     interview = await _authorized_interview(db, actor, req.interview_id)
-
-    # Finalising twice (a retry after a dropped response) returns what was
-    # saved. It must not regenerate the report from a transcript sent again.
-    if interview.status == "completed":
+    if not await _complete(db, interview, req.transcript, req.duration):
+        # Finalising twice (a retry after a dropped response) returns what was
+        # saved. It must not keep a transcript sent again.
         return {
             "saved": False,
             "already_completed": True,
             "turns": len(interview.transcript or []),
-            "report_generated": bool(interview.report),
+            "report_status": interview.report_status,
         }
-
-    await _complete(db, interview, req.transcript, req.duration)
-    return {
-        "saved": True,
-        "turns": len(req.transcript),
-        "report_generated": bool(interview.report),
-    }
+    return {"saved": True, "turns": len(req.transcript), "report_status": interview.report_status}
 
 
-async def _complete(db: AsyncSession, interview: Interview, transcript: list, duration: int) -> None:
-    """Finish a voice interview: its transcript, its report and its finish
-    date saved, and its manager told."""
+async def _complete(db: AsyncSession, interview: Interview, transcript: list, duration: int) -> bool:
+    """Finish a voice interview, once (db_service.complete_interview): its
+    transcript and finish date saved, its report queued, and its manager
+    told. False when it was finished already: nothing changes then."""
+    if interview.status == "completed":
+        return False
     interview.transcript = transcript
-
-    try:
-        report = await write_report(transcript, interview.role)
-        if report:
-            db_service.merge_interview_report(interview, {"report": report})
-    except Exception as exc:
-        logger.warning("finalize: report generation failed: %s", type(exc).__name__)
-
-    db_service.finish_interview(interview, duration)
+    if not await db_service.complete_interview(db, interview, duration):
+        # Another request finished it meanwhile: its transcript stands. Read
+        # again, as what this one changed is gone.
+        await db.rollback()
+        await db.refresh(interview)
+        return False
     await db.commit()
 
     # Notify the owning manager (best-effort, shared helper with /save-transcript).
@@ -384,3 +374,4 @@ async def _complete(db: AsyncSession, interview: Interview, transcript: list, du
         await _notify_manager_interview_complete(db, interview)
     except Exception as exc:
         logger.warning("finalize: manager notification failed: %s", type(exc).__name__)
+    return True

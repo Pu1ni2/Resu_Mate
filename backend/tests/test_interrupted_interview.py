@@ -122,7 +122,7 @@ def test_no_one_else_can_interrupt_it(client):
     assert _run(_read(iid))[0] == "in_progress"
 
 
-def test_an_interview_that_has_had_its_time_is_completed_not_reopened(client, openai):
+def test_an_interview_that_has_had_its_time_is_completed_not_reopened(client, openai, run_jobs):
     from datetime import datetime
     from app.api.realtime import TIME_USED_UP
     from app.services.interview_report import NOT_ENOUGH
@@ -134,6 +134,7 @@ def test_an_interview_that_has_had_its_time_is_completed_not_reopened(client, op
     assert r.status_code == 409
     assert r.json()["detail"] == TIME_USED_UP
     assert openai == []  # no session paid for
+    assert run_jobs() == ["done"]  # its report, written by a background job
     status, transcript, duration, report = _run(_read(iid))
     assert (status, transcript, duration) == ("completed", SO_FAR, 8 * 60)
     assert json.loads(report)["report"] == NOT_ENOUGH  # written from what was said: too little here

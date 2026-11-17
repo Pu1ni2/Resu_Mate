@@ -56,7 +56,7 @@ def test_the_whole_transcript_is_read(ai):
     assert "recorded" not in ai[0].lower()
 
 
-def test_a_voice_interview_with_too_little_is_reported_as_such(client, ai):
+def test_a_voice_interview_with_too_little_is_reported_as_such(client, ai, run_jobs):
     from app.core import database
     from app.models.candidate import Candidate, Interview
     from app.services.db_service import report_dict
@@ -82,6 +82,9 @@ def test_a_voice_interview_with_too_little_is_reported_as_such(client, ai):
     r = client.post("/api/realtime/finalize", headers={"Authorization": f"Bearer {create_candidate_token('w1@x.com')}"},
                     json={"interview_id": iid, "transcript": STRAY, "duration": 74})
     assert r.status_code == 200, r.text
+    # The answer comes first; a background job writes the report.
+    assert r.json()["report_status"] == "pending"
+    assert run_jobs() == ["done"]
     status, report = _run(read(iid))
     assert status == "completed"
     assert report["report"] == interview_report.NOT_ENOUGH
