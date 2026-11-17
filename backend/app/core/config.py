@@ -150,6 +150,9 @@ class Settings(BaseSettings):
     jobs_work_concurrency: int = 2
     jobs_email_concurrency: int = 2
     jobs_shutdown_grace_seconds: float = 15
+    # A job that ended is kept this many days, for looking into what went
+    # wrong, then deleted (app/services/cleanup.py).
+    jobs_keep_days: int = 14
 
     @property
     def cors_origins_list(self) -> List[str]:

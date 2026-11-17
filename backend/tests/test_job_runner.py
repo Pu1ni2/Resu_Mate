@@ -219,7 +219,7 @@ def test_stopping_lets_running_jobs_end_then_puts_the_rest_back(client, kinds):
     assert stopped == [True]
 
 
-def test_stopping_an_idle_runner_takes_no_grace(client):
+def test_stopping_an_idle_runner_takes_no_grace(client, kinds):  # kinds: no job to run at all
     async def scenario():
         runner = _start()
         await asyncio.sleep(0.2)

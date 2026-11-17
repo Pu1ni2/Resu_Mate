@@ -232,6 +232,9 @@ from app.api.jarvis import router as jarvis_router
 from app.api.realtime import router as realtime_router
 from app.api.sourcer import router as sourcer_router
 from app.api.privacy import router as privacy_router
+# The clean-up tasks, kinds of background job on a schedule: imported, they
+# are registered for the job runner.
+from app.services import cleanup  # noqa: F401
 
 # Each router's prefix is its whole address (/api/...), and each is
 # included as it is. FastAPI from 0.16x keeps an included router's routes

@@ -112,16 +112,20 @@ def client():
 @pytest.fixture()
 def kinds():
     """Register kinds of background job for one test: kinds(kind, run, **options),
-    as app.services.jobs.handler takes them. They're gone after the test."""
+    as app.services.jobs.handler takes them. They're gone after the test.
+
+    The app's own kinds, such as the clean-up tasks, are set aside meanwhile:
+    a test sees only the kinds it registers, and a runner it starts runs only
+    those."""
     from app.services import jobs
-    added = []
+    own = dict(jobs._handlers)
+    jobs._handlers.clear()
 
     def register(kind, run, **options):
         jobs.handler(kind, **options)(run)
-        added.append(kind)
     yield register
-    for kind in added:
-        jobs._handlers.pop(kind, None)
+    jobs._handlers.clear()
+    jobs._handlers.update(own)
 
 
 def register(client, email, password="pw12345678", name="Mgr", verified=True):
