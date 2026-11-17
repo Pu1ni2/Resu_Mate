@@ -128,6 +128,31 @@ def kinds():
     jobs._handlers.update(own)
 
 
+@pytest.fixture()
+def run_jobs():
+    """Run the background jobs that are due, as the app's runner would (it's
+    off in tests), until none is: run_jobs(), or run_jobs(now=later) to reach
+    a retry's time. Returns each one's outcome, in order."""
+    from datetime import datetime
+    from app.services import jobs
+    worker = "test:0:runjobs0"
+
+    def run(now=None):
+        async def all_due():
+            outcomes = []
+            for _ in range(50):
+                async with database.async_session() as db:
+                    rows = await jobs.claim(db, list(jobs._handlers), limit=100, now=now or datetime.utcnow(),
+                                            worker=worker, lease_seconds=60)
+                if not rows:
+                    return outcomes
+                for row in rows:
+                    outcomes.append(await jobs.run_claimed(row, worker, now=(lambda: now) if now else datetime.utcnow))
+            raise AssertionError("jobs kept coming due")
+        return asyncio.get_event_loop().run_until_complete(all_due())
+    return run
+
+
 def register(client, email, password="pw12345678", name="Mgr", verified=True):
     """Register a hiring manager, return (token, user_dict).
 
