@@ -7,6 +7,7 @@ queues a job instead (enqueue), inside its own transaction: the job exists
 exactly when the request's other changes do, and the request answers at
 once.
 """
+import asyncio
 import logging
 import random
 import re
@@ -169,6 +170,19 @@ class PermanentError(Exception):
         self.code = code
 
 
+class Defer(Exception):
+    """Raised by a handler that can't run yet, such as one waiting for a
+    résumé's analysis: the job runs again after `seconds`, and the try
+    isn't counted. A job still waiting after DEFER_LIMIT fails instead."""
+
+    def __init__(self, seconds: float = 30):
+        super().__init__(f"deferred {seconds}s")
+        self.seconds = seconds
+
+
+DEFER_LIMIT = timedelta(minutes=30)
+
+
 @dataclass(frozen=True)
 class Handler:
     kind: str
@@ -261,14 +275,25 @@ async def _settle(row, worker: str, values: dict, outcome: str, code: Optional[s
 
 async def run_claimed(row, worker: str, now: Callable[[], datetime] = datetime.utcnow) -> str:
     """Run one job this worker claimed, and write where it ends up: done,
-    retry (queued again, after a wait), failed, or lost. Returns that."""
+    retry (queued again, after a wait), deferred (queued again, the try
+    not counted), failed, or lost. Returns that.
+
+    A run longer than its kind's timeout is stopped, and tried again like
+    any timeout: a stuck call to the AI can't hold a worker forever.
+    """
     found = _handlers.get(row.kind)
     released = dict(locked_by=None, locked_until=None, heartbeat_at=None)
     if found is None:
         return await _settle(row, worker, dict(status="failed", last_error="unknown_kind", dedupe_key=None,
                                                finished_at=now(), **released), "failed", "unknown_kind")
     try:
-        await found.run(dict(row.payload))
+        await asyncio.wait_for(found.run(dict(row.payload)), timeout=found.timeout_seconds)
+    except Defer as wait:
+        if now() - row.created_at <= DEFER_LIMIT:
+            return await _settle(row, worker, dict(status="queued", attempts=row.attempts - 1,
+                                                   run_at=now() + timedelta(seconds=wait.seconds), **released),
+                                 "deferred")
+        code = "waited_too_long"
     except PermanentError as stop:
         code = stop.code[:200]
     except Exception as exc:
