@@ -342,25 +342,13 @@ async def abandoned_interviews(session: AsyncSession) -> list:
     return [iv for iv in rows if is_abandoned(iv)]
 
 
-def finish_interview(interview: Interview, duration=None) -> None:
-    """Mark an interview finished: completed, when, and how long it took.
-
-    Voice's finalize and video's save-transcript set only the status, so most
-    finished interviews had no finish date: the manager's list showed "—"
-    for them and sorted them wrongly, ahead of all the others on Postgres. A
-    length of 0, or none, keeps what's saved.
-    """
-    interview.status = "completed"
-    interview.completed_at = datetime.utcnow()
-    if duration:
-        interview.duration = int(duration)
-
-
 async def complete_interview(session: AsyncSession, interview: Interview, duration=None,
                              report: Optional[str] = None) -> bool:
     """Finish an interview, once: completed, when, and how long it took (a
-    length of 0, or none, keeps what's saved). True for the call that
-    finished it; False when it was finished already, and nothing changes.
+    length of 0, or none, keeps what's saved). Every ending comes here: some
+    set only the status, and the manager's list had no finish date for
+    them. True for the call that finished it; False when it was finished
+    already, and nothing changes.
 
     The check and the change are one conditional update: read first and
     written after the AI's report, two posts of one transcript both passed
@@ -448,9 +436,9 @@ async def save_proctoring(session: AsyncSession, email: str, data: dict,
         return interview
     merged = merge_interview_report(interview, numbers)
     if numbers.get("terminated") and interview.status != "completed":
-        if not merged.get("report"):
-            merge_interview_report(interview, {"report": TERMINATED_REPORT})
-        finish_interview(interview, numbers.get("timer"))
+        # Its report is the note, done at once: no AI report is written.
+        await complete_interview(session, interview, numbers.get("timer"),
+                                 report=merged.get("report") or TERMINATED_REPORT)
     try:
         await session.commit()
         await session.refresh(interview)

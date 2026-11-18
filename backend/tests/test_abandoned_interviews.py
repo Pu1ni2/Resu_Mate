@@ -66,11 +66,12 @@ def _finish_left():
     _run(cleanup.finish_abandoned_interviews({}))
 
 
-def test_an_interview_left_for_days_is_finished_by_the_15_minute_task(client):
+def test_an_interview_left_for_days_is_finished_by_the_15_minute_task(client, run_jobs):
     _, m = register(client, "ab1@co.com")
     left = _run(_interview(m["id"], "ab1@x.com", status="interrupted", created_at=_days_ago(3),
                            transcript=[{"role": "candidate", "text": "Hello"}]))
     _finish_left()
+    assert run_jobs() == ["done"]  # its report, written by a background job
     status, report = _run(_read(left))
     assert status == "completed"
     assert json.loads(report)["report"] == NOT_ENOUGH  # written from what was said: too little here
@@ -104,9 +105,9 @@ def test_the_statuses_page_finishes_nothing_itself(client):
     assert _run(_read(left)) == ("in_progress", None)
 
 
-def test_no_database_connection_is_held_while_a_report_is_written(client, monkeypatch):
-    # The AI can take a minute; the connection held all that time was one
-    # of the few the pool has, kept from every request.
+def test_the_task_asks_the_ai_nothing_and_queues_each_report(client, monkeypatch, run_jobs):
+    # The AI can take a minute an interview. Its report job writes it, with
+    # no database connection held (tests/test_report_jobs.py).
     from app.core import database
     from app.services import interview_report
     held = []
@@ -118,27 +119,30 @@ def test_no_database_connection_is_held_while_a_report_is_written(client, monkey
     _, m = register(client, "ab6@co.com")
     left = _run(_interview(m["id"], "ab6@x.com", status="interrupted", created_at=_days_ago(3)))
     _finish_left()
-    assert held == [0]
+    assert held == [] and _run(_read(left)) == ("completed", None)
+    assert run_jobs() == ["done"]
     status, report = _run(_read(left))
-    assert status == "completed" and json.loads(report)["report"] == "## A report"
+    assert held == [0] and json.loads(report)["report"] == "## A report"
 
 
 def test_one_its_candidate_came_back_to_meanwhile_is_left_open(client, monkeypatch):
     import time
     from app.core import database
     from app.models.candidate import Interview
-    from app.services import interview_report
+    from app.services import db_service
     _, m = register(client, "ab7@co.com")
     left = _run(_interview(m["id"], "ab7@x.com", status="interrupted", created_at=_days_ago(3)))
+    listed = db_service.abandoned_interviews
 
-    async def write_report(transcript, role):
-        # While the report is written, the candidate continues the interview.
-        async with database.async_session() as db:
-            interview = await db.get(Interview, left)
+    async def then_back(db):
+        found = await listed(db)
+        # Once the list is made, the candidate continues the interview.
+        async with database.async_session() as other:
+            interview = await other.get(Interview, left)
             interview.status = "in_progress"
             interview.transcript = [{"role": "candidate", "text": "I'm back", "ts": time.time() * 1000}]
-            await db.commit()
-        return "## A report"
-    monkeypatch.setattr(interview_report, "write_report", write_report)
+            await other.commit()
+        return found
+    monkeypatch.setattr(db_service, "abandoned_interviews", then_back)
     _finish_left()
     assert _run(_read(left)) == ("in_progress", None)

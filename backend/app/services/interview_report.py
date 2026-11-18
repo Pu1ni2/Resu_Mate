@@ -106,33 +106,27 @@ async def write_interview_report(payload: dict) -> None:
 
 
 async def finish_abandoned() -> int:
-    """Finish every interview that was started and left, each on what was
-    said (db_service.abandoned_interviews): they stayed "in progress" or
-    "interrupted" for good, with no report. Returns how many it finished.
+    """Finish every interview that was started and left, on what was said
+    (db_service.abandoned_interviews): they stayed "in progress" or
+    "interrupted" for good, with no report. Each is completed, its report
+    queued, as any other ending (db_service.complete_interview), so the AI
+    isn't asked here. Returns how many it finished.
 
-    No database session is held while a report is written, which can take
-    the AI a minute. Each interview is looked at again before it's finished:
-    its candidate may have come back to it meanwhile.
+    Each interview is looked at again before it's finished: its candidate
+    may have come back to it since the list was made.
     """
     from app.core import database
     from app.models.candidate import Interview
     from app.services import db_service
     async with database.async_session() as db:
-        left = [(iv.id, iv.transcript or [], iv.role) for iv in await db_service.abandoned_interviews(db)]
+        left = [iv.id for iv in await db_service.abandoned_interviews(db)]
     finished = 0
-    for interview_id, transcript, role in left:
-        try:
-            report = await write_report(transcript, role)
-        except Exception as exc:
-            logger.warning("a left interview's report failed: %s", type(exc).__name__)
-            report = None
+    for interview_id in left:
         async with database.async_session() as db:
             interview = await db.get(Interview, interview_id)
             if interview is None or not db_service.is_abandoned(interview):
                 continue
-            if report is not None:
-                db_service.merge_interview_report(interview, {"report": report})
-            db_service.finish_interview(interview)
-            await db.commit()
-            finished += 1
+            if await db_service.complete_interview(db, interview):
+                await db.commit()
+                finished += 1
     return finished
