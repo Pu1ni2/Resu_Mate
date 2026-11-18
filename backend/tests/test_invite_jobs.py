@@ -1,0 +1,288 @@
+"""Batch invitations, each candidate's prepared by a background job
+(app/services/invite_batches.py).
+
+A batch invite made every candidate's interview, questions and email inside
+the request, one after another: five people took minutes, the browser gave
+up after two, and asking again made every interview again.
+"""
+import asyncio
+import itertools
+from datetime import datetime, timedelta
+
+import pytest
+from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
+
+from conftest import register
+
+
+def _run(coro):
+    return asyncio.get_event_loop().run_until_complete(coro)
+
+
+_keys = itertools.count()
+
+
+async def _candidate(manager_id, name="Ada", email="ada@x.com", **fields):
+    from app.core import database
+    from app.models.candidate import Candidate
+    async with database.async_session() as db:
+        cand = Candidate(manager_id=manager_id, name=name, email=email, full_text=f"{name}\n{email}", **fields)
+        db.add(cand)
+        await db.commit()
+        return cand.id
+
+
+async def _interview(manager_id, candidate_id, role, status, **fields):
+    from app.core import database
+    from app.models.candidate import Interview
+    async with database.async_session() as db:
+        interview = Interview(candidate_id=candidate_id, manager_id=manager_id, candidate_email="ada@x.com",
+                              role=role, status=status, mode="conversational", **fields)
+        db.add(interview)
+        await db.commit()
+        return interview.id
+
+
+async def _queued(manager_id, candidate_ids, **fields):
+    """A batch of these candidates with each item's job queued, as the
+    request leaves them."""
+    from app.core import database
+    from app.models.invite_batch import InviteBatch, InviteBatchItem
+    from app.services import invite_batches
+    async with database.async_session() as db:
+        batch = InviteBatch(**{"manager_id": manager_id, "source": "screening", "client_key": f"k{next(_keys)}",
+                               "role": "Data Engineer", "level": "Senior", "num_questions": 3,
+                               "focus_areas": ["SQL"], "mode": "conversational", **fields})
+        db.add(batch)
+        await db.flush()
+        items = [InviteBatchItem(batch_id=batch.id, candidate_id=cid, position=i)
+                 for i, cid in enumerate(candidate_ids)]
+        db.add_all(items)
+        await db.flush()
+        for item in items:
+            await invite_batches.queue(db, item.id, manager_id)
+        await db.commit()
+        return [item.id for item in items]
+
+
+async def _item(item_id):
+    from app.core import database
+    from app.models.invite_batch import InviteBatchItem
+    async with database.async_session() as db:
+        item = await db.get(InviteBatchItem, item_id)
+        return item and {"status": item.status, "interview_id": item.interview_id, "reused": item.reused,
+                         "skip_reason": item.skip_reason, "error": item.error,
+                         "finished": item.finished_at is not None}
+
+
+async def _interviews(manager_id):
+    from app.core import database
+    from app.models.candidate import Interview
+    async with database.async_session() as db:
+        rows = (await db.execute(select(Interview).where(Interview.manager_id == manager_id)
+                                 .order_by(Interview.id))).scalars()
+        return [{"id": i.id, "candidate_id": i.candidate_id, "email": i.candidate_email, "role": i.role,
+                 "level": i.level, "num_questions": i.num_questions, "focus_areas": i.focus_areas,
+                 "mode": i.mode, "status": i.status, "questions": i.questions, "room_config": i.room_config}
+                for i in rows]
+
+
+async def _grants(email, manager_id):
+    from app.core import database
+    from app.models.candidate import CandidateAccess
+    async with database.async_session() as db:
+        return (await db.execute(select(func.count()).select_from(CandidateAccess).where(
+            CandidateAccess.email == email, CandidateAccess.manager_id == manager_id))).scalar()
+
+
+async def _change_interview(manager_id, **values):
+    from app.core import database
+    from app.models.candidate import Interview
+    async with database.async_session() as db:
+        for interview in (await db.execute(select(Interview).where(Interview.manager_id == manager_id))).scalars():
+            for column, value in values.items():
+                setattr(interview, column, value)
+        await db.commit()
+
+
+class _Calls(list):
+    """What a stand-in was asked, call by call."""
+
+
+@pytest.fixture()
+def questions(monkeypatch):
+    """The question writer without the AI. Each call records what it was asked
+    and how many database connections were held meanwhile; questions.stub.during,
+    when set, runs while it writes."""
+    from app.agents.technical_agent import technical_agent
+    from app.core import database
+    calls = _Calls()
+
+    async def generate_smart_questions(role, level, num_questions, focus_areas, name, candidate):
+        calls.append({"held": database.engine.sync_engine.pool.checkedout(), "role": role, "level": level,
+                      "num_questions": num_questions, "focus_areas": focus_areas, "name": name})
+        if generate_smart_questions.during:
+            await generate_smart_questions.during()
+        return {"questions": [f"Question {i + 1}?" for i in range(num_questions)],
+                "resume_intelligence": {"claims": ["SQL"]}}
+    generate_smart_questions.during = None
+    monkeypatch.setattr(technical_agent, "generate_smart_questions", generate_smart_questions)
+    calls.stub = generate_smart_questions
+    return calls
+
+
+# ── the interview and its questions ───────────────────────────────────────────
+
+def test_the_server_registers_the_invitation_job():
+    import main  # noqa: F401
+    from app.services import jobs
+    assert jobs.handler_for("invite.prepare").on_failure is not None
+
+
+def test_an_item_gets_its_interview_and_questions_with_no_connection_held(client, run_jobs, questions):
+    _, m = register(client, "ij1@co.com")
+    cid = _run(_candidate(m["id"], email="Ada@X.com"))
+    [item] = _run(_queued(m["id"], [cid]))
+    assert run_jobs() == ["done"]
+    [interview] = _run(_interviews(m["id"]))
+    assert interview == {
+        "id": interview["id"], "candidate_id": cid, "email": "ada@x.com", "role": "Data Engineer",
+        "level": "Senior", "num_questions": 3, "focus_areas": ["SQL"], "mode": "conversational",
+        "status": "pending", "questions": ["Question 1?", "Question 2?", "Question 3?"],
+        "room_config": {"resume_intelligence": {"claims": ["SQL"]}},
+    }
+    state = _run(_item(item))
+    assert (state["interview_id"], state["reused"], state["error"]) == (interview["id"], False, None)
+    assert questions == [{"held": 0, "role": "Data Engineer", "level": "Senior", "num_questions": 3,
+                          "focus_areas": ["SQL"], "name": "Ada"}]
+    # The portal lets them in to take it.
+    assert _run(_grants("ada@x.com", m["id"])) == 1
+
+
+def test_an_open_interview_for_the_same_role_is_used_again(client, run_jobs, questions):
+    _, m = register(client, "ij2@co.com")
+    cid = _run(_candidate(m["id"]))
+    # A finished one, and one open for another role, aren't this invitation's.
+    _run(_interview(m["id"], cid, "Data Engineer", "completed"))
+    _run(_interview(m["id"], cid, "Analyst", "pending"))
+    [first] = _run(_queued(m["id"], [cid]))
+    run_jobs()
+    made = _run(_item(first))
+    assert made["reused"] is False
+    # Asked again, from another batch, while that one is open: it's the one.
+    [again] = _run(_queued(m["id"], [cid]))
+    run_jobs()
+    state = _run(_item(again))
+    assert (state["interview_id"], state["reused"]) == (made["interview_id"], True)
+    assert len(_run(_interviews(m["id"]))) == 3
+    # Only the new one's questions were written.
+    assert len(questions) == 1
+
+
+@pytest.mark.parametrize("status", ["pending", "in_progress", "interrupted"])
+def test_an_interview_the_candidate_can_still_take_keeps_its_questions(client, run_jobs, questions, status):
+    _, m = register(client, f"ij3-{status.replace('_', '')}@co.com")
+    cid = _run(_candidate(m["id"]))
+    open_one = _run(_interview(m["id"], cid, "Data Engineer", status, questions=["Mine?"]))
+    [item] = _run(_queued(m["id"], [cid]))
+    assert run_jobs() == ["done"]
+    state = _run(_item(item))
+    assert (state["interview_id"], state["reused"]) == (open_one, True)
+    [interview] = _run(_interviews(m["id"]))
+    assert interview["questions"] == ["Mine?"]
+    assert questions == []
+
+
+def test_questions_the_manager_set_meanwhile_are_kept(client, run_jobs, questions):
+    # The interview is on the manager's page, questions and all, once made.
+    _, m = register(client, "ij4@co.com")
+    cid = _run(_candidate(m["id"]))
+    _run(_queued(m["id"], [cid]))
+
+    async def edited():
+        await _change_interview(m["id"], questions=["The manager's?"])
+    questions.stub.during = edited
+    assert run_jobs() == ["done"]
+    [interview] = _run(_interviews(m["id"]))
+    assert interview["questions"] == ["The manager's?"]
+    # What the résumé says to check is kept still.
+    assert interview["room_config"] == {"resume_intelligence": {"claims": ["SQL"]}}
+
+
+def test_an_interview_started_meanwhile_is_left_as_it_is(client, run_jobs, questions):
+    _, m = register(client, "ij5@co.com")
+    cid = _run(_candidate(m["id"]))
+    _run(_queued(m["id"], [cid]))
+
+    async def started():
+        await _change_interview(m["id"], status="in_progress")
+    questions.stub.during = started
+    assert run_jobs() == ["done"]
+    [interview] = _run(_interviews(m["id"]))
+    assert (interview["questions"], interview["room_config"]) == ([], None)
+
+
+def test_a_run_that_stopped_after_the_interview_was_made_goes_on_from_there(client, run_jobs, questions,
+                                                                           monkeypatch):
+    from app.services import invite_batches
+    _, m = register(client, "ij6@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid]))
+    real, stopped = invite_batches._write_questions, []
+
+    async def stops_once(item_id):
+        if not stopped:
+            stopped.append(item_id)
+            raise OperationalError("UPDATE", {}, Exception("database is locked"))
+        await real(item_id)
+    monkeypatch.setattr(invite_batches, "_write_questions", stops_once)
+    assert run_jobs() == ["retry"]
+    assert _run(_item(item))["status"] == "questions"
+    assert run_jobs(now=datetime.utcnow() + timedelta(minutes=15)) == ["done"]
+    [interview] = _run(_interviews(m["id"]))
+    assert interview["questions"] == ["Question 1?", "Question 2?", "Question 3?"]
+    assert _run(_grants("ada@x.com", m["id"])) == 1
+
+
+def test_a_candidate_who_isnt_there_fails_with_a_code(client, run_jobs, questions):
+    _, m = register(client, "ij7@co.com")
+    _, other = register(client, "ij7b@co.com")
+    theirs = _run(_candidate(other["id"]))
+    # One with no row, and another manager's.
+    items = _run(_queued(m["id"], [99999, theirs]))
+    assert run_jobs() == ["failed", "failed"]
+    for item in items:
+        state = _run(_item(item))
+        assert (state["status"], state["error"], state["interview_id"], state["finished"]) == \
+            ("failed", "candidate_not_found", None, True)
+    assert _run(_interviews(m["id"])) == [] and questions == []
+
+
+def test_no_address_or_the_sample_resume_is_skipped(client, run_jobs, questions):
+    from app.services import interview_setup, invite_batches
+    from app.services.resume_rag import SAMPLE_RESUME_SHA256
+    _, m = register(client, "ij8@co.com")
+    no_address = _run(_candidate(m["id"], name="Bo", email=""))
+    sample = _run(_candidate(m["id"], name="Sam", email="sam@x.com", file_hash=SAMPLE_RESUME_SHA256))
+    items = _run(_queued(m["id"], [no_address, sample]))
+    assert run_jobs() == ["done", "done"]
+    assert [(_run(_item(i))["status"], _run(_item(i))["skip_reason"], _run(_item(i))["finished"]) for i in items] == [
+        ("skipped", invite_batches.NO_EMAIL, True), ("skipped", interview_setup.SAMPLE_NOT_INVITED, True)]
+    assert _run(_interviews(m["id"])) == [] and questions == []
+
+
+def test_an_item_deleted_before_its_job_runs_is_left_alone(client, run_jobs, questions):
+    from app.core import database
+    from app.models.invite_batch import InviteBatchItem
+    _, m = register(client, "ij9@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid]))
+
+    async def delete():
+        async with database.async_session() as db:
+            await db.delete(await db.get(InviteBatchItem, item))
+            await db.commit()
+    _run(delete())
+    assert run_jobs() == ["done"]
+    assert _run(_interviews(m["id"])) == [] and questions == []
