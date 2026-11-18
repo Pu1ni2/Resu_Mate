@@ -384,3 +384,18 @@ def test_a_transcript_post_that_loses_the_race_changes_nothing(client, monkeypat
     assert r.json() == {"saved": False, "already_completed": True}
     assert _run(_state(iid))[4] == 111 and sent == []
     assert len(_run(_jobs())) == 1
+
+
+# ── the other endings ─────────────────────────────────────────────────────────
+
+def test_a_terminated_interviews_note_is_its_report_at_once_with_no_job(client):
+    from app.services.db_service import TERMINATED_REPORT
+    _, m = register(client, "te1@co.com")
+    iid = _run(_started(m["id"], "te1@x.com", mode="avatar"))
+    r = client.post("/api/chat/save-interview-result", headers=_as_candidate("te1@x.com"), json={
+        "candidate_email": "te1@x.com", "interview_id": iid,
+        "report": {"violations": 3, "terminated": True, "timer": 95},
+    })
+    assert r.status_code == 200 and r.json() == {"status": "saved"}
+    assert _run(_state(iid)) == ("completed", "done", None, TERMINATED_REPORT, 95)
+    assert _run(_jobs()) == []
