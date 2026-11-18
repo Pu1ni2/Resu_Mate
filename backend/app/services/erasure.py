@@ -19,7 +19,8 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
     """Delete all data held about `email`; returns how many résumés went.
 
     Interviews, portal grants, their own résumés (database, in-memory store
-    and object storage), the career advisor's session, sign-in codes,
+    and object storage), the career advisor's session, sign-in codes, the
+    emails about their interviews or to their address,
     anything a sourcing run kept about them, and the chat conversations of
     every manager who held them. An audit record is written.
     """
@@ -49,6 +50,12 @@ async def erase_person(db: AsyncSession, email: str, actor: str = "candidate") -
     # Database first: if it fails, nothing is half-erased. Memory went first, so
     # a failed commit left the résumé in the database, and the startup warm-up
     # put it back in the portal after the next restart.
+    from app.models.email_outbox import EmailOutbox
+    from sqlalchemy import or_
+    await db.execute(sql_delete(EmailOutbox).where(or_(
+        EmailOutbox.interview_id.in_(select(Interview.id).where(Interview.candidate_email == email)),
+        func.lower(EmailOutbox.to_address) == email,
+    )))
     await db.execute(sql_delete(Interview).where(Interview.candidate_email == email))
     await db.execute(sql_delete(CandidateAccess).where(CandidateAccess.email == email))
     # Their résumé rows with any interview still attached under another address.

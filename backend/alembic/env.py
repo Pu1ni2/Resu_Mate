@@ -26,6 +26,7 @@ from app.models.screening import ScreeningRun  # noqa: F401
 from app.models.evaluation import CandidateEvaluation  # noqa: F401
 from app.models.job import Job  # noqa: F401
 from app.models.invite_batch import InviteBatch, InviteBatchItem  # noqa: F401
+from app.models.email_outbox import EmailOutbox  # noqa: F401
 
 # ── resolve DATABASE_URL ──────────────────────────────────────────────────────
 def get_database_url() -> str:

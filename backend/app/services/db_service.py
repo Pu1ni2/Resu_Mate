@@ -6,6 +6,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
+from app.models.email_outbox import EmailOutbox
 from app.models.evaluation import CandidateEvaluation
 from app.models.invite_batch import InviteBatch, InviteBatchItem
 from app.models.job import Job
@@ -99,7 +100,7 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     Their candidates (with their interviews, portal grants and evaluations),
     any interview or grant they filed elsewhere, sourcing runs and the
     profiles found, screening runs, batch invitations and their drafts,
-    chat histories, background jobs, the audit
+    chat histories, background jobs, emails, the audit
     records of their account, and the account. Returns the stored-file keys of the candidates' original
     files, to remove from object storage once this has committed. Commits.
     """
@@ -115,7 +116,8 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
         InviteBatchItem.batch_id.in_(select(InviteBatch.id).where(InviteBatch.manager_id == manager_id))
     ))
     await session.execute(delete(InviteBatch).where(InviteBatch.manager_id == manager_id))
-    for model in (SourcedProfile, SourcingRun, ScreeningRun, CandidateEvaluation, ChatHistory, Job, AuditLog):
+    for model in (SourcedProfile, SourcingRun, ScreeningRun, CandidateEvaluation, ChatHistory, Job, EmailOutbox,
+                  AuditLog):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await session.execute(delete(HiringManager).where(HiringManager.id == manager_id))
     await session.commit()
@@ -155,6 +157,10 @@ async def delete_candidates(session: AsyncSession, *where) -> None:
             or_(model.manager_id == Candidate.manager_id, model.manager_id.is_(None)),
         ).correlate(model).exists()
 
+    # The emails about their interviews: invitations, drafts, "finished".
+    await session.execute(delete(EmailOutbox).where(
+        EmailOutbox.interview_id.in_(select(Interview.id).where(filed_under_them(Interview)))
+    ))
     for model in (Interview, CandidateAccess, CandidateEvaluation):
         await session.execute(delete(model).where(filed_under_them(model)))
     # Their place in batch invitations, and the drafts written to them.
