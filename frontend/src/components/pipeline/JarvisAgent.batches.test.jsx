@@ -74,6 +74,9 @@ function say(text) {
 // Jarvis asks before it creates an interview; the manager says yes.
 async function inviteDana() {
   const shown = render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
+  // Its greeting first, on its own timer: a test that ran past it, on a busy
+  // machine, heard it said after Jarvis had closed.
+  await screen.findByText(/Hey, I'm Jarvis/);
   say('invite Dana');
   const yes = await screen.findByRole('button', { name: 'Create the interview' });
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
