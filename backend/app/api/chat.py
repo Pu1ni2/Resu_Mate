@@ -1095,13 +1095,14 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
             Interview.id,
             Interview.created_at,
             Interview.completed_at,
+            Interview.report_status,
         )
         .where(Interview.manager_id == user.id)
         .order_by(Interview.created_at.desc())
     )).all()
     # Latest interview per email wins (rows are ordered desc by created_at).
     out: dict = {}
-    for email, status, mode, iv_id, created_at, completed_at in rows:
+    for email, status, mode, iv_id, created_at, completed_at, report_status in rows:
         key = (email or "").lower()
         if key and key not in out:
             shown = (mode or "avatar") if status == "completed" else interview_modes.effective_mode(mode)
@@ -1110,6 +1111,9 @@ async def interview_statuses(user=Depends(get_current_user), db: AsyncSession = 
                 # In the server's naive UTC, as the other dates it sends.
                 "created_at": created_at.isoformat() if created_at else None,
                 "completed_at": completed_at.isoformat() if completed_at else None,
+                # As stored: "pending" while its report is written, "failed"
+                # when it couldn't be; none for one finished before that.
+                "report_status": report_status if status == "completed" else None,
             }
     return {"statuses": out, "count": len(out)}
 
@@ -1138,6 +1142,8 @@ async def candidate_interviews(candidate_id: int, user=Depends(get_current_user)
         "created_at": iv.created_at.isoformat() if iv.created_at else None,
         "completed_at": iv.completed_at.isoformat() if iv.completed_at else None,
         "report": db_service.candidate_report(iv) if iv.status == "completed" else None,
+        "report_status": db_service.report_state(iv),
+        "report_error": iv.report_error,
     } for iv in rows]}
 
 
@@ -1157,6 +1163,21 @@ async def _managers_interview(db: AsyncSession, manager_id: int, interview_id: i
     if not interview or interview.manager_id != manager_id:
         raise HTTPException(404, "Interview not found")
     return interview
+
+
+@router.get("/interviews/{interview_id}")
+async def interview_detail(interview_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """One of this manager's interviews, and where its report stands: the
+    pages ask this while a background job writes the report."""
+    interview = await _managers_interview(db, user.id, interview_id)
+    return {
+        "interview_id": interview.id,
+        "status": interview.status,
+        "report_status": db_service.report_state(interview),
+        "report_error": interview.report_error,
+        "completed_at": interview.completed_at.isoformat() if interview.completed_at else None,
+        "report": db_service.candidate_report(interview) if interview.status == "completed" else None,
+    }
 
 
 @router.post("/interviews/{interview_id}/report")
@@ -1264,6 +1285,9 @@ async def interview_report_pdf(request: Request, interview_id: int, user=Depends
     interview = await _managers_interview(db, user.id, interview_id)
     if interview.status != "completed":
         raise HTTPException(409, "This interview hasn't finished yet.")
+    if db_service.report_state(interview) == "pending":
+        # Exported now, it quietly left the evaluation out.
+        raise HTTPException(409, "The interview's report is still being written. Try again in a minute.")
     email = (interview.candidate_email or "").strip().lower()
     candidate = resume_rag.get_candidate(interview.candidate_id, manager_id=user.id)
     # Not in this server's memory under that id: by the résumé's own address.

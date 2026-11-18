@@ -497,6 +497,10 @@ async def get_all_completed_interviews(session: AsyncSession, manager_id: int = 
                                else iv.candidate_email),
             "timestamp": iv.completed_at.isoformat() if iv.completed_at else None,
             "report": report,
+            # pending while a background job writes it: the report holds the
+            # transcript and what the room measured meanwhile, no evaluation.
+            "report_status": report_state(iv),
+            "report_error": iv.report_error,
             "role": iv.role,
             "scores": iv.scores or [],
         })
