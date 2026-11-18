@@ -7,6 +7,11 @@ from app.core.errors import log_text
 
 logger = logging.getLogger("resumate.email")
 
+# How a delivery went (EmailService.deliver): sent; the service busy, slow or
+# out of reach, so a later try may get through; refused, which trying again
+# won't change; or not tried, email not being set up here.
+SENT, BUSY, REFUSED, OFF = "sent", "busy", "refused", "off"
+
 
 class EmailService:
     def __init__(self):
@@ -42,19 +47,20 @@ class EmailService:
             "SENDGRID_API_KEY, and FROM_EMAIL to a sender SendGrid has verified."
         )
 
-    async def send(self, to_email: str, subject: str, html_body: str) -> bool:
-        """Send an email. Returns True only if SendGrid accepted it.
+    async def deliver(self, to_email: str, subject: str, html_body: str) -> str:
+        """Send an email, and say how it went: SENT, BUSY (SendGrid busy,
+        slow or out of reach: a later try may get through), REFUSED (it said
+        no, which trying again won't change) or OFF (email isn't set up).
 
-        Without SendGrid (local development: production doesn't start without
-        it), it says so in the log and returns False, so callers can tell and
-        answer accordingly, e.g. with the code in a DEBUG response.
+        A busy SendGrid answers 429 or 5xx; its client raises those as errors
+        carrying the status. Each try takes at most SENDGRID_TIMEOUT_SECONDS.
         """
         if not self._sg:
             # Not the message itself, nor who it was for: it can hold a sign-in
             # code or a password-reset link, and more people read a server's
             # log than the mailbox.
             print("[EMAIL] not sent: email isn't set up on this server")
-            return False
+            return OFF
         try:
             from sendgrid.helpers.mail import Mail
             message = Mail(
@@ -70,16 +76,29 @@ class EmailService:
             response = await asyncio.wait_for(
                 asyncio.to_thread(self._sg.send, message), timeout=settings.sendgrid_timeout_seconds,
             )
-            success = 200 <= response.status_code < 300
-            if not success:
-                logger.warning("SendGrid rejected message: status=%s", response.status_code)
-            return success
+            status = response.status_code
         except Exception as e:
             if isinstance(e, TimeoutError) or isinstance(getattr(e, "reason", None), TimeoutError):
                 logger.warning("SendGrid didn't answer within %ss", settings.sendgrid_timeout_seconds)
-                return False
-            logger.error("SendGrid send error: %s", log_text(e))
-            return False
+                return BUSY
+            status = getattr(e, "status_code", None)
+            if not isinstance(status, int):
+                # Out of reach: no answer at all.
+                logger.error("SendGrid send error: %s", log_text(e))
+                return BUSY
+        if 200 <= status < 300:
+            return SENT
+        logger.warning("SendGrid rejected message: status=%s", status)
+        return BUSY if status == 429 or status >= 500 else REFUSED
+
+    async def send(self, to_email: str, subject: str, html_body: str) -> bool:
+        """Send an email. Returns True only if SendGrid accepted it.
+
+        Without SendGrid (local development: production doesn't start without
+        it), it says so in the log and returns False, so callers can tell and
+        answer accordingly, e.g. with the code in a DEBUG response.
+        """
+        return await self.deliver(to_email, subject, html_body) == SENT
 
     async def send_otp(self, to_email: str, code: str) -> bool:
         html = f"""
