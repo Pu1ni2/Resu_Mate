@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 
 import InterviewHistory from './InterviewHistory';
 
@@ -19,10 +19,38 @@ const answer = (body, ok = true) => vi.spyOn(globalThis, 'fetch')
   .mockResolvedValue({ ok, status: ok ? 200 : 500, json: async () => body });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe("a candidate's interview history", () => {
+  it('says a report is being written, and shows it once it is', async () => {
+    const writing = [{ ...INTERVIEWS[1], report_status: 'pending', report: { report: '', timer: 900 } }];
+    let asked = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      if (String(url).endsWith('/api/chat/interviews/11')) {
+        asked += 1;
+        return { ok: true, status: 200, json: async () => ({
+          interview_id: 11, status: 'completed', report_status: 'done', report: { report: '## Written at last', timer: 900 },
+        }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ interviews: writing }) };
+    });
+    render(<InterviewHistory candidateId={4} />);
+    const row = () => within(screen.getByRole('list', { name: 'Interviews' })).getAllByRole('listitem')[0];
+    await screen.findByRole('list', { name: 'Interviews' });
+    expect(row().querySelector('span').textContent).toMatch(/^Voice · Completed · report being written · finished /);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(within(row()).getByRole('button', { name: /view report/i })); });
+    expect(screen.getByText('Writing the report…')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(screen.getByText('Written at last')).toBeTruthy();
+    expect(asked).toBe(1);
+    // Its row says so too, back in the list.
+    fireEvent.click(screen.getByRole('button', { name: /all interviews/i }));
+    expect(row().querySelector('span').textContent).toMatch(/^Voice · Completed · finished /);
+  });
+
   it('lists every interview, newest first, and opens a finished one\'s report', async () => {
     const fetchMock = answer({ interviews: INTERVIEWS });
     render(<InterviewHistory candidateId={4} />);

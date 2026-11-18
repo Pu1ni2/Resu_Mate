@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import Dashboard from './Dashboard';
@@ -58,6 +58,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -88,6 +89,27 @@ describe('the interviews on Insights', () => {
     expect(screen.getByRole('heading', { name: 'Interview Completed' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /back to analytics/i }));
     expect(screen.getByText('Recent Interviews')).toBeTruthy();
+  });
+
+  it('watch a report still being written, and show it once it is', async () => {
+    const writing = [{ ...RESULTS[0], interview_id: 21, report_status: 'pending', report: { ...REPORT, report: '' } }];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.endsWith('/api/chat/interviews/21')) {
+        return { ok: true, status: 200, json: async () => ({
+          interview_id: 21, status: 'completed', report_status: 'done', report: { ...REPORT, report: '## Written at last' },
+        }) };
+      }
+      if (path.endsWith('get-all-interview-results')) return { ok: true, status: 200, json: async () => ({ results: writing }) };
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+    open();
+    const grace = await screen.findByRole('button', { name: /^Grace Designer/ });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(grace); });
+    expect(screen.getByText('Writing the report…')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(screen.getByText('Written at last')).toBeTruthy();
   });
 
   it('say what kind each recent interview was', async () => {

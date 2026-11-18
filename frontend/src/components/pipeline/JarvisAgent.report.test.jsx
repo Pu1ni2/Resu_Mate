@@ -129,4 +129,23 @@ describe('the interview, asked for by id', () => {
     expect(await screen.findByText(/There isn't a finished interview to export for Dana yet\./)).toBeTruthy();
     expect(asked.some(path => path.endsWith('/report.pdf'))).toBe(false);
   });
+
+  // The server writes a finished interview's report in the background.
+  const being_written = () => [{ interview_id: 3, status: 'completed', email: 'dana@x.com', report_status: 'pending',
+    report: { ...UNSCORED, report: '' } }];
+
+  it("says a report still being written is, rather than that it's ready", async () => {
+    interviews = being_written();
+    ask("How did Dana's interview go?");
+    expect(await screen.findByText(/Dana's interview report is still being written\. Ask me again in a minute\./)).toBeTruthy();
+    expect(screen.queryByText('INTERVIEW REPORT')).toBeNull();
+  });
+
+  it('exports no PDF of a report still being written', async () => {
+    action = 'export_report';
+    interviews = being_written();
+    ask("Export Dana's report");
+    expect(await screen.findByText(/Dana's interview report is still being written\./)).toBeTruthy();
+    expect(asked.some(path => path.endsWith('/report.pdf'))).toBe(false);
+  });
 });

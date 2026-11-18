@@ -242,3 +242,31 @@ describe('which interview the manager acts on', () => {
     expect(JSON.parse(sent.body)).toEqual({ candidate_id: 1, candidate_email: 'jane@co.com', interview_id: 7 });
   });
 });
+
+
+describe('a report the server is still writing', () => {
+  const unwritten = { ...report, report: '' };
+  const asManager = { viewer: 'manager', interviewId: 9, candidateId: 1, candidateEmail: 'ada@x.com' };
+
+  it('says so where the evaluation goes, with no PDF or comparison until it is written', () => {
+    renderReport({ ...asManager, report: unwritten, reportStatus: 'pending' });
+    expect(screen.getByText('Writing the report…')).toBeTruthy();
+    expect(screen.queryByText('Evaluation')).toBeNull();
+    // The server refuses both until the report is written.
+    expect(screen.queryByRole('button', { name: /export pdf/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /compare résumé and interview/i })).toBeNull();
+  });
+
+  it('says when it could not be written', () => {
+    renderReport({ ...asManager, report: unwritten, reportStatus: 'failed' });
+    expect(screen.getByText(/report couldn’t be written/)).toBeTruthy();
+    expect(screen.queryByText('Writing the report…')).toBeNull();
+  });
+
+  it('shows the evaluation once it is', () => {
+    renderReport({ ...asManager, reportStatus: 'done' });
+    expect(screen.queryByText('Writing the report…')).toBeNull();
+    expect(screen.getByText('Solid across the board.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /export pdf/i })).toBeTruthy();
+  });
+});
