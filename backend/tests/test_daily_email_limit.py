@@ -128,3 +128,66 @@ def test_emails_older_than_a_day_and_other_managers_dont_count(client, monkeypat
         async with database.async_session() as db:
             return await email_quota.can_send(db, me["id"])
     assert _run(can()) is True
+
+
+# ── counted from when it's queued ─────────────────────────────────────────────
+
+async def _queued_email(manager_id, status="queued", counts=True, when=None):
+    from app.core import database
+    from app.models.email_outbox import EmailOutbox
+    async with database.async_session() as db:
+        db.add(EmailOutbox(kind="interview_invitation", manager_id=manager_id, counts_to_quota=counts,
+                           status=status, created_at=when or datetime.utcnow()))
+        await db.commit()
+
+
+def test_an_email_counts_from_when_it_is_queued_unless_it_never_went(client):
+    _, me = register(client, "q1@co.com")
+    _, other = register(client, "q1b@co.com")
+    for status in ("held", "queued", "sent"):
+        _run(_queued_email(me["id"], status))
+    # One that never went, one not to a candidate, one from yesterday, another manager's.
+    for status in ("failed", "skipped", "cancelled"):
+        _run(_queued_email(me["id"], status))
+    _run(_queued_email(me["id"], counts=False))
+    _run(_queued_email(me["id"], when=datetime.utcnow() - timedelta(hours=25)))
+    _run(_queued_email(other["id"]))
+    # And one sent before the outbox, as the audit log has it.
+    _run(_counted(me["id"]))
+    assert _run(_sent_count(me["id"])) == 4
+
+
+async def _take_a_place(manager_id, hold_for=0.0):
+    """Reserve a place and queue an email in it, keeping the transaction open
+    a while; or why there was none."""
+    from app.core import database
+    from app.models.auth import HiringManager
+    from app.models.email_outbox import EmailOutbox
+    async with database.async_session() as db:
+        manager = await db.get(HiringManager, manager_id)
+        refused = await email_quota.reserve(db, manager)
+        if refused is None:
+            db.add(EmailOutbox(kind="interview_invitation", manager_id=manager_id, counts_to_quota=True))
+            await asyncio.sleep(hold_for)
+            await db.commit()
+        return refused
+
+
+def test_two_at_once_cannot_both_take_the_last_place(client, monkeypatch):
+    # Two tabs: each counted the day's emails, found room, and sent.
+    monkeypatch.setattr(settings, "daily_email_limit", 1)
+    _, me = register(client, "q2@co.com")
+
+    async def both():
+        first = asyncio.ensure_future(_take_a_place(me["id"], hold_for=0.3))
+        await asyncio.sleep(0.05)
+        second = await _take_a_place(me["id"])
+        return await first, second
+    assert _run(both()) == (None, email_quota.limit_reached())
+    assert _run(_sent_count(me["id"])) == 1
+
+
+def test_an_address_not_confirmed_has_no_place(client):
+    _, me = register(client, "q3@co.com", verified=False)
+    assert _run(_take_a_place(me["id"])) == email_quota.NOT_CONFIRMED
+    assert _run(_sent_count(me["id"])) == 0
