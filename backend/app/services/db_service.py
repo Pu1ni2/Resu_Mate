@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
 from app.models.evaluation import CandidateEvaluation
+from app.models.invite_batch import InviteBatch, InviteBatchItem
 from app.models.job import Job
 from app.services.scores import is_number, average_score
 
@@ -97,7 +98,8 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
 
     Their candidates (with their interviews, portal grants and evaluations),
     any interview or grant they filed elsewhere, sourcing runs and the
-    profiles found, screening runs, chat histories, background jobs, the audit
+    profiles found, screening runs, batch invitations and their drafts,
+    chat histories, background jobs, the audit
     records of their account, and the account. Returns the stored-file keys of the candidates' original
     files, to remove from object storage once this has committed. Commits.
     """
@@ -109,6 +111,10 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     for model in (Interview, CandidateAccess):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await delete_candidates(session, Candidate.manager_id == manager_id)
+    await session.execute(delete(InviteBatchItem).where(
+        InviteBatchItem.batch_id.in_(select(InviteBatch.id).where(InviteBatch.manager_id == manager_id))
+    ))
+    await session.execute(delete(InviteBatch).where(InviteBatch.manager_id == manager_id))
     for model in (SourcedProfile, SourcingRun, ScreeningRun, CandidateEvaluation, ChatHistory, Job, AuditLog):
         await session.execute(delete(model).where(model.manager_id == manager_id))
     await session.execute(delete(HiringManager).where(HiringManager.id == manager_id))
@@ -151,6 +157,10 @@ async def delete_candidates(session: AsyncSession, *where) -> None:
 
     for model in (Interview, CandidateAccess, CandidateEvaluation):
         await session.execute(delete(model).where(filed_under_them(model)))
+    # Their place in batch invitations, and the drafts written to them.
+    await session.execute(delete(InviteBatchItem).where(
+        InviteBatchItem.candidate_id.in_(select(Candidate.id).where(*where))
+    ))
     await session.execute(delete(Candidate).where(*where))
 
 
