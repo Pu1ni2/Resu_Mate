@@ -248,3 +248,13 @@ def test_a_batch_needs_its_dialogs_key(client):
                     json={"candidate_ids": [ada], "role": "Data Engineer"})
     assert r.status_code == 422
     assert _start(client, tok, [ada], key="no spaces or slashes/", status=422)
+
+
+def test_the_batch_route_that_did_it_all_in_the_request_is_gone(client, no_ai):
+    from app.models.candidate import Interview
+    tok, m = register(client, "bi9@co.com")
+    ada = _run(_candidate(m["id"]))
+    r = client.post("/api/pipeline/batch-action", headers=auth_headers(tok),
+                    json={"candidate_ids": [ada], "role": "Dev"})
+    assert r.status_code == 404
+    assert (no_ai, _run(_count(Interview))) == ([], 0)
