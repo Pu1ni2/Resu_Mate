@@ -37,6 +37,7 @@ const REPORT = { report: '## Strong answers', avgScore: 7.5, scores: [], timer: 
 let reportAnswers;
 let saved;
 let me; // what /candidate/me answers, when set
+let asked; // how many times the report was asked for
 
 function server() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
@@ -48,10 +49,12 @@ function server() {
       return { ok: true, status: 200, json: async () => ({}) };
     }
     if (String(url).endsWith('/api/chat/candidate/my-report')) {
+      asked += 1;
       const ready = reportAnswers.shift();
+      // As the server answers while a background job writes the report.
       return ready
-        ? { ok: true, status: 200, json: async () => ({ interview_completed: true, interview_report: ready }) }
-        : { ok: false, status: 404, json: async () => ({}) };
+        ? { ok: true, status: 200, json: async () => ({ interview_completed: true, report_status: 'done', interview_report: ready }) }
+        : { ok: true, status: 200, json: async () => ({ interview_completed: true, report_status: 'pending', interview_report: null }) };
     }
     return { ok: true, status: 200, json: async () => ({}) };
   });
@@ -84,6 +87,7 @@ beforeEach(() => {
   reportAnswers = [];
   saved = [];
   me = null;
+  asked = 0;
   server();
 });
 
@@ -141,6 +145,39 @@ describe("the candidate's report after an interview", () => {
     await sitTheInterview('finish avatar');
     await screen.findByText(/Score: 7.5\/10/);
     expect(saved[0].interview_id).toBe(5);
+  });
+
+  it('keeps asking for ten minutes, every 15 seconds after the first two', async () => {
+    renderDashboard();
+    const done = await enterTheRoom('finish voice');
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    await act(async () => { fireEvent.click(done); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2 * 60 * 1000); });
+    expect(asked).toBe(31);  // at once, then every 4 seconds
+    await act(async () => { await vi.advanceTimersByTimeAsync(60 * 1000); });
+    expect(asked).toBe(35);
+    await act(async () => { await vi.advanceTimersByTimeAsync(7 * 60 * 1000); });
+    expect(asked).toBe(63);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60 * 1000); });
+    expect(asked).toBe(63);  // then stops, offering Refresh
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
+  });
+
+  it('waits, after signing in, for a report still being written', async () => {
+    reportAnswers = [null, REPORT];
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    renderDashboard({ ...SESSION, has_interview: false, interview_completed: true, report_status: 'pending' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    fireEvent.click(screen.getByText('Interview Report'));
+    expect(screen.getByText(/Score: 7.5\/10/)).toBeTruthy();
+    expect(asked).toBe(2);
+  });
+
+  it('asks once, after signing in, when the report could not be written', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    renderDashboard({ ...SESSION, has_interview: false, interview_completed: true, report_status: 'failed' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60 * 1000); });
+    expect(asked).toBe(1);
   });
 
   it('fetches the report when signing in after a finished interview', async () => {
