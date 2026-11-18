@@ -23,10 +23,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import log_text
 from app.services import db_service
-from app.services import email_quota, evaluations, interview_modes, interview_setup, state_service
+from app.services import email_quota, evaluations, interview_modes, interview_setup, jobs, state_service
 from app.services.experience import experience_text
 from app.services.hidden_names import NO_LOOKUP, hides_names, scrub
-from app.services.interview_report import write_report
 from app.agents.data_agent import data_agent
 from app.agents.hr_agent import hr_agent
 from app.agents.technical_agent import clean_questions, technical_agent
@@ -1180,24 +1179,26 @@ async def interview_detail(interview_id: int, user=Depends(get_current_user), db
     }
 
 
-@router.post("/interviews/{interview_id}/report")
+@router.post("/interviews/{interview_id}/report", status_code=202)
 @limiter.limit("10/minute")
 async def rewrite_report(request: Request, interview_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Write a finished interview's report again, from its transcript.
+    """Have a finished interview's report written again, from its transcript.
 
     One whose report failed, because the AI couldn't be reached as it ended,
-    had no report and no way to get one.
+    had no report and no way to get one. The background job that writes
+    every report does it (report.write): this answers at once, the report
+    "pending" until it's written. Asked again while one is written, it
+    queues no second.
     """
     interview = await _managers_interview(db, user.id, interview_id)
     if interview.status != "completed":
         raise HTTPException(409, "This interview hasn't finished yet.")
-    try:
-        report = await write_report(interview.transcript or [], interview.role)
-    except Exception:
-        raise _failed("report rewrite", "The report couldn't be written. Please try again.")
-    db_service.merge_interview_report(interview, {"report": report})
-    await db.commit()
-    return {"interview_id": interview.id, "report": db_service.candidate_report(interview)}
+    if db_service.report_state(interview) != "pending":
+        interview.report_status, interview.report_error = "pending", None
+        await jobs.enqueue(db, "report.write", {"interview_id": interview.id},
+                           dedupe_key=f"report:{interview.id}", manager_id=interview.manager_id)
+        await db.commit()
+    return {"interview_id": interview.id, "report_status": "pending"}
 
 
 class QuestionsEdit(BaseModel):

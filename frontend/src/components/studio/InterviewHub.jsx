@@ -4,6 +4,7 @@ import { ArrowUpRight, ArrowLeft, Loader, RefreshCw, MessageSquare, Search } fro
 
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { toast } from '../../services/notify';
+import useReportWatch from '../../hooks/useReportWatch';
 import InterviewReportView from '../shared/InterviewReportView';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import ConversationSculpture from './ConversationSculpture';
@@ -77,11 +78,25 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
     }
   };
 
-  // Its report written again from the transcript: one that failed as the
-  // interview ended had no other way to be written.
+  // Where the open report stands: "pending" while the server's background
+  // job writes it, watched until it's done; "failed" when it couldn't be, so
+  // it can be written again; or "done". A report from an older server has
+  // text, or none.
+  const written = typeof report?.report?.report === 'string' && report.report.report.trim() !== '';
+  const standing = report ? (report.report_status || (written ? 'done' : 'failed')) : null;
+  useReportWatch(report?.interview_id, standing === 'pending', (interview) => {
+    setReport(open => (open && open.interview_id === interview.interview_id
+      ? { ...open, report: interview.report || open.report,
+          report_status: interview.report_status, report_error: interview.report_error }
+      : open));
+    reload();
+  });
+
+  // Its report written again from the transcript, by the same background job:
+  // one that failed as the interview ended had no other way to be written.
   const rewriteReport = async () => {
     const data = await act('report', 'The report couldn’t be written. Please try again.');
-    if (data) setReport(open => ({ ...open, report: data.report }));
+    if (data) setReport(open => ({ ...open, report_status: data.report_status || 'pending', report_error: null }));
   };
 
   // Another interview for the candidate, set up as this one was.
@@ -95,17 +110,21 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
   };
 
   if (report) {
-    const written = typeof report.report?.report === 'string' && report.report.report.trim() !== '';
     return (
       <section>
         <div className="sd-report-actions">
           <button className="btn btn-secondary" onClick={() => setReport(null)}>
             <ArrowLeft size={15} aria-hidden="true" />Back to interviews
           </button>
-          {report.interview_id && !written && (
+          {report.interview_id && standing === 'failed' && (
             <button className="btn btn-secondary" onClick={rewriteReport} disabled={Boolean(acting)}>
               {acting === 'report' ? 'Writing the report…' : 'Write the report again'}
             </button>
+          )}
+          {standing === 'pending' && (
+            <p className="sd-report-writing" role="status">
+              <Loader size={15} className="spin" aria-hidden="true" />Writing the report…
+            </p>
           )}
           {report.interview_id && (
             <button className="btn btn-secondary" onClick={() => setConfirmingReissue(true)} disabled={Boolean(acting)}>

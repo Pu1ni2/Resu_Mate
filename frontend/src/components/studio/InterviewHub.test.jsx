@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import InterviewHub from './InterviewHub';
@@ -119,20 +119,28 @@ describe("what can be done with a finished interview", () => {
     const path = String(url);
     if (options.method === 'POST') {
       posted.push(path);
-      if (path.endsWith('/api/chat/interviews/9/report')) return response({ interview_id: 9, report: { report: '## Written again', timer: 60 } });
+      // The server's background job writes it; asked for, it answers at once.
+      if (path.endsWith('/api/chat/interviews/9/report')) return response({ interview_id: 9, report_status: 'pending' });
       if (path.endsWith('/api/chat/interviews/9/reissue')) return response({ interview_id: 10, status: 'pending' });
+    }
+    if (path.endsWith('/api/chat/interviews/9')) {
+      return response({ interview_id: 9, status: 'completed', report_status: 'done', report: { report: '## Written again', timer: 60 } });
     }
     return response(path.endsWith('interview-statuses') ? STATUSES : UNWRITTEN);
   });
 
   beforeEach(() => { posted = []; });
+  afterEach(() => { vi.useRealTimers(); });
 
   it('writes a missing report again', async () => {
     server();
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Write the report again' }));
-    expect(await screen.findByText('Written again')).toBeTruthy();
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Write the report again' })); });
+    expect(screen.getByText('Writing the report…')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(screen.getByText('Written again')).toBeTruthy();
     expect(posted).toEqual([expect.stringMatching(/\/api\/chat\/interviews\/9\/report$/)]);
     expect(screen.queryByRole('button', { name: 'Write the report again' })).toBeNull();
   });

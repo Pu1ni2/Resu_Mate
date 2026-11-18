@@ -240,6 +240,8 @@
 
 /* An open report's way back, and what can be done with the interview. */
 .studio-dashboard .sd-report-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+/* Its report, while the server writes it. */
+.studio-dashboard .sd-report-writing { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: var(--text2); }
 
 /* The filters are toggle buttons in a group; the one pressed is the view. */
 .studio-dashboard .sd-interview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; margin: 18px 0; }

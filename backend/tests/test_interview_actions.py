@@ -72,12 +72,14 @@ def ai(monkeypatch):
 
 # ── the report, written again ─────────────────────────────────────────────────
 
-def test_a_failed_report_can_be_written_again(client, ai):
+def test_a_failed_report_can_be_written_again(client, ai, run_jobs):
     tok, m = register(client, "a1@co.com")
     iid, _ = _run(_interview(m["id"], "a1@x.com", status="completed", transcript=TRANSCRIPT))
     r = client.post(f"/api/chat/interviews/{iid}/report", headers=auth_headers(tok))
-    assert r.status_code == 200, r.text
-    assert r.json()["report"]["report"] == "## Report"
+    # Asked for at once; the background job that writes every report writes it.
+    assert r.status_code == 202, r.text
+    assert r.json() == {"interview_id": iid, "report_status": "pending"}
+    assert run_jobs() == ["done"]
     assert _run(_interviews_of("a1@x.com"))[0][4] == "## Report"
 
 

@@ -18,6 +18,7 @@ import { clearCandidateSession } from '../services/session';
 import { API_BASE, candidateFetch, responseError } from '../services/authFetch';
 import { pressable } from './ui/pressable';
 import { averageScore, isScore, measured } from '../services/scores';
+import { ASK_ONCE, REPORT_WAITS } from '../services/reportWaits';
 import Logo from './ui/Logo';
 
 // Loaded when the interview starts: the video room brings LiveKit with it.
@@ -27,13 +28,6 @@ const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterview
 // One empty list, so an effect that watches the messages doesn't re-run on every render.
 const NO_MESSAGES = [];
 const UPLOAD_FAILED = "Your résumé couldn't be uploaded. Please try again.";
-
-// How long to wait between asks for the report, which the server writes in
-// the background once the interview ends: often within seconds, minutes
-// when the AI is busy and it's tried again. Every 4 seconds for two minutes,
-// then every 15, up to ten in all. It was 20 asks in 80 seconds.
-const REPORT_WAITS = [...Array(30).fill(4000), ...Array(32).fill(15000)];
-const ASK_ONCE = [];
 // The portal's sections, in their order, as the address names them.
 const PORTAL_SECTIONS = ['upload', 'analysis', 'chat', 'interview'];
 
