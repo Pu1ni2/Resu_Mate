@@ -14,6 +14,7 @@ from sqlalchemy import and_, delete, or_, select
 
 from app.core.config import settings
 from app.models.auth import OTPCode
+from app.models.email_outbox import EmailOutbox
 from app.models.job import Job
 from app.services import jobs
 
@@ -158,3 +159,17 @@ async def forget_old_jobs(payload: dict) -> None:
         )
         await db.commit()
     logger.info("cleanup: %s old jobs deleted", gone.rowcount)
+
+
+@jobs.handler("cleanup.old_emails", every=timedelta(days=1))
+async def forget_old_emails(payload: dict) -> None:
+    """Delete the emails that ended more than JOBS_KEEP_DAYS ago, as the
+    jobs that sent them are: a page says how a recent one went, and the
+    day's limit counts the last day's."""
+    from app.core.database import async_session
+    cutoff = datetime.utcnow() - timedelta(days=settings.jobs_keep_days)
+    async with async_session() as db:
+        # Only an email that has ended has a finish time.
+        gone = await db.execute(delete(EmailOutbox).where(EmailOutbox.finished_at < cutoff))
+        await db.commit()
+    logger.info("cleanup: %s old emails deleted", gone.rowcount)
