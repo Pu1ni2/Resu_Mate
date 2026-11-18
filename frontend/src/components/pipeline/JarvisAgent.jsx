@@ -6,6 +6,7 @@ import ATSResultsView from './ATSResultsView';
 import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
+import { finishedBatch, newClientKey } from '../../services/inviteBatches';
 import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
 import { keepTabInside, useModalFocus } from '../ui/modalFocus';
@@ -436,6 +437,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
   const listenAfterRef = useRef(null);   // timeout for auto-listen after TTS
   const autoListenEnabledRef = useRef(HANDS_FREE_DEFAULT);
   const chainDepthRef  = useRef(0);      // guard against action→result→action loops
+  // Aborted when Jarvis closes: a batch it waits on is asked after no more.
+  // Made on each mount, as React's checks in development mount it twice.
+  const closedRef      = useRef(null);
+  useEffect(() => {
+    const closed = new AbortController();
+    closedRef.current = closed;
+    return () => closed.abort();
+  }, []);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -920,13 +929,28 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           send_emails: params.send_emails || false,
           mode: params.mode || 'avatar',
         };
-        const res = await authFetch(`${API_BASE}/api/pipeline/batch-action`, {
+        // The server answers at once, and makes each candidate's interview,
+        // questions and email in the background; Jarvis waits for them.
+        const res = await authFetch(`${API_BASE}/api/pipeline/batches`, {
           method: 'POST', headers: hdrs,
-          body: JSON.stringify(batchBody),
+          body: JSON.stringify({ ...batchBody, client_key: newClientKey(), source: 'jarvis' }),
         });
         if (handle401(res)) return;
         if (!res.ok) throw new Error(`Batch ${res.status}`);
-        const d = await res.json();
+        const closed = closedRef.current?.signal;
+        const d = await finishedBatch(await res.json(), {
+          signal: closed,
+          onProgress: (batch) => {
+            const ready = (batch.outcomes || []).filter(o => ['done', 'skipped', 'failed'].includes(o.status)).length;
+            setStatus(`PREPARING ${ready}/${batch.total}`);
+          },
+        });
+        if (closed?.aborted) return;
+        if (!d.finished) {
+          setStatus('PREPARING');
+          directSay('The interviews are still being prepared. They’ll appear under Interviews as they’re ready.');
+          return;
+        }
         const sent = d.emails_sent || 0;
         const created = d.interviews_created || 0;
         const outcomes = d.outcomes || [];
@@ -952,10 +976,14 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           }
         });
 
-        const skipped = outcomes.filter(o => o.skipped).map(o => o.name || 'One candidate');
-        const skippedNote = skipped.length
-          ? ` ${skipped.join(', ')} couldn't be invited: there's no email address on the résumé.`
-          : '';
+        // Who couldn't be invited, and why: no address, or the server's
+        // reason, such as the sample résumé.
+        const noAddress = o => /no email address/i.test(o.skipped);
+        const unaddressed = outcomes.filter(o => o.skipped && noAddress(o)).map(o => o.name || 'One candidate');
+        const skippedNote = (unaddressed.length
+          ? ` ${unaddressed.join(', ')} couldn't be invited: there's no email address on the résumé.`
+          : '') + outcomes.filter(o => o.skipped && !noAddress(o))
+          .map(o => ` ${o.name || 'One candidate'} couldn't be invited. ${o.skipped}`).join('');
         const invited = outcomes.filter(o => o.interview_created && o.interview_id);
 
         if (!invited.length) {

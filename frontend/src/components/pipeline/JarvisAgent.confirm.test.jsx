@@ -34,8 +34,8 @@ beforeEach(() => {
     const path = String(url).replace(/^.*?\/api\//, '/api/');
     calls.push({ path, body: options.body ? JSON.parse(options.body) : null });
     if (path === '/api/jarvis/chat') return ok(replies.shift() || { reply: 'Okay.', action: null });
-    if (path === '/api/pipeline/batch-action') {
-      return ok({ total: 1, interviews_created: 1, emails_sent: 0, portal_link: 'https://resumate.example/candidate/login', outcomes: [DANA] });
+    if (path === '/api/pipeline/batches') {
+      return ok({ batch_id: 1, finished: true, total: 1, interviews_created: 1, emails_sent: 0, portal_link: 'https://resumate.example/candidate/login', outcomes: [DANA] });
     }
     return ok({});
   });
@@ -64,11 +64,11 @@ describe('before Jarvis creates an interview', () => {
     say('invite Dana');
     const card = await theCard();
     expect(within(card).getByText(/can\s+then sign in to the candidate portal/)).toBeTruthy();
-    expect(callsTo('/api/pipeline/batch-action')).toHaveLength(0);
+    expect(callsTo('/api/pipeline/batches')).toHaveLength(0);
 
     fireEvent.click(within(card).getByRole('button', { name: 'Create the interview' }));
     await screen.findByText(/EMAIL DRAFT · TO: Dana/);
-    expect(callsTo('/api/pipeline/batch-action')).toHaveLength(1);
+    expect(callsTo('/api/pipeline/batches')).toHaveLength(1);
     expect(within(card).queryByRole('button')).toBeNull();
     expect(within(card).getByText('You said yes.')).toBeTruthy();
   });
@@ -80,7 +80,7 @@ describe('before Jarvis creates an interview', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Not now' }));
     expect(await screen.findByText('Okay. Nothing was created.')).toBeTruthy();
     expect(within(card).getByText('Not created.')).toBeTruthy();
-    expect(callsTo('/api/pipeline/batch-action')).toHaveLength(0);
+    expect(callsTo('/api/pipeline/batches')).toHaveLength(0);
   });
 
   it('asked again while a card waits, points to it instead of adding another', async () => {
@@ -117,8 +117,8 @@ describe('an email Jarvis is asked to send at once', () => {
     say('invite Dana and email her');
     fireEvent.click(within(await theCard()).getByRole('button', { name: 'Create the interview' }));
     await screen.findByText(/EMAIL DRAFT · TO: Dana/);
-    await waitFor(() => expect(callsTo('/api/pipeline/batch-action')).toHaveLength(1));
-    expect(callsTo('/api/pipeline/batch-action')[0].body.send_emails).toBe(false);
+    await waitFor(() => expect(callsTo('/api/pipeline/batches')).toHaveLength(1));
+    expect(callsTo('/api/pipeline/batches')[0].body.send_emails).toBe(false);
     expect(callsTo('/api/pipeline/send-invites')).toHaveLength(0);
   });
 });

@@ -41,7 +41,7 @@ function server() {
     const path = String(url).replace(/^.*?\/api\//, '/api/');
     calls.push({ path, body: options.body ? JSON.parse(options.body) : null });
     if (path === '/api/jarvis/chat') return ok(replies.shift() || { reply: 'Okay.', action: null });
-    if (path === '/api/pipeline/batch-action') return ok(batchAnswer);
+    if (path === '/api/pipeline/batches') return ok({ batch_id: 1, finished: true, ...batchAnswer });
     if (path === '/api/pipeline/send-invites') return sendAnswer;
     if (path === '/api/chat/create-interview') {
       return ok({ message: 'Interview created', interview_config: { role: 'Dev', mode: 'conversational' }, invite_sent: false, portal_link: LINK });
@@ -92,7 +92,7 @@ describe("sending Jarvis's invitation draft", () => {
     expect(callsTo('/api/pipeline/send-invites').map(c => c.body)).toEqual([
       { invites: [{ interview_id: 42, subject: 'Interview with us', body: 'Dear Dana, we would like to talk.' }] },
     ]);
-    expect(callsTo('/api/pipeline/batch-action')).toHaveLength(1);
+    expect(callsTo('/api/pipeline/batches')).toHaveLength(1);
   });
 
   it('sends it once', async () => {
@@ -109,7 +109,7 @@ describe("sending Jarvis's invitation draft", () => {
     await draftForDana();
     say('send it');
     await screen.findByText(/The draft is above\. Read it over, then press Send Email/);
-    expect(callsTo('/api/pipeline/batch-action')).toHaveLength(1);
+    expect(callsTo('/api/pipeline/batches')).toHaveLength(1);
     expect(callsTo('/api/pipeline/send-invites')).toHaveLength(0);
   });
 

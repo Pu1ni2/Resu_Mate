@@ -32,8 +32,8 @@ beforeEach(() => {
     const path = String(url).replace(/^.*?\/api\//, '/api/');
     calls.push({ path, body: options.body ? JSON.parse(options.body) : null });
     if (path === '/api/jarvis/chat') return ok(replies.shift() || { reply: 'Okay.', action: null });
-    if (path === '/api/pipeline/batch-action') {
-      return ok({ total: 2, interviews_created: 2, emails_sent: 0, portal_link: 'https://resumate.example/candidate/login', outcomes: [outcome(7, 'Dana'), outcome(8, 'Eli')] });
+    if (path === '/api/pipeline/batches') {
+      return ok({ batch_id: 1, finished: true, total: 2, interviews_created: 2, emails_sent: 0, portal_link: 'https://resumate.example/candidate/login', outcomes: [outcome(7, 'Dana'), outcome(8, 'Eli')] });
     }
     if (path === '/api/pipeline/send-invites') return ok({ emails_sent: 2, outcomes: [] });
     return ok({});

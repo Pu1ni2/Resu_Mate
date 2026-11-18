@@ -40,9 +40,10 @@ export async function startBatch(body) {
 }
 
 // Ask after a batch after each of `waits`, calling onProgress with each
-// answer, until every candidate's invitation has finished. Returns what
-// stops it, for when the page closes.
-export function followBatch(batchId, onProgress, waits = BATCH_WAITS) {
+// answer, until every candidate's invitation has finished; onOutOfWaits when
+// the last wait passes first. Returns what stops it, for when the page
+// closes.
+export function followBatch(batchId, onProgress, waits = BATCH_WAITS, onOutOfWaits = () => {}) {
   let stopped = false;
   let timer;
   const ask = async (i) => {
@@ -53,11 +54,34 @@ export function followBatch(batchId, onProgress, waits = BATCH_WAITS) {
       onProgress(batch);
       if (batch.finished) return;
     } catch { /* out of reach for a moment: asked again */ }
-    if (!stopped && i + 1 < waits.length) timer = setTimeout(() => ask(i + 1), waits[i + 1]);
+    if (stopped) return;
+    if (i + 1 < waits.length) timer = setTimeout(() => ask(i + 1), waits[i + 1]);
+    else onOutOfWaits();
   };
   if (waits.length) timer = setTimeout(() => ask(0), waits[0]);
+  else onOutOfWaits();
   return () => {
     stopped = true;
     clearTimeout(timer);
   };
+}
+
+// The batch once every candidate's invitation has finished, for the
+// assistant, which then says how it went; or as it last stood, when the
+// waits run out first or `signal` says the assistant has closed. onProgress
+// hears each answer meanwhile.
+export function finishedBatch(batch, { onProgress = () => {}, signal, waits = BATCH_WAITS } = {}) {
+  if (batch.finished || signal?.aborted) return Promise.resolve(batch);
+  return new Promise((resolve) => {
+    let last = batch;
+    const stop = followBatch(batch.batch_id, (now) => {
+      last = now;
+      onProgress(now);
+      if (now.finished) resolve(now);
+    }, waits, () => resolve(last));
+    signal?.addEventListener('abort', () => {
+      stop();
+      resolve(last);
+    }, { once: true });
+  });
 }
