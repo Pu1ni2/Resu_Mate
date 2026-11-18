@@ -252,6 +252,12 @@ async def batch_action(
             print(f"[WARN] batch interview not created: {type(e).__name__}")
             result["interview_created"] = False
             result["interview_error"] = friendly_error(e, "The interview couldn't be created.")
+        if not result["interview_created"]:
+            # It was rolled back, which leaves every row the request read
+            # stale, the manager's too: reading hide_names or email_verified
+            # then failed, writing this draft with the name and refusing the
+            # next candidate's invite with a 500, after earlier ones went out.
+            await db.refresh(user)
 
         # ── Draft email via HR Agent ──────────────────────────────────────────
         try:
