@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 
-import { BATCH_WAITS, followBatch, newClientKey, startBatch } from './inviteBatches';
+import { BATCH_WAITS, finishedBatch, followBatch, newClientKey, startBatch } from './inviteBatches';
 
 /* Batch invitations are made in the background: the page starts one, and
  * asks after it until every candidate's invitation has finished. */
@@ -61,6 +61,52 @@ describe('batch invitations', () => {
     await vi.advanceTimersByTimeAsync(1000);
     stop();
     await vi.advanceTimersByTimeAsync(10000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('are waited for until they finish, for the assistant', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const answers = [{ batch_id: 7, finished: false, outcomes: [] }, { batch_id: 7, finished: true, outcomes: [] }];
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => ({ ok: true, status: 200, json: async () => answers.shift() }));
+    const seen = vi.fn();
+    const done = finishedBatch({ batch_id: 7, finished: false }, { onProgress: seen, waits: [1000, 1000, 1000] });
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(done).resolves.toEqual({ batch_id: 7, finished: true, outcomes: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(seen).toHaveBeenCalledTimes(2);
+  });
+
+  it('are answered at once when finished, and as they last stood when the waits run out', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    await expect(finishedBatch({ batch_id: 7, finished: true })).resolves.toEqual({ batch_id: 7, finished: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ batch_id: 7, finished: false, outcomes: [1] }) });
+    const done = finishedBatch({ batch_id: 7, finished: false }, { waits: [1000, 1000] });
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(done).resolves.toEqual({ batch_id: 7, finished: false, outcomes: [1] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // With no waits at all, at once.
+    await expect(finishedBatch({ batch_id: 7, finished: false }, { waits: [] })).resolves.toMatchObject({ finished: false });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('are waited for no more once the assistant closes', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({ batch_id: 7, finished: false, outcomes: [] }) });
+    const closed = new AbortController();
+    const done = finishedBatch({ batch_id: 7, finished: false }, { signal: closed.signal, waits: [1000, 1000, 1000] });
+    await vi.advanceTimersByTimeAsync(1000);
+    closed.abort();
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(done).resolves.toMatchObject({ finished: false });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Closed before the batch had even started: not asked after at all.
+    await expect(finishedBatch({ batch_id: 8, finished: false }, { signal: closed.signal, waits: [1000] }))
+      .resolves.toMatchObject({ batch_id: 8 });
+    await vi.advanceTimersByTimeAsync(5000);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
