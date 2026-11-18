@@ -313,3 +313,31 @@ def test_sending_drafts_without_email_set_up_says_so(client, no_email):
     _, iv = _drafted(client, tok, "d6@x.com")
     body = _send(client, tok, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}], status=503)
     assert "isn't set up" in body["detail"]
+
+
+def test_a_batch_goes_on_after_an_interview_that_couldnt_be_saved(client, mailbox, monkeypatch):
+    # The failed one rolled the request back, which left the manager's row
+    # stale: the drafts lost the hidden names, and the next invite was a 500.
+    from app.agents.hr_agent import hr_agent
+    from app.services import interview_setup
+    hidden = []
+
+    async def draft_email(anonymize=False, **_):
+        hidden.append(anonymize)
+        return {"subject": "Interview", "body": "Hello"}
+    monkeypatch.setattr(hr_agent, "draft_email", draft_email)
+    real, failed = interview_setup.add_interview, []
+
+    async def first_one_refused(db, **fields):
+        if not failed:
+            failed.append(True)
+            raise RuntimeError("the database refused it")
+        return await real(db, **fields)
+    monkeypatch.setattr(interview_setup, "add_interview", first_one_refused)
+    tok, _ = register(client, "b13@co.com")
+    assert client.put("/api/auth/preferences", headers=auth_headers(tok), json={"hide_names": True}).status_code == 200
+    ids = [_own_candidate(client, tok, "Cand\ncand13a@x.com"), _own_candidate(client, tok, "Cand\ncand13b@x.com")]
+    body = _batch(client, tok, ids, send_emails=True)
+    assert [o["interview_created"] for o in body["outcomes"]] == [False, True]
+    assert hidden == [True, True]
+    assert [m["to"] for m in mailbox] == ["cand13b@x.com"]
