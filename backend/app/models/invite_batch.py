@@ -63,6 +63,9 @@ class InviteBatchItem(Base):
     # The draft the AI wrote, for the manager to review and send.
     email_subject = Column(String(300))
     email_body = Column(Text)
+    # Whether the AI wrote it (True) or the standard one stands in (False),
+    # the AI unable to; None until there's a draft.
+    email_drafted = Column(Boolean)
     email_status = Column(String(16))
     email_error = Column(String(300))
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
