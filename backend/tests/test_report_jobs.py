@@ -450,3 +450,31 @@ def test_the_pdf_waits_for_the_report(client, run_jobs, monkeypatch):
     run_jobs()
     ready = client.get(f"/api/chat/interviews/{iid}/report.pdf", headers=auth_headers(tok))
     assert ready.status_code == 200 and ready.content.startswith(b"%PDF")
+
+
+# ── writing a report again ────────────────────────────────────────────────────
+
+def test_writing_a_report_again_answers_at_once_and_queues_one_job(client, run_jobs, monkeypatch):
+    from conftest import auth_headers
+    calls = _writer(monkeypatch, "## Written again")
+    tok, m = register(client, "rw1@co.com")
+    iid = _run(_started(m["id"], "rw1@x.com"))
+    _run(_complete(iid, report=""))  # finished with an empty report, say
+    for _ in range(2):  # asked twice while it's written
+        r = client.post(f"/api/chat/interviews/{iid}/report", headers=auth_headers(tok))
+        assert r.status_code == 202 and r.json() == {"interview_id": iid, "report_status": "pending"}
+    assert calls == [] and len(_run(_jobs())) == 1
+    assert run_jobs() == ["done"]
+    assert _run(_state(iid))[1:4] == ("done", None, "## Written again")
+
+
+def test_a_written_report_can_be_written_again(client, run_jobs, monkeypatch):
+    from conftest import auth_headers
+    _writer(monkeypatch, "## First", "## Second")
+    tok, m = register(client, "rw2@co.com")
+    iid = _run(_started(m["id"], "rw2@x.com"))
+    _run(_complete(iid))
+    run_jobs()
+    assert client.post(f"/api/chat/interviews/{iid}/report", headers=auth_headers(tok)).status_code == 202
+    assert run_jobs() == ["done"]
+    assert _run(_state(iid))[3] == "## Second"

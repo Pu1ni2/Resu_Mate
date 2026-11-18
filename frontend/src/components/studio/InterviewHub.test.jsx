@@ -145,6 +145,53 @@ describe("what can be done with a finished interview", () => {
     expect(screen.queryByRole('button', { name: 'Write the report again' })).toBeNull();
   });
 
+  // The server's background job writes a report once the interview ends.
+  const watched = (answers) => {
+    const asked = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.endsWith('/api/chat/interviews/9')) {
+        asked.push(path);
+        return response(answers.shift() || PENDING);
+      }
+      const BEING_WRITTEN = { results: [{ ...UNWRITTEN.results[0], report_status: 'pending' }] };
+      return response(path.endsWith('interview-statuses') ? STATUSES : BEING_WRITTEN);
+    });
+    return asked;
+  };
+  const PENDING = { interview_id: 9, status: 'completed', report_status: 'pending', report: { report: '', timer: 60 } };
+  const DONE = { interview_id: 9, status: 'completed', report_status: 'done', report: { report: '## Written at last', timer: 60 } };
+
+  it('watches a report still being written, and shows it once it is', async () => {
+    const asked = watched([PENDING, DONE]);
+    open();
+    const view = await screen.findByRole('button', { name: 'View report' });
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    await act(async () => { fireEvent.click(view); });
+    expect(screen.getByText('Writing the report…')).toBeTruthy();
+    // Not offered while it's written: a second write would run beside it.
+    expect(screen.queryByRole('button', { name: 'Write the report again' })).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(screen.getByText('Writing the report…')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(screen.getByText('Written at last')).toBeTruthy();
+    expect(screen.queryByText('Writing the report…')).toBeNull();
+    expect(asked.length).toBe(2);
+  });
+
+  it('stops asking once the report is closed', async () => {
+    const asked = watched([]);
+    open();
+    const view = await screen.findByRole('button', { name: 'View report' });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(view); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(asked.length).toBe(1);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Back to interviews' })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60 * 1000); });
+    expect(asked.length).toBe(1);
+  });
+
   it('reissues the interview once the manager confirms', async () => {
     server();
     open();
