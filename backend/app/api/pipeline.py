@@ -12,14 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 
 from app.core.config import settings
-from app.core.errors import friendly_error
 from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
-from app.services.resume_rag import resume_rag, primary_email, is_sample
-from app.services import email_quota, interview_modes, interview_setup, invite_batches, screening_runs
-from app.services.hidden_names import hides_names
-from app.agents.hr_agent import hr_agent
+from app.services.resume_rag import resume_rag
+from app.services import email_quota, interview_modes, invite_batches, screening_runs
 from app.services.email_service import email_service
 from app.models.candidate import Interview
 from app.models.screening import ScreeningRun
@@ -36,20 +33,6 @@ class PipelineRunRequest(BaseModel):
     required_skills: list = []
     candidate_ids: Optional[list] = None   # None = all candidates
     auto_shortlist_count: int = 5
-
-
-class BatchActionRequest(BaseModel):
-    candidate_ids: list
-    role: str
-    level: str = "Mid-Level"
-    num_questions: int = 8
-    focus_areas: list = []
-    email_type: str = "interview"          # interest | interview
-    send_emails: bool = False              # must be explicitly True to send
-    # Interview format applied to every interview created in this batch:
-    # "avatar"          — existing LiveKit + Simli avatar flow (default).
-    # "conversational"  — audio-only OpenAI Realtime (no camera, no avatar).
-    mode: str = "avatar"
 
 
 class BatchRequest(BaseModel):
@@ -242,145 +225,6 @@ async def batch_progress(batch_id: int, user=Depends(get_current_user), db: Asyn
     if batch is None:
         raise HTTPException(404, "Batch not found")
     return await invite_batches.view(db, batch)
-
-
-@router.post("/batch-action")
-@limiter.limit("20/hour")
-async def batch_action(
-    request: Request,
-    req: BatchActionRequest,
-    user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    For each shortlisted candidate:
-    - Creates an interview record in DB
-    - Drafts an invitation email (via HR Agent)
-    - Optionally sends the email (only if send_emails=True)
-
-    Returns list of per-candidate results including email drafts.
-    """
-    outcomes = []
-    mgr = user.id
-
-    for cid in req.candidate_ids:
-        # Only act on THIS manager's candidates.
-        candidate = resume_rag.get_candidate(cid, manager_id=mgr)
-        if not candidate:
-            outcomes.append({"candidate_id": cid, "error": "Candidate not found"})
-            continue
-
-        # The résumé's own address, as the portal matches it. This read
-        # candidate["email"], which an upload usually doesn't set, so the
-        # interview and the portal grant went to an empty address while the
-        # manager was told the candidate was invited.
-        email = primary_email(candidate)
-        name = candidate.get("name", "Candidate")
-        result = {"candidate_id": cid, "name": name, "email": email}
-        if not email:
-            result.update(interview_created=False, email_sent=False,
-                          skipped="No email address on this résumé, so they can't be invited.")
-            outcomes.append(result)
-            continue
-        if is_sample(candidate):
-            result.update(interview_created=False, email_sent=False, skipped=interview_setup.SAMPLE_NOT_INVITED)
-            outcomes.append(result)
-            continue
-
-        # ── Create the interview (owned by this manager) ──────────────────────
-        # With the candidate's own questions, at the chosen number, as the
-        # candidate file makes them (app/services/interview_setup.py).
-        try:
-            interview, _ = await interview_setup.create_interview(
-                db, manager_id=mgr, candidate=candidate, candidate_id=cid, email=email, name=name,
-                role=req.role, level=req.level, num_questions=req.num_questions,
-                focus_areas=req.focus_areas,
-                # Voice when avatar interviews aren't set up here.
-                mode=interview_modes.effective_mode(req.mode),
-            )
-            if interview is None:
-                raise RuntimeError("the interview could not be saved")
-            result["interview_created"] = True
-            result["interview_id"] = interview.id
-            result["mode"] = interview.mode
-        except Exception as e:
-            print(f"[WARN] batch interview not created: {type(e).__name__}")
-            result["interview_created"] = False
-            result["interview_error"] = friendly_error(e, "The interview couldn't be created.")
-        if not result["interview_created"]:
-            # It was rolled back, which leaves every row the request read
-            # stale, the manager's too: reading hide_names or email_verified
-            # then failed, writing this draft with the name and refusing the
-            # next candidate's invite with a 500, after earlier ones went out.
-            await db.refresh(user)
-
-        # ── Draft email via HR Agent ──────────────────────────────────────────
-        try:
-            email_result = await hr_agent.draft_email(
-                candidate=candidate,
-                email_type=req.email_type,
-                evaluation_report=f"Role: {req.role} | Level: {req.level}",
-                # Without the name while names are hidden: the drafts were
-                # always written with it.
-                anonymize=hides_names(user),
-                sender={"name": user.name, "company": user.company},
-            )
-            subject = email_result.get("subject", f"Interview Invitation — {req.role}")
-            body = email_result.get("body", "")
-            result["email_subject"] = subject
-            result["email_body"] = body
-            result["email_drafted"] = True
-        except Exception as e:
-            result["email_drafted"] = False
-            result["email_error"] = friendly_error(e, "The email couldn't be drafted, so a standard one is here instead.")
-            subject = f"Interview Invitation — {req.role}"
-            body = (
-                f"Dear {name},\n\n"
-                f"We are pleased to invite you to interview for the {req.role} position.\n\n"
-                f"Please log in to your candidate portal to access your interview.\n\n"
-                f"Best regards,\nHiring Team"
-            )
-            result["email_subject"] = subject
-            result["email_body"] = body
-
-        # ── Send email (only if explicitly requested) ─────────────────────────
-        # Only for a saved interview: an invite to one that wasn't saved
-        # sent the candidate to a portal with nothing for them.
-        result["email_sent"] = False
-        if req.send_emails and result["interview_created"]:
-            if not email_service.configured:
-                result["email_send_error"] = "Email isn't set up on this server. Share the portal link instead."
-            elif refused := await email_quota.refusal(db, user):
-                result["email_send_error"] = refused
-            else:
-                try:
-                    sent = await email_service.send_interview_invitation(
-                        email, name, req.role, settings.candidate_login_url, company=user.company or "",
-                    )
-                    result["email_sent"] = sent
-                    if sent:
-                        await email_quota.record_sent(db, mgr, email, "interview invitation")
-                    else:
-                        result["email_send_error"] = "The email service didn't accept this invite."
-                except Exception as e:
-                    print(f"[WARN] batch invite not sent: {type(e).__name__}")
-                    result["email_send_error"] = friendly_error(e, "The email couldn't be sent.")
-
-        outcomes.append(result)
-
-    sent_count = sum(1 for o in outcomes if o.get("email_sent"))
-    created_count = sum(1 for o in outcomes if o.get("interview_created"))
-
-    return {
-        "total": len(req.candidate_ids),
-        "interviews_created": created_count,
-        "emails_sent": sent_count,
-        "skipped": sum(1 for o in outcomes if o.get("skipped")),
-        # Where invited candidates sign in, for the manager to share when
-        # an invite wasn't emailed.
-        "portal_link": settings.candidate_login_url,
-        "outcomes": outcomes,
-    }
 
 
 @router.post("/send-invites")

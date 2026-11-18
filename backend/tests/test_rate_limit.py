@@ -110,7 +110,7 @@ SPENDING = {
     "app.api.jarvis": ["jarvis_chat"],
     "app.api.realtime": ["create_realtime_session", "checkpoint", "finalize"],
     "app.api.livekit_routes": ["create_room", "join_room"],
-    "app.api.pipeline": ["run_pipeline", "batch_action", "start_batch"],
+    "app.api.pipeline": ["run_pipeline", "start_batch"],
     "app.api.advisor_agent": ["advisor_chat", "candidate_upload_resume"],
     "app.api.sourcer": ["start_run", "draft_outreach"],
     "app.api.candidates": ["upload_resume"],

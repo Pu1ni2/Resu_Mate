@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlalchemy import func, select
 
-from conftest import auth_headers, register
+from conftest import auth_headers, batch_invite, register
 
 from app.services.interview_setup import SAMPLE_NOT_INVITED
 from app.services.resume_rag import SAMPLE_RESUME_SHA256, is_sample, resume_rag
@@ -75,12 +75,9 @@ def test_the_sample_gets_no_interview_and_no_portal_access(client):
     assert _run(_count(CandidateAccess, email="riley.samplewood@example.com")) == 0
 
 
-def test_a_batch_skips_the_sample_and_says_why(client):
+def test_a_batch_skips_the_sample_and_says_why(client, run_jobs):
     token, user = register(client, "batch@x.com")
     cid = _run(_stored(user["id"], "Riley Samplewood", "riley.samplewood@example.com", SAMPLE_RESUME_SHA256))
-    r = client.post("/api/pipeline/batch-action", headers=auth_headers(token),
-                    json={"candidate_ids": [cid], "role": "Designer"})
-    assert r.status_code == 200, r.text
-    [outcome] = r.json()["outcomes"]
+    [outcome] = batch_invite(client, run_jobs, token, [cid], role="Designer")["outcomes"]
     assert outcome["interview_created"] is False
     assert outcome["skipped"] == SAMPLE_NOT_INVITED

@@ -47,7 +47,7 @@ MAX_CANDIDATES = 100
 
 NO_EMAIL = "No email address on this résumé, so they can't be invited."
 NOT_FOUND = "They're no longer among your candidates."
-INTERVIEW_FAILED = "The interview couldn't be created."
+INTERVIEW_FAILED = "The interview couldn't be created. Try again in a moment."
 NOT_FINISHED = "The invitation couldn't be finished."
 DRAFT_FAILED = "The email couldn't be drafted, so a standard one is here instead."
 NOT_SET_UP = "Email isn't set up on this server. Share the portal link instead."

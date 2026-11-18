@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from conftest import auth_headers, register
+from conftest import auth_headers, batch_invite, register
 
 from app.services.email_quota import NOT_CONFIRMED
 
@@ -71,11 +71,8 @@ def _invite(client, tok, cid, email):
     return r.json()
 
 
-def _batch(client, tok, ids, **extra):
-    r = client.post("/api/pipeline/batch-action", headers=auth_headers(tok),
-                    json={"candidate_ids": ids, "role": "Dev", **extra})
-    assert r.status_code == 200, r.text
-    return r.json()["outcomes"]
+def _batch(client, run_jobs, tok, ids, **extra):
+    return batch_invite(client, run_jobs, tok, ids, **extra)["outcomes"]
 
 
 def test_an_invitation_waits_until_the_address_is_confirmed(client, mailbox):
@@ -96,19 +93,19 @@ def test_a_confirmed_manager_invites_as_before(client, mailbox):
     assert mailbox == ["ada@x.com"]
 
 
-def test_a_batch_makes_the_interviews_and_says_why_none_was_emailed(client, mailbox):
+def test_a_batch_makes_the_interviews_and_says_why_none_was_emailed(client, run_jobs, mailbox):
     tok, _ = register(client, "batch@co.com", verified=False)
     ids = [_candidate(client, tok, "ada@x.com"), _candidate(client, tok, "bea@x.com")]
-    outcomes = _batch(client, tok, ids, send_emails=True)
+    outcomes = _batch(client, run_jobs, tok, ids, send_emails=True)
     assert [o["interview_created"] for o in outcomes] == [True, True]
     assert [o["email_sent"] for o in outcomes] == [False, False]
     assert [o["email_send_error"] for o in outcomes] == [NOT_CONFIRMED, NOT_CONFIRMED]
     assert mailbox == []
 
 
-def test_reviewed_drafts_wait_too(client, mailbox):
+def test_reviewed_drafts_wait_too(client, run_jobs, mailbox):
     tok, _ = register(client, "drafts@co.com", verified=False)
-    outcome = _batch(client, tok, [_candidate(client, tok, "ada@x.com")])[0]
+    outcome = _batch(client, run_jobs, tok, [_candidate(client, tok, "ada@x.com")])[0]
     r = client.post("/api/pipeline/send-invites", headers=auth_headers(tok), json={"invites": [
         {"interview_id": outcome["interview_id"], "subject": "Interview", "body": "Hello"},
     ]})

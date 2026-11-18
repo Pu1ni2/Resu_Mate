@@ -6,6 +6,7 @@ path so the data-isolation guarantees are exercised end to end.
 """
 import os
 import tempfile
+import uuid
 
 import pytest
 
@@ -194,3 +195,16 @@ def register(client, email, password="pw12345678", name="Mgr", verified=True):
 
 def auth_headers(token):
     return {"Authorization": f"Bearer {token}"}
+
+
+def batch_invite(client, run_jobs, token, candidate_ids, role="Dev", **fields):
+    """A batch invitation as the screening page asks for one: started (POST
+    /api/pipeline/batches, with a key of its own), its jobs run, and the batch
+    as it then stands (GET), each candidate's outcome in it."""
+    r = client.post("/api/pipeline/batches", headers=auth_headers(token), json={
+        "client_key": f"test-{uuid.uuid4().hex}", "candidate_ids": candidate_ids, "role": role, **fields})
+    assert r.status_code == 202, r.text
+    run_jobs()
+    r = client.get(f"/api/pipeline/batches/{r.json()['batch_id']}", headers=auth_headers(token))
+    assert r.status_code == 200, r.text
+    return r.json()

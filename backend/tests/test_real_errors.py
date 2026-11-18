@@ -7,7 +7,7 @@ the result. Text to speech and the ranking put it in the error message.
 """
 import pytest
 
-from conftest import auth_headers, register
+from conftest import auth_headers, batch_invite, register
 
 from app.services.auth import create_candidate_token
 
@@ -221,7 +221,7 @@ def test_jarvis(client, manager, monkeypatch):
     _assert_plain_failure(r, "Jarvis couldn't answer. Try again in a moment.", status=500)
 
 
-def test_a_batchs_interviews_and_emails(client, monkeypatch):
+def test_a_batchs_interviews_and_emails(client, run_jobs, monkeypatch):
     import asyncio
     import json
     from app.agents.hr_agent import hr_agent
@@ -239,24 +239,24 @@ def test_a_batchs_interviews_and_emails(client, monkeypatch):
         "id": cid, "manager_id": m["id"], "name": "Cand", "text": "Cand\ncand.one@x.com", "is_resume": True,
     }
 
-    def batch():
-        r = client.post("/api/pipeline/batch-action", headers=auth_headers(tok),
-                        json={"candidate_ids": [cid], "role": "Dev", "send_emails": True})
-        assert r.status_code == 200, r.text
-        assert SECRET not in r.text
-        return r.json()["outcomes"][0]
+    def batch(role):
+        body = batch_invite(client, run_jobs, tok, [cid], role=role, send_emails=True)
+        assert SECRET not in json.dumps(body)
+        return body["outcomes"][0]
 
     monkeypatch.setattr(hr_agent, "draft_email", _aboom)
     monkeypatch.setattr(email_service, "_sg", object())
     monkeypatch.setattr(email_service, "send_interview_invitation", _aboom)
-    drafted_and_sent = batch()
-    assert drafted_and_sent["email_error"] == "The email couldn't be drafted, so a standard one is here instead. Try again in a moment."
+    drafted_and_sent = batch("Dev")
+    # The standard one stands in: nothing to try again.
+    assert drafted_and_sent["email_error"] == "The email couldn't be drafted, so a standard one is here instead."
     assert drafted_and_sent["email_send_error"] == "The email couldn't be sent. Try again in a moment."
 
     from app.services import interview_setup
     monkeypatch.setattr(interview_setup, "add_interview", _aboom)
-    created = batch()
-    assert created["interview_error"] == "The interview couldn't be created. Try again in a moment."
+    # For another role: the interview the first made is open, and would be used again.
+    created = batch("Analyst")
+    assert created["error"] == "The interview couldn't be created. Try again in a moment."
     assert json.dumps(created).count(SECRET) == 0
 
 

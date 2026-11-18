@@ -9,7 +9,7 @@ import asyncio
 import pytest
 from sqlalchemy import select
 
-from conftest import auth_headers, register
+from conftest import auth_headers, batch_invite, register
 
 from app.core.config import settings
 
@@ -82,20 +82,17 @@ def _rows(model, **where):
     return _run(read())
 
 
-def _batch(client, tok, ids, **extra):
-    r = client.post("/api/pipeline/batch-action", headers=auth_headers(tok),
-                    json={"candidate_ids": ids, "role": "Dev", **extra})
-    assert r.status_code == 200, r.text
-    return r.json()
+def _batch(client, run_jobs, tok, ids, **extra):
+    return batch_invite(client, run_jobs, tok, ids, **extra)
 
 
 # ── batch actions ─────────────────────────────────────────────────────────────
 
-def test_a_batch_invites_the_address_on_the_resume(client):
+def test_a_batch_invites_the_address_on_the_resume(client, run_jobs):
     from app.models.candidate import CandidateAccess, Interview
     tok, _ = register(client, "b1@co.com")
     cid = _own_candidate(client, tok, "Cand\nCand.One@x.com | 555-0100\nEngineer")
-    body = _batch(client, tok, [cid])
+    body = _batch(client, run_jobs, tok, [cid])
     outcome = body["outcomes"][0]
     assert outcome["email"] == "cand.one@x.com"
     assert outcome["interview_created"] is True
@@ -104,11 +101,11 @@ def test_a_batch_invites_the_address_on_the_resume(client):
     assert body["portal_link"] == PORTAL
 
 
-def test_a_candidate_without_an_address_is_skipped_not_invited(client):
+def test_a_candidate_without_an_address_is_skipped_not_invited(client, run_jobs):
     from app.models.candidate import CandidateAccess, Interview
     tok, _ = register(client, "b2@co.com")
     cid = _own_candidate(client, tok, "Cand\nEngineer, no contact line")
-    body = _batch(client, tok, [cid], send_emails=True)
+    body = _batch(client, run_jobs, tok, [cid], send_emails=True)
     outcome = body["outcomes"][0]
     assert outcome["interview_created"] is False
     assert outcome["email_sent"] is False
@@ -118,20 +115,20 @@ def test_a_candidate_without_an_address_is_skipped_not_invited(client):
     assert _rows(CandidateAccess, email="") == []
 
 
-def test_a_batch_emails_the_invite_with_the_portal_link(client, mailbox):
+def test_a_batch_emails_the_invite_with_the_portal_link(client, run_jobs, mailbox):
     tok, _ = register(client, "b3@co.com")
     cid = _own_candidate(client, tok, "Cand\ncand3@x.com")
-    body = _batch(client, tok, [cid], send_emails=True)
+    body = _batch(client, run_jobs, tok, [cid], send_emails=True)
     assert body["outcomes"][0]["email_sent"] is True
     assert body["emails_sent"] == 1
     assert [m["to"] for m in mailbox] == ["cand3@x.com"]
     assert PORTAL in mailbox[0]["html"]
 
 
-def test_a_batch_says_when_email_is_not_set_up(client, no_email):
+def test_a_batch_says_when_email_is_not_set_up(client, run_jobs, no_email):
     tok, _ = register(client, "b4@co.com")
     cid = _own_candidate(client, tok, "Cand\ncand4@x.com")
-    body = _batch(client, tok, [cid], send_emails=True)
+    body = _batch(client, run_jobs, tok, [cid], send_emails=True)
     outcome = body["outcomes"][0]
     assert outcome["interview_created"] is True
     assert outcome["email_sent"] is False
@@ -139,15 +136,15 @@ def test_a_batch_says_when_email_is_not_set_up(client, no_email):
     assert body["emails_sent"] == 0
 
 
-def test_a_batch_emails_only_when_asked(client, mailbox):
+def test_a_batch_emails_only_when_asked(client, run_jobs, mailbox):
     tok, _ = register(client, "b5@co.com")
     cid = _own_candidate(client, tok, "Cand\ncand5@x.com")
-    body = _batch(client, tok, [cid])
+    body = _batch(client, run_jobs, tok, [cid])
     assert body["outcomes"][0]["email_sent"] is False
     assert mailbox == []
 
 
-def test_no_invite_for_an_interview_that_was_not_saved(client, mailbox, monkeypatch):
+def test_no_invite_for_an_interview_that_was_not_saved(client, run_jobs, mailbox, monkeypatch):
     from app.services import interview_setup
 
     async def not_saved(db, **fields):
@@ -155,7 +152,7 @@ def test_no_invite_for_an_interview_that_was_not_saved(client, mailbox, monkeypa
     monkeypatch.setattr(interview_setup, "add_interview", not_saved)
     tok, _ = register(client, "b6@co.com")
     cid = _own_candidate(client, tok, "Cand\ncand6@x.com")
-    body = _batch(client, tok, [cid], send_emails=True)
+    body = _batch(client, run_jobs, tok, [cid], send_emails=True)
     outcome = body["outcomes"][0]
     assert outcome["interview_created"] is False
     assert outcome["email_sent"] is False
@@ -253,18 +250,18 @@ def _send(client, tok, invites, status=200):
     return r.json()
 
 
-def _drafted(client, tok, email):
+def _drafted(client, run_jobs, tok, email):
     """A batch in draft mode: the interview is made, nothing is emailed."""
     cid = _own_candidate(client, tok, f"Cand\n{email}")
-    outcome = _batch(client, tok, [cid])["outcomes"][0]
+    outcome = _batch(client, run_jobs, tok, [cid])["outcomes"][0]
     assert outcome["interview_created"] and not outcome["email_sent"]
     return cid, outcome["interview_id"]
 
 
-def test_the_reviewed_draft_is_sent_as_written_with_the_link(client, mailbox):
+def test_the_reviewed_draft_is_sent_as_written_with_the_link(client, run_jobs, mailbox):
     from app.models.candidate import Interview
     tok, _ = register(client, "d1@co.com")
-    cid, iv = _drafted(client, tok, "d1@x.com")
+    cid, iv = _drafted(client, run_jobs, tok, "d1@x.com")
     body = _send(client, tok, [{"interview_id": iv, "subject": "Let's talk\nsoon", "body": "Dear Cand,\nSee you <soon>."}])
     assert body["emails_sent"] == 1
     assert body["outcomes"] == [{"interview_id": iv, "email": "d1@x.com", "email_sent": True}]
@@ -275,20 +272,20 @@ def test_the_reviewed_draft_is_sent_as_written_with_the_link(client, mailbox):
     assert len(_rows(Interview, candidate_id=cid)) == 1
 
 
-def test_drafts_go_only_to_this_managers_interviews(client, mailbox):
+def test_drafts_go_only_to_this_managers_interviews(client, run_jobs, mailbox):
     owner, _ = register(client, "d2@co.com")
     other, _ = register(client, "d3@co.com")
-    _, iv = _drafted(client, owner, "d2@x.com")
+    _, iv = _drafted(client, run_jobs, owner, "d2@x.com")
     body = _send(client, other, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}])
     assert body["outcomes"] == [{"interview_id": iv, "email_sent": False, "error": "Interview not found"}]
     assert mailbox == []
 
 
-def test_no_draft_for_a_finished_interview(client, mailbox):
+def test_no_draft_for_a_finished_interview(client, run_jobs, mailbox):
     from app.core import database
     from app.models.candidate import Interview
     tok, _ = register(client, "d4@co.com")
-    _, iv = _drafted(client, tok, "d4@x.com")
+    _, iv = _drafted(client, run_jobs, tok, "d4@x.com")
 
     async def finish():
         async with database.async_session() as db:
@@ -300,24 +297,26 @@ def test_no_draft_for_a_finished_interview(client, mailbox):
     assert mailbox == []
 
 
-def test_an_interview_listed_twice_is_emailed_once(client, mailbox):
+def test_an_interview_listed_twice_is_emailed_once(client, run_jobs, mailbox):
     tok, _ = register(client, "d5@co.com")
-    _, iv = _drafted(client, tok, "d5@x.com")
+    _, iv = _drafted(client, run_jobs, tok, "d5@x.com")
     draft = {"interview_id": iv, "subject": "Hi", "body": "Hello"}
     assert _send(client, tok, [draft, draft])["emails_sent"] == 1
     assert len(mailbox) == 1
 
 
-def test_sending_drafts_without_email_set_up_says_so(client, no_email):
+def test_sending_drafts_without_email_set_up_says_so(client, run_jobs, no_email):
     tok, _ = register(client, "d6@co.com")
-    _, iv = _drafted(client, tok, "d6@x.com")
+    _, iv = _drafted(client, run_jobs, tok, "d6@x.com")
     body = _send(client, tok, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}], status=503)
     assert "isn't set up" in body["detail"]
 
 
-def test_a_batch_goes_on_after_an_interview_that_couldnt_be_saved(client, mailbox, monkeypatch):
+def test_a_batch_goes_on_after_an_interview_that_couldnt_be_saved(client, run_jobs, mailbox, monkeypatch):
     # The failed one rolled the request back, which left the manager's row
     # stale: the drafts lost the hidden names, and the next invite was a 500.
+    # Each is its own job now: the one that failed has no draft, and the
+    # others go on without the names.
     from app.agents.hr_agent import hr_agent
     from app.services import interview_setup
     hidden = []
@@ -337,7 +336,7 @@ def test_a_batch_goes_on_after_an_interview_that_couldnt_be_saved(client, mailbo
     tok, _ = register(client, "b13@co.com")
     assert client.put("/api/auth/preferences", headers=auth_headers(tok), json={"hide_names": True}).status_code == 200
     ids = [_own_candidate(client, tok, "Cand\ncand13a@x.com"), _own_candidate(client, tok, "Cand\ncand13b@x.com")]
-    body = _batch(client, tok, ids, send_emails=True)
+    body = _batch(client, run_jobs, tok, ids, send_emails=True)
     assert [o["interview_created"] for o in body["outcomes"]] == [False, True]
-    assert hidden == [True, True]
+    assert hidden == [True]
     assert [m["to"] for m in mailbox] == ["cand13b@x.com"]

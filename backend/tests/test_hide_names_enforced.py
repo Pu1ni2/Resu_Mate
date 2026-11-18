@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from conftest import auth_headers, register
+from conftest import auth_headers, batch_invite, register
 
 from app.services.hidden_names import NO_LOOKUP, hides_names, scrub, stand_ins
 from app.services.resume_rag import resume_rag
@@ -114,7 +114,7 @@ def test_jarvis_is_told_each_person_as_the_pages_show_them(client, monkeypatch):
         assert detail not in told
 
 
-def test_a_batchs_drafts_are_written_without_the_name(client, monkeypatch):
+def test_a_batchs_drafts_are_written_without_the_name(client, run_jobs, monkeypatch):
     from app.agents.hr_agent import hr_agent
     asked = []
 
@@ -123,9 +123,7 @@ def test_a_batchs_drafts_are_written_without_the_name(client, monkeypatch):
         return {"subject": "Interview", "body": "Hi there"}
     monkeypatch.setattr(hr_agent, "draft_email", draft_email)
     token, _ = _hiding(client, "batch@x.com")
-    r = client.post("/api/pipeline/batch-action", headers=auth_headers(token),
-                    json={"candidate_ids": [1], "role": "Dev"})
-    assert r.status_code == 200, r.text
+    batch_invite(client, run_jobs, token, [1])
     assert asked == [True]
 
 

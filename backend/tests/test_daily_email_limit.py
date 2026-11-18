@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import func, select
 
-from conftest import auth_headers, register
+from conftest import auth_headers, batch_invite, register
 
 from app.core.config import settings
 from app.services import email_quota
@@ -105,15 +105,12 @@ def test_at_the_limit_the_invitation_waits_and_says_why(client, mailbox, monkeyp
     assert mailbox == []
 
 
-def test_a_batch_sends_up_to_the_limit_then_says_why(client, mailbox, monkeypatch):
+def test_a_batch_sends_up_to_the_limit_then_says_why(client, run_jobs, mailbox, monkeypatch):
     monkeypatch.setattr(settings, "daily_email_limit", 1)
     tok, _ = register(client, "batch@co.com")
     first, _ = _candidate(client, tok, "ada@x.com")
     second, _ = _candidate(client, tok, "bea@x.com")
-    r = client.post("/api/pipeline/batch-action", headers=auth_headers(tok),
-                    json={"candidate_ids": [first, second], "role": "Dev", "send_emails": True})
-    assert r.status_code == 200, r.text
-    a, b = r.json()["outcomes"]
+    a, b = batch_invite(client, run_jobs, tok, [first, second], send_emails=True)["outcomes"]
     assert a["email_sent"] is True
     assert b["email_sent"] is False and b["email_send_error"] == email_quota.limit_reached()
     assert mailbox == ["ada@x.com"]
