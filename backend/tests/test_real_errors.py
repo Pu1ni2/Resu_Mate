@@ -253,7 +253,8 @@ def test_a_batchs_interviews_and_emails(client, monkeypatch):
     assert drafted_and_sent["email_error"] == "The email couldn't be drafted, so a standard one is here instead. Try again in a moment."
     assert drafted_and_sent["email_send_error"] == "The email couldn't be sent. Try again in a moment."
 
-    monkeypatch.setattr(db_service, "create_interview", _aboom)
+    from app.services import interview_setup
+    monkeypatch.setattr(interview_setup, "add_interview", _aboom)
     created = batch()
     assert created["interview_error"] == "The interview couldn't be created. Try again in a moment."
     assert json.dumps(created).count(SECRET) == 0

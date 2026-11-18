@@ -148,11 +148,11 @@ def test_a_batch_emails_only_when_asked(client, mailbox):
 
 
 def test_no_invite_for_an_interview_that_was_not_saved(client, mailbox, monkeypatch):
-    from app.services import db_service
+    from app.services import interview_setup
 
-    async def not_saved(db, data):
-        return None
-    monkeypatch.setattr(db_service, "create_interview", not_saved)
+    async def not_saved(db, **fields):
+        raise RuntimeError("the database refused it")
+    monkeypatch.setattr(interview_setup, "add_interview", not_saved)
     tok, _ = register(client, "b6@co.com")
     cid = _own_candidate(client, tok, "Cand\ncand6@x.com")
     body = _batch(client, tok, [cid], send_emails=True)
