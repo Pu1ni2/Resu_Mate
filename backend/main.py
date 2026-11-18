@@ -237,8 +237,9 @@ from app.api.realtime import router as realtime_router
 from app.api.sourcer import router as sourcer_router
 from app.api.privacy import router as privacy_router
 # The kinds of background job, registered for the job runner by importing
-# them: the clean-up tasks, on schedules, and the interview report writer.
-from app.services import cleanup, interview_report  # noqa: F401
+# them: the clean-up tasks, on schedules, the interview report writer, and
+# the batch invitations' preparer.
+from app.services import cleanup, interview_report, invite_batches  # noqa: F401
 
 # Each router's prefix is its whole address (/api/...), and each is
 # included as it is. FastAPI from 0.16x keeps an included router's routes
