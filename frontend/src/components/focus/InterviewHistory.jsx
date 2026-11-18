@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Loader, AlertCircle } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
+import useReportWatch from '../../hooks/useReportWatch';
 import InterviewReportView from '../shared/InterviewReportView';
 
 const STATUS_LABELS = { pending: 'Waiting to be taken', in_progress: 'In progress', interrupted: 'Interrupted', completed: 'Completed' };
+// A finished interview's report, which the server writes in the background.
+const REPORT_LABELS = { pending: ' · report being written', failed: ' · report couldn’t be written' };
 const KIND_LABELS = { conversational: 'Voice', avatar: 'Video' };
 const day = iso => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -31,12 +34,21 @@ export default function InterviewHistory({ candidateId }) {
     return () => { cancelled = true; };
   }, [candidateId]);
 
+  // An open report still being written is watched, and shown once it's done.
+  useReportWatch(open?.interview_id, open?.report_status === 'pending', (interview) => {
+    const settled = iv => (iv.interview_id === interview.interview_id
+      ? { ...iv, report: interview.report || iv.report, report_status: interview.report_status, report_error: interview.report_error }
+      : iv);
+    setOpen(current => (current ? settled(current) : current));
+    setInterviews(list => (list ? list.map(settled) : list));
+  });
+
   if (open) {
     return (
       <div className="sf-interview-history">
         <button className="sf-button" onClick={() => setOpen(null)}><ArrowLeft size={16} /> All interviews</button>
         <InterviewReportView viewer="manager" report={open.report || {}} candidateId={candidateId}
-          candidateEmail={open.email} interviewId={open.interview_id} />
+          candidateEmail={open.email} interviewId={open.interview_id} reportStatus={open.report_status} />
       </div>
     );
   }
@@ -57,6 +69,7 @@ export default function InterviewHistory({ candidateId }) {
                 <strong>{iv.role || 'Interview'}</strong>
                 <span>
                   {KIND_LABELS[iv.mode] || 'Interview'} · {STATUS_LABELS[iv.status] || iv.status}
+                  {iv.status === 'completed' ? REPORT_LABELS[iv.report_status] || '' : ''}
                   {iv.completed_at ? ` · finished ${day(iv.completed_at)}` : iv.created_at ? ` · created ${day(iv.created_at)}` : ''}
                 </span>
               </div>

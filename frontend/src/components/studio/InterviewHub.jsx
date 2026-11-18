@@ -121,11 +121,6 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
               {acting === 'report' ? 'Writing the report…' : 'Write the report again'}
             </button>
           )}
-          {standing === 'pending' && (
-            <p className="sd-report-writing" role="status">
-              <Loader size={15} className="spin" aria-hidden="true" />Writing the report…
-            </p>
-          )}
           {report.interview_id && (
             <button className="btn btn-secondary" onClick={() => setConfirmingReissue(true)} disabled={Boolean(acting)}>
               Reissue interview
@@ -133,7 +128,7 @@ export default function InterviewHub({ candidates = [], anonymize = false, getDi
           )}
         </div>
         <InterviewReportView viewer="manager" report={report.report || {}} candidateId={report.candidate_id}
-          candidateEmail={report.email} interviewId={report.interview_id} />
+          candidateEmail={report.email} interviewId={report.interview_id} reportStatus={standing} />
         <ConfirmDialog
           open={confirmingReissue}
           title="Reissue this interview?"

@@ -783,6 +783,9 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       const { interviews = [] } = await res.json();
       return interviews.find(iv => iv.status === 'completed' && iv.report) || null;
     };
+    // The server writes a finished interview's report in the background: until
+    // it's done there's no report to read, export or compare with the résumé.
+    const stillWriting = name => `${name || 'That candidate'}'s interview report is still being written. Ask me again in a minute.`;
 
     // Email the drafts the manager reviewed, for the interviews already made.
     const sendInvites = async (invites, messageId) => {
@@ -1293,6 +1296,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           setStatus('DONE');
           return;
         }
+        if (finished.report_status === 'pending' || finished.report_status === 'failed') {
+          directSay(finished.report_status === 'pending'
+            ? stillWriting(params.candidate_name)
+            : `The report on ${params.candidate_name || 'that candidate'}'s interview couldn't be written. It can be written again from the Interviews page.`);
+          setStatus('DONE');
+          return;
+        }
         const candidateEmail = finished.email || params.candidate_email || getKnownEmail(params.candidate_id) || '';
         const artifact = buildInterviewReportArtifact(report, candidateEmail);
         cacheCandidateArtifact('interviewReports', params.candidate_id, artifact);
@@ -1326,6 +1336,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
           body: JSON.stringify({ candidate_id: params.candidate_id, candidate_email: candidateEmail }),
         });
         if (handle401(res)) return;
+        if (res.status === 409) {
+          directSay(stillWriting(params.candidate_name));
+          setStatus('DONE');
+          return;
+        }
         if (!res.ok) throw new Error(`Credibility ${res.status}`);
         const d = await res.json();
         const credibility = d.credibility;
@@ -1360,6 +1375,11 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         if (finished === undefined) return;
         if (!finished) {
           directSay(`There isn't a finished interview to export for ${params.candidate_name || 'that candidate'} yet.`);
+          setStatus('DONE');
+          return;
+        }
+        if (finished.report_status === 'pending') {
+          directSay(stillWriting(params.candidate_name));
           setStatus('DONE');
           return;
         }

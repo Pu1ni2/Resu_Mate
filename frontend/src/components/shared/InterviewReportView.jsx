@@ -215,8 +215,13 @@ function TranscriptSection({ transcript }) {
  * by address alone they took the candidate's newest interview, a later round
  * still waiting, not this one.
  */
-export default function InterviewReportView({ report, candidateId, candidateEmail, interviewId, viewer = 'candidate' }) {
+export default function InterviewReportView({ report, candidateId, candidateEmail, interviewId, viewer = 'candidate', reportStatus }) {
   const isManager = viewer === 'manager';
+  // reportStatus, where the manager's pages know it: "pending" while the
+  // server's background job writes the evaluation, "failed" when it couldn't.
+  // Until it's written there's no PDF to make and nothing to compare with
+  // the résumé; the server refuses both.
+  const writing = reportStatus === 'pending';
   if (!report) return <p style={{ color: 'var(--color-ink-muted)', textAlign: 'center', padding: '40px' }}>No report data available.</p>;
 
   const r = report;
@@ -254,7 +259,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
         <p className="sr-report-meta">
           {scores.length > 0 && `${scores.length} questions answered · `}{mins}:{secs} duration
         </p>
-        {isManager && interviewId && (
+        {isManager && interviewId && !writing && (
           <button onClick={async () => {
             // Export-report now requires auth, so we fetch with the bearer
             // token and trigger a blob download instead of window.open (which
@@ -329,7 +334,23 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       )}
 
       {/* AI Report */}
-      {reportText.length > 5 && (
+      {writing && (
+        <div className="sr-card" role="status" style={{ padding: '24px' }}>
+          <h3 className="sr-section-title">
+            <Loader size={16} className="spin" aria-hidden="true" /> Writing the report…
+          </h3>
+          <p>The evaluation is being written from the transcript, and shows here once it’s done.</p>
+        </div>
+      )}
+      {reportStatus === 'failed' && reportText.length <= 5 && (
+        <div className="sr-card" role="status" style={{ padding: '24px' }}>
+          <h3 className="sr-section-title">
+            <AlertCircle size={16} style={{ color: 'var(--color-critical)' }} aria-hidden="true" /> The report couldn’t be written
+          </h3>
+          <p>The transcript is below. The report can be written again from the Interviews page.</p>
+        </div>
+      )}
+      {!writing && reportText.length > 5 && (
         <div className="sr-card" style={{ padding: '24px' }}>
           <h3 className="sr-section-title">
             <FileText size={16} style={{ color: 'var(--color-accent)' }} /> Evaluation
@@ -342,7 +363,7 @@ export default function InterviewReportView({ report, candidateId, candidateEmai
       <TranscriptSection transcript={r.transcript} />
 
       {/* Résumé and interview */}
-      {isManager && <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} interviewId={interviewId} />}
+      {isManager && !writing && <CredibilitySection candidateId={candidateId} candidateEmail={candidateEmail} interviewId={interviewId} />}
 
       {/* Proctoring */}
       {(violations > 0 || (r.lookAwayCount || 0) > 10) && (

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { scrollBehavior } from '../hooks/usePrefersReducedMotion';
+import useReportWatch from '../hooks/useReportWatch';
 import Markdown from './ui/Markdown';
 import ConfirmDialog from './ui/ConfirmDialog';
 import ATSResultsView from './pipeline/ATSResultsView';
@@ -71,6 +72,15 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
 
   useEffect(() => { fetchData(); }, []);
 
+  // An open report still being written is watched, and shown once it's done.
+  useReportWatch(openReport?.interview_id, openReport?.report_status === 'pending', (interview) => {
+    const settled = d => (d.interview_id === interview.interview_id
+      ? { ...d, report: interview.report || d.report, report_status: interview.report_status, report_error: interview.report_error }
+      : d);
+    setOpenReport(current => (current ? settled(current) : current));
+    setData(list => (list ? list.map(settled) : list));
+  });
+
   if (loading) return (
     <div className="clean-section" style={{ textAlign: 'center', padding: '48px' }}>
       <Loader size={18} className="spin" style={{ color: 'var(--text3)' }} />
@@ -136,6 +146,7 @@ function InterviewAnalytics({ candidates = [], anonymize = false, getDisplayName
           candidateId={openReport.candidate_id}
           candidateEmail={openReport.email}
           interviewId={openReport.interview_id}
+          reportStatus={openReport.report_status}
         />
       </div>
     );
