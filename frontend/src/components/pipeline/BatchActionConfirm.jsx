@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Zap, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
-import { API_BASE, authFetch } from '../../services/authFetch';
+import { followBatch, newClientKey, startBatch } from '../../services/inviteBatches';
 import { toast } from '../../services/notify';
 import { useAvatarInterviews } from '../../services/features';
 import PortalLink from '../shared/PortalLink';
@@ -19,7 +19,20 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
     Object.fromEntries(selectedCandidates.map(c => [c.candidate_id, { interview: true }]))
   );
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState(null);
+  // The batch as the server last said, from the moment it's started.
+  const [batch, setBatch] = useState(null);
+  // One key for this dialog: Confirm again, after an answer that didn't
+  // arrive, is the same batch, so no one is invited twice.
+  const [clientKey] = useState(newClientKey);
+
+  // Each candidate's interview, questions and email are made in the
+  // background: follow them until all have finished, or the dialog closes.
+  const batchId = batch?.batch_id;
+  const finished = Boolean(batch?.finished);
+  useEffect(() => {
+    if (!batchId || finished) return undefined;
+    return followBatch(batchId, setBatch);
+  }, [batchId, finished]);
 
   const toggle = (id, field) => {
     setCandidateToggles(prev => ({
@@ -35,37 +48,26 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
   const handleConfirm = async () => {
     setRunning(true);
     try {
-      const interviewIds = selectedCandidates
-        .filter(c => candidateToggles[c.candidate_id]?.interview)
-        .map(c => c.candidate_id);
-
-      const res = await authFetch(`${API_BASE}/api/pipeline/batch-action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          candidate_ids: interviewIds,
-          role,
-          level,
-          num_questions: numQuestions,
-          send_emails: sendEmails,
-          mode: interviewMode,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Batch action failed');
-      }
-      const data = await res.json();
-      setResults(data);
+      setBatch(await startBatch({
+        client_key: clientKey,
+        source: 'screening',
+        candidate_ids: activeIds,
+        role,
+        level,
+        num_questions: numQuestions,
+        send_emails: sendEmails,
+        mode: interviewMode,
+      }));
     } catch (err) {
       toast('Error: ' + err.message, 'error');
+    } finally {
       setRunning(false);
     }
   };
 
   // ── Results view ────────────────────────────────────────────────────────────
 
-  if (results) {
+  if (batch?.finished) {
     return (
       <div style={styles.overlay}>
         <div style={styles.modal}>
@@ -73,43 +75,23 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
             <CheckCircle size={20} style={{ color: 'var(--color-positive)' }} /> Actions Complete
           </h3>
           <div style={styles.statsRow}>
-            <StatBox value={results.interviews_created} label="Interviews Created" color="var(--color-positive)" />
-            <StatBox value={results.emails_sent} label="Emails Sent" color="var(--color-positive)" />
-            <StatBox value={results.total} label="Total Processed" color="var(--color-ink-muted)" />
+            <StatBox value={batch.interviews_created} label="Interviews Created" color="var(--color-positive)" />
+            <StatBox value={batch.emails_sent} label="Emails Sent" color="var(--color-positive)" />
+            <StatBox value={batch.total} label="Total Processed" color="var(--color-ink-muted)" />
           </div>
 
           {/* Per-candidate outcome, and why when someone wasn't invited or emailed */}
           <div style={styles.outcomeList}>
-            {results.outcomes.map(o => {
-              const reason = o.skipped || o.error
-                || (o.interview_created ? o.email_send_error : 'The interview could not be saved. Try again.');
-              return (
-                <div key={o.candidate_id} style={{ ...styles.outcomeRow, flexWrap: 'wrap' }}>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{o.name || `Candidate #${o.candidate_id}`}</span>
-                    {o.email && <span style={{ fontSize: 12, color: 'var(--color-ink-subtle)', marginLeft: 8 }}>{o.email}</span>}
-                  </span>
-                  <span style={{ fontSize: 12, color: o.interview_created ? 'var(--color-positive)' : 'var(--color-critical)' }}>
-                    {o.interview_created ? '✓ Interview' : '✗ Interview'}
-                  </span>
-                  <span style={{ fontSize: 12, color: o.email_sent ? 'var(--color-positive)' : 'var(--color-ink-subtle)', marginLeft: 10 }}>
-                    {o.email_sent ? '✓ Invite emailed' : 'Not emailed'}
-                  </span>
-                  {reason && (
-                    <span style={{ flexBasis: '100%', fontSize: 12, color: 'var(--color-ink-muted)', marginTop: 4 }}>{reason}</span>
-                  )}
-                </div>
-              );
-            })}
+            {batch.outcomes.map(o => <Outcome key={o.candidate_id} o={o} sending={batch.send_emails} />)}
           </div>
 
-          {results.interviews_created > 0 && (results.emails_sent < results.interviews_created ? (
+          {batch.interviews_created > 0 && (batch.emails_sent < batch.interviews_created ? (
             <div style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 14, color: 'var(--color-ink-muted)', marginBottom: 8 }}>
-                Send {results.emails_sent ? 'the candidates who weren’t emailed' : 'the invited candidates'} this link.
+                Send {batch.emails_sent ? 'the candidates who weren’t emailed' : 'the invited candidates'} this link.
                 They sign in with the email address shown above.
               </p>
-              <PortalLink link={results.portal_link} />
+              <PortalLink link={batch.portal_link} />
             </div>
           ) : (
             <p style={{ fontSize: 14, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
@@ -118,6 +100,29 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
           ))}
 
           <button onClick={onDone} style={styles.primaryBtn}>Done</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Progress view ───────────────────────────────────────────────────────────
+
+  if (batch) {
+    return (
+      <div style={styles.overlay}>
+        <div style={styles.modal}>
+          <button onClick={onDone} style={styles.closeBtn} aria-label="Close"><X size={16} /></button>
+          <h3 style={styles.title}>
+            <Loader size={18} className="spin" style={{ color: 'var(--color-accent)' }} />
+            Inviting {batch.total} candidate{batch.total !== 1 ? 's' : ''}…
+          </h3>
+          <p style={{ fontSize: 14, color: 'var(--color-ink-muted)', marginBottom: 16 }}>
+            This carries on if you close it. Each interview appears under Interviews as soon as it’s ready.
+          </p>
+          <div style={styles.outcomeList}>
+            {batch.outcomes.map(o => <Outcome key={o.candidate_id} o={o} sending={batch.send_emails} />)}
+          </div>
+          <button onClick={onDone} style={styles.secondaryBtn}>Close</button>
         </div>
       </div>
     );
@@ -246,10 +251,61 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
 
         <button onClick={handleConfirm} disabled={running || activeIds.length === 0} style={{ ...styles.primaryBtn, opacity: activeIds.length > 0 ? 1 : 0.5 }}>
           {running
-            ? <><Loader size={14} className="spin" /> Processing {activeIds.length} candidates...</>
+            ? <><Loader size={14} className="spin" /> Starting…</>
             : <><Zap size={14} /> Confirm — {activeIds.length} candidate{activeIds.length !== 1 ? 's' : ''}</>}
         </button>
       </div>
+    </div>
+  );
+}
+
+// A step still under way for one candidate.
+const UNDER_WAY = {
+  queued: 'Waiting its turn…',
+  questions: 'Writing the interview questions…',
+};
+
+// One candidate: what's under way for them, then how it went, and why when
+// they weren't invited or emailed.
+function Outcome({ o, sending }) {
+  const who = (
+    <span style={{ flex: 1, minWidth: 0 }}>
+      <span style={{ fontSize: 14, fontWeight: 600 }}>{o.name || `Candidate #${o.candidate_id}`}</span>
+      {o.email && <span style={{ fontSize: 12, color: 'var(--color-ink-subtle)', marginLeft: 8 }}>{o.email}</span>}
+    </span>
+  );
+  const step = o.status === 'drafting'
+    ? (sending ? 'Writing and sending the invitation…' : 'Writing the invitation…')
+    : UNDER_WAY[o.status];
+  if (step) {
+    return (
+      <div style={{ ...styles.outcomeRow, flexWrap: 'wrap' }}>
+        {who}
+        <span style={{ fontSize: 12, color: 'var(--color-ink-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Loader size={12} className="spin" /> {step}
+        </span>
+      </div>
+    );
+  }
+  const reason = o.skipped || o.error
+    || (o.interview_created ? o.email_send_error : 'The interview could not be saved. Try again.');
+  return (
+    <div style={{ ...styles.outcomeRow, flexWrap: 'wrap' }}>
+      {who}
+      <span style={{ fontSize: 12, color: o.interview_created ? 'var(--color-positive)' : 'var(--color-critical)' }}>
+        {o.interview_created ? '✓ Interview' : '✗ Interview'}
+      </span>
+      <span style={{ fontSize: 12, color: o.email_sent ? 'var(--color-positive)' : 'var(--color-ink-subtle)', marginLeft: 10 }}>
+        {o.email_sent ? '✓ Invite emailed' : 'Not emailed'}
+      </span>
+      {o.reused && (
+        <span style={{ flexBasis: '100%', fontSize: 12, color: 'var(--color-ink-muted)', marginTop: 4 }}>
+          They already had an interview open for this role, so that’s the one they’ll take.
+        </span>
+      )}
+      {reason && (
+        <span style={{ flexBasis: '100%', fontSize: 12, color: 'var(--color-ink-muted)', marginTop: 4 }}>{reason}</span>
+      )}
     </div>
   );
 }
@@ -305,6 +361,13 @@ const styles = {
     width: '100%', padding: '13px 20px',
     background: 'var(--color-accent)',
     color: 'var(--color-ink-inverse)', border: 'none', borderRadius: 12,
+    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  },
+  secondaryBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    width: '100%', padding: '13px 20px',
+    background: 'var(--color-surface-raised)',
+    color: 'var(--color-ink)', border: '1px solid var(--color-line)', borderRadius: 12,
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
   },
   configRow: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
