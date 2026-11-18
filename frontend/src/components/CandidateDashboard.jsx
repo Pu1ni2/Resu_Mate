@@ -27,6 +27,13 @@ const ConversationalInterviewRoom = lazy(() => import('./ConversationalInterview
 // One empty list, so an effect that watches the messages doesn't re-run on every render.
 const NO_MESSAGES = [];
 const UPLOAD_FAILED = "Your résumé couldn't be uploaded. Please try again.";
+
+// How long to wait between asks for the report, which the server writes in
+// the background once the interview ends: often within seconds, minutes
+// when the AI is busy and it's tried again. Every 4 seconds for two minutes,
+// then every 15, up to ten in all. It was 20 asks in 80 seconds.
+const REPORT_WAITS = [...Array(30).fill(4000), ...Array(32).fill(15000)];
+const ASK_ONCE = [];
 // The portal's sections, in their order, as the address names them.
 const PORTAL_SECTIONS = ['upload', 'analysis', 'chat', 'interview'];
 
@@ -358,25 +365,27 @@ export default function CandidateDashboard() {
     });
   };
 
-  // The server writes the report after the interview: straight away for a
-  // voice interview, and within a minute or so for an avatar one (once the
-  // interviewer leaves the room). So keep asking for a while.
-  const waitForReport = async (attempts = 20, delayMs = 4000) => {
+  // The server writes the report after the interview, in the background
+  // (REPORT_WAITS): asked again after each wait, until it's there.
+  const waitForReport = async (waits = REPORT_WAITS) => {
     setReportPending(true);
-    for (let i = 0; i < attempts && aliveRef.current; i++) {
+    for (let i = 0; i <= waits.length && aliveRef.current; i++) {
       const report = await fetchMyReport();
       if (report) {
         if (aliveRef.current) showReport(report);
         break;
       }
-      if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
+      if (i < waits.length) await new Promise(r => setTimeout(r, waits[i]));
     }
     if (aliveRef.current) setReportPending(false);
   };
 
-  // Signed in after the interview finished, with no report yet: ask once.
+  // Signed in after the interview finished, with no report yet: wait for one
+  // being written, or ask once.
   useEffect(() => {
-    if (candidateSession?.interview_completed && !interviewReport) waitForReport(1);
+    if (candidateSession?.interview_completed && !interviewReport) {
+      waitForReport(candidateSession.report_status === 'pending' ? REPORT_WAITS : ASK_ONCE);
+    }
     // Only when the session first arrives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateSession?.email]);
@@ -900,7 +909,7 @@ export default function CandidateDashboard() {
                       </p>
                     </div>
                     {!reportPending && (
-                      <button className="cd-report-toggle" onClick={() => waitForReport(1)}>Refresh</button>
+                      <button className="cd-report-toggle" onClick={() => waitForReport(ASK_ONCE)}>Refresh</button>
                     )}
                   </div>
                 </div>

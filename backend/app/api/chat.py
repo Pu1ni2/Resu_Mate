@@ -643,7 +643,10 @@ async def credibility_analysis(request: Request, req: CredibilityRequest, user=D
 
     interview = await db_service.finished_interview(db, req.candidate_email, manager_id=user.id,
                                                     interview_id=req.interview_id)
-    if not interview or not interview.report:
+    state = db_service.report_state(interview) if interview else None
+    if state == "pending":
+        raise HTTPException(409, "The interview's report is still being written. Try again in a minute.")
+    if state != "done":
         raise HTTPException(404, "No completed interview found for this candidate")
 
     report_data = interview.report
@@ -985,13 +988,24 @@ async def candidate_my_report(
     candidate_email: str = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    """A candidate's own completed interview report + transcript (token-scoped)."""
+    """A candidate's own completed interview report + transcript (token-scoped).
+
+    Their latest finished interview, whether or not its report is written
+    yet: report_status says where it stands, and the report comes once it's
+    "done". 404 only when no interview of theirs has finished.
+    """
     # Their latest finished one: a new interview waiting to be taken hid it.
     interview = await db_service.finished_interview(db, candidate_email)
-    if not interview or interview.status != "completed" or not interview.report:
+    if not interview:
         raise HTTPException(404, "No completed interview report found")
-
-    return {"interview_completed": True, "interview_report": db_service.candidate_report(interview)}
+    state = db_service.report_state(interview)
+    return {
+        "interview_completed": True,
+        "report_status": state,
+        # While it's written, the column may hold only what the room
+        # measured, and the page showed that as an empty report, for good.
+        "interview_report": db_service.candidate_report(interview) if state == "done" else None,
+    }
 
 # ═══════ INTERVIEW RESULTS (PostgreSQL-backed) ═══════
 

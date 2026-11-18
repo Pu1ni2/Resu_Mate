@@ -413,6 +413,7 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
     interview_completed = interview.status == "completed" if interview else False
     interview_config = None
     interview_report = None
+    report_status = None
 
     if interview:
         interview_config = {
@@ -426,8 +427,12 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
         }
         if interview_completed:
             # Parsed, in the shape my-report sends: this used to be the raw
-            # report column, JSON text the candidate saw as-is.
-            interview_report = db_service.candidate_report(interview)
+            # report column, JSON text the candidate saw as-is. Only once
+            # it's written: an empty one, sent while its job ran, was taken
+            # as the report, and the page never asked again.
+            report_status = db_service.report_state(interview)
+            if report_status == "done":
+                interview_report = db_service.candidate_report(interview)
 
     access_token = create_candidate_token(email)
 
@@ -442,6 +447,7 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
             "interview_config": interview_config,
             "interview_completed": interview_completed,
             "interview_report": interview_report,
+            "report_status": report_status,
             "profile": candidate_data,
         },
     }

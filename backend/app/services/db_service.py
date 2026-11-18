@@ -201,10 +201,12 @@ async def finished_interview(session: AsyncSession, email: str, manager_id: int 
     """The finished interview a report is read from.
 
     By its id when one is given, for this address and, when given, this
-    manager; otherwise the address's latest interview that finished with a
-    report. "The newest interview for this email" was a new, pending round
-    as soon as one was made, and the earlier round's report could no longer
-    be read, exported or compared with the résumé.
+    manager; otherwise the address's latest finished interview, its report
+    written or not (report_state). "The newest interview for this email" was
+    a new, pending round as soon as one was made, and the earlier round's
+    report could no longer be read, exported or compared with the résumé.
+    And "the latest with a report" showed an earlier round's report while
+    the newest one's was being written.
     """
     stmt = select(Interview).where(Interview.candidate_email == email.strip().lower())
     if manager_id is not None:
@@ -212,9 +214,21 @@ async def finished_interview(session: AsyncSession, email: str, manager_id: int 
     if interview_id is not None:
         stmt = stmt.where(Interview.id == interview_id)
     else:
-        stmt = stmt.where(Interview.status == "completed", Interview.report.isnot(None))
+        stmt = stmt.where(Interview.status == "completed")
     stmt = stmt.order_by(func.coalesce(Interview.completed_at, Interview.created_at).desc()).limit(1)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+def report_state(interview: Interview) -> Optional[str]:
+    """Where a finished interview's report stands: "pending" while its
+    background job writes it, then "done" or "failed". None for an interview
+    not finished. One finished before there were such jobs has none stored:
+    its report is done when it has text, and failed when it has none."""
+    if interview.status != "completed":
+        return None
+    if interview.report_status:
+        return interview.report_status
+    return "done" if (report_dict(interview.report).get("report") or "").strip() else "failed"
 
 
 async def update_interview_status(

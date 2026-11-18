@@ -118,7 +118,7 @@ describe("the candidate's report after an interview", () => {
     const done = await enterTheRoom('finish voice');
     vi.useFakeTimers({ toFake: ['setTimeout'] });
     await act(async () => { fireEvent.click(done); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(20 * 4000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10 * 60 * 1000); });  // it asks for ten minutes
     expect(screen.getByText(/still being prepared/i)).toBeTruthy();
     reportAnswers = [REPORT];
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Refresh' })); });
