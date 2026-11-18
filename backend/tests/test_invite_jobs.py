@@ -132,6 +132,46 @@ def questions(monkeypatch):
     return calls
 
 
+@pytest.fixture(autouse=True)
+def drafts(monkeypatch):
+    """The HR agent's drafts without the AI. Each call records its arguments
+    and the database connections held meanwhile; drafts.stub.answer, when
+    set, is what it does instead."""
+    from app.agents.hr_agent import hr_agent
+    from app.core import database
+    calls = _Calls()
+
+    async def draft_email(**arguments):
+        calls.append({"held": database.engine.sync_engine.pool.checkedout(), **arguments})
+        if draft_email.answer:
+            return await draft_email.answer()
+        return {"subject": "Interview", "body": "Hello"}
+    draft_email.answer = None
+    monkeypatch.setattr(hr_agent, "draft_email", draft_email)
+    calls.stub = draft_email
+    return calls
+
+
+@pytest.fixture()
+def mailbox(monkeypatch):
+    """A server with email set up, delivering into a list, each email with the
+    database connections held while it went; mailbox.stub.answer, when set,
+    is what the email service does instead."""
+    from app.core import database
+    from app.services.email_service import email_service
+    sent = _Calls()
+
+    async def send(to_email, subject, html_body):
+        sent.append({"to": to_email, "subject": subject, "html": html_body,
+                     "held": database.engine.sync_engine.pool.checkedout()})
+        return send.answer() if send.answer else True
+    send.answer = None
+    monkeypatch.setattr(email_service, "_sg", object())
+    monkeypatch.setattr(email_service, "send", send)
+    sent.stub = send
+    return sent
+
+
 # ── the interview and its questions ───────────────────────────────────────────
 
 def test_the_server_registers_the_invitation_job():
@@ -286,3 +326,209 @@ def test_an_item_deleted_before_its_job_runs_is_left_alone(client, run_jobs, que
     _run(delete())
     assert run_jobs() == ["done"]
     assert _run(_interviews(m["id"])) == [] and questions == []
+
+
+# ── the draft, and the email ──────────────────────────────────────────────────
+
+async def _manager(manager_id, **values):
+    from app.core import database
+    from app.models.auth import HiringManager
+    async with database.async_session() as db:
+        manager = await db.get(HiringManager, manager_id)
+        for column, value in values.items():
+            setattr(manager, column, value)
+        await db.commit()
+
+
+async def _change_item(item_id, **values):
+    from app.core import database
+    from app.models.invite_batch import InviteBatchItem
+    async with database.async_session() as db:
+        item = await db.get(InviteBatchItem, item_id)
+        for column, value in values.items():
+            setattr(item, column, value)
+        await db.commit()
+
+
+async def _email(item_id):
+    from app.core import database
+    from app.models.invite_batch import InviteBatchItem
+    async with database.async_session() as db:
+        item = await db.get(InviteBatchItem, item_id)
+        return {"subject": item.email_subject, "body": item.email_body, "drafted": item.email_drafted,
+                "status": item.email_status, "error": item.email_error, "item": item.status}
+
+
+async def _requeue(item_id, manager_id):
+    from app.core import database
+    from app.services import invite_batches
+    async with database.async_session() as db:
+        await invite_batches.queue(db, item_id, manager_id)
+        await db.commit()
+
+
+async def _sent_today(manager_id):
+    from app.core import database
+    from app.services import email_quota
+    async with database.async_session() as db:
+        return await email_quota.sent_today(db, manager_id)
+
+
+def test_the_draft_is_signed_by_the_manager_and_written_with_no_connection_held(client, run_jobs, questions,
+                                                                              drafts, mailbox):
+    _, m = register(client, "ij10@co.com", name="Grace")
+    _run(_manager(m["id"], company="Acme", hide_names=True))
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], email_type="interest"))
+    assert run_jobs() == ["done"]
+    [call] = drafts
+    assert (call["held"], call["email_type"], call["evaluation_report"], call["anonymize"], call["sender"]) == \
+        (0, "interest", "Role: Data Engineer | Level: Senior", True, {"name": "Grace", "company": "Acme"})
+    assert call["candidate"]["id"] == cid
+    # Not asked to send: the draft waits for the manager, and nothing went.
+    assert _run(_email(item)) == {"subject": "Interview", "body": "Hello", "drafted": True, "status": None,
+                                  "error": None, "item": "done"}
+    assert mailbox == []
+
+
+@pytest.mark.parametrize("hidden, greeting, answer", [
+    (False, "Dear Ada,", "busy"), (True, "Hi there,", "busy"), (False, "Dear Ada,", "empty")])
+def test_a_draft_the_ai_couldnt_write_is_the_standard_one(client, run_jobs, questions, drafts, hidden, greeting,
+                                                          answer):
+    _, m = register(client, f"ij11-{int(hidden)}-{answer}@co.com")
+    _run(_manager(m["id"], hide_names=hidden))
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid]))
+
+    async def badly():
+        if answer == "busy":
+            raise RuntimeError("the AI is busy")
+        return {"subject": "", "body": "  "}
+    drafts.stub.answer = badly
+    assert run_jobs() == ["done"]
+    email = _run(_email(item))
+    assert (email["subject"], email["drafted"], email["item"]) == ("Interview Invitation — Data Engineer", False, "done")
+    assert email["body"].startswith(greeting)
+    # Not the name while names are hidden.
+    assert ("Ada" in email["body"]) is not hidden
+
+
+def test_the_invitation_goes_once_with_no_connection_held(client, run_jobs, questions, drafts, mailbox):
+    _, m = register(client, "ij12@co.com")
+    _run(_manager(m["id"], company="Acme"))
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    assert run_jobs() == ["done"]
+    assert [(mail["to"], mail["subject"], mail["held"]) for mail in mailbox] == [
+        ("ada@x.com", "Interview invitation from Acme: Data Engineer", 0)]
+    assert "Hi Ada," in mailbox[0]["html"]
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("sent", None, "done")
+    # Counted against the day's emails.
+    assert _run(_sent_today(m["id"])) == 1
+    # Its job queued again, as a retry would, sends nothing more and writes nothing again.
+    _run(_requeue(item, m["id"]))
+    assert run_jobs() == ["done"]
+    assert (len(mailbox), len(drafts), len(questions)) == (1, 1, 1)
+
+
+def test_an_invitation_a_stopped_run_was_sending_isnt_sent_again(client, run_jobs, questions, drafts, mailbox):
+    from app.services import invite_batches
+    _, m = register(client, "ij13@co.com")
+    cid = _run(_candidate(m["id"]))
+    interview = _run(_interview(m["id"], cid, "Data Engineer", "pending"))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    # Where a run stopped, at a restart: the draft kept, the email claimed.
+    _run(_change_item(item, status="drafting", interview_id=interview, email_subject="Interview",
+                      email_body="Hello", email_drafted=True, email_status="sending"))
+    assert run_jobs() == ["done"]
+    assert (mailbox, drafts, questions) == ([], [], [])
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("failed", invite_batches.UNSURE, "done")
+    assert _run(_sent_today(m["id"])) == 0
+
+
+def test_an_invitation_another_run_claimed_meanwhile_is_left_to_it(client, run_jobs, questions, mailbox,
+                                                                   monkeypatch):
+    # Two runs of one job at once: one whose hold ran out while it was still
+    # going, and the one that took the job up. Only the one that claims the
+    # email sends it.
+    from app.services import email_quota
+    _, m = register(client, "ij17@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    real = email_quota.refusal
+
+    async def claimed_meanwhile(db, manager):
+        await _change_item(item, email_status="sending")
+        return await real(db, manager)
+    monkeypatch.setattr(email_quota, "refusal", claimed_meanwhile)
+    assert run_jobs() == ["done"]
+    assert mailbox == []
+    # Still the other run's to finish.
+    assert (_run(_email(item))["status"], _run(_email(item))["item"]) == ("sending", "drafting")
+
+
+@pytest.mark.parametrize("why", ["unconfirmed", "limit", "no_email"])
+def test_an_invitation_that_may_not_go_says_why(client, run_jobs, questions, mailbox, monkeypatch, why):
+    from app.core.config import settings
+    from app.services import email_quota, invite_batches
+    from app.services.email_service import email_service
+    _, m = register(client, f"ij14-{why.replace('_', '')}@co.com", verified=why != "unconfirmed")
+    if why == "limit":
+        monkeypatch.setattr(settings, "daily_email_limit", 0)
+    if why == "no_email":
+        monkeypatch.setattr(email_service, "_sg", None)
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    assert run_jobs() == ["done"]
+    said = {"unconfirmed": email_quota.NOT_CONFIRMED, "limit": email_quota.limit_reached(),
+            "no_email": invite_batches.NOT_SET_UP}[why]
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("refused", said, "done")
+    # (An unconfirmed account was sent its link to confirm, at sign-up.)
+    assert [mail for mail in mailbox if mail["to"] == "ada@x.com"] == []
+    # The interview and the draft stand: the manager can share the portal link.
+    assert email["subject"] == "Interview" and len(_run(_interviews(m["id"]))) == 1
+
+
+@pytest.mark.parametrize("answer", ["refused", "unreachable"])
+def test_an_invitation_the_email_service_doesnt_take_says_why(client, run_jobs, questions, mailbox, answer):
+    from app.core.errors import friendly_error
+    from app.services import invite_batches
+    _, m = register(client, f"ij15-{answer}@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+
+    def service():
+        if answer == "unreachable":
+            raise ConnectionError("SendGrid is down")
+        return False
+    mailbox.stub.answer = service
+    assert run_jobs() == ["done"]
+    said = invite_batches.NOT_ACCEPTED if answer == "refused" else \
+        friendly_error(ConnectionError(), "The email couldn't be sent.")
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("failed", said, "done")
+    assert len(mailbox) == 1 and _run(_sent_today(m["id"])) == 0
+
+
+def test_an_interview_deleted_before_its_invitation_goes_gets_none(client, run_jobs, questions, drafts, mailbox):
+    from app.core import database
+    from app.models.candidate import Interview
+    from app.services import invite_batches
+    _, m = register(client, "ij16@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+
+    async def deleted_meanwhile():
+        async with database.async_session() as db:
+            for interview in (await db.execute(select(Interview))).scalars():
+                await db.delete(interview)
+            await db.commit()
+        return {"subject": "Interview", "body": "Hello"}
+    drafts.stub.answer = deleted_meanwhile
+    assert run_jobs() == ["done"]
+    assert mailbox == []
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("failed", invite_batches.NO_INTERVIEW, "done")
