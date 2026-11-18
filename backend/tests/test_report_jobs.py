@@ -399,3 +399,54 @@ def test_a_terminated_interviews_note_is_its_report_at_once_with_no_job(client):
     assert r.status_code == 200 and r.json() == {"status": "saved"}
     assert _run(_state(iid)) == ("completed", "done", None, TERMINATED_REPORT, 95)
     assert _run(_jobs()) == []
+
+
+# ── the manager's side ────────────────────────────────────────────────────────
+
+def test_every_list_says_where_each_report_stands(client, run_jobs, monkeypatch):
+    from conftest import auth_headers
+    _writer(monkeypatch, "## A report")
+    tok, m = register(client, "mg1@co.com")
+    iid = _run(_started(m["id"], "mg1@x.com"))
+    _run(_complete(iid))
+
+    def stands():
+        results = client.get("/api/chat/get-all-interview-results", headers=auth_headers(tok)).json()["results"]
+        statuses = client.get("/api/chat/interview-statuses", headers=auth_headers(tok)).json()["statuses"]
+        candidate_id = results[0]["candidate_id"]
+        rounds = client.get(f"/api/chat/candidates/{candidate_id}/interviews", headers=auth_headers(tok)).json()
+        return results[0]["report_status"], statuses["mg1@x.com"]["report_status"], rounds["interviews"][0]["report_status"]
+    assert stands() == ("pending", "pending", "pending")
+    run_jobs()
+    assert stands() == ("done", "done", "done")
+
+
+def test_one_interview_is_asked_for_by_its_id_by_its_manager_only(client, run_jobs, monkeypatch):
+    from conftest import auth_headers
+    _writer(monkeypatch, "## A report")
+    tok, m = register(client, "mg2@co.com")
+    other, _ = register(client, "mg2b@co.com")
+    iid = _run(_started(m["id"], "mg2@x.com"))
+    _run(_complete(iid, duration=200))
+    r = client.get(f"/api/chat/interviews/{iid}", headers=auth_headers(tok))
+    assert r.status_code == 200
+    asked = r.json()
+    assert (asked["status"], asked["report_status"], asked["report"]["report"]) == ("completed", "pending", "")
+    run_jobs()
+    asked = client.get(f"/api/chat/interviews/{iid}", headers=auth_headers(tok)).json()
+    assert (asked["report_status"], asked["report"]["report"]) == ("done", "## A report")
+    assert client.get(f"/api/chat/interviews/{iid}", headers=auth_headers(other)).status_code == 404
+
+
+def test_the_pdf_waits_for_the_report(client, run_jobs, monkeypatch):
+    # Exported while it was written, it quietly left the evaluation out.
+    from conftest import auth_headers
+    _writer(monkeypatch, "## A report")
+    tok, m = register(client, "mg3@co.com")
+    iid = _run(_started(m["id"], "mg3@x.com"))
+    _run(_complete(iid))
+    pending = client.get(f"/api/chat/interviews/{iid}/report.pdf", headers=auth_headers(tok))
+    assert pending.status_code == 409 and "still being written" in pending.json()["detail"]
+    run_jobs()
+    ready = client.get(f"/api/chat/interviews/{iid}/report.pdf", headers=auth_headers(tok))
+    assert ready.status_code == 200 and ready.content.startswith(b"%PDF")
