@@ -4,7 +4,7 @@ Orchestrates ATS scoring, candidate shortlisting, and batch interview/email acti
 """
 import json
 import time
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -17,7 +17,7 @@ from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag, primary_email, is_sample
-from app.services import email_quota, interview_modes, interview_setup, screening_runs
+from app.services import email_quota, interview_modes, interview_setup, invite_batches, screening_runs
 from app.services.hidden_names import hides_names
 from app.agents.hr_agent import hr_agent
 from app.services.email_service import email_service
@@ -50,6 +50,22 @@ class BatchActionRequest(BaseModel):
     # "avatar"          — existing LiveKit + Simli avatar flow (default).
     # "conversational"  — audio-only OpenAI Realtime (no camera, no avatar).
     mode: str = "avatar"
+
+
+class BatchRequest(BaseModel):
+    """A batch invitation (POST /batches): the batch action's settings, the
+    confirm dialog's own key, and where it was asked from."""
+    # One per Confirm on the page: asking again with it is the same batch.
+    client_key: str = Field(..., min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    source: Literal["screening", "jarvis"] = "screening"
+    candidate_ids: List[int]
+    role: str = Field(..., max_length=200)
+    level: str = Field("Mid-Level", max_length=50)
+    num_questions: int = Field(8, ge=1, le=25)
+    focus_areas: list = Field(default_factory=list, max_length=20)
+    email_type: str = Field("interview", max_length=32)
+    send_emails: bool = False
+    mode: str = Field("avatar", max_length=20)
 
 
 class InviteDraft(BaseModel):
@@ -187,6 +203,45 @@ async def open_run(run_id: int, user=Depends(get_current_user), db: AsyncSession
     if not run or run.manager_id != user.id:
         raise HTTPException(404, "Screening run not found")
     return screening_runs.opened(run, user.id)
+
+
+@router.post("/batches", status_code=202)
+@limiter.limit("20/hour")
+async def start_batch(
+    request: Request,
+    req: BatchRequest,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invite several candidates at once, from the screening results or the
+    assistant. It answers at once: each candidate's interview, questions,
+    draft and email are made by a background job (app/services/
+    invite_batches.py), and GET /batches/{id} follows them. Asking again
+    with the same client_key answers with the batch it made, so a second
+    click or a retry invites no one twice."""
+    ids = list(dict.fromkeys(req.candidate_ids))
+    if not ids:
+        raise HTTPException(400, "Choose at least one candidate to invite.")
+    if len(ids) > invite_batches.MAX_CANDIDATES:
+        raise HTTPException(400, f"Invite up to {invite_batches.MAX_CANDIDATES} candidates at a time.")
+    batch = await invite_batches.start(
+        db, user.id, client_key=req.client_key, candidate_ids=ids, source=req.source,
+        role=req.role.strip(), level=req.level.strip() or "Mid-Level", num_questions=req.num_questions,
+        focus_areas=req.focus_areas, email_type=req.email_type, send_emails=req.send_emails,
+        # Voice when avatar interviews aren't set up here.
+        mode=interview_modes.effective_mode(req.mode),
+    )
+    return await invite_batches.view(db, batch)
+
+
+@router.get("/batches/{batch_id}")
+async def batch_progress(batch_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A batch invitation as it goes: each candidate's outcome, the totals,
+    and whether every one has finished. Only the manager's own."""
+    batch = await invite_batches.find(db, user.id, batch_id=batch_id)
+    if batch is None:
+        raise HTTPException(404, "Batch not found")
+    return await invite_batches.view(db, batch)
 
 
 @router.post("/batch-action")

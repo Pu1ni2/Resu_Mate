@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.agents.hr_agent import hr_agent
 from app.core import database
@@ -41,7 +42,14 @@ OPEN = ("pending", "in_progress", "interrupted")
 
 FINISHED = ("done", "skipped", "failed")
 
+# The most a batch invites. The confirm dialog lists each one.
+MAX_CANDIDATES = 100
+
 NO_EMAIL = "No email address on this résumé, so they can't be invited."
+NOT_FOUND = "They're no longer among your candidates."
+INTERVIEW_FAILED = "The interview couldn't be created."
+NOT_FINISHED = "The invitation couldn't be finished."
+DRAFT_FAILED = "The email couldn't be drafted, so a standard one is here instead."
 NOT_SET_UP = "Email isn't set up on this server. Share the portal link instead."
 NOT_ACCEPTED = "The email service didn't accept this invite."
 NO_INTERVIEW = "The interview was deleted, so no invitation went."
@@ -69,6 +77,118 @@ async def queue(db, item_id: int, manager_id: int) -> Optional[int]:
     running for the item already is the one."""
     return await jobs.enqueue(db, PREPARE, {"item_id": item_id}, dedupe_key=job_key(item_id),
                               manager_id=manager_id)
+
+
+async def find(db, manager_id: int, *, batch_id: Optional[int] = None,
+               client_key: Optional[str] = None) -> Optional[InviteBatch]:
+    """This manager's batch, by its id or its client_key; None for another's."""
+    query = select(InviteBatch).where(InviteBatch.manager_id == manager_id)
+    if batch_id is not None:
+        query = query.where(InviteBatch.id == batch_id)
+    else:
+        query = query.where(InviteBatch.client_key == client_key)
+    return (await db.execute(query)).scalar_one_or_none()
+
+
+async def start(db, manager_id: int, *, client_key: str, candidate_ids: list, **fields) -> InviteBatch:
+    """Keep a batch, an item per candidate, and each item's job, in one
+    commit, and return it: the request answers at once, and the jobs do the
+    rest. The batch already made with this client_key, one per Confirm on
+    the page, is the one, whatever else this request says: a second click
+    or a retry invites no one twice.
+
+    candidate_ids name each candidate once. Those who can't be invited are
+    marked so at once, with why: no longer this manager's, no address, or
+    the sample résumé."""
+    made = await find(db, manager_id, client_key=client_key)
+    if made is not None:
+        return made
+    batch = InviteBatch(manager_id=manager_id, client_key=client_key, **fields)
+    db.add(batch)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        # Another request with the same key made it meanwhile.
+        made = await find(db, manager_id, client_key=client_key)
+        if made is None:
+            raise
+        return made
+    rows = {row.id: row for row in (await db.execute(select(Candidate).where(
+        Candidate.id.in_(candidate_ids), Candidate.manager_id == manager_id))).scalars()}
+    items = []
+    for position, candidate_id in enumerate(candidate_ids):
+        row = rows.get(candidate_id)
+        reason = NOT_FOUND if row is None else skip_reason(resume_rag.record_from_row(row))
+        items.append(InviteBatchItem(
+            batch_id=batch.id, candidate_id=candidate_id, position=position,
+            status="skipped" if reason else "queued", skip_reason=reason,
+            finished_at=datetime.utcnow() if reason else None,
+        ))
+    db.add_all(items)
+    await db.flush()
+    for item in items:
+        if item.status == "queued":
+            await queue(db, item.id, manager_id)
+    await db.commit()
+    return batch
+
+
+def _outcome(item, row, interview) -> dict:
+    """One candidate's part of a batch, in the shape the batch invite
+    answered with, and how far it got (status: queued, questions, drafting,
+    then done, skipped or failed)."""
+    candidate = resume_rag.record_from_row(row) if row is not None else None
+    outcome = {
+        "item_id": item.id, "candidate_id": item.candidate_id, "status": item.status,
+        "reused": bool(item.reused), "name": (candidate or {}).get("name") or "",
+        "email": interview.candidate_email if interview is not None else (primary_email(candidate) if candidate else ""),
+        "interview_created": interview is not None,
+        "interview_id": interview.id if interview is not None else None,
+        "email_sent": item.email_status == "sent",
+    }
+    if interview is not None:
+        outcome["mode"] = interview.mode
+    if item.status == "skipped":
+        outcome["skipped"] = item.skip_reason
+    elif item.status == "failed":
+        outcome["error"] = (NOT_FOUND if item.error == "candidate_not_found"
+                            else NOT_FINISHED if interview is not None else INTERVIEW_FAILED)
+    if item.email_subject is not None:
+        outcome.update(email_subject=item.email_subject, email_body=item.email_body,
+                       email_drafted=bool(item.email_drafted))
+        if item.email_drafted is False:
+            outcome["email_error"] = DRAFT_FAILED
+    if item.email_status in ("refused", "failed"):
+        outcome["email_send_error"] = item.email_error
+    return outcome
+
+
+async def view(db, batch: InviteBatch) -> dict:
+    """The batch as its page follows it: each candidate's outcome, the
+    totals, and whether every one has finished."""
+    items = (await db.execute(select(InviteBatchItem).where(InviteBatchItem.batch_id == batch.id)
+                              .order_by(InviteBatchItem.position))).scalars().all()
+    rows = {row.id: row for row in (await db.execute(select(Candidate).where(
+        Candidate.id.in_([item.candidate_id for item in items]),
+        Candidate.manager_id == batch.manager_id))).scalars()}
+    interviews = {interview.id: interview for interview in (await db.execute(select(Interview).where(
+        Interview.id.in_([item.interview_id for item in items if item.interview_id]),
+        Interview.manager_id == batch.manager_id))).scalars()}
+    outcomes = [_outcome(item, rows.get(item.candidate_id), interviews.get(item.interview_id)) for item in items]
+    return {
+        "batch_id": batch.id,
+        "finished": all(item.status in FINISHED for item in items),
+        "total": len(outcomes),
+        "interviews_created": sum(1 for o in outcomes if o["interview_created"]),
+        "emails_sent": sum(1 for o in outcomes if o["email_sent"]),
+        "skipped": sum(1 for o in outcomes if o.get("skipped")),
+        "send_emails": batch.send_emails,
+        # Where invited candidates sign in, for the manager to share when an
+        # invitation wasn't emailed.
+        "portal_link": settings.candidate_login_url,
+        "outcomes": outcomes,
+    }
 
 
 def standard_draft(name: str, role: str, hidden: bool) -> tuple:
