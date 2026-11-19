@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.auth import HiringManager
 from app.models.candidate import CandidateAccess
-from app.services import db_service
+from app.services import db_service, email_kinds, outbox
 from app.services import interview_modes
 from app.services.codes import WRONG_CODE, issue_code, redeem_code
 from app.services.auth import (
@@ -22,8 +22,6 @@ from app.services.auth import (
     create_access_token,
     create_refresh_token,
     create_candidate_token,
-    create_reset_token,
-    create_verify_token,
     decode_token,
     password_fingerprint,
     get_current_user,
@@ -79,8 +77,7 @@ class VerifyEmailRequest(BaseModel):
 
 @router.post("/register", status_code=201)
 @limiter.limit("5/minute")
-async def register(request: Request, req: RegisterRequest, background: BackgroundTasks,
-                   db: AsyncSession = Depends(get_db)):
+async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Create a new hiring manager account, and email them the link that
     confirms their address."""
     if not req.accept_terms:
@@ -117,18 +114,19 @@ async def register(request: Request, req: RegisterRequest, background: Backgroun
         "token_type": "bearer",
         "user": manager.to_dict(),
     }
-    answer.update(_email_verification_link(manager, background))
+    answer.update(await _email_verification_link(db, manager))
     return answer
 
 
-def _email_verification_link(manager: HiringManager, background: BackgroundTasks) -> dict:
-    """Email the manager the link that confirms their address, after the
-    response. Returns what to add to the answer: the link itself in local
-    development without email, as forgot-password does."""
+async def _email_verification_link(db: AsyncSession, manager: HiringManager) -> dict:
+    """Queue the email with the link that confirms the manager's address:
+    the outbox's job makes the link as it sends it. Returns what to add to
+    the answer: the link itself in local development without email, as
+    forgot-password does. It went after the response, and a restart lost it."""
     from app.services.email_service import email_service
-    link = f"{settings.frontend_url.rstrip('/')}/hiring/verify-email?token={create_verify_token(manager)}"
-    background.add_task(email_service.send_email_verification, manager.email, link)
-    return {"debug_verify_link": link} if settings.debug and not email_service.configured else {}
+    await outbox.queue(db, "verify_email", manager_id=manager.id)
+    await db.commit()
+    return {"debug_verify_link": email_kinds.verify_link(manager)} if settings.debug and not email_service.configured else {}
 
 
 def _session_token(manager: HiringManager) -> str:
@@ -196,27 +194,25 @@ RESET_LINK_INVALID = "This reset link has expired or was already used. Ask for a
 
 @router.post("/forgot-password")
 @limiter.limit("5/hour")
-async def forgot_password(
-    request: Request, req: ForgotPasswordRequest, background: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-):
+async def forgot_password(request: Request, req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Email a manager a link to choose a new password.
 
     There was no way back into an account with a forgotten password. The
-    answer is the same whether or not the address has an account, and the
-    email goes out after the response, so neither the words nor the time
-    taken tell.
+    answer is the same whether or not the address has an account, and so is
+    the work: an email is queued for any address, and the outbox's job
+    finds the account as it sends it, so neither the words nor the time
+    taken tell. It went after the response, and a restart lost it.
     """
+    from app.services.email_service import email_service
     email = req.email.lower().strip()
-    manager = (await db.execute(select(HiringManager).where(HiringManager.email == email))).scalar_one_or_none()
     answer = {"message": FORGOT_PASSWORD_ANSWER}
-    if manager and manager.is_active:
-        from app.services.email_service import email_service
-        link = f"{settings.frontend_url.rstrip('/')}/hiring/reset?token={create_reset_token(manager)}"
-        background.add_task(email_service.send_password_reset, manager.email, link)
-        if settings.debug and not email_service.configured:
-            # Local development without email, as send-otp's debug_code.
-            answer["debug_reset_link"] = link
+    await outbox.queue(db, "password_reset", to_address=email)
+    await db.commit()
+    if settings.debug and not email_service.configured:
+        # Local development without email, as send-otp's debug_code.
+        manager = (await db.execute(select(HiringManager).where(HiringManager.email == email))).scalar_one_or_none()
+        if manager and manager.is_active:
+            answer["debug_reset_link"] = email_kinds.reset_link(manager)
     return answer
 
 
@@ -327,13 +323,13 @@ async def verify_email(request: Request, req: VerifyEmailRequest, db: AsyncSessi
 
 @router.post("/send-verification")
 @limiter.limit("3/hour")
-async def send_verification(request: Request, background: BackgroundTasks,
-                            current_user: HiringManager = Depends(get_current_user)):
+async def send_verification(request: Request, current_user: HiringManager = Depends(get_current_user),
+                            db: AsyncSession = Depends(get_db)):
     """Email the signed-in manager a new link to confirm their address."""
     if current_user.email_verified:
         return {"message": "Your email is already confirmed.", "user": current_user.to_dict()}
     answer = {"message": f"We've sent a new link to {current_user.email}."}
-    answer.update(_email_verification_link(current_user, background))
+    answer.update(await _email_verification_link(db, current_user))
     return answer
 
 

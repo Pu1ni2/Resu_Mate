@@ -158,34 +158,27 @@ def register(client, email, password="pw12345678", name="Mgr", verified=True):
     """Register a hiring manager, return (token, user_dict).
 
     The account's email is confirmed, as a manager's who opened the link
-    sign-up emails, and that email isn't sent, so a test about other emails
-    sees only those. verified=False leaves the account as sign-up does, the
-    email sent.
+    sign-up emails, and that email isn't sent: a test about other emails,
+    or the jobs it runs, sees only those. verified=False leaves the account
+    as sign-up does, the email queued to send.
     """
     import sqlite3
-    from app.services.email_service import email_service
-    patched = "send_email_verification" in vars(email_service)
-    before = email_service.send_email_verification
-    if verified:
-        async def _not_sent(*_args, **_kwargs):
-            return True
-        email_service.send_email_verification = _not_sent
-    try:
-        r = client.post("/api/auth/register", json={
-            "name": name, "email": email, "password": password, "accept_terms": True,
-        })
-    finally:
-        if verified:
-            if patched:
-                email_service.send_email_verification = before
-            else:
-                del email_service.send_email_verification
+    r = client.post("/api/auth/register", json={
+        "name": name, "email": email, "password": password, "accept_terms": True,
+    })
     assert r.status_code in (200, 201), r.text
     data = r.json()
     if verified:
         db = sqlite3.connect(_TMP_DB)
         try:
-            db.execute("UPDATE hiring_managers SET email_verified = 1 WHERE id = ?", (data["user"]["id"],))
+            manager_id = data["user"]["id"]
+            db.execute("UPDATE hiring_managers SET email_verified = 1 WHERE id = ?", (manager_id,))
+            # The confirmation email sign-up queued, and its job.
+            queued = db.execute("SELECT id FROM email_outbox WHERE kind = 'verify_email' AND manager_id = ?",
+                                (manager_id,)).fetchall()
+            for (email_id,) in queued:
+                db.execute("DELETE FROM jobs WHERE dedupe_key = ?", (f"email:{email_id}",))
+                db.execute("DELETE FROM email_outbox WHERE id = ?", (email_id,))
             db.commit()
         finally:
             db.close()

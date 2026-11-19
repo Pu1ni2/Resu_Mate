@@ -2,13 +2,19 @@
 it (app/services/outbox.py): each composer reads what it needs then, so the
 outbox holds no address, code or link it doesn't have to.
 
-main.py imports this module, which registers them.
+The API modules that queue these emails import this one, which registers
+them.
 """
 from html import escape
 
+from sqlalchemy import select
+
+from app.core.config import settings
 from app.models.auth import HiringManager
 from app.models.candidate import Interview
 from app.services import outbox
+from app.services.auth import create_reset_token, create_verify_token
+from app.services.email_service import password_reset_email, verification_email
 
 
 async def queue_interview_done(db, interview) -> None:
@@ -37,3 +43,37 @@ async def interview_done(db, email):
         f"<p>Log in to ResuMate to review the report.</p>"
     )
     return manager.email, subject, body
+
+
+# ── a manager's own address ──────────────────────────────────────────────────
+
+def verify_link(manager) -> str:
+    """The page that confirms the manager's address, with a token for it."""
+    return f"{settings.frontend_url.rstrip('/')}/hiring/verify-email?token={create_verify_token(manager)}"
+
+
+def reset_link(manager) -> str:
+    """The page to choose a new password, with a token for it."""
+    return f"{settings.frontend_url.rstrip('/')}/hiring/reset?token={create_reset_token(manager)}"
+
+
+@outbox.composer("verify_email")
+async def verify_email(db, email):
+    """The link that confirms a manager's address, made as it's sent; nothing
+    once the address is confirmed, an earlier link opened meanwhile."""
+    manager = await db.get(HiringManager, email.manager_id) if email.manager_id else None
+    if manager is None or not manager.is_active or manager.email_verified:
+        return None
+    return (manager.email, *verification_email(verify_link(manager)))
+
+
+@outbox.composer("password_reset")
+async def password_reset(db, email):
+    """A link to choose a new password, for the address typed in, made as
+    it's sent; nothing when no account has that address, which the one who
+    asked isn't told."""
+    # Typed in, as forgot-password tidied it.
+    manager = (await db.execute(select(HiringManager).where(HiringManager.email == email.to_address))).scalar_one_or_none()
+    if manager is None or not manager.is_active:
+        return None
+    return (manager.email, *password_reset_email(reset_link(manager)))

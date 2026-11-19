@@ -152,40 +152,6 @@ class EmailService:
         """
         return await self.send(to_email, "Confirm deleting your ResuMate data", body)
 
-    async def send_password_reset(self, to_email: str, reset_url: str) -> bool:
-        link = html.escape(reset_url)
-        body = f"""
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">Reset your ResuMate password</h2>
-          <p>Someone asked to reset the password for this address. If it was you, choose a new one:</p>
-          <p>
-            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
-              Choose a new password
-            </a>
-          </p>
-          <p style="color:#6B7280;">The link works once, for 30 minutes. If you didn't ask, ignore this email: your password stays as it is.</p>
-          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
-        </div>
-        """
-        return await self.send(to_email, "Reset your ResuMate password", body)
-
-    async def send_email_verification(self, to_email: str, confirm_url: str) -> bool:
-        link = html.escape(confirm_url)
-        body = f"""
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">Confirm your email for ResuMate</h2>
-          <p>Someone signed up for ResuMate with this address. If it was you, confirm it, and you can email candidates from your workspace:</p>
-          <p>
-            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
-              Confirm my email
-            </a>
-          </p>
-          <p style="color:#6B7280;">The link works for 7 days. If you didn't sign up, ignore this email.</p>
-          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
-        </div>
-        """
-        return await self.send(to_email, "Confirm your email for ResuMate", body)
-
     async def send_email_draft(self, to_email: str, subject: str, body: str, login_url: str = "") -> bool:
         """A plain-text email the manager reviewed, sent as written.
 
@@ -203,6 +169,46 @@ class EmailService:
             )
         # One line: a line break in a subject is not a valid header.
         return await self.send(to_email, " ".join(subject.split()), page + "</div>")
+
+
+def password_reset_email(reset_url: str) -> tuple:
+    """The password reset's subject and page, with its link: made as the
+    outbox sends it, so the link is never stored."""
+    link = html.escape(reset_url)
+    body = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Reset your ResuMate password</h2>
+          <p>Someone asked to reset the password for this address. If it was you, choose a new one:</p>
+          <p>
+            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
+              Choose a new password
+            </a>
+          </p>
+          <p style="color:#6B7280;">The link works once, for 30 minutes. If you didn't ask, ignore this email: your password stays as it is.</p>
+          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
+        </div>
+        """
+    return "Reset your ResuMate password", body
+
+
+def verification_email(confirm_url: str) -> tuple:
+    """The subject and page of the email that confirms a manager's address,
+    with its link: made as the outbox sends it, so the link is never stored."""
+    link = html.escape(confirm_url)
+    body = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Confirm your email for ResuMate</h2>
+          <p>Someone signed up for ResuMate with this address. If it was you, confirm it, and you can email candidates from your workspace:</p>
+          <p>
+            <a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">
+              Confirm my email
+            </a>
+          </p>
+          <p style="color:#6B7280;">The link works for 7 days. If you didn't sign up, ignore this email.</p>
+          <p style="color:#6B7280;">If the button doesn't work, copy this link: {link}</p>
+        </div>
+        """
+    return "Confirm your email for ResuMate", body
 
 
 email_service = EmailService()

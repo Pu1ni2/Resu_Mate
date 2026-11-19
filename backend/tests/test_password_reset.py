@@ -22,11 +22,11 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject, "html": html_body})
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
 
 
@@ -36,9 +36,12 @@ def no_email(monkeypatch):
     monkeypatch.setattr(email_service, "_sg", None)
 
 
-def _forgot(client, email):
+def _forgot(client, email, run_jobs=None):
+    """Ask for a reset link; with run_jobs, the outbox then sends it."""
     r = client.post("/api/auth/forgot-password", json={"email": email})
     assert r.status_code == 200, r.text
+    if run_jobs:
+        run_jobs()
     return r.json()
 
 
@@ -58,15 +61,15 @@ def _login(client, email, password):
 
 # ── asking for a link ─────────────────────────────────────────────────────────
 
-def test_a_manager_is_emailed_a_reset_link(client, mailbox):
+def test_a_manager_is_emailed_a_reset_link(client, run_jobs, mailbox):
     register(client, "fp1@co.com")
-    assert _forgot(client, "FP1@co.com ") == {"message": FORGOT_PASSWORD_ANSWER}
+    assert _forgot(client, "FP1@co.com ", run_jobs) == {"message": FORGOT_PASSWORD_ANSWER}
     assert [m["to"] for m in mailbox] == ["fp1@co.com"]
     assert _token_in(mailbox[0]["html"])
 
 
-def test_an_unknown_address_gets_the_same_answer_and_no_email(client, mailbox):
-    assert _forgot(client, "nobody@co.com") == {"message": FORGOT_PASSWORD_ANSWER}
+def test_an_unknown_address_gets_the_same_answer_and_no_email(client, run_jobs, mailbox):
+    assert _forgot(client, "nobody@co.com", run_jobs) == {"message": FORGOT_PASSWORD_ANSWER}
     assert mailbox == []
 
 
@@ -81,18 +84,18 @@ def test_without_email_set_up_a_debug_server_shows_the_link(client, no_email):
 
 # ── using it ──────────────────────────────────────────────────────────────────
 
-def test_the_link_sets_a_new_password(client, mailbox):
+def test_the_link_sets_a_new_password(client, run_jobs, mailbox):
     register(client, "fp3@co.com")
-    _forgot(client, "fp3@co.com")
+    _forgot(client, "fp3@co.com", run_jobs)
     r = _reset(client, _token_in(mailbox[0]["html"]))
     assert r.status_code == 200, r.text
     assert _login(client, "fp3@co.com", "brand-new-pass") == 200
     assert _login(client, "fp3@co.com", "pw12345678") == 401
 
 
-def test_the_link_works_once(client, mailbox):
+def test_the_link_works_once(client, run_jobs, mailbox):
     register(client, "fp4@co.com")
-    _forgot(client, "fp4@co.com")
+    _forgot(client, "fp4@co.com", run_jobs)
     token = _token_in(mailbox[0]["html"])
     assert _reset(client, token).status_code == 200
     again = _reset(client, token, "another-pass-1")
@@ -101,9 +104,9 @@ def test_the_link_works_once(client, mailbox):
     assert _login(client, "fp4@co.com", "brand-new-pass") == 200
 
 
-def test_a_short_password_is_refused_and_the_link_still_works(client, mailbox):
+def test_a_short_password_is_refused_and_the_link_still_works(client, run_jobs, mailbox):
     register(client, "fp5@co.com")
-    _forgot(client, "fp5@co.com")
+    _forgot(client, "fp5@co.com", run_jobs)
     token = _token_in(mailbox[0]["html"])
     assert _reset(client, token, "short").status_code == 400
     assert _reset(client, token).status_code == 200
@@ -141,9 +144,9 @@ def test_a_sign_in_token_is_not_a_reset_link(client):
     assert _reset(client, "not-a-token").status_code == 400
 
 
-def test_a_reset_link_is_not_a_sign_in(client, mailbox):
+def test_a_reset_link_is_not_a_sign_in(client, run_jobs, mailbox):
     register(client, "fp8@co.com")
-    _forgot(client, "fp8@co.com")
+    _forgot(client, "fp8@co.com", run_jobs)
     token = _token_in(mailbox[0]["html"])
     assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
@@ -154,11 +157,11 @@ def _refresh(client, token):
     return client.post("/api/auth/refresh", json={"refresh_token": token}).status_code
 
 
-def test_a_new_password_ends_the_sessions_from_before(client, mailbox):
+def test_a_new_password_ends_the_sessions_from_before(client, run_jobs, mailbox):
     register(client, "fp9@co.com")
     old = client.post("/api/auth/login", json={"email": "fp9@co.com", "password": "pw12345678"}).json()["refresh_token"]
     assert _refresh(client, old) == 200
-    _forgot(client, "fp9@co.com")
+    _forgot(client, "fp9@co.com", run_jobs)
     assert _reset(client, _token_in(mailbox[0]["html"])).status_code == 200
     assert _refresh(client, old) == 401
     new = client.post("/api/auth/login", json={"email": "fp9@co.com", "password": "brand-new-pass"}).json()["refresh_token"]

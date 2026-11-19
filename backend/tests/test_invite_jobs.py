@@ -161,14 +161,14 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = _Calls()
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject, "html": html_body,
                      "held": database.engine.sync_engine.pool.checkedout()})
-        return send.answer() if send.answer else True
-    send.answer = None
+        return deliver.answer() if deliver.answer else "sent"
+    deliver.answer = None
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
-    sent.stub = send
+    monkeypatch.setattr(email_service, "deliver", deliver)
+    sent.stub = deliver
     return sent
 
 
@@ -481,12 +481,13 @@ def test_an_invitation_that_may_not_go_says_why(client, run_jobs, questions, mai
         monkeypatch.setattr(email_service, "_sg", None)
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
-    assert run_jobs() == ["done"]
+    # An unconfirmed account's own confirmation email goes too.
+    assert run_jobs() == ["done"] * (2 if why == "unconfirmed" else 1)
     said = {"unconfirmed": email_quota.NOT_CONFIRMED, "limit": email_quota.limit_reached(),
             "no_email": invite_batches.NOT_SET_UP}[why]
     email = _run(_email(item))
     assert (email["status"], email["error"], email["item"]) == ("refused", said, "done")
-    # (An unconfirmed account was sent its link to confirm, at sign-up.)
+    # (The unconfirmed account had its link to confirm, by the outbox.)
     assert [mail for mail in mailbox if mail["to"] == "ada@x.com"] == []
     # The interview and the draft stand: the manager can share the portal link.
     assert email["subject"] == "Interview" and len(_run(_interviews(m["id"]))) == 1
@@ -503,7 +504,7 @@ def test_an_invitation_the_email_service_doesnt_take_says_why(client, run_jobs, 
     def service():
         if answer == "unreachable":
             raise ConnectionError("SendGrid is down")
-        return False
+        return "refused"
     mailbox.stub.answer = service
     assert run_jobs() == ["done"]
     said = invite_batches.NOT_ACCEPTED if answer == "refused" else \

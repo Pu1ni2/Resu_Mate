@@ -19,11 +19,11 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject, "html": html_body})
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
 
 
@@ -49,8 +49,9 @@ def _confirmed(client, session):
 
 # ── signing up ────────────────────────────────────────────────────────────────
 
-def test_signing_up_emails_a_link_to_confirm_the_address(client, mailbox):
+def test_signing_up_emails_a_link_to_confirm_the_address(client, run_jobs, mailbox):
     register(client, "new@co.com", verified=False)
+    run_jobs()
     assert [(m["to"], m["subject"]) for m in mailbox] == [("new@co.com", "Confirm your email for ResuMate")]
     assert _token_in(mailbox[0]["html"])
 
@@ -65,16 +66,18 @@ def test_without_email_the_development_answer_has_the_link(client, no_email):
 
 # ── the link ──────────────────────────────────────────────────────────────────
 
-def test_the_link_confirms_the_address(client, mailbox):
+def test_the_link_confirms_the_address(client, run_jobs, mailbox):
     session, _ = register(client, "ok@co.com", verified=False)
+    run_jobs()
     r = _verify(client, _token_in(mailbox[0]["html"]))
     assert r.status_code == 200, r.text
     assert r.json()["user"]["email_verified"] is True
     assert _confirmed(client, session) is True
 
 
-def test_opening_it_again_says_it_is_confirmed(client, mailbox):
+def test_opening_it_again_says_it_is_confirmed(client, run_jobs, mailbox):
     register(client, "twice@co.com", verified=False)
+    run_jobs()
     token = _token_in(mailbox[0]["html"])
     assert _verify(client, token).status_code == 200
     again = _verify(client, token)
@@ -104,20 +107,23 @@ def test_a_link_that_isnt_right_is_refused(client, mailbox, change):
 
 # ── a new link ────────────────────────────────────────────────────────────────
 
-def test_a_manager_can_ask_for_a_new_link(client, mailbox):
+def test_a_manager_can_ask_for_a_new_link(client, run_jobs, mailbox):
     session, _ = register(client, "again@co.com", verified=False)
+    run_jobs()
     mailbox.clear()
     r = client.post("/api/auth/send-verification", headers=auth_headers(session))
     assert r.status_code == 200, r.text
+    run_jobs()
     assert [m["to"] for m in mailbox] == ["again@co.com"]
     assert _verify(client, _token_in(mailbox[0]["html"])).status_code == 200
     assert _confirmed(client, session) is True
 
 
-def test_no_new_link_is_sent_once_confirmed(client, mailbox):
+def test_no_new_link_is_sent_once_confirmed(client, run_jobs, mailbox):
     session, _ = register(client, "done@co.com")
     r = client.post("/api/auth/send-verification", headers=auth_headers(session))
     assert r.status_code == 200, r.text
+    run_jobs()
     assert r.json()["user"]["email_verified"] is True
     assert mailbox == []
 
