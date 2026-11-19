@@ -23,7 +23,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import log_text
 from app.services import db_service
-from app.services import email_quota, evaluations, interview_modes, interview_setup, jobs, state_service
+from app.services import email_kinds, email_quota, evaluations, interview_modes, interview_setup, jobs, state_service
 from app.services.experience import experience_text
 from app.services.hidden_names import NO_LOOKUP, hides_names, scrub
 from app.agents.data_agent import data_agent
@@ -831,40 +831,10 @@ async def save_transcript(
     if not await db_service.complete_interview(db, interview, req.duration):
         await db.rollback()
         return {"saved": False, "already_completed": True}
+    # Its manager told, by the outbox, once.
+    await email_kinds.queue_interview_done(db, interview)
     await db.commit()
-    await _notify_manager_interview_complete(db, interview)
     return {"saved": True, "turns": len(req.transcript), "report_status": interview.report_status}
-
-
-async def _notify_manager_interview_complete(db, interview) -> None:
-    """Best-effort email to the owning manager that an interview finished.
-
-    Never raises into the caller — a notification failure must not fail the
-    transcript save. No-op if the interview has no manager or no email is found.
-    """
-    try:
-        if not interview or not interview.manager_id:
-            return
-        from app.models.auth import HiringManager
-        from sqlalchemy import select as _select
-        mgr = (await db.execute(
-            _select(HiringManager).where(HiringManager.id == interview.manager_id)
-        )).scalar_one_or_none()
-        # Not to an address the manager hasn't confirmed is theirs.
-        if not mgr or not mgr.email or not mgr.email_verified:
-            return
-        from html import escape
-        from app.services.email_service import email_service
-        subject = f"Interview completed — {interview.candidate_email}"
-        body = (
-            f"<p>Hi {escape(mgr.name or 'there')},</p>"
-            f"<p><strong>{escape(interview.candidate_email or '')}</strong> just completed their "
-            f"{escape(interview.role or 'interview')}.</p>"
-            f"<p>Log in to ResuMate to review the report.</p>"
-        )
-        await email_service.send(mgr.email, subject, body)
-    except Exception as exc:
-        print(f"[WARN] manager completion notification failed: {type(exc).__name__}")
 
 
 # ═══════ CANDIDATE PORTAL (PostgreSQL-backed) ═══════

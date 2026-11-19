@@ -6,7 +6,6 @@ and the reviewed drafts wait and say why; the interviews are still made, with
 the portal link to share. A confirmed manager sends as before.
 """
 import asyncio
-from types import SimpleNamespace
 
 import pytest
 
@@ -36,13 +35,31 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         if subject != "Confirm your email for ResuMate":
             sent.append(to_email)
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
+
+
+async def _finished(manager_id, email, role="Dev"):
+    """An interview of this manager's that has just finished, its manager to
+    be told (email_kinds.queue_interview_done, as finishing it queues)."""
+    from app.core import database
+    from app.models.candidate import Candidate, Interview
+    from app.services import email_kinds
+    async with database.async_session() as db:
+        cand = Candidate(manager_id=manager_id, name="Cand", email=email)
+        db.add(cand)
+        await db.flush()
+        interview = Interview(candidate_id=cand.id, manager_id=manager_id, candidate_email=email, role=role,
+                              status="completed", mode="conversational")
+        db.add(interview)
+        await db.flush()
+        await email_kinds.queue_interview_done(db, interview)
+        await db.commit()
 
 
 def _candidate(client, tok, email):
@@ -116,16 +133,10 @@ def test_reviewed_drafts_wait_too(client, run_jobs, mailbox):
     assert mailbox == []
 
 
-def test_no_interview_news_goes_to_an_address_not_yet_confirmed(client, mailbox):
-    from app.api.chat import _notify_manager_interview_complete
-    from app.core import database
+def test_no_interview_news_goes_to_an_address_not_yet_confirmed(client, run_jobs, mailbox):
     _, unsure = register(client, "unsure@co.com", verified=False)
     _, sure = register(client, "sure2@co.com")
-
-    async def notify(manager_id):
-        async with database.async_session() as db:
-            interview = SimpleNamespace(manager_id=manager_id, candidate_email="ada@x.com", role="Dev")
-            await _notify_manager_interview_complete(db, interview)
-    _run(notify(unsure["id"]))
-    _run(notify(sure["id"]))
+    _run(_finished(unsure["id"], "ada@x.com"))
+    _run(_finished(sure["id"], "bea@x.com"))
+    run_jobs()
     assert mailbox == ["sure2@co.com"]

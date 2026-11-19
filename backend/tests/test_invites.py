@@ -43,12 +43,30 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject, "html": html_body})
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
+
+
+async def _finished(manager_id, email, role="Dev"):
+    """An interview of this manager's that has just finished, its manager to
+    be told (email_kinds.queue_interview_done, as finishing it queues)."""
+    from app.core import database
+    from app.models.candidate import Candidate, Interview
+    from app.services import email_kinds
+    async with database.async_session() as db:
+        cand = Candidate(manager_id=manager_id, name="Cand", email=email)
+        db.add(cand)
+        await db.flush()
+        interview = Interview(candidate_id=cand.id, manager_id=manager_id, candidate_email=email, role=role,
+                              status="completed", mode="conversational")
+        db.add(interview)
+        await db.flush()
+        await email_kinds.queue_interview_done(db, interview)
+        await db.commit()
 
 
 def _own_candidate(client, tok, text):
@@ -226,17 +244,10 @@ def test_a_name_with_markup_is_escaped_in_the_invite(client, mailbox):
     assert "<b>Cand</b>" not in html
 
 
-def test_the_managers_completion_email_is_escaped_too(client, mailbox):
-    from types import SimpleNamespace
-    from app.api.chat import _notify_manager_interview_complete
-    from app.core import database
+def test_the_managers_completion_email_is_escaped_too(client, run_jobs, mailbox):
     _, m = register(client, "c6@co.com", name="<i>Boss</i>")
-    interview = SimpleNamespace(manager_id=m["id"], candidate_email="c6@x.com", role="<script>x</script>")
-
-    async def notify():
-        async with database.async_session() as db:
-            await _notify_manager_interview_complete(db, interview)
-    _run(notify())
+    _run(_finished(m["id"], "c6@x.com", role="<script>x</script>"))
+    run_jobs()
     html = mailbox[0]["html"]
     assert "Hi &lt;i&gt;Boss&lt;/i&gt;," in html
     assert "&lt;script&gt;" in html and "<script>" not in html

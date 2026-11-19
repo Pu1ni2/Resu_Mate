@@ -84,7 +84,7 @@ def test_a_voice_interview_with_too_little_is_reported_as_such(client, ai, run_j
     assert r.status_code == 200, r.text
     # The answer comes first; a background job writes the report.
     assert r.json()["report_status"] == "pending"
-    assert run_jobs() == ["done"]
+    assert run_jobs() == ["done", "done"]  # the report, and the manager's email
     status, report = _run(read(iid))
     assert status == "completed"
     assert report["report"] == interview_report.NOT_ENOUGH

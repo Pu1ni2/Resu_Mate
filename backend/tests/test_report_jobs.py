@@ -245,32 +245,32 @@ def _as_candidate(email):
     return {"Authorization": f"Bearer {create_candidate_token(email)}"}
 
 
-def _emails(monkeypatch):
-    """The managers' 'interview completed' emails, by interview."""
-    from app.api import chat
-    sent = []
-
-    async def notify(db, interview):
-        sent.append(interview.id)
-    monkeypatch.setattr(chat, "_notify_manager_interview_complete", notify)
-    return sent
+async def _told():
+    """The interviews whose manager is to be told they finished: their
+    "interview finished" emails, in the outbox."""
+    from sqlalchemy import select
+    from app.core import database
+    from app.models.email_outbox import EmailOutbox
+    async with database.async_session() as db:
+        rows = await db.execute(select(EmailOutbox.interview_id).where(EmailOutbox.kind == "interview_done")
+                                .order_by(EmailOutbox.id))
+        return list(rows.scalars())
 
 
 def test_voice_finalize_answers_without_waiting_for_the_ai(client, run_jobs, monkeypatch):
-    calls, sent = _writer(monkeypatch, "## A report"), _emails(monkeypatch)
+    calls = _writer(monkeypatch, "## A report")
     _, m = register(client, "v1@co.com")
     iid = _run(_started(m["id"], "v1@x.com", transcript=None))
     r = client.post("/api/realtime/finalize", headers=_as_candidate("v1@x.com"),
                     json={"interview_id": iid, "transcript": SAID, "duration": 300})
     assert r.status_code == 200 and r.json() == {"saved": True, "turns": 2, "report_status": "pending"}
-    assert calls == [] and sent == [iid]  # the AI not yet asked; the manager told once
-    assert run_jobs() == ["done"]
+    assert calls == [] and _run(_told()) == [iid]  # the AI not yet asked; the manager to be told once
+    assert run_jobs() == ["done", "done"]  # the report, and the manager's email
     assert _run(_state(iid)) == ("completed", "done", None, "## A report", 300)
 
 
 def test_a_finalize_that_loses_the_race_keeps_nothing_of_its_own(client, monkeypatch):
     from app.services import db_service
-    sent = _emails(monkeypatch)
     _, m = register(client, "v2@co.com")
     iid = _run(_started(m["id"], "v2@x.com"))
     real = db_service.complete_interview
@@ -289,7 +289,7 @@ def test_a_finalize_that_loses_the_race_keeps_nothing_of_its_own(client, monkeyp
                     json={"interview_id": iid, "transcript": sent_again, "duration": 999})
     assert r.status_code == 200
     assert r.json() == {"saved": False, "already_completed": True, "turns": 2, "report_status": "pending"}
-    assert _run(_state(iid))[4] == 111 and sent == []
+    assert _run(_state(iid))[4] == 111 and _run(_told()) == []
     assert len(_run(_jobs())) == 1  # the first one's report job only
 
 
@@ -308,13 +308,13 @@ def _post(email, **body):
 
 
 def test_video_save_transcript_answers_without_waiting_for_the_ai(client, run_jobs, monkeypatch):
-    calls, sent = _writer(monkeypatch, "## A report"), _emails(monkeypatch)
+    calls = _writer(monkeypatch, "## A report")
     _, m = register(client, "vd1@co.com")
     iid = _video(m, "vd1@x.com")
     r = client.post("/api/chat/save-transcript", headers=AGENT, json=_post("vd1@x.com"))
     assert r.status_code == 200 and r.json() == {"saved": True, "turns": 2, "report_status": "pending"}
-    assert calls == [] and sent == [iid]  # the worker no longer waits on the AI
-    assert run_jobs() == ["done"]
+    assert calls == [] and _run(_told()) == [iid]  # the worker no longer waits on the AI
+    assert run_jobs() == ["done", "done"]  # the report, and the manager's email
     assert _run(_state(iid)) == ("completed", "done", None, "## A report", 240)
 
 
@@ -368,7 +368,6 @@ def test_a_transcript_post_that_loses_the_race_changes_nothing(client, monkeypat
     from app.core import database
     from app.models.candidate import Interview
     from app.services import db_service
-    sent = _emails(monkeypatch)
     _, m = register(client, "vd4@co.com")
     iid = _video(m, "vd4@x.com")
     real = db_service.complete_interview
@@ -382,7 +381,7 @@ def test_a_transcript_post_that_loses_the_race_changes_nothing(client, monkeypat
     monkeypatch.setattr(db_service, "complete_interview", finished_meanwhile)
     r = client.post("/api/chat/save-transcript", headers=AGENT, json=_post("vd4@x.com", duration=999))
     assert r.json() == {"saved": False, "already_completed": True}
-    assert _run(_state(iid))[4] == 111 and sent == []
+    assert _run(_state(iid))[4] == 111 and _run(_told()) == []
     assert len(_run(_jobs())) == 1
 
 

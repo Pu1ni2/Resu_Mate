@@ -124,11 +124,11 @@ def test_a_second_post_of_a_video_transcript_changes_nothing(client, monkeypatch
         written.append(prompt)
         return "## Report"
 
-    async def send(to, subject, body):
+    async def deliver(to, subject, body):
         emailed.append(subject)
-        return True
+        return "sent"
     monkeypatch.setattr(openai_tool, "structured_call", write)
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     _, m = register(client, "f7@co.com")
     iid = _run(_interview(m["id"], "f7@x.com", status="in_progress", mode="avatar", room_name="interview-f7"))
     said = [{"role": "interviewer", "text": "Tell me about a project you led."},
@@ -142,7 +142,7 @@ def test_a_second_post_of_a_video_transcript_changes_nothing(client, monkeypatch
     assert again.status_code == 200
     assert again.json() == {"saved": False, "already_completed": True}
     assert (_run(_transcript(iid)), _run(_read(iid))) == first
-    assert run_jobs() == ["done"]  # its one report, written by a background job
+    assert run_jobs() == ["done", "done"]  # its one report, and its manager's one email, by background jobs
     assert (len(written), len(emailed)) == (1, 1)
 
 

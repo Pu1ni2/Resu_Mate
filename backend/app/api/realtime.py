@@ -27,7 +27,7 @@ from app.core.errors import log_text
 from app.core.errors import friendly_error, friendly_status
 from app.core.database import get_db
 from app.models.candidate import CandidateAccess, Interview
-from app.services import db_service
+from app.services import db_service, email_kinds
 from app.services.consent import require_consent
 from app.services.auth import Actor, get_current_actor
 from app.services.interview_script import build_instructions
@@ -366,12 +366,7 @@ async def _complete(db: AsyncSession, interview: Interview, transcript: list, du
         await db.rollback()
         await db.refresh(interview)
         return False
+    # Its manager told, by the outbox, once.
+    await email_kinds.queue_interview_done(db, interview)
     await db.commit()
-
-    # Notify the owning manager (best-effort, shared helper with /save-transcript).
-    try:
-        from app.api.chat import _notify_manager_interview_complete
-        await _notify_manager_interview_complete(db, interview)
-    except Exception as exc:
-        logger.warning("finalize: manager notification failed: %s", type(exc).__name__)
     return True

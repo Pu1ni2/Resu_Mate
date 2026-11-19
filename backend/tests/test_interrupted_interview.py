@@ -134,7 +134,7 @@ def test_an_interview_that_has_had_its_time_is_completed_not_reopened(client, op
     assert r.status_code == 409
     assert r.json()["detail"] == TIME_USED_UP
     assert openai == []  # no session paid for
-    assert run_jobs() == ["done"]  # its report, written by a background job
+    assert run_jobs() == ["done", "done"]  # its report, and its manager's email, by background jobs
     status, transcript, duration, report = _run(_read(iid))
     assert (status, transcript, duration) == ("completed", SO_FAR, 8 * 60)
     assert json.loads(report)["report"] == NOT_ENOUGH  # written from what was said: too little here

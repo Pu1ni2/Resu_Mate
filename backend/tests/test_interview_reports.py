@@ -107,7 +107,7 @@ def test_the_worker_writes_the_interview_in_its_room_and_keeps_proctoring(client
         "candidate_email": "both@x.com", "room_name": "interview-a", "transcript": transcript,
     })
     assert r.status_code == 200 and r.json()["saved"] is True
-    assert run_jobs() == ["done"]  # its report, written by a background job
+    assert run_jobs() == ["done", "done"]  # its report, and its manager's email, by background jobs
     saved = _run(_read(in_room))
     assert saved["transcript"] == transcript
     assert saved["report"] == {"violations": 1, "report": "## Agent report"}
