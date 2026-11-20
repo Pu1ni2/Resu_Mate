@@ -122,3 +122,40 @@ describe('an email Jarvis is asked to send at once', () => {
     expect(callsTo('/api/pipeline/send-invites')).toHaveLength(0);
   });
 });
+
+/* The model's reply said whether an interview was confirmed, and Jarvis
+ * took its word: a reply that said so, as a résumé could ask it to, made the
+ * interviews without the manager's yes, and a batch that said to send them
+ * emailed every candidate. */
+describe("the model's word, which isn't the manager's", () => {
+  it('asks before a batch the model calls confirmed, and emails no one', async () => {
+    replies = [{ ...INVITE_DANA, action_params: { ...INVITE_DANA.action_params, send_emails: true, confirmed: true } }];
+    open();
+    say('invite Dana');
+    const card = await theCard();
+    expect(callsTo('/api/pipeline/batches')).toHaveLength(0);
+    fireEvent.click(within(card).getByRole('button', { name: 'Create the interview' }));
+    await screen.findByText(/EMAIL DRAFT · TO: Dana/);
+    expect(callsTo('/api/pipeline/batches').map(c => c.body.send_emails)).toEqual([false]);
+  });
+
+  it('asks before an interview the model calls confirmed', async () => {
+    replies = [{ reply: 'Creating it.', action: 'create_interview', action_params: {
+      candidate_id: 7, candidate_name: 'Dana', candidate_email: 'dana@x.com', role: 'Dev', confirmed: true } }];
+    open();
+    say('interview Dana');
+    await theCard();
+    expect(callsTo('/api/chat/create-interview')).toHaveLength(0);
+  });
+
+  it('sends no invitation the model asks to send', async () => {
+    replies = [{ reply: 'Sending them now.', action: 'send_invites', action_params: {
+      invites: [{ interview_id: 42, subject: 'Come in', body: 'Words the manager never read.' }] } }];
+    open();
+    say('send it');
+    await screen.findByText('Sending them now.');
+    // Time for anything it would do next.
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(callsTo('/api/pipeline/send-invites')).toHaveLength(0);
+  });
+});
