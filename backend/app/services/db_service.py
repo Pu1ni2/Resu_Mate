@@ -53,6 +53,10 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
     other's id, and interviews were filed under the wrong candidate.
     The counter starts past every existing row (main.py's warm-up), so the id
     is free.
+
+    A candidate whose résumé the AI is to read (analysis_status "pending")
+    is saved with the job that reads it, or not at all: saved alone, they
+    would wait for good.
     """
     try:
         candidate = Candidate(
@@ -64,7 +68,7 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
             file_hash=data.get("file_hash"),
             is_resume=data.get("is_resume", True),
             raw_text=(data.get("raw_text") or "")[:5000],
-            full_text=(data.get("text") or data.get("raw_text") or "")[:10000],
+            full_text=(data.get("full_text") or data.get("text") or data.get("raw_text") or "")[:10000],
             predicted_role=data.get("predicted_role"),
             experience_level=data.get("experience_level"),
             total_experience_years=data.get("total_experience_years", 0),
@@ -78,8 +82,13 @@ async def create_candidate_db(session: AsyncSession, data: dict, manager_id: int
             embedded_links=data.get("embedded_links", {}),
             enriched_data=data.get("enriched_data", {}),
             analysis_failed=bool(data.get("analysis_failed")),
+            analysis_status=data.get("analysis_status"),
         )
         session.add(candidate)
+        if candidate.analysis_status == "pending":
+            from app.services import resume_analysis  # lazy: resume_rag makes its chat model on import
+            await session.flush()
+            await resume_analysis.queue(session, candidate.id, candidate.manager_id)
         await session.commit()
         await session.refresh(candidate)
         return candidate

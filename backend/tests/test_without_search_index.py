@@ -15,11 +15,8 @@ BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def test_an_upload_needs_only_the_chat_model(tmp_path, monkeypatch):
     from app.services.resume_rag import resume_rag
-
-    async def analysed(*a, **k):
-        return {"summary": "Ships things.", "skills": ["Python"]}
+    # The chat model reads it later, in the background.
     monkeypatch.setattr(resume_rag, "llm", object())
-    monkeypatch.setattr(resume_rag, "_analyze_resume", analysed)
     monkeypatch.setattr(resume_rag, "candidates", {})
     monkeypatch.setattr(resume_rag, "candidate_counter", 0)
     path = tmp_path / "ada.txt"
@@ -27,7 +24,7 @@ def test_an_upload_needs_only_the_chat_model(tmp_path, monkeypatch):
     result = asyncio.get_event_loop().run_until_complete(
         resume_rag.add_resume(str(path), "ada.txt", "hash", manager_id=7))
     assert "error" not in result, result
-    assert result["name"] == "Ada Lovelace" and result["skills"] == ["Python"]
+    assert result["name"] == "Ada Lovelace"
     assert not hasattr(resume_rag, "vectordb")
 
 

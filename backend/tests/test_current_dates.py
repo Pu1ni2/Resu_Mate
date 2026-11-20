@@ -7,6 +7,8 @@ interview-trend searches asked for 2024.
 import asyncio
 from datetime import date
 
+import pytest
+
 
 def _run(coro):
     return asyncio.get_event_loop().run_until_complete(coro)
@@ -21,7 +23,8 @@ def test_present_means_today_in_the_resume_analysis(monkeypatch):
             prompts.append(messages[0].content)
             raise RuntimeError("stop here")
     monkeypatch.setattr(resume_rag, "llm", Model())
-    _run(resume_rag._analyze_resume("Ada\nEngineer, 2021 - Present", "Ada", True))
+    with pytest.raises(RuntimeError):
+        _run(resume_rag.analyze("Ada\nEngineer, 2021 - Present"))
     assert f"use {date.today():%B %Y} as end" in prompts[0]
     assert "January 2025" not in prompts[0]
 

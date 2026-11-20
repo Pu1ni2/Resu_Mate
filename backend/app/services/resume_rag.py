@@ -46,6 +46,29 @@ def reading(candidate: Dict) -> bool:
     return bool(candidate) and candidate.get("analysis_status") == "pending"
 
 
+def _unread() -> Dict:
+    """A résumé the AI hasn't read yet: nothing known of it. Unknown, not
+    "Professional", "Entry" and 0 years, which a failed reading once said."""
+    return {"summary": "", "total_experience_years": None, "predicted_role": None, "experience_level": None,
+            "location": None, "skills": [], "education": [], "work_experience": [], "badges": [],
+            "key_strengths": []}
+
+
+def _not_a_resume(name: str) -> Dict:
+    """A file that isn't a résumé, which the AI isn't asked to read."""
+    return {
+        "summary": f"This file ({name}) does not appear to be a resume.",
+        "total_experience_years": 0,
+        "predicted_role": "N/A",
+        "experience_level": "N/A",
+        "location": None,
+        "skills": [],
+        "education": [],
+        "work_experience": [],
+        "badges": [{"label": "Not a Resume", "color": "orange"}]
+    }
+
+
 def primary_email(candidate: Dict) -> str:
     """The resume's own contact address, lowercased, or "" if it has none.
 
@@ -319,7 +342,11 @@ class ResumeRAGService:
         return name.strip() or "Unknown Candidate"
     
     async def add_resume(self, file_path: str, file_name: str, file_hash: str = None, manager_id=None) -> Dict:
-        """Add a resume and store its hash, scoped to the owning manager."""
+        """Read a résumé's text and keep it, scoped to the owning manager. The
+        AI reads it afterwards, in the background
+        (app/services/resume_analysis.py), so its analysis is "pending" until
+        then; it was read here, with the upload waiting. A file that isn't a
+        résumé is left as it is, and is done."""
         if not self.llm:
             return {"error": "Service not initialized. Check OpenAI API key."}
 
@@ -344,8 +371,6 @@ class ResumeRAGService:
             candidate_id = self.candidate_counter
 
         mkey = self._mkey(manager_id)
-        summary_data = await self._analyze_resume(text, name, is_resume)
-
         candidate_data = {
             "id": candidate_id,
             "manager_id": mkey,
@@ -355,48 +380,19 @@ class ResumeRAGService:
             "is_resume": is_resume,
             "raw_text": text[:1500],
             "text": text[:5000],
+            # More of it, for the database, which the AI reads it from. The
+            # upload takes it out (app/api/candidates.py): this copy, and the
+            # upload's answer, keep the shorter text.
+            "full_text": text[:10000],
             "embedded_links": embedded_links,
-            **summary_data,
-            "analysis_status": analysis_status(None, summary_data.get("analysis_failed")),
+            **(_unread() if is_resume else _not_a_resume(name)),
+            "analysis_status": "pending" if is_resume else "done",
             "is_sample": file_hash == SAMPLE_RESUME_SHA256,
         }
 
         async with self._async_lock:
             self._drawer(manager_id)[candidate_id] = candidate_data
         return candidate_data
-    
-    async def _analyze_resume(self, text: str, name: str, is_resume: bool) -> Dict:
-        if not is_resume:
-            return {
-                "summary": f"This file ({name}) does not appear to be a resume.",
-                "total_experience_years": 0,
-                "predicted_role": "N/A",
-                "experience_level": "N/A",
-                "location": None,
-                "skills": [],
-                "education": [],
-                "work_experience": [],
-                "badges": [{"label": "Not a Resume", "color": "orange"}]
-            }
-        try:
-            return await self.analyze(text)
-        except Exception as e:
-            print(f"Error analyzing resume: {type(e).__name__}")
-            # Unknown, and marked so. This used to say "Professional",
-            # "Entry" and 0 years, which the cards showed as fact.
-            return {
-                "analysis_failed": True,
-                "summary": f"{name}'s resume",
-                "total_experience_years": None,
-                "predicted_role": None,
-                "experience_level": None,
-                "location": None,
-                "skills": [],
-                "education": [],
-                "work_experience": [],
-                "badges": [],
-                "key_strengths": []
-            }
 
     async def analyze(self, text: str) -> Dict:
         """The AI's reading of a résumé's text: a summary, the role, level

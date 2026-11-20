@@ -116,7 +116,7 @@ def test_each_candidate_says_how_the_reading_of_their_resume_stands(client):
 
 
 @pytest.mark.parametrize("reading, status", [("works", "done"), ("fails", "failed")])
-def test_an_upload_says_so_too(client, monkeypatch, reading, status):
+def test_an_upload_says_so_too(client, run_jobs, monkeypatch, reading, status):
     from types import SimpleNamespace
     token, user = register(client, f"upload-{reading}@x.com")
 
@@ -130,5 +130,7 @@ def test_an_upload_says_so_too(client, monkeypatch, reading, status):
         "file": ("ada.txt", b"Ada Lovelace, ada@x.com, engineer with experience in a team at a company. " * 3,
                  "text/plain")})
     assert r.status_code == 200, r.text
-    assert r.json()["analysis_status"] == status
+    # Read by the AI in the background, once the upload has answered.
+    assert r.json()["analysis_status"] == "pending"
+    run_jobs()
     assert [c["analysis_status"] for c in _listed(client, token)] == [status]

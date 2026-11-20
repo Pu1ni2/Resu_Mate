@@ -62,8 +62,7 @@ def _model_says(monkeypatch, years):
 @pytest.mark.asyncio
 async def test_an_analysis_with_no_years_keeps_the_rest(monkeypatch):
     _model_says(monkeypatch, None)
-    data = await resume_rag._analyze_resume("Ada Lovelace. Designer. Figma.", "Ada", True)
-    assert not data.get("analysis_failed")
+    data = await resume_rag.analyze("Ada Lovelace. Designer. Figma.")
     assert data["total_experience_years"] is None
     assert data["predicted_role"] == "Designer"
 
@@ -71,9 +70,9 @@ async def test_an_analysis_with_no_years_keeps_the_rest(monkeypatch):
 @pytest.mark.asyncio
 async def test_an_analysis_keeps_years_within_reason(monkeypatch):
     _model_says(monkeypatch, 45)
-    assert (await resume_rag._analyze_resume("text", "Ada", True))["total_experience_years"] == 30
+    assert (await resume_rag.analyze("text"))["total_experience_years"] == 30
     _model_says(monkeypatch, -3)
-    assert (await resume_rag._analyze_resume("text", "Ada", True))["total_experience_years"] is None
+    assert (await resume_rag.analyze("text"))["total_experience_years"] is None
 
 
 def test_jarvis_takes_a_candidate_whose_years_are_unknown():

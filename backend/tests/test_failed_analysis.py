@@ -14,18 +14,8 @@ def _run(coro):
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
-class _FailingModel:
-    async def ainvoke(self, messages):
-        raise RuntimeError("model unavailable")
-
-
-def test_a_failed_analysis_leaves_the_profile_unknown(monkeypatch):
-    from app.services.resume_rag import resume_rag
-    monkeypatch.setattr(resume_rag, "llm", _FailingModel())
-    data = _run(resume_rag._analyze_resume("Ada Lovelace\nEngineer", "Ada", True))
-    assert data["analysis_failed"] is True
-    assert (data["predicted_role"], data["experience_level"], data["total_experience_years"]) == (None, None, None)
-
+# The manager's upload is read by a background job, whose failure is tested
+# with it (tests/test_resume_analysis.py).
 
 def test_the_mark_is_saved_and_read_back(client):
     from app.core import database

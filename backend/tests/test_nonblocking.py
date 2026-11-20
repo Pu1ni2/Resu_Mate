@@ -99,18 +99,15 @@ def test_a_resume_is_read_off_the_event_loop(tmp_path, monkeypatch):
     from app.services.resume_rag import resume_rag
     seen = {}
 
-    async def analysed(*a, **k):
-        return {"summary": "", "skills": []}
-
     read_text = resume_rag._extract_text
 
     def reading(*args):
         seen["reader"] = threading.get_ident()
         return read_text(*args)
 
-    # A chat model is set up, as with an API key; the analysis is the fake.
+    # A chat model is set up, as with an API key; it reads the résumé later,
+    # in the background (app/services/resume_analysis.py).
     monkeypatch.setattr(resume_rag, "llm", object())
-    monkeypatch.setattr(resume_rag, "_analyze_resume", analysed)
     monkeypatch.setattr(resume_rag, "_extract_text", reading)
     monkeypatch.setattr(resume_rag, "candidates", {})
     monkeypatch.setattr(resume_rag, "candidate_counter", 0)

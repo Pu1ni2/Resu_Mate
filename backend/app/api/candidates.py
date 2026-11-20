@@ -42,7 +42,11 @@ def _safe_upload_path(original_filename: str, allowed_ext: set[str]) -> tuple[st
 @router.post("/upload")
 @limiter.limit("20/hour")
 async def upload_resume(request: Request, file: UploadFile = File(...), user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Upload and analyze a resume"""
+    """Upload a résumé: its text is read and kept now, and the AI reads it in
+    the background (app/services/resume_analysis.py), so this answers at once,
+    the analysis "pending". It waited for the AI, inside the request: a
+    minute when the AI was slow, and an AI busy for a moment left the résumé
+    unread for good."""
 
     file_path, safe_name = _safe_upload_path(file.filename or "", set(RESUME_EXTENSIONS))
 
@@ -78,8 +82,13 @@ async def upload_resume(request: Request, file: UploadFile = File(...), user=Dep
             resume_rag.unregister_file(file_hash, manager_id=mgr)
             raise HTTPException(400, result["error"])
 
-        # Persist to PostgreSQL database, owned by this manager
-        cand_row = await db_service.create_candidate_db(db, {**result, "file_hash": file_hash}, manager_id=mgr)
+        # Persist to PostgreSQL database, owned by this manager, with the job
+        # that reads it. The longer text goes to the database alone, for the
+        # AI to read: the answer, and the server's copy (the same record),
+        # keep the shorter one.
+        full_text = result.pop("full_text", None)
+        cand_row = await db_service.create_candidate_db(db, {**result, "file_hash": file_hash, "full_text": full_text},
+                                                        manager_id=mgr)
         if cand_row is None:
             # Not saved, so it must not live on in memory, least of all under an
             # id that may be another candidate's row: it used to, until the next
