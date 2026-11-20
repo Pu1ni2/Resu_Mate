@@ -364,3 +364,29 @@ def test_the_file_finds_the_one_still_being_written(client):
     _run(_asked(other["id"], cid))
     asked = listed()["asked"]
     assert (asked["request_id"], asked["status"], asked["role"]) == (waiting, "pending", "Dev")
+
+
+# ── asking for one ───────────────────────────────────────────────────────────
+
+def test_asking_answers_before_the_agent_writes_it(client, run_jobs, agent):
+    token, m = register(client, "er17@co.com")
+    cid = _run(_candidate(m["id"]))
+    r = client.post("/api/chat/hiring-agent", headers=auth_headers(token), json={
+        "candidate_id": cid, "role": "Backend Engineer", "level": "Senior", "anonymize": True})
+    assert r.status_code == 202, r.text
+    assert agent == []
+    said = r.json()
+    assert {k: said[k] for k in ("candidate_id", "status", "role", "level", "anonymized", "evaluation")} == {
+        "candidate_id": cid, "status": "pending", "role": "Backend Engineer", "level": "Senior", "anonymized": True,
+        "evaluation": None}
+    assert run_jobs() == ["done"]
+    assert len(agent) == 1 and len(_run(_kept(m["id"]))) == 1
+
+
+def test_only_the_managers_own_candidate_is_evaluated(client, run_jobs, agent):
+    token, _ = register(client, "er18@co.com")
+    _, other = register(client, "er18b@co.com")
+    theirs = _run(_candidate(other["id"]))
+    r = client.post("/api/chat/hiring-agent", headers=auth_headers(token), json={"candidate_id": theirs, "role": "Dev"})
+    assert r.status_code == 404
+    assert run_jobs() == [] and _run(_requests()) == []

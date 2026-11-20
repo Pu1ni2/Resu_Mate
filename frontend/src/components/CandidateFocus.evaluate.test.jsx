@@ -69,6 +69,8 @@ describe('an evaluation written in the background', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     await evaluate();
     expect(screen.getByText(/writing the evaluation/i)).toBeTruthy();
+    // It's written in the background, whatever the manager does meanwhile.
+    expect(screen.getByText(/goes on if you leave this file/i)).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
     expect(screen.getByText(/writing the evaluation/i)).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
