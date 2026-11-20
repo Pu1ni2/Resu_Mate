@@ -5,6 +5,8 @@ the database left every list empty until a restart.
 """
 import asyncio
 
+import pytest
+
 from conftest import auth_headers, register
 
 from app.services.resume_rag import resume_rag
@@ -87,3 +89,46 @@ def test_without_the_database_the_stores_copy_is_listed(client, monkeypatch):
         return await real(self, statement, *args, **kwargs)
     monkeypatch.setattr(database.AsyncSession, "execute", no_candidates)
     assert [c["name"] for c in _listed(client, token)] == ["Ada"]
+
+
+# ── how the reading of each résumé stands ────────────────────────────────────
+
+async def _change(candidate_id, **values):
+    from app.core import database
+    from app.models.candidate import Candidate
+    async with database.async_session() as db:
+        row = await db.get(Candidate, candidate_id)
+        for column, value in values.items():
+            setattr(row, column, value)
+        await db.commit()
+
+
+def test_each_candidate_says_how_the_reading_of_their_resume_stands(client):
+    # Pending while it's being read, then done or failed. One from before
+    # that was kept reads as done, or failed when its analysis failed.
+    token, user = register(client, "status@x.com")
+    ada, bea, cy, di = _run(_rows(user["id"], "Ada", "Bea", "Cy", "Di"))
+    _run(_change(ada, analysis_status="pending"))
+    _run(_change(bea, analysis_status="failed", analysis_failed=True))
+    _run(_change(cy, analysis_failed=True))
+    assert {c["name"]: c["analysis_status"] for c in _listed(client, token)} == {
+        "Ada": "pending", "Bea": "failed", "Cy": "failed", "Di": "done"}
+
+
+@pytest.mark.parametrize("reading, status", [("works", "done"), ("fails", "failed")])
+def test_an_upload_says_so_too(client, monkeypatch, reading, status):
+    from types import SimpleNamespace
+    token, user = register(client, f"upload-{reading}@x.com")
+
+    class Reader:
+        async def ainvoke(self, messages):
+            if reading == "fails":
+                raise RuntimeError("the AI is away")
+            return SimpleNamespace(content='{"summary": "Builds things.", "predicted_role": "Engineer"}')
+    monkeypatch.setattr(resume_rag, "llm", Reader())
+    r = client.post("/api/candidates/upload", headers=auth_headers(token), files={
+        "file": ("ada.txt", b"Ada Lovelace, ada@x.com, engineer with experience in a team at a company. " * 3,
+                 "text/plain")})
+    assert r.status_code == 200, r.text
+    assert r.json()["analysis_status"] == status
+    assert [c["analysis_status"] for c in _listed(client, token)] == [status]
