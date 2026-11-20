@@ -129,18 +129,19 @@ def test_a_code_works_once(client, no_email):
     assert _erase(client, code).status_code == 400
 
 
-def test_the_code_is_emailed_when_email_is_set_up(client, monkeypatch):
+def test_the_code_is_emailed_when_email_is_set_up(client, run_jobs, monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append((to_email, subject, html_body))
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     tok, _ = register(client, "dr5@co.com")
     _run(_uploaded_and_sourced(_manager_id(client, tok)))
     assert _ask(client) == {"message": CODE_SENT}  # no code in the answer
+    run_jobs()
     assert [(to, subject) for to, subject, _ in sent] == [(PERSON, "Confirm deleting your ResuMate data")]
 
 

@@ -7,6 +7,7 @@ was interviewing. A fifth wrong guess said "tried too many times", which only
 an address that was sent a code can hear.
 """
 import asyncio
+import re
 
 import pytest
 
@@ -35,18 +36,23 @@ def _invite(client, manager_email, email=INVITED):
     _run(grant())
 
 
+def _code_in(html):
+    return re.search(r"\b(\d{6})\b", html).group(1)
+
+
 @pytest.fixture()
 def mailbox(monkeypatch):
-    """Email set up, with what it would send kept here instead."""
+    """Email set up, with what it would send kept here instead: each address
+    and the code in it."""
     from app.services.email_service import email_service
     sent = []
 
-    async def send_otp(to_email, code):
-        sent.append((to_email, code))
-        return True
+    async def deliver(to_email, subject, html_body):
+        sent.append((to_email, _code_in(html_body)))
+        return "sent"
 
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send_otp", send_otp)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
 
 
@@ -58,9 +64,10 @@ def _guess(client, email, code):
     return client.post("/api/auth/candidate/verify-otp", json={"email": email, "code": code})
 
 
-def test_an_invited_address_and_a_stranger_get_the_same_answer(client, mailbox):
+def test_an_invited_address_and_a_stranger_get_the_same_answer(client, run_jobs, mailbox):
     _invite(client, "same1@co.com")
     invited, stranger = _ask(client, INVITED), _ask(client, STRANGER)
+    run_jobs()
     assert invited.status_code == stranger.status_code == 200
     # The same words, each for the address that was asked about.
     assert invited.json() == {**stranger.json(), "email": INVITED}
@@ -69,17 +76,19 @@ def test_an_invited_address_and_a_stranger_get_the_same_answer(client, mailbox):
     assert [to for to, _ in mailbox] == [INVITED]
 
 
-def test_an_email_that_fails_gets_the_same_answer_and_leaves_the_log_without_the_code(client, mailbox, monkeypatch, capsys):
+def test_an_email_that_fails_gets_the_same_answer_and_leaves_the_log_without_the_code(client, run_jobs, mailbox,
+                                                                                     monkeypatch, capsys):
     from app.services.email_service import email_service
     tried = []
 
-    async def fails(to_email, code):
-        tried.append(code)
-        return False
+    async def fails(to_email, subject, html_body):
+        tried.append(_code_in(html_body))
+        return "refused"
 
-    monkeypatch.setattr(email_service, "send_otp", fails)
+    monkeypatch.setattr(email_service, "deliver", fails)
     _invite(client, "same2@co.com")
     failed = _ask(client, INVITED)
+    run_jobs()
     assert failed.status_code == 200
     assert failed.json()["message"] == _ask(client, STRANGER).json()["message"]
     logged = capsys.readouterr().out
@@ -87,9 +96,10 @@ def test_an_email_that_fails_gets_the_same_answer_and_leaves_the_log_without_the
     assert INVITED not in logged
 
 
-def test_a_stranger_guessing_hears_what_an_invited_address_does(client, mailbox):
+def test_a_stranger_guessing_hears_what_an_invited_address_does(client, run_jobs, mailbox):
     _invite(client, "same3@co.com")
     _ask(client, INVITED)
+    run_jobs()
     wrong = f"{(int(mailbox[0][1]) + 1) % 10**6:06d}"
     answers = [_guess(client, INVITED, wrong) for _ in range(MAX_WRONG)] + [_guess(client, STRANGER, wrong) for _ in range(MAX_WRONG)]
     assert {(a.status_code, a.json()["detail"]) for a in answers} == {(400, WRONG_CODE)}

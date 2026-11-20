@@ -8,7 +8,7 @@ get a code by email, and the code confirms the erasure.
 Both steps answer the same whether or not anything is held about the address,
 so the page can't be used to find out who is in the system.
 """
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 # One answer for any refused code, a used-up one too: "tried too many times"
 # would say a code exists, so that data is held about the address.
+from app.services import email_kinds, outbox  # noqa: F401  (email_kinds says what the code's email says)
 from app.services.codes import WRONG_CODE, issue_code, redeem_code
 from app.services.erasure import erase_person, holds_data
 
@@ -40,21 +41,25 @@ def _address(email: str) -> str:
 
 @router.post("/erasure-code")
 @limiter.limit("3/hour")
-async def erasure_code(request: Request, req: ErasureCodeRequest, background: BackgroundTasks,
-                       db: AsyncSession = Depends(get_db)):
+async def erasure_code(request: Request, req: ErasureCodeRequest, db: AsyncSession = Depends(get_db)):
     """Email a code that confirms a deletion, if any data is held about the address.
 
-    The same answer either way, and the email goes out after the response.
+    The same answer either way, and the same work: an email is queued for
+    any address, and the outbox's job checks what's held, issues the code
+    and sends it. It went after the response, where a restart lost it.
     """
+    from app.services.email_service import email_service
     email = _address(req.email)
     answer = {"message": CODE_SENT}
-    if "@" in email and await holds_data(db, email):
-        from app.services.email_service import email_service
-        code = await issue_code(db, email)
-        background.add_task(email_service.send_erasure_code, email, code)
-        if settings.debug and not email_service.configured:
-            # Local development without email, as send-otp's debug_code.
-            answer["debug_code"] = code
+    if "@" not in email:
+        return answer
+    if settings.debug and not email_service.configured:
+        # Local development without email, as send-otp's debug_code.
+        if await holds_data(db, email):
+            answer["debug_code"] = await issue_code(db, email)
+        return answer
+    await outbox.queue(db, "erasure_code", to_address=email)
+    await db.commit()
     return answer
 
 

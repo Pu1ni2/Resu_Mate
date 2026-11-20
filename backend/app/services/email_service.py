@@ -100,19 +100,6 @@ class EmailService:
         """
         return await self.deliver(to_email, subject, html_body) == SENT
 
-    async def send_otp(self, to_email: str, code: str) -> bool:
-        html = f"""
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">Your ResuMate access code</h2>
-          <p>Your one-time access code is:</p>
-          <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1E40AF; padding: 16px; background: #EFF6FF; border-radius: 8px; text-align: center;">
-            {code}
-          </div>
-          <p style="color: #6B7280; margin-top: 16px;">This code expires in 15 minutes. Do not share it with anyone.</p>
-        </div>
-        """
-        return await self.send(to_email, "Your ResuMate Interview Access Code", html)
-
     async def send_interview_invitation(
         self, to_email: str, candidate_name: str, role: str, login_url: str, company: str = ""
     ) -> bool:
@@ -138,20 +125,6 @@ class EmailService:
         subject = f"Interview invitation from {company}: {role}" if company else f"Interview Invitation: {role}"
         return await self.send(to_email, subject, body)
 
-    async def send_erasure_code(self, to_email: str, code: str) -> bool:
-        safe_code = html.escape(code)
-        body = f"""
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">Confirm deleting your data</h2>
-          <p>Someone asked ResuMate to delete the data it holds about this address. If it was you, enter this code on the deletion page:</p>
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1E40AF; padding: 16px; background: #EFF6FF; border-radius: 8px; text-align: center;">
-            {safe_code}
-          </div>
-          <p style="color: #6B7280; margin-top: 16px;">It works for 15 minutes. If you didn't ask, ignore this email: nothing is deleted without the code.</p>
-        </div>
-        """
-        return await self.send(to_email, "Confirm deleting your ResuMate data", body)
-
     async def send_email_draft(self, to_email: str, subject: str, body: str, login_url: str = "") -> bool:
         """A plain-text email the manager reviewed, sent as written.
 
@@ -169,6 +142,39 @@ class EmailService:
             )
         # One line: a line break in a subject is not a valid header.
         return await self.send(to_email, " ".join(subject.split()), page + "</div>")
+
+
+def sign_in_code_email(code: str) -> tuple:
+    """The sign-in code's subject and page: made as the outbox sends it,
+    the code issued then, so it's never stored."""
+    html = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Your ResuMate access code</h2>
+          <p>Your one-time access code is:</p>
+          <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1E40AF; padding: 16px; background: #EFF6FF; border-radius: 8px; text-align: center;">
+            {code}
+          </div>
+          <p style="color: #6B7280; margin-top: 16px;">This code expires in 15 minutes. Do not share it with anyone.</p>
+        </div>
+        """
+    return "Your ResuMate Interview Access Code", html
+
+
+def erasure_code_email(code: str) -> tuple:
+    """The subject and page of the code that confirms a deletion: made as
+    the outbox sends it, the code issued then, so it's never stored."""
+    safe_code = html.escape(code)
+    body = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #3B82F6;">Confirm deleting your data</h2>
+          <p>Someone asked ResuMate to delete the data it holds about this address. If it was you, enter this code on the deletion page:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1E40AF; padding: 16px; background: #EFF6FF; border-radius: 8px; text-align: center;">
+            {safe_code}
+          </div>
+          <p style="color: #6B7280; margin-top: 16px;">It works for 15 minutes. If you didn't ask, ignore this email: nothing is deleted without the code.</p>
+        </div>
+        """
+    return "Confirm deleting your ResuMate data", body
 
 
 def password_reset_email(reset_url: str) -> tuple:

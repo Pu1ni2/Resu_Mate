@@ -11,10 +11,14 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.auth import HiringManager
-from app.models.candidate import Interview
+from app.models.candidate import CandidateAccess, Interview
 from app.services import outbox
 from app.services.auth import create_reset_token, create_verify_token
-from app.services.email_service import password_reset_email, verification_email
+from app.services.codes import issue_code
+from app.services.email_service import (
+    erasure_code_email, password_reset_email, sign_in_code_email, verification_email,
+)
+from app.services.erasure import holds_data
 
 
 async def queue_interview_done(db, interview) -> None:
@@ -77,3 +81,26 @@ async def password_reset(db, email):
     if manager is None or not manager.is_active:
         return None
     return (manager.email, *password_reset_email(reset_link(manager)))
+
+
+# ── codes, for whoever asks ──────────────────────────────────────────────────
+
+@outbox.composer("sign_in_code")
+async def sign_in_code(db, email):
+    """A sign-in code for the address typed in, issued as it's sent: stored
+    hashed, and the address's earlier codes stop working. Nothing when no
+    manager has invited the address, which the one who asked isn't told."""
+    access = (await db.execute(select(CandidateAccess).where(CandidateAccess.email == email.to_address))).scalars().first()
+    if access is None:
+        return None
+    return (email.to_address, *sign_in_code_email(await issue_code(db, email.to_address)))
+
+
+@outbox.composer("erasure_code")
+async def erasure_code(db, email):
+    """A code that confirms deleting what's held about the address typed in,
+    issued as it's sent. Nothing when nothing is held, which the one who
+    asked isn't told."""
+    if not await holds_data(db, email.to_address):
+        return None
+    return (email.to_address, *erasure_code_email(await issue_code(db, email.to_address)))

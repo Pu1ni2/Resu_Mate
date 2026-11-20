@@ -6,21 +6,14 @@ measured.
 """
 import pytest
 
-from app.services.email_service import email_service
+from app.services.email_service import sign_in_code_email
 from app.services.resume_rag import resume_rag
 
 
-@pytest.mark.asyncio
-async def test_the_access_code_email_names_resumate(monkeypatch):
-    sent = {}
-
-    async def send(to_email, subject, html):
-        sent.update(to=to_email, subject=subject, html=html)
-        return True
-    monkeypatch.setattr(email_service, "send", send)
-    await email_service.send_otp("ada@x.com", "123456")
-    assert "ResuMate AI" not in sent["html"] and "ResuMate AI" not in sent["subject"]
-    assert "Your ResuMate access code" in sent["html"]
+def test_the_access_code_email_names_resumate():
+    subject, html = sign_in_code_email("123456")
+    assert "ResuMate AI" not in html and "ResuMate AI" not in subject
+    assert "Your ResuMate access code" in html
 
 
 @pytest.mark.parametrize("count", [0, 3])

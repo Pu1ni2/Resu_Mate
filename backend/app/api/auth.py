@@ -3,7 +3,7 @@ import hmac
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -338,41 +338,31 @@ async def send_verification(request: Request, current_user: HiringManager = Depe
 SIGN_IN_CODE_SENT = "If this address has been invited to an interview, we've emailed it a sign-in code."
 
 
-async def _email_sign_in_code(email: str, code: str) -> None:
-    """After the response. A failure can't be told to the person asking, since
-    it would say the address had been invited, so it goes to the log."""
-    from app.services.email_service import email_service
-    try:
-        delivered = await email_service.send_otp(email, code)
-    except Exception as exc:
-        delivered = False
-        print(f"[OTP] send error: {type(exc).__name__}")
-    if not delivered:
-        print("[OTP] a sign-in code could not be emailed")
-
-
 @router.post("/candidate/send-otp")
 @limiter.limit("3/minute")
-async def send_otp(request: Request, req: SendOTPRequest, background: BackgroundTasks,
-                   db: AsyncSession = Depends(get_db)):
+async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
     """Email a 6-digit sign-in code to an address a hiring manager has invited.
 
-    The answer is the same whether or not one has, and the email goes out after
-    the response, as with a deletion request's code. It used to say "No
-    interview access found" to an address no one had invited, so anyone could
-    find out whom a company was interviewing.
+    The answer is the same whether or not one has, and so is the work: an
+    email is queued for any address, and the outbox's job checks that it was
+    invited, issues the code and sends it, as with a deletion request's
+    code. It used to say "No interview access found" to an address no one
+    had invited, so anyone could find out whom a company was interviewing;
+    then it issued the code only for an invited one, and sent it after the
+    response, where a restart lost it.
     """
+    from app.services.email_service import email_service
     email = req.email.lower().strip()
     answer = {"message": SIGN_IN_CODE_SENT, "email": email}
-    access = (await db.execute(select(CandidateAccess).where(CandidateAccess.email == email))).scalars().first()
-    if access:
-        from app.services.email_service import email_service
-        # Stored hashed, and the address's earlier codes stop working.
-        code = await issue_code(db, email)
-        background.add_task(_email_sign_in_code, email, code)
-        if settings.debug and not email_service.configured:
-            # Local development without email, as forgot-password's debug_reset_link.
-            answer["debug_code"] = code
+    if settings.debug and not email_service.configured:
+        # Local development without email: the code in the answer, as
+        # forgot-password's debug_reset_link.
+        access = (await db.execute(select(CandidateAccess).where(CandidateAccess.email == email))).scalars().first()
+        if access:
+            answer["debug_code"] = await issue_code(db, email)
+        return answer
+    await outbox.queue(db, "sign_in_code", to_address=email)
+    await db.commit()
     return answer
 
 
