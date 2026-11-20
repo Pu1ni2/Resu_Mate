@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useEf
 import { accountAPI, candidatesAPI, chatAPI, messageForApiError } from '../services/api';
 import { saveSession, clearSession, readStoredUser, saveStoredUser, clearCandidateCache } from '../services/session';
 import { toast } from '../services/notify';
+import { followReadings, reading } from '../services/resumeReading';
 import { computeAnalytics } from './analytics';
 
 // Exported for the design review page (src/review), which fills it with
@@ -165,6 +166,20 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (signedIn) loadCandidates();
   }, [signedIn, managerId, loadCandidates]);
+
+  // A résumé is read by the AI in the background, after its upload has
+  // answered: the candidates still being read are asked after, and each is
+  // shown as soon as it has been. Signing out empties the list, which ends it.
+  const readingIds = useMemo(
+    () => candidates.filter(reading).map(c => c.id).sort((a, b) => a - b).join(','),
+    [candidates],
+  );
+  useEffect(() => {
+    if (!readingIds) return undefined;
+    return followReadings(readingIds.split(',').map(Number), (read) => {
+      setCandidates(prev => prev.map(c => (c.id === read.id ? read : c)));
+    });
+  }, [readingIds]);
 
   const uploadResume = useCallback(async (file) => {
     const uploadId = `upload-${Date.now()}`;

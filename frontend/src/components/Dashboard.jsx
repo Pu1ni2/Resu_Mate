@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
 import { knownYears } from '../services/experience';
+import { reading } from '../services/resumeReading';
 
 // Loaded when opened: Jarvis alone is a large part of the app.
 const PipelineWizard = lazy(() => import('./pipeline/PipelineWizard'));
@@ -954,7 +955,7 @@ export default function Dashboard() {
                                     {c.is_resume === false && <span className="badge badge-orange">Not a résumé</span>}
                                   </span>
                                 </th>
-                                <td>{c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || 'Processing...')}</td>
+                                <td>{reading(c) ? 'Reading the résumé…' : c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || '—')}</td>
                                 <td>{c.total_experience_years != null ? `${c.total_experience_years}y` : '—'}</td>
                                 <td className="sd-list-level">{c.experience_level || '—'}</td>
                                 <td className="sd-list-more">{c.location || '—'}</td>
@@ -1007,10 +1008,14 @@ export default function Dashboard() {
                             </button>
                           </div>
                           <h3 className="candidate-name">{getDisplayName(c, i)}</h3>
-                          {/* The analysis failed: say so, rather than "Processing..." forever.
-                              The same file again is refused as a duplicate, so delete it first. */}
+                          {/* The AI reads the résumé after the upload has answered: it's
+                              being read, or its role. The analysis failed: say so, rather
+                              than "Processing..." forever. The same file again is refused as
+                              a duplicate, so delete it first. */}
                           <p className="candidate-role">
-                            {c.analysis_failed ? "Couldn't analyse this résumé. Delete it and upload it again." : (c.predicted_role || 'Processing...')}
+                            {reading(c) ? 'Reading the résumé…'
+                              : c.analysis_failed ? "Couldn't analyse this résumé. Delete it and upload it again."
+                                : (c.predicted_role || '—')}
                           </p>
                           
                           <div className="candidate-badges">
