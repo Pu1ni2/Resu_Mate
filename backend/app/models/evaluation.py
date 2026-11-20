@@ -21,3 +21,26 @@ class CandidateEvaluation(Base):
     anonymized = Column(Boolean, nullable=False, default=False)
     report = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class EvaluationRequest(Base):
+    """One evaluation asked for, which a background job writes: what it was
+    asked, how far it got (status: pending, done, or failed with error, in
+    words a page can show), and the evaluation it wrote (evaluation_id).
+    Kept apart from the evaluations themselves, whose report can't be empty.
+    It was written inside the request, and lost when the page closed."""
+    __tablename__ = "evaluation_requests"
+
+    id = Column(Integer, primary_key=True)
+    manager_id = Column(Integer, ForeignKey("hiring_managers.id"), nullable=False, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
+    role = Column(String(200))
+    level = Column(String(50))
+    experience_required = Column(String(50))
+    job_description = Column(Text)
+    anonymized = Column(Boolean, nullable=False, default=False)
+    status = Column(String(16), nullable=False, default="pending")
+    error = Column(String(300))
+    evaluation_id = Column(Integer)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    finished_at = Column(DateTime)
