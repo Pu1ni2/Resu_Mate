@@ -41,6 +41,9 @@ class Candidate(Base):
     # The AI analysis of the résumé failed, so role, level and years are
     # unknown. It used to save "Professional / Entry / 0 years" instead.
     analysis_failed = Column(Boolean, default=False)
+    # How the AI's reading of the résumé stands: pending, done or failed
+    # (resume_rag.analysis_status). Empty for rows from before it was kept.
+    analysis_status = Column(String(16))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

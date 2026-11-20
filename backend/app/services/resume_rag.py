@@ -34,6 +34,13 @@ def is_sample(candidate: Dict) -> bool:
     return bool(candidate) and candidate.get("file_hash") == SAMPLE_RESUME_SHA256
 
 
+def analysis_status(status: Optional[str], failed) -> str:
+    """How the AI's reading of a résumé stands: pending (being read), done or
+    failed. A candidate from before it was kept has none: done, or failed
+    when its analysis failed."""
+    return status or ("failed" if failed else "done")
+
+
 def primary_email(candidate: Dict) -> str:
     """The resume's own contact address, lowercased, or "" if it has none.
 
@@ -143,6 +150,7 @@ class ResumeRAGService:
             "raw_text": row.raw_text or "",
             "is_resume": row.is_resume,
             "analysis_failed": bool(row.analysis_failed),
+            "analysis_status": analysis_status(row.analysis_status, row.analysis_failed),
             "is_sample": row.file_hash == SAMPLE_RESUME_SHA256,
         }
 
@@ -344,6 +352,7 @@ class ResumeRAGService:
             "text": text[:5000],
             "embedded_links": embedded_links,
             **summary_data,
+            "analysis_status": analysis_status(None, summary_data.get("analysis_failed")),
             "is_sample": file_hash == SAMPLE_RESUME_SHA256,
         }
 
