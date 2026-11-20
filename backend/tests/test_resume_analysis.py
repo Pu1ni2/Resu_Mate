@@ -246,3 +246,66 @@ def test_a_resume_is_read_once_at_a_time(client, run_jobs, reader):
             return queued, jobs
     assert _run(again()) == (None, 1)
     assert run_jobs() == ["done"] and len(reader.calls) == 1
+
+
+# ── the upload ───────────────────────────────────────────────────────────────
+
+# A résumé's words, 6,000 characters of them, then its last line: past what
+# the upload's answer keeps of the text, within what the AI reads.
+LONG = "Ada Lovelace, ada@x.com. Engineer with experience in a team at a company. " * 80 + "Mentored the compiler team."
+
+
+def _upload(client, token, name, content):
+    from conftest import auth_headers
+    return client.post("/api/candidates/upload", headers=auth_headers(token),
+                       files={"file": (name, content, "text/plain")})
+
+
+async def _candidates(manager_id):
+    from app.core import database
+    from app.models.candidate import Candidate
+    async with database.async_session() as db:
+        return (await db.execute(select(func.count()).select_from(Candidate)
+                                 .where(Candidate.manager_id == manager_id))).scalar()
+
+
+def test_an_upload_answers_before_the_ai_reads_it(client, run_jobs, reader):
+    from conftest import auth_headers
+    token, m = register(client, "ru1@co.com")
+    r = _upload(client, token, "ada.txt", LONG.encode())
+    assert r.status_code == 200, r.text
+    said = r.json()
+    # Not asked while the upload waited, and nothing made up meanwhile.
+    assert reader.calls == []
+    assert (said["analysis_status"], said["predicted_role"], said["experience_level"],
+            said["total_experience_years"], said["skills"]) == ("pending", None, None, None, [])
+    # The answer and the server's copy keep the shorter text.
+    assert "full_text" not in said and "full_text" not in _copy(m["id"], said["id"])
+    assert run_jobs() == ["done"]
+    # The AI read the whole of it, from the database.
+    assert "Mentored the compiler team." in reader.calls[0]["prompt"]
+    listed = client.get("/api/candidates", headers=auth_headers(token)).json()["candidates"]
+    assert [(c["analysis_status"], c["predicted_role"]) for c in listed] == [("done", "Compiler Engineer")]
+
+
+def test_a_file_that_isnt_a_resume_is_done_at_once(client, run_jobs, reader):
+    token, _ = register(client, "ru2@co.com")
+    r = _upload(client, token, "list.txt", b"Milk, eggs, bread, apples, coffee, rice and tea for the week. " * 2)
+    assert r.status_code == 200, r.text
+    assert (r.json()["analysis_status"], r.json()["badges"]) == ("done", [{"label": "Not a Resume", "color": "orange"}])
+    assert run_jobs() == [] and reader.calls == []
+
+
+def test_a_candidate_is_saved_with_their_reading_or_not_at_all(client, run_jobs, reader, monkeypatch):
+    # Saved alone, they would wait for a reading that never comes.
+    from sqlalchemy.exc import OperationalError
+    from app.services import resume_analysis
+    token, m = register(client, "ru3@co.com")
+
+    async def refused(*args, **kwargs):
+        raise OperationalError("INSERT", {}, Exception("database is locked"))
+    monkeypatch.setattr(resume_analysis, "queue", refused)
+    r = _upload(client, token, "ada.txt", LONG.encode())
+    assert r.status_code == 500
+    assert _run(_candidates(m["id"])) == 0
+    assert resume_rag.candidates.get(m["id"], {}) == {}
