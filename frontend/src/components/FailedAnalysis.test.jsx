@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import Dashboard from './Dashboard';
@@ -50,6 +50,33 @@ describe("the manager's card", () => {
     expect(screen.getByText("Couldn't analyse this résumé. Delete it and upload it again.")).toBeTruthy();
     expect(screen.queryByText('Processing...')).toBeNull();
     expect(screen.queryByText('0y')).toBeNull();
+  });
+});
+
+describe('a résumé the AI is still reading, or has read', () => {
+  // Read in the background, after the upload has answered.
+  const READING = { id: 2, name: 'Bea', analysis_status: 'pending', predicted_role: null, skills: [], is_resume: true };
+  const NO_ROLE = { id: 3, name: 'Cy', analysis_status: 'done', predicted_role: null, skills: [], is_resume: true };
+  const showList = () => fireEvent.click(
+    within(screen.getByRole('group', { name: 'Show the collection as' })).getByRole('button', { name: 'List' }));
+
+  it('says it is being read, on its card and in the list', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    mocks.app = app({ candidates: [READING] });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(screen.getByText('Reading the résumé…')).toBeTruthy();
+    showList();
+    expect(within(screen.getByRole('table')).getByText('Reading the résumé…')).toBeTruthy();
+  });
+
+  it('shows no role it found as unknown, not as still processing', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    mocks.app = app({ candidates: [NO_ROLE] });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(screen.queryByText('Processing...')).toBeNull();
+    expect(screen.queryByText('Reading the résumé…')).toBeNull();
+    showList();
+    expect(screen.queryByText('Processing...')).toBeNull();
   });
 });
 
