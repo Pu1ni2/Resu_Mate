@@ -284,3 +284,89 @@ def test_an_erasure_code_is_queued_alike_for_anyone_and_sent_only_where_data_is_
     r = client.post("/api/privacy/erase", json={"email": INVITED, "code": _code_in(mailbox[0]["html"])})
     assert r.status_code == 200, r.text
     assert [(e["to"], e["status"]) for e in _run(_queued("erasure_code"))] == [(None, "sent"), (None, "skipped")]
+
+
+# ── an interview's invitation ────────────────────────────────────────────────
+
+async def _candidate(manager_id, name, email):
+    """A candidate of this manager's, in the database and, as create-interview
+    reads them, the server's memory."""
+    from app.core import database
+    from app.models.candidate import Candidate
+    from app.services.resume_rag import resume_rag
+    async with database.async_session() as db:
+        cand = Candidate(manager_id=manager_id, name=name, email=email)
+        db.add(cand)
+        await db.commit()
+    resume_rag.candidates.setdefault(manager_id, {})[cand.id] = {
+        "id": cand.id, "manager_id": manager_id, "name": name, "email": email, "is_resume": True}
+    return cand.id
+
+
+def _create(client, tok, cid, email):
+    from conftest import auth_headers
+    r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
+        "candidate_id": cid, "candidate_email": email, "candidate_name": "Typed Name", "role": "Data Engineer",
+        "send_invite": True,
+    })
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_the_server_knows_what_the_invitation_says():
+    import main  # noqa: F401
+    from app.services import outbox
+    assert "interview_invitation" in outbox.COMPOSERS
+
+
+def test_an_invitation_is_queued_at_once_and_sent_naming_the_candidate_and_company(client, run_jobs, mailbox):
+    import sqlite3
+    from conftest import _TMP_DB
+    tok, m = register(client, "k11@co.com")
+    db = sqlite3.connect(_TMP_DB)
+    db.execute("UPDATE hiring_managers SET company = 'Acme' WHERE id = ?", (m["id"],))
+    db.commit()
+    db.close()
+    cid = _run(_candidate(m["id"], "Ada", "ada@x.com"))
+    body = _create(client, tok, cid, "Ada@X.com")
+    assert body["invite"]["status"] == "queued" and mailbox == []
+    assert _run(_queued("interview_invitation")) == [
+        {"manager": m["id"], "to": None, "subject": None, "body": None, "status": "queued"}]
+    run_jobs()
+    assert [(mail["to"], mail["subject"]) for mail in mailbox] == [
+        ("ada@x.com", "Interview invitation from Acme: Data Engineer")]
+    # The candidate as their file names them.
+    assert "Hi Ada," in mailbox[0]["html"] and "Acme has invited you" in mailbox[0]["html"]
+
+
+def test_no_invitation_goes_to_an_interview_finished_or_gone_meanwhile(client, run_jobs, mailbox):
+    import sqlite3
+    from conftest import _TMP_DB
+    tok, m = register(client, "k12@co.com")
+    finished = _create(client, tok, _run(_candidate(m["id"], "Ada", "ada@x.com")), "ada@x.com")
+    gone = _create(client, tok, _run(_candidate(m["id"], "Bea", "bea@x.com")), "bea@x.com")
+    db = sqlite3.connect(_TMP_DB)
+    db.execute("UPDATE interviews SET status = 'completed' WHERE id = ?",
+               (finished["interview_config"]["interview_id"],))
+    db.execute("DELETE FROM interviews WHERE id = ?", (gone["interview_config"]["interview_id"],))
+    db.commit()
+    db.close()
+    run_jobs()
+    assert mailbox == []
+    assert [e["status"] for e in _run(_queued("interview_invitation"))] == ["skipped", "skipped"]
+
+
+def test_an_interview_has_one_invitation(client, mailbox):
+    from app.core import database
+    from app.services import outbox
+    tok, m = register(client, "k13@co.com")
+    body = _create(client, tok, _run(_candidate(m["id"], "Ada", "ada@x.com")), "ada@x.com")
+    assert body["invite"]["status"] == "queued"
+    iid = body["interview_config"]["interview_id"]
+
+    async def again():
+        # A reviewed draft for the same interview, say.
+        async with database.async_session() as db:
+            return await outbox.queue(db, "invitation_draft", manager_id=m["id"], interview_id=iid,
+                                      dedupe_key=f"invite:{iid}")
+    assert _run(again()) is None

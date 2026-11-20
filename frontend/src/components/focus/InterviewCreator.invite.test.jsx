@@ -90,6 +90,25 @@ describe('creating an interview', () => {
     expect(asked).toBe(2);
   });
 
+  it('says why when the invitation couldn’t go after all, with the link to share', async () => {
+    server(created({ invite: QUEUED }), { emails: [email('failed', 'The email service refused it.')] });
+    await create({ following: true });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByRole('status').textContent).toBe('The email service refused it.');
+    expect(screen.getByLabelText(/candidate sign-in link/i).value).toBe(LINK);
+  });
+
+  it('gives the link to send when nothing was emailed', async () => {
+    server(created());
+    const writeText = vi.fn().mockResolvedValue();
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    await create({ untick: true });
+    expect(sent.send_invite).toBe(false);
+    expect(screen.getByLabelText(/candidate sign-in link/i).value).toBe(LINK);
+    fireEvent.click(screen.getByRole('button', { name: /copy link/i }));
+    expect(writeText).toHaveBeenCalledWith(LINK);
+  });
+
   it('says why the invitation was not emailed', async () => {
     server(created({ invite: { email_id: null, status: 'refused', error: "Email isn't set up on this server. Share the portal link instead." } }));
     await create();
