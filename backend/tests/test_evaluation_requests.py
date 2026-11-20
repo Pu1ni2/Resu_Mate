@@ -31,7 +31,7 @@ async def _asked(manager_id, candidate_id, **fields):
     from app.core import database
     from app.models.evaluation import EvaluationRequest
     async with database.async_session() as db:
-        request = EvaluationRequest(manager_id=manager_id, candidate_id=candidate_id, role="Dev", **fields)
+        request = EvaluationRequest(**{"manager_id": manager_id, "candidate_id": candidate_id, "role": "Dev", **fields})
         db.add(request)
         await db.commit()
         return request.id
@@ -300,3 +300,67 @@ def test_what_it_was_asked_is_kept_to_size(client, run_jobs, agent):
             r = await db.get(EvaluationRequest, rid)
             return len(r.role), len(r.level), len(r.experience_required), len(r.job_description)
     assert _run(read()) == (200, 50, 50, evaluations.MAX_JOB_DESCRIPTION)
+
+
+# ── following one ────────────────────────────────────────────────────────────
+
+def _followed(client, token, request_id, status=200):
+    r = client.get(f"/api/chat/evaluations/{request_id}", headers=auth_headers(token))
+    assert r.status_code == status, r.text
+    return r.json()
+
+
+def test_one_asked_for_is_followed_until_it_is_written(client, run_jobs, agent):
+    token, m = register(client, "er13@co.com")
+    cid = _run(_candidate(m["id"]))
+    rid = _run(_ask(m["id"], cid, role="Dev", level="Senior", anonymized=True))
+    assert _followed(client, token, rid) == {
+        "request_id": rid, "candidate_id": cid, "status": "pending", "error": None, "role": "Dev",
+        "level": "Senior", "anonymized": True, "evaluation": None}
+    run_jobs()
+    said = _followed(client, token, rid)
+    [kept] = _run(_kept(m["id"]))
+    assert (said["status"], said["error"]) == ("done", None)
+    assert (said["evaluation"]["evaluation_id"], said["evaluation"]["report"], said["evaluation"]["role"]) == (
+        kept["id"], _Agent.report, "Dev")
+
+
+def test_one_that_couldnt_be_written_says_why(client, run_jobs, agent):
+    from app.services import evaluations
+    token, m = register(client, "er14@co.com")
+    rid = _run(_ask(m["id"], _run(_candidate(m["id"])), role="Dev"))
+    agent.report = None
+    soon = datetime.utcnow()
+    run_jobs()
+    run_jobs(now=soon + timedelta(minutes=15))
+    run_jobs(now=soon + timedelta(minutes=30))
+    said = _followed(client, token, rid)
+    assert (said["status"], said["error"], said["evaluation"]) == ("failed", evaluations.NOT_WRITTEN, None)
+
+
+def test_only_the_managers_own_is_followed(client):
+    token, m = register(client, "er15@co.com")
+    other_token, _ = register(client, "er15b@co.com")
+    rid = _run(_asked(m["id"], _run(_candidate(m["id"]))))
+    _followed(client, other_token, rid, status=404)
+    _followed(client, token, 99999, status=404)
+
+
+def test_the_file_finds_the_one_still_being_written(client):
+    token, m = register(client, "er16@co.com")
+    _, other = register(client, "er16b@co.com")
+    cid = _run(_candidate(m["id"]))
+
+    def listed():
+        return client.get(f"/api/chat/candidates/{cid}/evaluations", headers=auth_headers(token)).json()
+    assert listed() == {"evaluations": [], "asked": None}
+    # The newest of those still being written.
+    _run(_asked(m["id"], cid, role="Analyst"))
+    waiting = _run(_asked(m["id"], cid, role="Dev"))
+    # Not one written already, though newer, nor one of another candidate's,
+    # nor another manager's (as no page asks).
+    _run(_asked(m["id"], cid, role="Designer", status="done"))
+    _run(_asked(m["id"], _run(_candidate(m["id"], "Bea", "bea@x.com"))))
+    _run(_asked(other["id"], cid))
+    asked = listed()["asked"]
+    assert (asked["request_id"], asked["status"], asked["role"]) == (waiting, "pending", "Dev")
