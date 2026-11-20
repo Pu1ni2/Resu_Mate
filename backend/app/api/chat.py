@@ -906,7 +906,7 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
             invite = {"email_id": None, "status": "refused", "error": refused}
         else:
             email_id = await outbox.queue(db, "interview_invitation", manager_id=mgr, interview_id=interview.id,
-                                          counts_to_quota=True, dedupe_key=f"invite:{interview.id}")
+                                          counts_to_quota=True, dedupe_key=email_kinds.invite_key(interview.id))
             invite = {"email_id": email_id, "status": "queued", "error": None}
         await db.commit()
     return {

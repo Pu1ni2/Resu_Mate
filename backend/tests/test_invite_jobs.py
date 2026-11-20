@@ -340,16 +340,6 @@ async def _manager(manager_id, **values):
         await db.commit()
 
 
-async def _change_item(item_id, **values):
-    from app.core import database
-    from app.models.invite_batch import InviteBatchItem
-    async with database.async_session() as db:
-        item = await db.get(InviteBatchItem, item_id)
-        for column, value in values.items():
-            setattr(item, column, value)
-        await db.commit()
-
-
 async def _email(item_id):
     from app.core import database
     from app.models.invite_batch import InviteBatchItem
@@ -418,55 +408,19 @@ def test_the_invitation_goes_once_with_no_connection_held(client, run_jobs, ques
     _run(_manager(m["id"], company="Acme"))
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
-    assert run_jobs() == ["done"]
+    # The item's job, then its email's, by the outbox.
+    assert run_jobs() == ["done", "done"]
     assert [(mail["to"], mail["subject"], mail["held"]) for mail in mailbox] == [
         ("ada@x.com", "Interview invitation from Acme: Data Engineer", 0)]
     assert "Hi Ada," in mailbox[0]["html"]
     email = _run(_email(item))
-    assert (email["status"], email["error"], email["item"]) == ("sent", None, "done")
+    assert (email["status"], email["error"], email["item"]) == ("queued", None, "done")
     # Counted against the day's emails.
     assert _run(_sent_today(m["id"])) == 1
     # Its job queued again, as a retry would, sends nothing more and writes nothing again.
     _run(_requeue(item, m["id"]))
     assert run_jobs() == ["done"]
     assert (len(mailbox), len(drafts), len(questions)) == (1, 1, 1)
-
-
-def test_an_invitation_a_stopped_run_was_sending_isnt_sent_again(client, run_jobs, questions, drafts, mailbox):
-    from app.services import invite_batches
-    _, m = register(client, "ij13@co.com")
-    cid = _run(_candidate(m["id"]))
-    interview = _run(_interview(m["id"], cid, "Data Engineer", "pending"))
-    [item] = _run(_queued(m["id"], [cid], send_emails=True))
-    # Where a run stopped, at a restart: the draft kept, the email claimed.
-    _run(_change_item(item, status="drafting", interview_id=interview, email_subject="Interview",
-                      email_body="Hello", email_drafted=True, email_status="sending"))
-    assert run_jobs() == ["done"]
-    assert (mailbox, drafts, questions) == ([], [], [])
-    email = _run(_email(item))
-    assert (email["status"], email["error"], email["item"]) == ("failed", invite_batches.UNSURE, "done")
-    assert _run(_sent_today(m["id"])) == 0
-
-
-def test_an_invitation_another_run_claimed_meanwhile_is_left_to_it(client, run_jobs, questions, mailbox,
-                                                                   monkeypatch):
-    # Two runs of one job at once: one whose hold ran out while it was still
-    # going, and the one that took the job up. Only the one that claims the
-    # email sends it.
-    from app.services import email_quota
-    _, m = register(client, "ij17@co.com")
-    cid = _run(_candidate(m["id"]))
-    [item] = _run(_queued(m["id"], [cid], send_emails=True))
-    real = email_quota.refusal
-
-    async def claimed_meanwhile(db, manager):
-        await _change_item(item, email_status="sending")
-        return await real(db, manager)
-    monkeypatch.setattr(email_quota, "refusal", claimed_meanwhile)
-    assert run_jobs() == ["done"]
-    assert mailbox == []
-    # Still the other run's to finish.
-    assert (_run(_email(item))["status"], _run(_email(item))["item"]) == ("sending", "drafting")
 
 
 @pytest.mark.parametrize("why", ["unconfirmed", "limit", "no_email"])
@@ -493,24 +447,14 @@ def test_an_invitation_that_may_not_go_says_why(client, run_jobs, questions, mai
     assert email["subject"] == "Interview" and len(_run(_interviews(m["id"]))) == 1
 
 
-@pytest.mark.parametrize("answer", ["refused", "unreachable"])
-def test_an_invitation_the_email_service_doesnt_take_says_why(client, run_jobs, questions, mailbox, answer):
-    from app.core.errors import friendly_error
-    from app.services import invite_batches
-    _, m = register(client, f"ij15-{answer}@co.com")
+def test_an_invitation_the_email_service_refuses_counts_for_nothing(client, run_jobs, questions, mailbox):
+    _, m = register(client, "ij15@co.com")
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
-
-    def service():
-        if answer == "unreachable":
-            raise ConnectionError("SendGrid is down")
-        return "refused"
-    mailbox.stub.answer = service
-    assert run_jobs() == ["done"]
-    said = invite_batches.NOT_ACCEPTED if answer == "refused" else \
-        friendly_error(ConnectionError(), "The email couldn't be sent.")
+    mailbox.stub.answer = lambda: "refused"
+    assert run_jobs() == ["done", "done"]
     email = _run(_email(item))
-    assert (email["status"], email["error"], email["item"]) == ("failed", said, "done")
+    assert (email["status"], email["error"], email["item"]) == ("queued", None, "done")
     assert len(mailbox) == 1 and _run(_sent_today(m["id"])) == 0
 
 

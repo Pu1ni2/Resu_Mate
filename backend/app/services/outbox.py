@@ -28,6 +28,10 @@ SEND = "email.send"
 # Someone is waiting at a page for these: they go before any other email.
 URGENT = ("sign_in_code", "erasure_code", "password_reset")
 
+# An email still to go. Any other status has ended: sent, failed, skipped or
+# cancelled.
+PENDING = ("held", "queued")
+
 NOT_SET_UP = "Email isn't set up on this server."
 REFUSED = "The email service refused it."
 NO_ANSWER = "The email service didn't answer, so it wasn't sent."

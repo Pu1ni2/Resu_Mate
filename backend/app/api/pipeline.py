@@ -16,7 +16,7 @@ from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag
-from app.services import email_kinds, email_quota, interview_modes, invite_batches, outbox, screening_runs  # noqa: F401
+from app.services import email_kinds, email_quota, interview_modes, invite_batches, outbox, screening_runs
 from app.services.email_service import email_service
 from app.models.candidate import Interview
 from app.models.screening import ScreeningRun
@@ -227,9 +227,6 @@ async def batch_progress(batch_id: int, user=Depends(get_current_user), db: Asyn
     return await invite_batches.view(db, batch)
 
 
-ALREADY_INVITED = "This interview's invitation has gone already, or is on its way."
-
-
 @router.post("/send-invites")
 @limiter.limit("20/hour")
 async def send_invites(
@@ -273,9 +270,9 @@ async def send_invites(
             outcome["email"] = interview.candidate_email
             email_id = await outbox.queue(db, "invitation_draft", manager_id=user.id, interview_id=interview.id,
                                           subject=draft.subject, body=draft.body, counts_to_quota=True,
-                                          dedupe_key=f"invite:{interview.id}")
+                                          dedupe_key=email_kinds.invite_key(interview.id))
             if email_id is None:
-                outcome["error"] = ALREADY_INVITED
+                outcome["error"] = email_kinds.ALREADY_INVITED
             else:
                 outcome.update(email_id=email_id, status="queued", error=None)
         # Each place held, and each email queued, one draft at a time.

@@ -9,7 +9,7 @@ import pytest
 from conftest import auth_headers
 
 from app.agents.hr_agent import fill_placeholders, hr_agent
-from app.services.email_service import email_service
+from app.services.email_service import invitation_email
 from app.services.resume_rag import resume_rag
 from app.tools.openai_tool import openai_tool
 
@@ -62,17 +62,9 @@ def test_the_draft_route_signs_with_the_signed_in_manager(client, monkeypatch):
     assert r.json()["body"].endswith("Best,\nMorgan Lee\nFieldwork")
 
 
-@pytest.mark.asyncio
-async def test_an_invitation_names_the_company_inviting(monkeypatch):
-    sent = []
-
-    async def send(to_email, subject, html):
-        sent.append((subject, html))
-        return True
-    monkeypatch.setattr(email_service, "send", send)
-    await email_service.send_interview_invitation("ada@x.com", "Ada", "Designer", "https://x/login", company="Fieldwork")
-    await email_service.send_interview_invitation("ada@x.com", "Ada", "Designer", "https://x/login")
-    (with_company, html), (without, plain) = sent
+def test_an_invitation_names_the_company_inviting():
+    with_company, html = invitation_email("Ada", "Designer", "https://x/login", company="Fieldwork")
+    without, plain = invitation_email("Ada", "Designer", "https://x/login")
     assert with_company == "Interview invitation from Fieldwork: Designer"
     assert "Fieldwork has invited you" in html
     assert without == "Interview Invitation: Designer"

@@ -44,9 +44,9 @@ class InviteBatchItem(Base):
     code, never an error's text). Each step is kept as it's done, so a job
     run again picks up where the last one stopped.
 
-    email_status: None until an email is due, then sending (claimed before
-    it's sent, so a job run again never sends it twice), sent, or refused
-    or failed, with email_error saying why.
+    email_status: None until an email is due; then queued, the email in the
+    outbox (email_id, app/models/email_outbox.py), which says how it went;
+    or refused or failed, with email_error saying why none was queued.
     """
     __tablename__ = "invite_batch_items"
 
@@ -68,6 +68,8 @@ class InviteBatchItem(Base):
     email_drafted = Column(Boolean)
     email_status = Column(String(16))
     email_error = Column(String(300))
+    # The invitation in the outbox, once queued.
+    email_id = Column(Integer)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     finished_at = Column(DateTime)
 

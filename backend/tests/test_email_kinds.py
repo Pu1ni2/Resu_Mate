@@ -425,7 +425,7 @@ def test_a_reviewed_draft_is_queued_with_its_words_and_sent_as_written(client, r
 
 
 def test_sending_again_queues_no_second_invitation(client, run_jobs, mailbox):
-    from app.api.pipeline import ALREADY_INVITED
+    from app.services.email_kinds import ALREADY_INVITED
     tok, m = register(client, "k15@co.com")
     iid = _run(_interview_for(m["id"], "ada@x.com"))
     draft = {"interview_id": iid, "subject": "A chat?", "body": "Could we talk?"}

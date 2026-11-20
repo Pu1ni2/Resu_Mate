@@ -20,7 +20,6 @@ from app.core.config import settings
 from app.models.auth import HiringManager
 from app.models.candidate import AuditLog
 from app.models.email_outbox import EmailOutbox
-from app.services import db_service
 
 SENT = "email.sent"
 
@@ -57,20 +56,11 @@ async def can_send(db: AsyncSession, manager_id: int) -> bool:
     return await sent_today(db, manager_id) < settings.daily_email_limit
 
 
-async def refusal(db: AsyncSession, manager) -> Optional[str]:
-    """Why this manager can't email a candidate now, or None when they can:
-    their address isn't confirmed yet, or they've sent the day's emails."""
-    if not manager.email_verified:
-        return NOT_CONFIRMED
-    if not await can_send(db, manager.id):
-        return limit_reached()
-    return None
-
-
 async def reserve(db: AsyncSession, manager) -> Optional[str]:
     """Hold one of the manager's places for the day, for an email the caller
     queues in this same transaction, counting toward the limit; or say why
-    there's none, as refusal does.
+    there's none: their address isn't confirmed yet, or they've sent the
+    day's emails.
 
     Two at once can't both take the last place: this writes the manager's
     row before counting, so a second reservation waits until this
@@ -83,8 +73,3 @@ async def reserve(db: AsyncSession, manager) -> Optional[str]:
     if not await can_send(db, manager.id):
         return limit_reached()
     return None
-
-
-async def record_sent(db: AsyncSession, manager_id: int, to_email: str, kind: str) -> None:
-    """Count one email sent outside the outbox. Commits, as the audit log does."""
-    await db_service.log_event(db, SENT, actor="manager", manager_id=manager_id, target_email=to_email, detail=kind)

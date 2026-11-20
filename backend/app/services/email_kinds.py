@@ -53,6 +53,16 @@ async def interview_done(db, email):
 
 # ── an interview's invitation ────────────────────────────────────────────────
 
+# One invitation per interview, whichever way it goes (the interview's own
+# page, a reviewed draft, a batch): each is queued with the interview's key,
+# held while it waits and once it has gone.
+ALREADY_INVITED = "This interview's invitation has gone already, or is on its way."
+
+
+def invite_key(interview_id: int) -> str:
+    return f"invite:{interview_id}"
+
+
 @outbox.composer("interview_invitation")
 async def interview_invitation(db, email):
     """The invitation to an interview, to the address it's for, naming the

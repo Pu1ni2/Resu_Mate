@@ -100,12 +100,6 @@ class EmailService:
         """
         return await self.deliver(to_email, subject, html_body) == SENT
 
-    async def send_interview_invitation(
-        self, to_email: str, candidate_name: str, role: str, login_url: str, company: str = ""
-    ) -> bool:
-        """The invitation (invitation_email), sent at once."""
-        return await self.send(to_email, *invitation_email(candidate_name, role, login_url, company))
-
 
 def reviewed_draft_email(subject: str, body: str, login_url: str = "") -> tuple:
     """A plain-text email the manager reviewed, as written: its words

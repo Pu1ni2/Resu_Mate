@@ -10,8 +10,8 @@ The request keeps the batch and an item per candidate
 Each step is kept as it's done, in the item's status (queued, questions,
 drafting, then done), so a run that stops partway, at a restart or for a
 retry, goes on from there: an interview is never made twice, nor an
-invitation sent twice. No database session is held while the AI writes or
-an email goes.
+invitation queued twice. No database session is held while the AI writes;
+the invitation goes by the outbox (app/services/outbox.py).
 """
 import logging
 from datetime import datetime
@@ -23,11 +23,11 @@ from sqlalchemy.exc import IntegrityError
 from app.agents.hr_agent import hr_agent
 from app.core import database
 from app.core.config import settings
-from app.core.errors import friendly_error
 from app.models.auth import HiringManager
 from app.models.candidate import Candidate, Interview
+from app.models.email_outbox import EmailOutbox
 from app.models.invite_batch import InviteBatch, InviteBatchItem
-from app.services import email_quota, interview_setup, jobs
+from app.services import email_kinds, email_quota, interview_setup, jobs, outbox
 from app.services.email_service import email_service
 from app.services.hidden_names import hides_names
 from app.services.resume_rag import is_sample, primary_email, resume_rag
@@ -51,11 +51,7 @@ INTERVIEW_FAILED = "The interview couldn't be created. Try again in a moment."
 NOT_FINISHED = "The invitation couldn't be finished."
 DRAFT_FAILED = "The email couldn't be drafted, so a standard one is here instead."
 NOT_SET_UP = "Email isn't set up on this server. Share the portal link instead."
-NOT_ACCEPTED = "The email service didn't accept this invite."
 NO_INTERVIEW = "The interview was deleted, so no invitation went."
-# A run stopped while it sent the email, at a restart say: whether it went
-# can't be known, and sending it again could send it twice.
-UNSURE = "It isn't known whether this invitation went: it was being sent when the server stopped, so it wasn't sent again."
 
 
 def skip_reason(candidate: dict) -> Optional[str]:
@@ -134,18 +130,31 @@ async def start(db, manager_id: int, *, client_key: str, candidate_ids: list, **
     return batch
 
 
-def _outcome(item, row, interview) -> dict:
+def _email_state(item, email) -> tuple:
+    """How the item's invitation stands, and why it didn't go: its email's
+    own status once queued (queued, sent, failed, skipped...), or the item's
+    when none was queued (refused or failed, or None when none was due).
+    An email no longer kept, deleted a while after it ended, has ended."""
+    if item.email_id is None:
+        return item.email_status, item.email_error
+    return (email.status, email.error) if email is not None else (None, None)
+
+
+def _outcome(item, row, interview, email) -> dict:
     """One candidate's part of a batch, in the shape the batch invite
     answered with, and how far it got (status: queued, questions, drafting,
-    then done, skipped or failed)."""
+    then done, skipped or failed), its invitation followed until it has
+    gone (email_status)."""
     candidate = resume_rag.record_from_row(row) if row is not None else None
+    email_status, email_error = _email_state(item, email)
     outcome = {
         "item_id": item.id, "candidate_id": item.candidate_id, "status": item.status,
         "reused": bool(item.reused), "name": (candidate or {}).get("name") or "",
         "email": interview.candidate_email if interview is not None else (primary_email(candidate) if candidate else ""),
         "interview_created": interview is not None,
         "interview_id": interview.id if interview is not None else None,
-        "email_sent": item.email_status == "sent",
+        "email_status": email_status,
+        "email_sent": email_status == "sent",
     }
     if interview is not None:
         outcome["mode"] = interview.mode
@@ -159,14 +168,15 @@ def _outcome(item, row, interview) -> dict:
                        email_drafted=bool(item.email_drafted))
         if item.email_drafted is False:
             outcome["email_error"] = DRAFT_FAILED
-    if item.email_status in ("refused", "failed"):
-        outcome["email_send_error"] = item.email_error
+    if email_error:
+        outcome["email_send_error"] = email_error
     return outcome
 
 
 async def view(db, batch: InviteBatch) -> dict:
     """The batch as its page follows it: each candidate's outcome, the
-    totals, and whether every one has finished."""
+    totals, and whether every one has finished, its invitation gone or
+    failed included."""
     items = (await db.execute(select(InviteBatchItem).where(InviteBatchItem.batch_id == batch.id)
                               .order_by(InviteBatchItem.position))).scalars().all()
     rows = {row.id: row for row in (await db.execute(select(Candidate).where(
@@ -175,10 +185,15 @@ async def view(db, batch: InviteBatch) -> dict:
     interviews = {interview.id: interview for interview in (await db.execute(select(Interview).where(
         Interview.id.in_([item.interview_id for item in items if item.interview_id]),
         Interview.manager_id == batch.manager_id))).scalars()}
-    outcomes = [_outcome(item, rows.get(item.candidate_id), interviews.get(item.interview_id)) for item in items]
+    emails = {email.id: email for email in (await db.execute(select(EmailOutbox).where(
+        EmailOutbox.id.in_([item.email_id for item in items if item.email_id]),
+        EmailOutbox.manager_id == batch.manager_id))).scalars()}
+    outcomes = [_outcome(item, rows.get(item.candidate_id), interviews.get(item.interview_id),
+                         emails.get(item.email_id)) for item in items]
     return {
         "batch_id": batch.id,
-        "finished": all(item.status in FINISHED for item in items),
+        "finished": (all(item.status in FINISHED for item in items)
+                     and not any(o["email_status"] in outbox.PENDING for o in outcomes)),
         "total": len(outcomes),
         "interviews_created": sum(1 for o in outcomes if o["interview_created"]),
         "emails_sent": sum(1 for o in outcomes if o["email_sent"]),
@@ -330,55 +345,45 @@ async def _write_draft(item_id: int) -> None:
 
 
 async def _send(item_id: int) -> None:
-    """The invitation emailed, when the batch asked for that, once: the item
-    is claimed (email_status "sending") before the email goes, so a run
-    again never sends it a second time. One that finds it claimed, by a run
-    that stopped meanwhile, can't tell whether it went, and says so."""
+    """The invitation, when the batch asked for it, queued in the
+    transaction that ends the item, its place in the day's limit held at
+    once; the outbox's job sends it, trying again while the email service
+    is busy. A run again finds the item ended, and so does a run at the same
+    time, one whose hold on the job ran out: only the run that ends the item
+    queues. One invitation per interview: an open one used again, invited
+    already, gets no second.
+
+    The job sent it itself, claiming the item first so a run again wouldn't
+    send it twice; a run stopped while it sent left it unknown whether it
+    had gone."""
     async with database.async_session() as db:
         found = await _unfinished(db, item_id)
         if found is None or found[0].status != "drafting" or found[0].email_subject is None:
             return
         item, batch = found
+        ended = (await db.execute(update(InviteBatchItem).where(
+            InviteBatchItem.id == item_id, InviteBatchItem.status == "drafting",
+        ).values(status="done", finished_at=datetime.utcnow()))).rowcount == 1
+        if not ended:
+            return
         interview = await db.get(Interview, item.interview_id) if item.interview_id else None
         manager = await db.get(HiringManager, batch.manager_id)
-        refused = None
-        if item.email_status == "sending":
-            refused = ("failed", UNSURE)
-        elif interview is None:
+        email_id, refused = None, None
+        if interview is None:
             refused = ("failed", NO_INTERVIEW)
         elif not email_service.configured:
             refused = ("refused", NOT_SET_UP)
-        elif reason := await email_quota.refusal(db, manager):
+        elif reason := await email_quota.reserve(db, manager):
             refused = ("refused", reason)
-        if refused:
-            item.email_status, item.email_error = refused
-            item.status, item.finished_at = "done", datetime.utcnow()
-            await db.commit()
-            return
-        claimed = (await db.execute(update(InviteBatchItem).where(
-            InviteBatchItem.id == item_id, InviteBatchItem.email_status.is_(None),
-        ).values(email_status="sending"))).rowcount == 1
-        candidate = await _candidate(db, item, batch)
-        to, manager_id, role, company = interview.candidate_email, batch.manager_id, batch.role, manager.company
-        await db.commit()
-    if not claimed:
-        return
-    name = (candidate or {}).get("name") or "Candidate"
-    try:
-        sent = await email_service.send_interview_invitation(to, name, role, settings.candidate_login_url,
-                                                             company=company or "")
-        error = None if sent else NOT_ACCEPTED
-    except Exception as e:
-        logger.warning("batch invitation not sent: %s", type(e).__name__)
-        sent, error = False, friendly_error(e, "The email couldn't be sent.")
-    async with database.async_session() as db:
-        await db.execute(update(InviteBatchItem).where(
-            InviteBatchItem.id == item_id, InviteBatchItem.email_status == "sending",
-        ).values(email_status="sent" if sent else "failed", email_error=error, status="done",
-                 finished_at=datetime.utcnow()))
-        if sent:
-            # Counted against the day's emails even if the item went meanwhile.
-            await email_quota.record_sent(db, manager_id, to, "interview invitation")
+        else:
+            email_id = await outbox.queue(db, "interview_invitation", manager_id=batch.manager_id,
+                                          interview_id=interview.id, counts_to_quota=True,
+                                          dedupe_key=email_kinds.invite_key(interview.id))
+            if email_id is None:
+                refused = ("refused", email_kinds.ALREADY_INVITED)
+        email_status, email_error = refused or ("queued", None)
+        await db.execute(update(InviteBatchItem).where(InviteBatchItem.id == item_id).values(
+            email_id=email_id, email_status=email_status, email_error=email_error))
         await db.commit()
 
 
@@ -393,8 +398,8 @@ async def _prepare_failed(db, job, code) -> None:
 @jobs.handler(PREPARE, backoff=(30, 600), on_failure=_prepare_failed)
 async def prepare_invite(payload: dict) -> None:
     """Prepare one candidate's invitation, an item of a batch, from wherever
-    it got to: the interview, its questions, the draft, then the email when
-    the batch asked for it."""
+    it got to: the interview, its questions, the draft, then the email
+    queued when the batch asked for it."""
     item_id = payload["item_id"]
     await _make_interview(item_id)
     await _write_questions(item_id)

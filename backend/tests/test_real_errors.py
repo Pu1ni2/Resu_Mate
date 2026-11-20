@@ -246,11 +246,12 @@ def test_a_batchs_interviews_and_emails(client, run_jobs, monkeypatch):
 
     monkeypatch.setattr(hr_agent, "draft_email", _aboom)
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send_interview_invitation", _aboom)
+    monkeypatch.setattr(email_service, "deliver", _aboom)
     drafted_and_sent = batch("Dev")
     # The standard one stands in: nothing to try again.
     assert drafted_and_sent["email_error"] == "The email couldn't be drafted, so a standard one is here instead."
-    assert drafted_and_sent["email_send_error"] == "The email couldn't be sent. Try again in a moment."
+    # The outbox's own words, whatever went wrong.
+    assert drafted_and_sent["email_send_error"] == "The email service didn't answer, so it wasn't sent."
 
     from app.services import interview_setup
     monkeypatch.setattr(interview_setup, "add_interview", _aboom)

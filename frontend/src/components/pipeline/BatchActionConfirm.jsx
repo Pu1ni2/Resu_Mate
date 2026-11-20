@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Zap, Video, Mic, CheckCircle, Loader, AlertCircle, Send } from 'lucide-react';
+import { pending } from '../../services/emailStatus';
 import { followBatch, newClientKey, startBatch } from '../../services/inviteBatches';
 import { toast } from '../../services/notify';
 import { useAvatarInterviews } from '../../services/features';
@@ -82,7 +83,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
 
           {/* Per-candidate outcome, and why when someone wasn't invited or emailed */}
           <div style={styles.outcomeList}>
-            {batch.outcomes.map(o => <Outcome key={o.candidate_id} o={o} sending={batch.send_emails} />)}
+            {batch.outcomes.map(o => <Outcome key={o.candidate_id} o={o} />)}
           </div>
 
           {batch.interviews_created > 0 && (batch.emails_sent < batch.interviews_created ? (
@@ -120,7 +121,7 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
             This carries on if you close it. Each interview appears under Interviews as soon as it’s ready.
           </p>
           <div style={styles.outcomeList}>
-            {batch.outcomes.map(o => <Outcome key={o.candidate_id} o={o} sending={batch.send_emails} />)}
+            {batch.outcomes.map(o => <Outcome key={o.candidate_id} o={o} />)}
           </div>
           <button onClick={onDone} style={styles.secondaryBtn}>Close</button>
         </div>
@@ -263,20 +264,21 @@ export default function BatchActionConfirm({ selectedCandidates, role, onClose, 
 const UNDER_WAY = {
   queued: 'Waiting its turn…',
   questions: 'Writing the interview questions…',
+  drafting: 'Writing the invitation…',
 };
 
 // One candidate: what's under way for them, then how it went, and why when
 // they weren't invited or emailed.
-function Outcome({ o, sending }) {
+function Outcome({ o }) {
   const who = (
     <span style={{ flex: 1, minWidth: 0 }}>
       <span style={{ fontSize: 14, fontWeight: 600 }}>{o.name || `Candidate #${o.candidate_id}`}</span>
       {o.email && <span style={{ fontSize: 12, color: 'var(--color-ink-subtle)', marginLeft: 8 }}>{o.email}</span>}
     </span>
   );
-  const step = o.status === 'drafting'
-    ? (sending ? 'Writing and sending the invitation…' : 'Writing the invitation…')
-    : UNDER_WAY[o.status];
+  // Their invitation, once queued, goes a moment later by the server's
+  // outbox, or minutes later when the email service is busy.
+  const step = pending({ status: o.email_status }) ? 'Sending the invitation…' : UNDER_WAY[o.status];
   if (step) {
     return (
       <div style={{ ...styles.outcomeRow, flexWrap: 'wrap' }}>

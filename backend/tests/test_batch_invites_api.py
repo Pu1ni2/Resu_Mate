@@ -44,11 +44,11 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject})
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
 
 
@@ -92,7 +92,8 @@ def test_a_batch_answers_at_once_and_its_jobs_do_the_rest(client, run_jobs, no_a
     assert (started["finished"], started["total"]) == (False, 2)
     assert [(o["candidate_id"], o["status"], o["interview_created"]) for o in started["outcomes"]] == [
         (ada, "queued", False), (bo, "queued", False)]
-    assert run_jobs() == ["done", "done"]
+    # Each candidate's job, then their invitation's, by the outbox.
+    assert run_jobs() == ["done"] * 4
     done = _progress(client, tok, started["batch_id"])
     assert (done["finished"], done["interviews_created"], done["emails_sent"], done["skipped"]) == (True, 2, 2, 0)
     assert done["portal_link"] == settings.candidate_login_url
