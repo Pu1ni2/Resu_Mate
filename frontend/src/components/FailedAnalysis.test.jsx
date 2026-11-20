@@ -1,10 +1,12 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import Dashboard from './Dashboard';
 import CandidateDashboard from './CandidateDashboard';
+import api, { candidatesAPI } from '../services/api';
+import { TOAST_EVENT } from '../services/notify';
 
 /* A résumé the AI couldn't analyse was shown as "Professional · Entry · 0y" to
  * the manager, and as "Professional · Mid" to the candidate. The server marks it
@@ -51,6 +53,63 @@ describe("the manager's card", () => {
     expect(screen.getByRole('button', { name: "Read Ada's résumé again" })).toBeTruthy();
     expect(screen.queryByText('Processing...')).toBeNull();
     expect(screen.queryByText('0y')).toBeNull();
+  });
+});
+
+/* It said to delete the candidate and upload the file again. The AI reads it
+ * again instead, and the card shows it being read. */
+describe('reading a résumé again', () => {
+  const READ_AGAIN = { ...FAILED, analysis_failed: false, analysis_status: 'pending' };
+  let toasts;
+  const onToast = e => toasts.push(e.detail);
+
+  beforeEach(() => {
+    toasts = [];
+    window.addEventListener(TOAST_EVENT, onToast);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+  });
+
+  afterEach(() => {
+    window.removeEventListener(TOAST_EVENT, onToast);
+  });
+
+  it('asks for it from the card, and shows it being read', async () => {
+    const readAgain = vi.spyOn(candidatesAPI, 'readAgain').mockResolvedValue({ data: READ_AGAIN });
+    const setCandidates = vi.fn();
+    mocks.app = app({ candidates: [FAILED], setCandidates });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: "Read Ada's résumé again" }));
+    await waitFor(() => expect(setCandidates).toHaveBeenCalledTimes(1));
+    expect(readAgain).toHaveBeenCalledWith(1);
+    const [update] = setCandidates.mock.calls[0];
+    expect(update([FAILED, { id: 9, name: 'Bo' }]).map(c => [c.id, c.analysis_status])).toEqual([[1, 'pending'], [9, undefined]]);
+    // The card isn't selected by it.
+    expect(mocks.app.toggleSelection).not.toHaveBeenCalled();
+  });
+
+  it('asks for it from the list too', async () => {
+    const readAgain = vi.spyOn(candidatesAPI, 'readAgain').mockResolvedValue({ data: READ_AGAIN });
+    mocks.app = app({ candidates: [FAILED], setCandidates: vi.fn() });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(within(screen.getByRole('group', { name: 'Show the collection as' })).getByRole('button', { name: 'List' }));
+    fireEvent.click(within(screen.getByRole('table')).getByRole('button', { name: "Read Ada's résumé again" }));
+    await waitFor(() => expect(readAgain).toHaveBeenCalledWith(1));
+  });
+
+  it("asks the server at the candidate's own address", async () => {
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ data: READ_AGAIN });
+    await candidatesAPI.readAgain(7);
+    expect(post).toHaveBeenCalledWith('/candidates/7/analyze');
+  });
+
+  it("says why, when it can't be", async () => {
+    vi.spyOn(candidatesAPI, 'readAgain').mockRejectedValue({ response: { data: { detail: 'This résumé has been read already.' } } });
+    const setCandidates = vi.fn();
+    mocks.app = app({ candidates: [FAILED], setCandidates });
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: "Read Ada's résumé again" }));
+    await waitFor(() => expect(toasts).toEqual([{ message: 'This résumé has been read already.', type: 'error' }]));
+    expect(setCandidates).not.toHaveBeenCalled();
   });
 });
 

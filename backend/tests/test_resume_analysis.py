@@ -309,3 +309,67 @@ def test_a_candidate_is_saved_with_their_reading_or_not_at_all(client, run_jobs,
     assert r.status_code == 500
     assert _run(_candidates(m["id"])) == 0
     assert resume_rag.candidates.get(m["id"], {}) == {}
+
+
+# ── reading it again ─────────────────────────────────────────────────────────
+
+async def _failed(manager_id, in_memory=False, **fields):
+    """A candidate whose reading failed, as the job leaves them; with this
+    server's copy of them, as the list leaves it, or none (after a
+    restart)."""
+    from app.core import database
+    from app.models.candidate import Candidate
+    async with database.async_session() as db:
+        row = Candidate(**{"manager_id": manager_id, "name": "Ada", "email": "ada@x.com", "is_resume": True,
+                           "full_text": "Ada Lovelace, ada@x.com. Compiler engineer at Acme.",
+                           "analysis_status": "failed", "analysis_failed": True, **fields})
+        db.add(row)
+        await db.commit()
+        if in_memory:
+            resume_rag.add_missing(manager_id, [resume_rag.record_from_row(row)])
+        return row.id
+
+
+def _read_again(client, token, candidate_id, status=202):
+    from conftest import auth_headers
+    r = client.post(f"/api/candidates/{candidate_id}/analyze", headers=auth_headers(token))
+    assert r.status_code == status, r.text
+    return r.json()
+
+
+@pytest.mark.parametrize("kept, in_memory", [("failed", True), ("failed", False), (None, False)])
+def test_a_resume_that_couldnt_be_read_is_read_again(client, run_jobs, reader, kept, in_memory):
+    # None: one whose reading failed before the job read résumés.
+    from conftest import auth_headers
+    token, m = register(client, f"rr1-{kept}-{int(in_memory)}@co.com")
+    cid = _run(_failed(m["id"], in_memory=in_memory, analysis_status=kept))
+    said = _read_again(client, token, cid)
+    assert (said["id"], said["analysis_status"], said["analysis_failed"]) == (cid, "pending", False)
+    # The page asks after them, from the server's copy.
+    asked = client.get(f"/api/candidates/{cid}", headers=auth_headers(token))
+    assert asked.status_code == 200 and asked.json()["analysis_status"] == "pending"
+    assert run_jobs() == ["done"]
+    assert _run(_row(cid))["status"] == "done"
+    asked = client.get(f"/api/candidates/{cid}", headers=auth_headers(token)).json()
+    assert (asked["analysis_status"], asked["predicted_role"]) == ("done", "Compiler Engineer")
+
+
+def test_only_a_resume_that_couldnt_be_read_is_read_again(client, run_jobs, reader):
+    token, m = register(client, "rr2@co.com")
+    _, other = register(client, "rr2b@co.com")
+    read = _run(_failed(m["id"], analysis_status="done", analysis_failed=False))
+    not_one = _run(_failed(m["id"], is_resume=False))
+    theirs = _run(_failed(other["id"]))
+    assert "read already" in _read_again(client, token, read, status=409)["detail"]
+    assert "isn't a résumé" in _read_again(client, token, not_one, status=400)["detail"]
+    _read_again(client, token, theirs, status=404)
+    _read_again(client, token, 99999, status=404)
+    assert run_jobs() == [] and reader.calls == []
+    assert _run(_row(theirs))["status"] == "failed"
+
+
+def test_one_being_read_is_left_to_it(client, run_jobs, reader):
+    token, m = register(client, "rr3@co.com")
+    cid = _run(_waiting(m["id"]))
+    assert _read_again(client, token, cid)["analysis_status"] == "pending"
+    assert run_jobs() == ["done"] and len(reader.calls) == 1
