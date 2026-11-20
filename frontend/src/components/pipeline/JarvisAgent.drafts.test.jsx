@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, act } from '@testing-library/react';
 
 import JarvisAgent from './JarvisAgent';
 
@@ -35,15 +35,33 @@ beforeEach(() => {
     if (path === '/api/pipeline/batches') {
       return ok({ batch_id: 1, finished: true, total: 2, interviews_created: 2, emails_sent: 0, portal_link: 'https://resumate.example/candidate/login', outcomes: [outcome(7, 'Dana'), outcome(8, 'Eli')] });
     }
-    if (path === '/api/pipeline/send-invites') return ok({ emails_sent: 2, outcomes: [] });
+    if (path === '/api/pipeline/send-invites') {
+      return ok({ emails_queued: 2, portal_link: 'https://resumate.example/candidate/login', outcomes: [
+        { interview_id: 70, email: 'dana@x.com', email_id: 1, status: 'queued', error: null },
+        { interview_id: 80, email: 'eli@x.com', email_id: 2, status: 'queued', error: null },
+      ] });
+    }
+    // The server's outbox has sent them.
+    if (path.startsWith('/api/emails')) {
+      return ok({ emails: [1, 2].map(id => ({ id, kind: 'invitation_draft', status: 'sent', error: null })) });
+    }
     return ok({});
   });
 });
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+// Send, and let Jarvis wait for the server's outbox, which sends them a
+// moment later: it asks after them 2 seconds on.
+async function send(button) {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  await act(async () => { fireEvent.click(button); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+}
 
 const callsTo = path => calls.filter(c => c.path === path);
 
@@ -64,8 +82,8 @@ describe("Jarvis's invitation drafts", () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Message for Eli' }), { target: { value: 'Eli, could you talk this week?' } });
     fireEvent.change(screen.getByRole('textbox', { name: 'Subject for Eli' }), { target: { value: 'A short interview' } });
 
-    fireEvent.click(within(document.querySelector('.studio-assistant-detail')).getByRole('button', { name: 'Send 2 Emails →' }));
-    await screen.findByText(/2 of 2 invitations emailed/);
+    await send(within(document.querySelector('.studio-assistant-detail')).getByRole('button', { name: 'Send 2 Emails →' }));
+    expect(screen.getByText(/2 of 2 invitations emailed/)).toBeTruthy();
     expect(callsTo('/api/pipeline/send-invites').map(c => c.body)).toEqual([{
       invites: [
         { interview_id: 70, subject: 'Interview with us', body: 'Dear Dana, we would like to talk.' },
@@ -84,8 +102,8 @@ describe("Jarvis's invitation drafts", () => {
 
   it('can no longer be changed once sent', async () => {
     const card = await drafts();
-    fireEvent.click(within(card).getByRole('button', { name: 'Send 2 Emails →' }));
-    await screen.findByText(/2 of 2 invitations emailed/);
+    await send(within(card).getByRole('button', { name: 'Send 2 Emails →' }));
+    expect(screen.getByText(/2 of 2 invitations emailed/)).toBeTruthy();
     expect(within(card).queryByRole('button', { name: /review and edit/i })).toBeNull();
     fireEvent.click(within(card).getByRole('button', { name: 'Expand' }));
     expect(screen.getByRole('textbox', { name: 'Message for Dana' }).disabled).toBe(true);

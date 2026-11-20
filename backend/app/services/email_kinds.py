@@ -16,7 +16,8 @@ from app.services import outbox
 from app.services.auth import create_reset_token, create_verify_token
 from app.services.codes import issue_code
 from app.services.email_service import (
-    erasure_code_email, invitation_email, password_reset_email, sign_in_code_email, verification_email,
+    erasure_code_email, invitation_email, password_reset_email, reviewed_draft_email, sign_in_code_email,
+    verification_email,
 )
 from app.services.erasure import holds_data
 
@@ -66,6 +67,18 @@ async def interview_invitation(db, email):
         (candidate.name if candidate else "") or "there", interview.role or "General",
         settings.candidate_login_url, (manager.company if manager else "") or "",
     ))
+
+
+@outbox.composer("invitation_draft")
+async def invitation_draft(db, email):
+    """A draft the manager reviewed, sent as written to its interview's
+    address, with the link to the candidate portal. Nothing once the
+    interview has gone, or finished."""
+    interview = await db.get(Interview, email.interview_id) if email.interview_id else None
+    if interview is None or interview.status == "completed":
+        return None
+    return (interview.candidate_email,
+            *reviewed_draft_email(email.subject or "", email.body or "", settings.candidate_login_url))
 
 # ── a manager's own address ──────────────────────────────────────────────────
 

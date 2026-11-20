@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
 import JarvisAgent from './JarvisAgent';
 
@@ -43,6 +43,10 @@ function server() {
     if (path === '/api/jarvis/chat') return ok(replies.shift() || { reply: 'Okay.', action: null });
     if (path === '/api/pipeline/batches') return ok({ batch_id: 1, finished: true, ...batchAnswer });
     if (path === '/api/pipeline/send-invites') return sendAnswer;
+    // The server's outbox has sent it.
+    if (path.startsWith('/api/emails')) {
+      return ok({ emails: [{ id: 3, kind: 'invitation_draft', interview_id: 42, status: 'sent', error: null }] });
+    }
     if (path === '/api/chat/create-interview') {
       return ok({ message: 'Interview created', interview_config: { role: 'Dev', mode: 'conversational' }, invite: null, portal_link: LINK });
     }
@@ -75,20 +79,25 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   replies = [INVITE_DANA];
   batchAnswer = { total: 1, interviews_created: 1, emails_sent: 0, portal_link: LINK, outcomes: [DANA] };
-  sendAnswer = ok({ emails_sent: 1, portal_link: LINK, outcomes: [{ interview_id: 42, email: 'dana@x.com', email_sent: true }] });
+  sendAnswer = ok({ emails_queued: 1, portal_link: LINK, outcomes: [
+    { interview_id: 42, email: 'dana@x.com', email_id: 3, status: 'queued', error: null }] });
   server();
 });
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe("sending Jarvis's invitation draft", () => {
   it('emails the draft shown, for the interview already made', async () => {
     await draftForDana();
-    fireEvent.click(screen.getByRole('button', { name: /send email/i }));
-    await screen.findByText(/1 of 1 invitation emailed/);
+    // The server's outbox sends it a moment later: Jarvis asks 2 seconds on.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /send email/i })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByText(/1 of 1 invitation emailed/)).toBeTruthy();
     expect(callsTo('/api/pipeline/send-invites').map(c => c.body)).toEqual([
       { invites: [{ interview_id: 42, subject: 'Interview with us', body: 'Dear Dana, we would like to talk.' }] },
     ]);

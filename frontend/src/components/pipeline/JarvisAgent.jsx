@@ -7,6 +7,7 @@ import RankedCandidates from '../ranked/RankedCandidates';
 import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { finishedBatch, newClientKey } from '../../services/inviteBatches';
+import { emailsEnded, pending } from '../../services/emailStatus';
 import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
 import { keepTabInside, useModalFocus } from '../ui/modalFocus';
@@ -807,16 +808,25 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         if (handle401(res)) return;
         const d = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(typeof d.detail === 'string' ? d.detail : `Send ${res.status}`);
-        const sent = d.emails_sent || 0;
         if (messageId) {
           setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, invitesSent: true } : m)));
         }
+        // Queued: the server's outbox sends them a moment later. Jarvis waits
+        // for each to go, or fail, before saying how it went.
+        const outcomes = d.outcomes || [];
+        const queued = outcomes.filter(o => o.email_id).map(o => o.email_id);
+        const closed = closedRef.current?.signal;
+        const ended = await emailsEnded(queued, { signal: closed });
+        if (closed?.aborted) return;
+        const sent = queued.filter(id => ended[id]?.status === 'sent').length;
         appendMsg({ role: 'action', content: `${sent} of ${invites.length} invitation${invites.length !== 1 ? 's' : ''} emailed` });
         setStatus(sent > 0 ? 'EMAILS SENT' : 'DONE');
         if (sent === invites.length) {
           directSay(`Sent ${sent} interview invitation${sent !== 1 ? 's' : ''}.`);
         } else {
-          const why = (d.outcomes || []).find(o => o.error)?.error;
+          const why = outcomes.find(o => o.error)?.error
+            || queued.map(id => ended[id]).find(email => email?.error)?.error
+            || (queued.some(id => pending(ended[id])) ? 'The rest are still on their way.' : '');
           appendMsg({ role: 'action', content: `Candidate sign-in link: ${d.portal_link}` });
           directSay(`I sent ${sent} of ${invites.length}.${why ? ` ${why}` : ''} The sign-in link is below for the rest.`);
         }

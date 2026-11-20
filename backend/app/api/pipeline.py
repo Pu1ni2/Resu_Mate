@@ -16,7 +16,7 @@ from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
 from app.services.resume_rag import resume_rag
-from app.services import email_quota, interview_modes, invite_batches, screening_runs
+from app.services import email_kinds, email_quota, interview_modes, invite_batches, outbox, screening_runs  # noqa: F401
 from app.services.email_service import email_service
 from app.models.candidate import Interview
 from app.models.screening import ScreeningRun
@@ -227,6 +227,9 @@ async def batch_progress(batch_id: int, user=Depends(get_current_user), db: Asyn
     return await invite_batches.view(db, batch)
 
 
+ALREADY_INVITED = "This interview's invitation has gone already, or is on its way."
+
+
 @router.post("/send-invites")
 @limiter.limit("20/hour")
 async def send_invites(
@@ -239,7 +242,11 @@ async def send_invites(
 
     Jarvis's Send button ran the batch action again, so every interview was
     created a second time, and what went out was a fixed template rather than
-    the draft on screen. This sends the drafts for interviews already made.
+    the draft on screen. This sends the drafts for interviews already made:
+    each is queued with its words, its place in the day's limit held at once,
+    and the outbox's job sends it (GET /api/emails follows it). They went
+    inside this request, counted only once gone. One invitation per
+    interview: Send again, and nothing more is queued.
     """
     if not email_service.configured:
         raise HTTPException(503, "Email isn't set up on this server. Share the portal link instead.")
@@ -249,7 +256,7 @@ async def send_invites(
         if draft.interview_id in seen:
             continue
         seen.add(draft.interview_id)
-        outcome = {"interview_id": draft.interview_id, "email_sent": False}
+        outcome = {"interview_id": draft.interview_id, "email_id": None, "status": "refused"}
         # Only this manager's interviews, as everywhere else.
         interview = (await db.execute(
             select(Interview).where(Interview.id == draft.interview_id, Interview.manager_id == user.id)
@@ -259,22 +266,24 @@ async def send_invites(
         elif interview.status == "completed":
             outcome["email"] = interview.candidate_email
             outcome["error"] = "This interview is already complete."
-        elif refused := await email_quota.refusal(db, user):
+        elif refused := await email_quota.reserve(db, user):
             outcome["email"] = interview.candidate_email
             outcome["error"] = refused
         else:
             outcome["email"] = interview.candidate_email
-            outcome["email_sent"] = await email_service.send_email_draft(
-                interview.candidate_email, draft.subject, draft.body, settings.candidate_login_url,
-            )
-            if outcome["email_sent"]:
-                await email_quota.record_sent(db, user.id, interview.candidate_email, "interview invitation draft")
+            email_id = await outbox.queue(db, "invitation_draft", manager_id=user.id, interview_id=interview.id,
+                                          subject=draft.subject, body=draft.body, counts_to_quota=True,
+                                          dedupe_key=f"invite:{interview.id}")
+            if email_id is None:
+                outcome["error"] = ALREADY_INVITED
             else:
-                outcome["error"] = "The email service didn't accept this invite."
+                outcome.update(email_id=email_id, status="queued", error=None)
+        # Each place held, and each email queued, one draft at a time.
+        await db.commit()
         outcomes.append(outcome)
 
     return {
-        "emails_sent": sum(1 for o in outcomes if o["email_sent"]),
+        "emails_queued": sum(1 for o in outcomes if o["status"] == "queued"),
         "portal_link": settings.candidate_login_url,
         "outcomes": outcomes,
     }

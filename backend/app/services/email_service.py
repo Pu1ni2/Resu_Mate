@@ -106,23 +106,22 @@ class EmailService:
         """The invitation (invitation_email), sent at once."""
         return await self.send(to_email, *invitation_email(candidate_name, role, login_url, company))
 
-    async def send_email_draft(self, to_email: str, subject: str, body: str, login_url: str = "") -> bool:
-        """A plain-text email the manager reviewed, sent as written.
 
-        With login_url, it ends with the button and link to the candidate
-        portal, as the invitation does.
-        """
-        text = html.escape(body).replace("\n", "<br>")
-        page = f'<div style="font-family:sans-serif;max-width:600px;margin:0 auto;"><p>{text}</p>'
-        if login_url:
-            link = html.escape(login_url)
-            page += (
-                f'<p><a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;'
-                f'border-radius:6px;text-decoration:none;display:inline-block;">Start Interview</a></p>'
-                f'<p style="color:#6B7280;">If the button doesn\'t work, copy this link: {link}</p>'
-            )
-        # One line: a line break in a subject is not a valid header.
-        return await self.send(to_email, " ".join(subject.split()), page + "</div>")
+def reviewed_draft_email(subject: str, body: str, login_url: str = "") -> tuple:
+    """A plain-text email the manager reviewed, as written: its words
+    escaped, and, with login_url, the button and link to the candidate
+    portal, as the invitation has."""
+    text = html.escape(body).replace("\n", "<br>")
+    page = f'<div style="font-family:sans-serif;max-width:600px;margin:0 auto;"><p>{text}</p>'
+    if login_url:
+        link = html.escape(login_url)
+        page += (
+            f'<p><a href="{link}" style="background:#3B82F6;color:white;padding:12px 24px;'
+            f'border-radius:6px;text-decoration:none;display:inline-block;">Start Interview</a></p>'
+            f'<p style="color:#6B7280;">If the button doesn\'t work, copy this link: {link}</p>'
+        )
+    # One line: a line break in a subject is not a valid header.
+    return " ".join(subject.split()), page + "</div>"
 
 
 def invitation_email(candidate_name: str, role: str, login_url: str, company: str = "") -> tuple:

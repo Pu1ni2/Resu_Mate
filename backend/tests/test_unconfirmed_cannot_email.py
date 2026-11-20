@@ -128,7 +128,7 @@ def test_reviewed_drafts_wait_too(client, run_jobs, mailbox):
     ]})
     assert r.status_code == 200, r.text
     sent = r.json()
-    assert sent["emails_sent"] == 0
+    assert sent["emails_queued"] == 0
     assert sent["outcomes"][0]["error"] == NOT_CONFIRMED
     assert mailbox == []
 

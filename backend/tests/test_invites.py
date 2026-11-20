@@ -280,8 +280,11 @@ def test_the_reviewed_draft_is_sent_as_written_with_the_link(client, run_jobs, m
     tok, _ = register(client, "d1@co.com")
     cid, iv = _drafted(client, run_jobs, tok, "d1@x.com")
     body = _send(client, tok, [{"interview_id": iv, "subject": "Let's talk\nsoon", "body": "Dear Cand,\nSee you <soon>."}])
-    assert body["emails_sent"] == 1
-    assert body["outcomes"] == [{"interview_id": iv, "email": "d1@x.com", "email_sent": True}]
+    assert body["emails_queued"] == 1
+    [outcome] = body["outcomes"]
+    assert outcome == {"interview_id": iv, "email": "d1@x.com", "email_id": outcome["email_id"], "status": "queued",
+                       "error": None}
+    run_jobs()
     assert [(m["to"], m["subject"]) for m in mailbox] == [("d1@x.com", "Let's talk soon")]
     assert "Dear Cand,<br>See you &lt;soon&gt;." in mailbox[0]["html"]
     assert PORTAL in mailbox[0]["html"]
@@ -294,7 +297,8 @@ def test_drafts_go_only_to_this_managers_interviews(client, run_jobs, mailbox):
     other, _ = register(client, "d3@co.com")
     _, iv = _drafted(client, run_jobs, owner, "d2@x.com")
     body = _send(client, other, [{"interview_id": iv, "subject": "Hi", "body": "Hello"}])
-    assert body["outcomes"] == [{"interview_id": iv, "email_sent": False, "error": "Interview not found"}]
+    assert body["outcomes"] == [{"interview_id": iv, "email_id": None, "status": "refused",
+                                 "error": "Interview not found"}]
     assert mailbox == []
 
 
@@ -318,7 +322,8 @@ def test_an_interview_listed_twice_is_emailed_once(client, run_jobs, mailbox):
     tok, _ = register(client, "d5@co.com")
     _, iv = _drafted(client, run_jobs, tok, "d5@x.com")
     draft = {"interview_id": iv, "subject": "Hi", "body": "Hello"}
-    assert _send(client, tok, [draft, draft])["emails_sent"] == 1
+    assert _send(client, tok, [draft, draft])["emails_queued"] == 1
+    run_jobs()
     assert len(mailbox) == 1
 
 
