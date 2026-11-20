@@ -155,6 +155,28 @@ describe('the batch dialog', () => {
     expect(asked).toBe(2);
   });
 
+  it('says an invitation is being sent until it has gone', async () => {
+    // The server's outbox sends it a moment after the candidate's part is done.
+    server({
+      post: [{ finished: false, total: 1, outcomes: [{ ...ADA_INVITED, status: 'drafting' }] }],
+      get: [
+        { finished: false, total: 1, outcomes: [{ ...ADA_INVITED, email_status: 'queued' }] },
+        finished({ total: 1, interviews_created: 1, emails_sent: 1,
+                   outcomes: [{ ...ADA_INVITED, email_status: 'sent', email_sent: true }] }),
+      ],
+    });
+    open();
+    fireEvent.click(screen.getByLabelText(/email the invitations/i));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(confirmButton()); });
+    expect(screen.getByText(/writing the invitation/i)).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByText(/sending the invitation/i)).toBeTruthy();
+    expect(screen.queryByText('Not emailed')).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByText('✓ Invite emailed')).toBeTruthy();
+  });
+
   it('can be closed while the server goes on, and then stops asking', async () => {
     server({
       post: [{ finished: false, total: 1, outcomes: [ADA_QUEUED] }],

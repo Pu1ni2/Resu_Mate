@@ -346,7 +346,19 @@ async def _email(item_id):
     async with database.async_session() as db:
         item = await db.get(InviteBatchItem, item_id)
         return {"subject": item.email_subject, "body": item.email_body, "drafted": item.email_drafted,
-                "status": item.email_status, "error": item.email_error, "item": item.status}
+                "status": item.email_status, "error": item.email_error, "item": item.status,
+                "email_id": item.email_id}
+
+
+async def _outbox(manager_id):
+    """This manager's emails in the outbox, as they stand."""
+    from app.core import database
+    from app.models.email_outbox import EmailOutbox
+    async with database.async_session() as db:
+        rows = (await db.execute(select(EmailOutbox).where(EmailOutbox.manager_id == manager_id)
+                                 .order_by(EmailOutbox.id))).scalars()
+        return [{"id": e.id, "kind": e.kind, "interview": e.interview_id, "counts": e.counts_to_quota,
+                 "key": e.dedupe_key, "status": e.status, "error": e.error} for e in rows]
 
 
 async def _requeue(item_id, manager_id):
@@ -377,8 +389,8 @@ def test_the_draft_is_signed_by_the_manager_and_written_with_no_connection_held(
     assert call["candidate"]["id"] == cid
     # Not asked to send: the draft waits for the manager, and nothing went.
     assert _run(_email(item)) == {"subject": "Interview", "body": "Hello", "drafted": True, "status": None,
-                                  "error": None, "item": "done"}
-    assert mailbox == []
+                                  "error": None, "item": "done", "email_id": None}
+    assert mailbox == [] and _run(_outbox(m["id"])) == []
 
 
 @pytest.mark.parametrize("hidden, greeting, answer", [
@@ -403,24 +415,103 @@ def test_a_draft_the_ai_couldnt_write_is_the_standard_one(client, run_jobs, ques
     assert ("Ada" in email["body"]) is not hidden
 
 
-def test_the_invitation_goes_once_with_no_connection_held(client, run_jobs, questions, drafts, mailbox):
+def test_the_invitation_is_queued_as_its_item_ends_and_goes_once(client, run_jobs, questions, drafts, mailbox):
+    from app.services import invite_batches
     _, m = register(client, "ij12@co.com")
     _run(_manager(m["id"], company="Acme"))
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
-    # The item's job, then its email's, by the outbox.
+    _run(invite_batches.prepare_invite({"item_id": item}))
+    # Queued as the item ended, its place in the day's limit taken at once:
+    # the outbox's job sends it.
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("queued", None, "done")
+    [interview] = _run(_interviews(m["id"]))
+    assert _run(_outbox(m["id"])) == [{
+        "id": email["email_id"], "kind": "interview_invitation", "interview": interview["id"], "counts": True,
+        "key": f"invite:{interview['id']}", "status": "queued", "error": None}]
+    assert mailbox == [] and _run(_sent_today(m["id"])) == 1
+    # Its job, already done, then the email's.
     assert run_jobs() == ["done", "done"]
     assert [(mail["to"], mail["subject"], mail["held"]) for mail in mailbox] == [
         ("ada@x.com", "Interview invitation from Acme: Data Engineer", 0)]
     assert "Hi Ada," in mailbox[0]["html"]
-    email = _run(_email(item))
-    assert (email["status"], email["error"], email["item"]) == ("queued", None, "done")
-    # Counted against the day's emails.
+    assert [e["status"] for e in _run(_outbox(m["id"]))] == ["sent"]
     assert _run(_sent_today(m["id"])) == 1
-    # Its job queued again, as a retry would, sends nothing more and writes nothing again.
+    # Its job queued again, as a retry would, queues nothing more and writes nothing again.
     _run(_requeue(item, m["id"]))
     assert run_jobs() == ["done"]
-    assert (len(mailbox), len(drafts), len(questions)) == (1, 1, 1)
+    assert (len(mailbox), len(drafts), len(questions), len(_run(_outbox(m["id"])))) == (1, 1, 1, 1)
+
+
+def test_the_items_end_and_its_invitation_are_kept_together_or_not_at_all(client, run_jobs, questions, mailbox):
+    # Queued apart, an invitation could go while its item said it had failed.
+    import sqlite3
+    from conftest import _TMP_DB
+    _, m = register(client, "ij13@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    # The database refuses to record the item's email as queued.
+    db = sqlite3.connect(_TMP_DB)
+    db.execute("CREATE TRIGGER refuse_queued AFTER UPDATE OF email_status ON invite_batch_items "
+               "WHEN NEW.email_status = 'queued' BEGIN SELECT RAISE(ABORT, 'refused'); END")
+    db.commit()
+    db.close()
+    assert run_jobs() == ["failed"]
+    assert mailbox == [] and _run(_outbox(m["id"])) == [] and _run(_sent_today(m["id"])) == 0
+    state = _run(_item(item))
+    assert (state["status"], state["error"]) == ("failed", "error:IntegrityError")
+
+
+def test_a_run_at_the_same_time_neither_queues_again_nor_says_otherwise(client, run_jobs, questions, mailbox,
+                                                                        monkeypatch):
+    # Two runs of one job at once: one whose hold on the job ran out while it
+    # was still going, and the one that took the job up. Only the one that
+    # ends the item queues its invitation, and what that one says stands.
+    from app.services import invite_batches
+    _, m = register(client, "ij17@co.com")
+    cid = _run(_candidate(m["id"]))
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    real, other = invite_batches._unfinished, []
+
+    async def the_other_run_first(db, item_id):
+        found = await real(db, item_id)
+        if found is not None and found[0].email_subject is not None and not other:
+            # This run has read the item, ready to send; the other ends it first.
+            other.append(item_id)
+            await invite_batches._send(item_id)
+        return found
+    monkeypatch.setattr(invite_batches, "_unfinished", the_other_run_first)
+    assert run_jobs() == ["done", "done"]
+    assert other == [item] and len(mailbox) == 1
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"]) == ("queued", None, "done")
+    assert [(e["id"], e["status"]) for e in _run(_outbox(m["id"]))] == [(email["email_id"], "sent")]
+    assert _run(_sent_today(m["id"])) == 1
+
+
+def test_an_interview_invited_already_gets_no_second_invitation(client, run_jobs, questions, drafts, mailbox):
+    # An open interview for the role is used again: invited from its own
+    # page already, it isn't invited twice.
+    from app.core import database
+    from app.services import email_kinds, outbox
+    _, m = register(client, "ij18@co.com")
+    cid = _run(_candidate(m["id"]))
+    iid = _run(_interview(m["id"], cid, "Data Engineer", "pending"))
+
+    async def invited():
+        async with database.async_session() as db:
+            await outbox.queue(db, "interview_invitation", manager_id=m["id"], interview_id=iid,
+                               counts_to_quota=True, dedupe_key=f"invite:{iid}")
+            await db.commit()
+    _run(invited())
+    [item] = _run(_queued(m["id"], [cid], send_emails=True))
+    assert run_jobs() == ["done", "done"]
+    assert len(mailbox) == 1
+    email = _run(_email(item))
+    assert (email["status"], email["error"], email["item"], email["email_id"]) == (
+        "refused", email_kinds.ALREADY_INVITED, "done", None)
+    assert len(_run(_outbox(m["id"]))) == 1 and _run(_sent_today(m["id"])) == 1
 
 
 @pytest.mark.parametrize("why", ["unconfirmed", "limit", "no_email"])
@@ -440,14 +531,16 @@ def test_an_invitation_that_may_not_go_says_why(client, run_jobs, questions, mai
     said = {"unconfirmed": email_quota.NOT_CONFIRMED, "limit": email_quota.limit_reached(),
             "no_email": invite_batches.NOT_SET_UP}[why]
     email = _run(_email(item))
-    assert (email["status"], email["error"], email["item"]) == ("refused", said, "done")
+    assert (email["status"], email["error"], email["item"], email["email_id"]) == ("refused", said, "done", None)
     # (The unconfirmed account had its link to confirm, by the outbox.)
     assert [mail for mail in mailbox if mail["to"] == "ada@x.com"] == []
+    assert [e for e in _run(_outbox(m["id"])) if e["kind"] == "interview_invitation"] == []
     # The interview and the draft stand: the manager can share the portal link.
     assert email["subject"] == "Interview" and len(_run(_interviews(m["id"]))) == 1
 
 
 def test_an_invitation_the_email_service_refuses_counts_for_nothing(client, run_jobs, questions, mailbox):
+    from app.services import outbox
     _, m = register(client, "ij15@co.com")
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
@@ -455,6 +548,9 @@ def test_an_invitation_the_email_service_refuses_counts_for_nothing(client, run_
     assert run_jobs() == ["done", "done"]
     email = _run(_email(item))
     assert (email["status"], email["error"], email["item"]) == ("queued", None, "done")
+    # The outbox says how it went, and why.
+    assert [(e["id"], e["status"], e["error"]) for e in _run(_outbox(m["id"]))] == [
+        (email["email_id"], "failed", outbox.REFUSED)]
     assert len(mailbox) == 1 and _run(_sent_today(m["id"])) == 0
 
 
@@ -474,6 +570,6 @@ def test_an_interview_deleted_before_its_invitation_goes_gets_none(client, run_j
         return {"subject": "Interview", "body": "Hello"}
     drafts.stub.answer = deleted_meanwhile
     assert run_jobs() == ["done"]
-    assert mailbox == []
+    assert mailbox == [] and _run(_outbox(m["id"])) == []
     email = _run(_email(item))
     assert (email["status"], email["error"], email["item"]) == ("failed", invite_batches.NO_INTERVIEW, "done")

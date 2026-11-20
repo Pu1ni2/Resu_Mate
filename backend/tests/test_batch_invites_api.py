@@ -38,15 +38,20 @@ def no_ai(monkeypatch):
     return calls
 
 
+class _Mailbox(list):
+    """Each email handed to the email service; answer is what it says."""
+    answer = "sent"
+
+
 @pytest.fixture()
 def mailbox(monkeypatch):
     """A server with email set up, delivering into a list."""
     from app.services.email_service import email_service
-    sent = []
+    sent = _Mailbox()
 
     async def deliver(to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject})
-        return "sent"
+        return sent.answer
     monkeypatch.setattr(email_service, "_sg", object())
     monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
@@ -232,6 +237,62 @@ def test_a_candidate_gone_before_their_job_ran_is_said_so(client, run_jobs):
     outcome = _progress(client, tok, started["batch_id"])["outcomes"][0]
     assert (outcome["status"], outcome["error"], outcome["interview_created"]) == (
         "failed", invite_batches.NOT_FOUND, False)
+
+
+# ── the invitations, by the outbox ────────────────────────────────────────────
+
+def test_a_batch_has_finished_only_once_its_invitations_have_gone(client, run_jobs, mailbox):
+    # The email service busy at first: the invitation waits in the outbox,
+    # tried again a little later, and the page says it's being sent.
+    from datetime import datetime, timedelta
+    tok, m = register(client, "bi10@co.com")
+    ada = _run(_candidate(m["id"]))
+    started = _start(client, tok, [ada], send_emails=True)
+    mailbox.answer = "busy"
+    assert run_jobs() == ["done", "retry"]
+    waiting = _progress(client, tok, started["batch_id"])
+    [said] = waiting["outcomes"]
+    assert (waiting["finished"], waiting["emails_sent"]) == (False, 0)
+    assert (said["status"], said["email_status"], said["email_sent"]) == ("done", "queued", False)
+    assert "email_send_error" not in said
+    mailbox.answer = "sent"
+    assert run_jobs(now=datetime.utcnow() + timedelta(minutes=15)) == ["done"]
+    gone = _progress(client, tok, started["batch_id"])
+    [said] = gone["outcomes"]
+    assert (gone["finished"], gone["emails_sent"]) == (True, 1)
+    assert (said["email_status"], said["email_sent"]) == ("sent", True)
+
+
+def test_an_invitation_the_email_service_refused_says_so(client, run_jobs, mailbox):
+    from app.services import outbox
+    tok, m = register(client, "bi11@co.com")
+    ada = _run(_candidate(m["id"]))
+    started = _start(client, tok, [ada], send_emails=True)
+    mailbox.answer = "refused"
+    assert run_jobs() == ["done", "done"]
+    done = _progress(client, tok, started["batch_id"])
+    [said] = done["outcomes"]
+    assert (done["finished"], done["emails_sent"]) == (True, 0)
+    assert (said["email_status"], said["email_sent"], said["email_send_error"]) == ("failed", False, outbox.REFUSED)
+
+
+def test_an_invitation_no_longer_kept_holds_nothing_open(client, run_jobs, mailbox):
+    # Emails that have ended are deleted after a while (app/services/cleanup.py).
+    from app.core import database
+    from app.models.email_outbox import EmailOutbox
+    tok, m = register(client, "bi12@co.com")
+    ada = _run(_candidate(m["id"]))
+    started = _start(client, tok, [ada], send_emails=True)
+    run_jobs()
+
+    async def deleted():
+        async with database.async_session() as db:
+            for email in (await db.execute(select(EmailOutbox))).scalars():
+                await db.delete(email)
+            await db.commit()
+    _run(deleted())
+    done = _progress(client, tok, started["batch_id"])
+    assert (done["finished"], done["outcomes"][0]["email_status"]) == (True, None)
 
 
 def test_avatar_interviews_run_as_voice_where_they_arent_set_up(client, run_jobs):

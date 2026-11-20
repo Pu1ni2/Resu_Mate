@@ -437,6 +437,18 @@ def test_sending_again_queues_no_second_invitation(client, run_jobs, mailbox):
     assert len(mailbox) == 1
 
 
+def test_no_draft_goes_to_an_interview_invited_from_its_own_page(client, run_jobs, mailbox):
+    # One invitation per interview, whichever way it goes.
+    from app.services.email_kinds import ALREADY_INVITED
+    tok, m = register(client, "k17@co.com")
+    iid = _create(client, tok, _run(_candidate(m["id"], "Ada", "ada@x.com")), "ada@x.com")["interview_config"]["interview_id"]
+    draft = _send_drafts(client, tok, [{"interview_id": iid, "subject": "A chat?", "body": "Could we talk?"}])
+    assert (draft["emails_queued"], draft["outcomes"][0]["error"]) == (0, ALREADY_INVITED)
+    run_jobs()
+    # The page's invitation only.
+    assert len(mailbox) == 1 and "A chat?" not in mailbox[0]["subject"]
+
+
 def test_no_draft_goes_to_an_interview_finished_meanwhile(client, run_jobs, mailbox):
     import sqlite3
     from conftest import _TMP_DB
