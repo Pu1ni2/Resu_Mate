@@ -12,6 +12,7 @@ closed, and a failure was gone with it. Each one asked for is kept
 (EvaluationRequest), and the job writes it.
 """
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,6 +87,34 @@ async def of_candidate(db: AsyncSession, manager_id: int, candidate_id: int) -> 
         .order_by(CandidateEvaluation.created_at.desc(), CandidateEvaluation.id.desc())
     )).scalars().all()
     return [shown(e) for e in rows]
+
+
+async def request_shown(db: AsyncSession, request: EvaluationRequest) -> dict:
+    """An evaluation asked for, as its page follows it: how far it got, why
+    not, and the evaluation once it's written (while it's kept)."""
+    evaluation = await db.get(CandidateEvaluation, request.evaluation_id) if request.evaluation_id else None
+    return {
+        "request_id": request.id,
+        "candidate_id": request.candidate_id,
+        "status": request.status,
+        "error": request.error,
+        "role": request.role,
+        "level": request.level,
+        "anonymized": bool(request.anonymized),
+        "evaluation": shown(evaluation) if evaluation else None,
+    }
+
+
+async def asked_of(db: AsyncSession, manager_id: int, candidate_id: int) -> Optional[dict]:
+    """The newest evaluation of one candidate still being written, which the
+    manager asked for, or None: their file follows it when it opens again."""
+    request = (await db.execute(
+        select(EvaluationRequest)
+        .where(EvaluationRequest.manager_id == manager_id, EvaluationRequest.candidate_id == candidate_id,
+               EvaluationRequest.status == "pending")
+        .order_by(EvaluationRequest.id.desc()).limit(1)
+    )).scalar_one_or_none()
+    return await request_shown(db, request) if request else None
 
 
 # ── one asked for, written by the background job ─────────────────────────────

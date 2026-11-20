@@ -1121,8 +1121,25 @@ async def candidate_interviews(candidate_id: int, user=Depends(get_current_user)
 @router.get("/candidates/{candidate_id}/evaluations")
 async def candidate_evaluations(candidate_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """This manager's kept role-fit evaluations of one of their candidates,
-    newest first. One was only sent back, and lost on opening another file."""
-    return {"evaluations": await evaluations.of_candidate(db, user.id, candidate_id)}
+    newest first, and the one still being written, if one is ("asked"), for
+    the file to follow. One was only sent back, and lost on opening another
+    file."""
+    return {"evaluations": await evaluations.of_candidate(db, user.id, candidate_id),
+            "asked": await evaluations.asked_of(db, user.id, candidate_id)}
+
+
+@router.get("/evaluations/{request_id}")
+async def evaluation_asked_for(request_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """An evaluation asked for, as its page follows it while the background
+    job writes it: pending, done with the evaluation, or failed with why.
+    Only the manager's own."""
+    from sqlalchemy import select as sql_select
+    from app.models.evaluation import EvaluationRequest
+    request = (await db.execute(sql_select(EvaluationRequest).where(
+        EvaluationRequest.id == request_id, EvaluationRequest.manager_id == user.id))).scalar_one_or_none()
+    if request is None:
+        raise HTTPException(404, "Evaluation not found")
+    return await evaluations.request_shown(db, request)
 
 
 # ═══════ ONE INTERVIEW: ITS REPORT AGAIN, OR ANOTHER ═══════
