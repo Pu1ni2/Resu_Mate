@@ -456,6 +456,9 @@ def _normalize_action_payload(
         return None, None, updated_context
 
     params = dict(action_params or {})
+    # Only the manager confirms an interview or a batch, on screen: the
+    # model saying so isn't that, and a résumé could tell it to.
+    params.pop("confirmed", None)
     artifacts = req.context.artifacts or {}
     resolved_candidate = _resolve_active_candidate(req.message, req.context, candidates)
 

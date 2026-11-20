@@ -661,7 +661,13 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
       }
       if (!res.ok) throw new Error(`API ${res.status}`);
       const data = await res.json();
-      const { reply, action, action_params, awaiting_confirmation, updated_context } = data;
+      const { reply, awaiting_confirmation, updated_context } = data;
+      // Nothing that reaches a candidate happens on the model's word alone,
+      // and a résumé it reads could put words in its mouth: what it says
+      // isn't the manager's yes on screen, and it sends no email, which goes
+      // only from its draft's Send button.
+      const action = data.action === 'send_invites' ? null : data.action;
+      const { confirmed: _notTheManagers, ...action_params } = data.action_params || {};
 
       appendMsg({ role: 'assistant', content: reply });
 
