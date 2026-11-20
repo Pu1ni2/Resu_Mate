@@ -78,6 +78,14 @@ describe('screening from the Candidates page', () => {
     expect(body.candidate_ids).toEqual([1, 2]);
   });
 
+  it('leaves out a résumé the AI is still reading', async () => {
+    const DEV = { id: 6, name: 'Dev', skills: [], is_resume: true, analysis_status: 'pending' };
+    open({ candidates: [ADA, GRACE, BEA, NOTE, LIN, DEV], selectedIds: [1, 6] });
+    fireEvent.click(screen.getByRole('button', { name: 'Screen selected (1)' }));
+    const body = await runFor('Engineer', /screen 1 resume/i);
+    expect(body.candidate_ids).toEqual([1]);
+  });
+
   it('says when a selection has nothing to screen, and leads back to it', () => {
     open({ selectedIds: [3, 4] });
     fireEvent.click(screen.getByRole('button', { name: 'Screen selected (0)' }));

@@ -105,6 +105,20 @@ def test_a_run_leaves_out_files_it_cannot_screen_and_says_how_many(client):
     assert body["assessed"] == ["role"]
 
 
+def test_a_run_leaves_out_a_resume_still_being_read(client):
+    # Read by the AI after its upload: until then its fields are empty.
+    token, user = register(client, "reading@x.com")
+    seed(user["id"], person(id=1, name="Ada"),
+         person(id=2, name="Dev", analysis_status="pending", predicted_role=None, skills=[]))
+    r = client.post("/api/pipeline/run", headers=auth_headers(token), json={"role": "Backend Engineer"})
+    assert r.status_code == 200, r.text
+    assert ([c["name"] for c in r.json()["results"]], r.json()["excluded"]) == (["Ada"], 1)
+    r = client.post("/api/pipeline/run", headers=auth_headers(token),
+                    json={"role": "Backend Engineer", "candidate_ids": [2]})
+    assert r.status_code == 400
+    assert "still being read" in r.json()["detail"]
+
+
 def test_a_run_with_nothing_to_screen_says_why(client):
     token, user = register(client, "nothing@x.com")
     seed(user["id"], person(id=1, is_resume=False))
