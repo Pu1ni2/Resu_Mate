@@ -68,9 +68,9 @@ describe('an evaluation written in the background', () => {
     await openAda();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     await evaluate();
-    expect(screen.getByText(/evaluating candidate/i)).toBeTruthy();
+    expect(screen.getByText(/writing the evaluation/i)).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
-    expect(screen.getByText(/evaluating candidate/i)).toBeTruthy();
+    expect(screen.getByText(/writing the evaluation/i)).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
     expect(screen.getByText('A strong fit for the role.')).toBeTruthy();
     // Written: asked after no more.
@@ -91,7 +91,7 @@ describe('an evaluation written in the background', () => {
     server['/api/chat/candidates/1/evaluations'] = [{ evaluations: [], asked: ASKED }];
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     await openAda();
-    expect(screen.getByText(/evaluating candidate/i)).toBeTruthy();
+    expect(screen.getByText(/writing the evaluation/i)).toBeTruthy();
     await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
     expect(screen.getByText('A strong fit for the role.')).toBeTruthy();
   });

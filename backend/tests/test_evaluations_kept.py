@@ -52,11 +52,16 @@ def _writes(monkeypatch, *reports):
     monkeypatch.setattr(hr_agent, "run", run)
 
 
-def _evaluate(client, token, cid, **body):
+def _evaluate(client, run_jobs, token, cid, **body):
+    """Asked for, written by the background job, then read as the page
+    follows it: the evaluation it wrote."""
     r = client.post("/api/chat/hiring-agent", headers=auth_headers(token),
                     json={"candidate_id": cid, "role": "Backend Engineer", **body})
+    assert r.status_code == 202, r.text
+    run_jobs()
+    r = client.get(f"/api/chat/evaluations/{r.json()['request_id']}", headers=auth_headers(token))
     assert r.status_code == 200, r.text
-    return r.json()
+    return r.json()["evaluation"]
 
 
 def _kept(client, token, cid):
@@ -65,11 +70,11 @@ def _kept(client, token, cid):
     return r.json()["evaluations"]
 
 
-def test_a_written_evaluation_is_kept_with_what_it_was_asked(client, monkeypatch):
+def test_a_written_evaluation_is_kept_with_what_it_was_asked(client, run_jobs, monkeypatch):
     _writes(monkeypatch, "## A strong fit\n\nEvidence from the résumé.")
     token, user = register(client, "kept@x.com")
     cid = _run(_stored_candidate(user["id"]))
-    answer = _evaluate(client, token, cid, level="Senior", experience_required="5-8 years",
+    answer = _evaluate(client, run_jobs, token, cid, level="Senior", experience_required="5-8 years",
                        job_description="We want a backend engineer.", anonymize=True)
     assert answer["report"].startswith("## A strong fit")
     assert answer["evaluation_id"] and answer["created_at"]
@@ -82,69 +87,65 @@ def test_a_written_evaluation_is_kept_with_what_it_was_asked(client, monkeypatch
     assert kept["report"] == answer["report"]
 
 
-def test_they_are_listed_newest_first_and_only_the_newest_kept(client, monkeypatch):
+def test_they_are_listed_newest_first_and_only_the_newest_kept(client, run_jobs, monkeypatch):
     monkeypatch.setattr(evaluations, "KEPT_PER_CANDIDATE", 2)
     _writes(monkeypatch, "first " * 30, "second " * 30, "third " * 30, "theirs " * 30)
     token, user = register(client, "newest@x.com")
     cid = _run(_stored_candidate(user["id"]))
     other = _run(_stored_candidate(user["id"], name="Bea"))
     for _ in range(3):
-        _evaluate(client, token, cid)
-    _evaluate(client, token, other)
+        _evaluate(client, run_jobs, token, cid)
+    _evaluate(client, run_jobs, token, other)
     assert [e["report"].split()[0] for e in _kept(client, token, cid)] == ["third", "second"]
     # Another candidate's don't count towards them.
     assert [e["report"].split()[0] for e in _kept(client, token, other)] == ["theirs"]
 
 
-def test_another_manager_reads_none_of_them(client, monkeypatch):
+def test_another_manager_reads_none_of_them(client, run_jobs, monkeypatch):
     _writes(monkeypatch, "A report " * 20)
     token, user = register(client, "mine@x.com")
     cid = _run(_stored_candidate(user["id"]))
-    _evaluate(client, token, cid)
+    _evaluate(client, run_jobs, token, cid)
     other_token, _ = register(client, "theirs@x.com")
     assert _kept(client, other_token, cid) == []
 
 
-def test_an_evaluation_of_data_the_page_sent_is_not_kept(client, monkeypatch):
+def test_data_the_page_sent_in_is_not_evaluated(client, monkeypatch):
+    # The job reads the candidate from the database. A candidate only in the
+    # server's memory, with no row behind them, isn't one either.
     _writes(monkeypatch, "A report " * 20)
     token, user = register(client, "adhoc@x.com")
-    answer = _evaluate(client, token, 99, candidate_data={"id": 99, "name": "Pasted", "skills": []})
-    assert answer["report"] and answer["evaluation_id"] is None
+    resume_rag.candidates.setdefault(user["id"], {})[5] = {"id": 5, "name": "Ada", "skills": [], "is_resume": True}
+    for cid, sent in ((99, {"candidate_data": {"id": 99, "name": "Pasted", "skills": []}}), (5, {})):
+        r = client.post("/api/chat/hiring-agent", headers=auth_headers(token),
+                        json={"candidate_id": cid, "role": "Backend Engineer", **sent})
+        assert r.status_code == 404, r.text
     assert _run(_kept_count(manager_id=user["id"])) == 0
 
 
-def test_an_evaluation_that_cannot_be_kept_is_still_answered(client, monkeypatch):
-    _writes(monkeypatch, "A report " * 20)
-    token, user = register(client, "unkept@x.com")
-    # In the store, with no row behind it, so the evaluation can't be filed.
-    resume_rag.candidates.setdefault(user["id"], {})[5] = {"id": 5, "name": "Ada", "skills": [], "is_resume": True}
-    answer = _evaluate(client, token, 5)
-    assert answer["report"] and answer["evaluation_id"] is None
-
-
-def test_a_pasted_job_description_is_kept_to_a_length(client, monkeypatch):
+def test_a_pasted_job_description_is_kept_to_a_length(client, run_jobs, monkeypatch):
     _writes(monkeypatch, "A report " * 20)
     token, user = register(client, "long@x.com")
     cid = _run(_stored_candidate(user["id"]))
-    _evaluate(client, token, cid, job_description="x" * (evaluations.MAX_JOB_DESCRIPTION + 500))
+    _evaluate(client, run_jobs, token, cid, job_description="x" * (evaluations.MAX_JOB_DESCRIPTION + 500))
     assert len(_kept(client, token, cid)[0]["job_description"]) == evaluations.MAX_JOB_DESCRIPTION
 
 
-def test_deleting_the_candidate_deletes_their_evaluations(client, monkeypatch):
+def test_deleting_the_candidate_deletes_their_evaluations(client, run_jobs, monkeypatch):
     _writes(monkeypatch, "A report " * 20)
     token, user = register(client, "gone@x.com")
     cid = _run(_stored_candidate(user["id"]))
-    _evaluate(client, token, cid)
+    _evaluate(client, run_jobs, token, cid)
     r = client.delete(f"/api/candidates/{cid}", headers=auth_headers(token))
     assert r.status_code == 200, r.text
     assert _run(_kept_count(candidate_id=cid)) == 0
 
 
-def test_deleting_the_account_deletes_its_evaluations(client, monkeypatch):
+def test_deleting_the_account_deletes_its_evaluations(client, run_jobs, monkeypatch):
     _writes(monkeypatch, "A report " * 20)
     token, user = register(client, "account@x.com")
     cid = _run(_stored_candidate(user["id"]))
-    _evaluate(client, token, cid)
+    _evaluate(client, run_jobs, token, cid)
     r = client.post("/api/auth/delete-account", headers=auth_headers(token), json={"password": "pw12345678"})
     assert r.status_code == 200, r.text
     assert _run(_kept_count(manager_id=user["id"])) == 0

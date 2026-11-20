@@ -155,7 +155,10 @@ async def test_parsing_a_job_description_raises_instead_of_returning_nothing(mon
         await ats_service.parse_jd("Senior backend role, Python required.", "Backend Engineer")
 
 
-def test_the_evaluation_quotes_no_screening_score(client, monkeypatch):
+def test_the_evaluation_quotes_no_screening_score(client, run_jobs, monkeypatch):
+    import asyncio
+    from app.core import database
+    from app.models.candidate import Candidate
     prompts = []
 
     async def fake_llm(prompt, system="", json_mode=False):
@@ -164,9 +167,18 @@ def test_the_evaluation_quotes_no_screening_score(client, monkeypatch):
 
     monkeypatch.setattr(openai_tool, "structured_call", fake_llm)
     token, user = register(client, "eval@x.com")
-    seed(user["id"], person())
+
+    async def row():
+        async with database.async_session() as db:
+            cand = Candidate(manager_id=user["id"], name="Ada", email="ada@x.com")
+            db.add(cand)
+            await db.commit()
+            return cand.id
+    cid = asyncio.get_event_loop().run_until_complete(row())
+    seed(user["id"], person(id=cid))
     r = client.post("/api/chat/hiring-agent", headers=auth_headers(token),
-                    json={"candidate_id": 1, "role": "Backend Engineer"})
-    assert r.status_code == 200, r.text
-    assert r.json()["ats_score"] is None
-    assert not any("/100" in p for p in prompts)
+                    json={"candidate_id": cid, "role": "Backend Engineer"})
+    assert r.status_code == 202, r.text
+    # Written by the background job.
+    assert run_jobs() == ["done"]
+    assert prompts and not any("/100" in p for p in prompts)

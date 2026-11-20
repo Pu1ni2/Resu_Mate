@@ -36,13 +36,6 @@ def _cut(value, limit):
     return str(value)[:limit] if value else None
 
 
-async def save(db: AsyncSession, **fields) -> CandidateEvaluation:
-    """keep, and commit."""
-    evaluation = await keep(db, **fields)
-    await db.commit()
-    return evaluation
-
-
 async def keep(db: AsyncSession, *, manager_id: int, candidate_id: int, role=None, level=None,
                experience_required=None, job_description=None, anonymized=False, report: str) -> CandidateEvaluation:
     """Keep an evaluation, and only the candidate's newest KEPT_PER_CANDIDATE,
@@ -173,6 +166,11 @@ async def write_evaluation(payload: dict) -> None:
         asked = dict(manager_id=request.manager_id, candidate_id=request.candidate_id, role=request.role,
                      level=request.level, experience_required=request.experience_required,
                      job_description=request.job_description, anonymized=request.anonymized)
+    # No score for the evaluation to cite. The model doesn't make one up
+    # (screening owns the number), and there are no screening requirements
+    # here to score against: with the role alone, every part but the role
+    # counted as a perfect 100, and the evaluation quoted that 85-100 as the
+    # candidate's fit.
     result = await hr_agent.evaluate(
         candidate=candidate, role=asked["role"], level=asked["level"], experience=asked["experience_required"],
         job_description=asked["job_description"], anonymize=asked["anonymized"], ats_score=None,

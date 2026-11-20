@@ -384,53 +384,33 @@ async def web_search(request: Request, req: WebSearchRequest, user=Depends(get_c
 
 # ═══════ HIRING AGENT → HR Agent ═══════
 
-@router.post("/hiring-agent")
+@router.post("/hiring-agent", status_code=202)
 @limiter.limit("10/minute")
 async def hiring_agent(request: Request, req: HiringAgentRequest, user=Depends(get_current_user),
                        db: AsyncSession = Depends(get_db)):
-    """Candidate evaluation powered by HR Agent.
+    """A role-fit evaluation of one of this manager's candidates, asked for:
+    answered at once with the request, which a background job writes
+    (app/services/evaluations.py) and the page follows
+    (GET /chat/evaluations/{id}). It's kept, to be read again
+    (GET /chat/candidates/{id}/evaluations).
 
-    A written evaluation of one of this manager's candidates is kept, to be
-    read again (GET /chat/candidates/{id}/evaluations)."""
+    It was written inside the request: a minute or more, lost when the page
+    closed, and a failure was gone with it. Only a stored candidate is
+    evaluated, as the job reads them from the database: data the page sent
+    in was evaluated, and nothing kept."""
+    from sqlalchemy import select as sql_select
+    from app.models.candidate import Candidate
     try:
-        candidate = _get_candidate(req.candidate_id, req.candidate_data, manager_id=user.id)
-        if not candidate:
-            return {"error": "Candidate not found."}
-
-        # No score for the evaluation to cite. The model doesn't make one up
-        # (screening owns the number), and this route has no screening
-        # requirements to score against: with the role alone, every part but
-        # the role counted as a perfect 100, and the evaluation quoted that
-        # 85-100 as the candidate's fit.
-        ats_score = None
-
-        result = await hr_agent.evaluate(
-            candidate=candidate,
-            role=req.role, level=req.level,
-            experience=req.experience_required,
-            job_description=req.job_description,
-            anonymize=hides_names(user, req.anonymize),
-            ats_score=ats_score,
+        row = (await db.execute(sql_select(Candidate).where(
+            Candidate.id == req.candidate_id, Candidate.manager_id == user.id))).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(404, "Candidate not found")
+        asked = await evaluations.ask(
+            db, manager_id=user.id, candidate_id=row.id, role=req.role, level=req.level,
+            experience_required=req.experience_required, job_description=req.job_description,
+            anonymized=hides_names(user, req.anonymize),
         )
-        if not result.get("report"):
-            # A failure, not a report that says "Evaluation failed: <error>".
-            logger.warning("evaluation not written: %s", result.get("error"))
-            raise HTTPException(status_code=502, detail="The evaluation couldn't be completed. Please try again.")
-        answer = {"report": result["report"], "ats_score": ats_score, "evaluation_id": None, "created_at": None}
-        # Kept when it's of a stored candidate, not data the page sent in. An
-        # evaluation that can't be kept is still answered.
-        if resume_rag.get_candidate(req.candidate_id, manager_id=user.id):
-            try:
-                kept = await evaluations.save(
-                    db, manager_id=user.id, candidate_id=req.candidate_id,
-                    role=req.role, level=req.level, experience_required=req.experience_required,
-                    job_description=req.job_description, anonymized=hides_names(user, req.anonymize), report=result["report"],
-                )
-                answer.update(evaluation_id=kept.id, created_at=kept.created_at.isoformat())
-            except Exception as exc:
-                await db.rollback()
-                logger.warning("evaluation not kept: %s", type(exc).__name__)
-        return answer
+        return await evaluations.request_shown(db, asked)
     except HTTPException:
         raise
     except Exception:

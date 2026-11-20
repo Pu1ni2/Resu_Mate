@@ -99,11 +99,13 @@ export default function HiringAgentPanel({
       {agentStep === 'loading' && (
         <div className="agent-loading">
           <Loader size={36} className="spin" />
-          <h3>Evaluating candidate...</h3>
+          <h3>Writing the evaluation…</h3>
           {/* Not a list of steps: the server reports none until it finishes,
-              and four fixed "steps" with the first lit never moved. */}
+              and four fixed "steps" with the first lit never moved. It's
+              written in the background, and the file follows it. */}
           <p className="agent-step-item" role="status">
-            Reading the résumé and comparing it with the role. This can take up to a minute.
+            Reading the résumé and comparing it with the role. This can take a minute or two. It goes on if
+            you leave this file, and it’ll be here when you come back.
           </p>
         </div>
       )}

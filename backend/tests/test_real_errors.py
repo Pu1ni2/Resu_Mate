@@ -53,8 +53,23 @@ def test_the_focus_chat(client, manager, broken_lookup):
     _assert_plain_failure(r, "The assistant couldn't answer just now. Please try again.")
 
 
-def test_the_evaluation(client, manager, broken_lookup):
-    r = client.post("/api/chat/hiring-agent", headers=manager, json={"candidate_id": 1, "role": "Dev"})
+def test_the_evaluation(client, manager, monkeypatch):
+    # Asking for it, which a background job then writes.
+    import asyncio
+    from app.core import database
+    from app.models.candidate import Candidate
+    from app.services import evaluations
+    me = client.get("/api/auth/me", headers=manager).json()["id"]
+
+    async def theirs():
+        async with database.async_session() as db:
+            cand = Candidate(manager_id=me, name="Ada", email="ada@x.com")
+            db.add(cand)
+            await db.commit()
+            return cand.id
+    cid = asyncio.get_event_loop().run_until_complete(theirs())
+    monkeypatch.setattr(evaluations, "ask", _aboom)
+    r = client.post("/api/chat/hiring-agent", headers=manager, json={"candidate_id": cid, "role": "Dev"})
     _assert_plain_failure(r, "The evaluation couldn't be completed. Please try again.")
 
 
