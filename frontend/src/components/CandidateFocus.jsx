@@ -22,6 +22,7 @@ import InterviewCreator from './focus/InterviewCreator';
 import InterviewHistory from './focus/InterviewHistory';
 import ResumeIntelPanel from './focus/ResumeIntelPanel';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
+import { followEvaluation, writing } from '../services/evaluationRequests';
 import { toast } from '../services/notify';
 import WorkspaceShell from './studio/WorkspaceShell';
 import ConfirmEmailNotice from './studio/ConfirmEmailNotice';
@@ -67,6 +68,8 @@ export default function CandidateFocus() {
   const [agentLoading, setAgentLoading] = useState(false);
   const [suggestedRoles, setSuggestedRoles] = useState([]);
   const agentResultRef = useRef(null);
+  // What stops following the evaluation being written, while there is one.
+  const stopFollowing = useRef(null);
 
   // ─── Web Search state ───
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,6 +159,7 @@ export default function CandidateFocus() {
 
   // ─── Reset agent ───
   const resetAgent = () => {
+    stopFollowing.current?.();
     setAgentStep('choose');
     setJdText('');
     setSelectedRole('');
@@ -168,11 +172,37 @@ export default function CandidateFocus() {
     setKeptEvaluation(null);
   };
 
+  // An evaluation is written in the background (the server's
+  // evaluation.write job): the one asked for is followed, and shown once
+  // written, or why it couldn't be. It goes on if the manager leaves the
+  // file, which follows it again when it's opened.
+  const followAsked = (asked) => {
+    stopFollowing.current?.();
+    setAgentStep('loading');
+    setAgentResult(null);
+    // Leaving the file, or opening another, stops it (resetAgent, handleBack).
+    const settle = (result) => {
+      setAgentResult(result);
+      setAgentStep('result');
+    };
+    stopFollowing.current = followEvaluation(asked.request_id, (request) => {
+      if (writing(request)) return;
+      settle(request.status === 'done' && request.evaluation
+        ? request.evaluation
+        : { error: request.error || "The evaluation couldn't be completed. Please try again." });
+    }, undefined, () => settle({ error: "The evaluation is taking longer than usual. It'll be in this file once it's written." }));
+  };
+
   const loadKeptEvaluation = (candidateId) => {
     const version = selectionVersion.current;
     authFetch(`${API_BASE}/api/chat/candidates/${encodeURIComponent(candidateId)}/evaluations`)
       .then(res => (res.ok ? res.json() : null))
-      .then(data => { if (version === selectionVersion.current) setKeptEvaluation(data?.evaluations?.[0] || null); })
+      .then(data => {
+        if (version !== selectionVersion.current) return;
+        setKeptEvaluation(data?.evaluations?.[0] || null);
+        // One still being written, asked for before the manager left the file.
+        if (writing(data?.asked)) followAsked(data.asked);
+      })
       .catch(() => { /* none shown: a new one can still be written */ });
   };
 
@@ -311,11 +341,15 @@ export default function CandidateFocus() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedCandidate, candidates]);
 
-  useEffect(() => () => { selectionVersion.current += 1; }, []);
+  useEffect(() => () => {
+    selectionVersion.current += 1;
+    stopFollowing.current?.();
+  }, []);
 
   const handleBack = () => {
     voice.stopSpeaking();
     selectionVersion.current += 1;
+    stopFollowing.current?.();
     if (focusCandidate) {
       saveToCache(focusCandidate.id, {
         scanProfiles, scanSummary, scanContact, scanLogs, scanDone,
@@ -463,6 +497,8 @@ export default function CandidateFocus() {
       }
       const data = await response.json();
       if (version !== selectionVersion.current) return;
+      // Asked for, to be written in the background.
+      if (data.request_id) { followAsked(data); return; }
       // With what it was asked, as a kept one has it.
       setAgentResult({ ...data, role, level: selectedLevel }); setAgentStep('result');
     } catch { if (version === selectionVersion.current) { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); } }
@@ -486,6 +522,7 @@ export default function CandidateFocus() {
       }
       const data = await response.json();
       if (version !== selectionVersion.current) return;
+      if (data.request_id) { followAsked(data); return; }
       setAgentResult(data); setAgentStep('result');
     } catch { if (version === selectionVersion.current) { setAgentResult({ error: 'Could not reach the server.' }); setAgentStep('result'); } }
     finally { if (version === selectionVersion.current) setAgentLoading(false); }

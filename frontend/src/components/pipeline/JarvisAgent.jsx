@@ -8,6 +8,7 @@ import { fromAtsResult } from '../ranked/adapters';
 import { API_BASE, authFetch, responseError } from '../../services/authFetch';
 import { finishedBatch, newClientKey } from '../../services/inviteBatches';
 import { emailsEnded, pending } from '../../services/emailStatus';
+import { evaluationWritten, writing } from '../../services/evaluationRequests';
 import { averageScore, isScore, measured, shownScore } from '../../services/scores';
 import { pressable } from '../ui/pressable';
 import { keepTabInside, useModalFocus } from '../ui/modalFocus';
@@ -1170,8 +1171,19 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
         if (!res.ok) throw new Error(await responseError(res, `Eval ${res.status}`));
         const d = await res.json();
         if (d.error) throw new Error(d.error);
+        // Written in the background: Jarvis waits for it, and says nothing
+        // once closed.
+        const closed = closedRef.current?.signal;
+        const written = d.request_id ? await evaluationWritten(d, { signal: closed }) : d;
+        if (closed?.aborted) return;
+        if (writing(written)) {
+          setStatus('DONE');
+          directSay("The evaluation is still being written. It'll be in their file once it is.");
+          return;
+        }
+        if (written.status === 'failed') throw new Error(written.error || "the evaluation couldn't be written");
 
-        const report = d.report || d.output || '';
+        const report = written.evaluation?.report || written.report || written.output || '';
         const artifact = buildEvaluationArtifact(report, params.role || ctx.role || '');
         cacheCandidateArtifact('evaluations', params.candidate_id, artifact);
         updateContext({ lastAction: 'deep_evaluate' });
