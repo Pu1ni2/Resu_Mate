@@ -236,6 +236,7 @@ from app.api.jarvis import router as jarvis_router
 from app.api.realtime import router as realtime_router
 from app.api.sourcer import router as sourcer_router
 from app.api.privacy import router as privacy_router
+from app.api.emails import router as emails_router
 # The kinds of background job, registered for the job runner by importing
 # them: the clean-up tasks, on schedules, the interview report writer, the
 # batch invitations' preparer, and the outbox's sender.
@@ -246,7 +247,7 @@ from app.services import cleanup, interview_report, invite_batches, outbox  # no
 # as they were declared, so a prefix added here was missing from the route
 # a request matched, and from its line in the log.
 ROUTERS = (auth_router, chat_router, candidates_router, livekit_router, advisor_router,
-           pipeline_router, jarvis_router, realtime_router, sourcer_router, privacy_router)
+           pipeline_router, jarvis_router, realtime_router, sourcer_router, privacy_router, emails_router)
 for included in ROUTERS:
     app.include_router(included)
 
