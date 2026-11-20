@@ -96,17 +96,17 @@ def test_an_invitation_waits_until_the_address_is_confirmed(client, mailbox):
     tok, _ = register(client, "new@co.com", verified=False)
     cid = _candidate(client, tok, "ada@x.com")
     body = _invite(client, tok, cid, "ada@x.com")
-    assert body["invite_sent"] is False
-    assert body["invite_error"] == NOT_CONFIRMED
+    assert body["invite"] == {"email_id": None, "status": "refused", "error": NOT_CONFIRMED}
     # The interview is made, with the link to share.
     assert body["interview_config"]["interview_id"] and body["portal_link"]
     assert mailbox == []
 
 
-def test_a_confirmed_manager_invites_as_before(client, mailbox):
+def test_a_confirmed_manager_invites_as_before(client, run_jobs, mailbox):
     tok, _ = register(client, "sure@co.com")
     cid = _candidate(client, tok, "ada@x.com")
-    assert _invite(client, tok, cid, "ada@x.com")["invite_sent"] is True
+    assert _invite(client, tok, cid, "ada@x.com")["invite"]["status"] == "queued"
+    run_jobs()
     assert mailbox == ["ada@x.com"]
 
 

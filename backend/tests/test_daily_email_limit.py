@@ -36,11 +36,11 @@ def mailbox(monkeypatch):
     from app.services.email_service import email_service
     sent = []
 
-    async def send(to_email, subject, html_body):
+    async def deliver(to_email, subject, html_body):
         sent.append(to_email)
-        return True
+        return "sent"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", send)
+    monkeypatch.setattr(email_service, "deliver", deliver)
     return sent
 
 
@@ -86,10 +86,13 @@ async def _sent_count(manager_id):
         return await email_quota.sent_today(db, manager_id)
 
 
-def test_an_invitation_sent_is_counted(client, mailbox):
+def test_an_invitation_sent_is_counted(client, run_jobs, mailbox):
     tok, _ = register(client, "count@co.com")
     cid, manager_id = _candidate(client, tok, "ada@x.com")
-    assert _invite(client, tok, cid, "ada@x.com")["invite_sent"] is True
+    assert _invite(client, tok, cid, "ada@x.com")["invite"]["status"] == "queued"
+    # Counted as soon as it's queued, so another tab can't take its place.
+    assert _run(_sent_count(manager_id)) == 1
+    run_jobs()
     assert mailbox == ["ada@x.com"]
     assert _run(_sent_count(manager_id)) == 1
 
@@ -100,8 +103,7 @@ def test_at_the_limit_the_invitation_waits_and_says_why(client, mailbox, monkeyp
     cid, manager_id = _candidate(client, tok, "ada@x.com")
     _run(_counted(manager_id))
     body = _invite(client, tok, cid, "ada@x.com")
-    assert body["invite_sent"] is False
-    assert body["invite_error"] == email_quota.limit_reached()
+    assert body["invite"] == {"email_id": None, "status": "refused", "error": email_quota.limit_reached()}
     assert mailbox == []
 
 

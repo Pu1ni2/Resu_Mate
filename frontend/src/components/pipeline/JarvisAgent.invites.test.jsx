@@ -44,7 +44,7 @@ function server() {
     if (path === '/api/pipeline/batches') return ok({ batch_id: 1, finished: true, ...batchAnswer });
     if (path === '/api/pipeline/send-invites') return sendAnswer;
     if (path === '/api/chat/create-interview') {
-      return ok({ message: 'Interview created', interview_config: { role: 'Dev', mode: 'conversational' }, invite_sent: false, portal_link: LINK });
+      return ok({ message: 'Interview created', interview_config: { role: 'Dev', mode: 'conversational' }, invite: null, portal_link: LINK });
     }
     return ok({});
   });

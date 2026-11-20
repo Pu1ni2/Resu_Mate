@@ -23,7 +23,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import log_text
 from app.services import db_service
-from app.services import email_kinds, email_quota, evaluations, interview_modes, interview_setup, jobs, state_service
+from app.services import (
+    email_kinds, email_quota, evaluations, interview_modes, interview_setup, jobs, outbox, state_service,
+)
 from app.services.experience import experience_text
 from app.services.hidden_names import NO_LOOKUP, hides_names, scrub
 from app.agents.data_agent import data_agent
@@ -889,27 +891,27 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
     print(f"[OK] Interview created for candidate {req.candidate_id}")
 
     # Nothing told the candidate before: the manager was told they "can now
-    # log in", with no email sent and no link to pass on.
-    invite_sent, invite_error = False, None
+    # log in", with no email sent and no link to pass on. Then the invitation
+    # went inside this request, counted toward the day's limit only once it
+    # had gone. It's queued now, its place held at once, and the outbox's job
+    # sends it (app/services/email_kinds.py); the page follows it
+    # (GET /api/emails). None when not asked for.
+    invite = None
     if req.send_invite:
         from app.services.email_service import email_service
         if not email_service.configured:
-            invite_error = "Email isn't set up on this server. Share the portal link instead."
-        elif refused := await email_quota.refusal(db, user):
-            invite_error = refused
+            invite = {"email_id": None, "status": "refused",
+                      "error": "Email isn't set up on this server. Share the portal link instead."}
+        elif refused := await email_quota.reserve(db, user):
+            invite = {"email_id": None, "status": "refused", "error": refused}
         else:
-            invite_sent = await email_service.send_interview_invitation(
-                email, req.candidate_name or "there", req.role or "General", settings.candidate_login_url,
-                company=user.company or "",
-            )
-            if invite_sent:
-                await email_quota.record_sent(db, mgr, email, "interview invitation")
-            else:
-                invite_error = "The email service didn't accept the invite. Share the portal link instead."
+            email_id = await outbox.queue(db, "interview_invitation", manager_id=mgr, interview_id=interview.id,
+                                          counts_to_quota=True, dedupe_key=f"invite:{interview.id}")
+            invite = {"email_id": email_id, "status": "queued", "error": None}
+        await db.commit()
     return {
         "message": f"Interview created for {email}", "interview_config": config,
-        "invite_sent": invite_sent, "invite_error": invite_error,
-        "portal_link": settings.candidate_login_url,
+        "invite": invite, "portal_link": settings.candidate_login_url,
     }
 
 @router.get("/candidate/me")

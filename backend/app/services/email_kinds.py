@@ -11,12 +11,12 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.auth import HiringManager
-from app.models.candidate import CandidateAccess, Interview
+from app.models.candidate import Candidate, CandidateAccess, Interview
 from app.services import outbox
 from app.services.auth import create_reset_token, create_verify_token
 from app.services.codes import issue_code
 from app.services.email_service import (
-    erasure_code_email, password_reset_email, sign_in_code_email, verification_email,
+    erasure_code_email, invitation_email, password_reset_email, sign_in_code_email, verification_email,
 )
 from app.services.erasure import holds_data
 
@@ -48,6 +48,24 @@ async def interview_done(db, email):
     )
     return manager.email, subject, body
 
+
+
+# ── an interview's invitation ────────────────────────────────────────────────
+
+@outbox.composer("interview_invitation")
+async def interview_invitation(db, email):
+    """The invitation to an interview, to the address it's for, naming the
+    candidate and the company inviting, read as it's sent. Nothing once the
+    interview has gone, or finished."""
+    interview = await db.get(Interview, email.interview_id) if email.interview_id else None
+    if interview is None or interview.status == "completed":
+        return None
+    candidate = await db.get(Candidate, interview.candidate_id)
+    manager = await db.get(HiringManager, interview.manager_id) if interview.manager_id else None
+    return (interview.candidate_email, *invitation_email(
+        (candidate.name if candidate else "") or "there", interview.role or "General",
+        settings.candidate_login_url, (manager.company if manager else "") or "",
+    ))
 
 # ── a manager's own address ──────────────────────────────────────────────────
 

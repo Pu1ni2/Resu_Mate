@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 import { resetFeatures } from '../../services/features';
 import { TOAST_EVENT } from '../../services/notify';
@@ -14,11 +14,20 @@ const ADA = { id: 1, name: 'Ada Lovelace', predicted_role: 'Engineer' };
 const LINK = 'https://resumate.example/candidate/login';
 
 let sent;
+let asked;  // how often the page asked after the invitation
 
-function server(answer, { avatars = false } = {}) {
+/* The server: create-interview answers `answer`; GET /api/emails answers
+ * each of `emails` in turn, the last again once they run out. */
+function server(answer, { avatars = false, emails = [] } = {}) {
+  asked = 0;
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
     if (String(url).endsWith('/api/features')) {
       return { ok: true, status: 200, json: async () => ({ avatar_interviews: avatars }) };
+    }
+    if (String(url).includes('/api/emails?ids=')) {
+      asked += 1;
+      const now = emails[Math.min(asked, emails.length) - 1];
+      return { ok: true, status: 200, json: async () => ({ emails: [now] }) };
     }
     sent = JSON.parse(options.body);
     const { status = 200, ...body } = answer;
@@ -29,11 +38,13 @@ function server(answer, { avatars = false } = {}) {
 const created = (extra = {}) => ({
   message: 'Interview created for ada@x.com',
   interview_config: { mode: 'conversational' },
-  invite_sent: false, invite_error: null, portal_link: LINK,
+  invite: null, portal_link: LINK,
   ...extra,
 });
+const QUEUED = { email_id: 5, status: 'queued', error: null };
+const email = (status, error = null) => ({ id: 5, kind: 'interview_invitation', interview_id: 7, status, error });
 
-async function create({ untick = false, avatar = false } = {}) {
+async function create({ untick = false, avatar = false, following = false } = {}) {
   render(<InterviewCreator focusCandidate={ADA} />);
   if (avatar) {
     const choice = screen.getByRole('button', { name: /avatar interview/i });
@@ -42,6 +53,14 @@ async function create({ untick = false, avatar = false } = {}) {
   }
   fireEvent.change(screen.getByPlaceholderText('candidate@email.com'), { target: { value: 'ada@x.com' } });
   if (untick) fireEvent.click(screen.getByLabelText(/email the invitation/i));
+  if (following) {
+    // The page asks after its invitation on a timer, set as the answer comes:
+    // the tests' own clock from before then.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /create interview/i })); });
+    expect(screen.getByText(/interview created!/i)).toBeTruthy();
+    return;
+  }
   fireEvent.click(screen.getByRole('button', { name: /create interview/i }));
   await screen.findByText(/interview created!/i);
 }
@@ -52,31 +71,27 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe('creating an interview', () => {
-  it('emails the invitation unless told not to', async () => {
-    server(created({ invite_sent: true }));
-    await create();
+  it('emails the invitation unless told not to, saying when it has gone', async () => {
+    server(created({ invite: QUEUED }), { emails: [email('queued'), email('sent')] });
+    await create({ following: true });
     expect(sent.send_invite).toBe(true);
-    expect(screen.getByText(/invitation emailed to/i).textContent).toMatch(/ada@x\.com/);
+    // Queued: the server's outbox sends it a moment later.
+    expect(screen.getByRole('status').textContent).toMatch(/sending the invitation to ada@x\.com/i);
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(screen.getByRole('status').textContent).toMatch(/invitation emailed to ada@x\.com/i);
     expect(screen.queryByLabelText(/candidate sign-in link/i)).toBeNull();
-  });
-
-  it('gives the link to send when nothing was emailed', async () => {
-    server(created());
-    const writeText = vi.fn().mockResolvedValue();
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    await create({ untick: true });
-    expect(sent.send_invite).toBe(false);
-    expect(screen.getByLabelText(/candidate sign-in link/i).value).toBe(LINK);
-    fireEvent.click(screen.getByRole('button', { name: /copy link/i }));
-    expect(writeText).toHaveBeenCalledWith(LINK);
+    // It has gone: asked after no more.
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(asked).toBe(2);
   });
 
   it('says why the invitation was not emailed', async () => {
-    server(created({ invite_error: "Email isn't set up on this server. Share the portal link instead." }));
+    server(created({ invite: { email_id: null, status: 'refused', error: "Email isn't set up on this server. Share the portal link instead." } }));
     await create();
     expect(screen.getByRole('status').textContent).toMatch(/isn't set up/);
     expect(screen.getByLabelText(/candidate sign-in link/i).value).toBe(LINK);

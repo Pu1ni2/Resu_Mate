@@ -69,7 +69,7 @@ async def _finished(manager_id, email, role="Dev"):
         await db.commit()
 
 
-def _own_candidate(client, tok, text):
+def _own_candidate(client, tok, text, name="Cand"):
     """A candidate of this manager, as an upload leaves them: no email field."""
     from app.core import database
     from app.services import db_service
@@ -78,12 +78,12 @@ def _own_candidate(client, tok, text):
 
     async def seed():
         async with database.async_session() as db:
-            row = await db_service.create_candidate_db(db, {"name": "Cand", "text": text}, manager_id=manager_id)
+            row = await db_service.create_candidate_db(db, {"name": name, "text": text}, manager_id=manager_id)
             return row.id
 
     cid = _run(seed())
     resume_rag.candidates.setdefault(manager_id, {})[cid] = {
-        "id": cid, "manager_id": manager_id, "name": "Cand", "text": text, "is_resume": True,
+        "id": cid, "manager_id": manager_id, "name": name, "text": text, "is_resume": True,
     }
     return cid
 
@@ -188,11 +188,14 @@ def _create(client, tok, cid, email, **extra):
     return r.json()
 
 
-def test_creating_an_interview_can_email_the_invite(client, mailbox):
+def test_creating_an_interview_can_email_the_invite(client, run_jobs, mailbox):
     tok, _ = register(client, "c1@co.com")
     cid = _own_candidate(client, tok, "Cand\nc1@x.com")
     body = _create(client, tok, cid, "C1@x.com", send_invite=True)
-    assert (body["invite_sent"], body["invite_error"]) == (True, None)
+    # Queued, for the outbox to send: the page follows it.
+    assert body["invite"] == {"email_id": body["invite"]["email_id"], "status": "queued", "error": None}
+    assert isinstance(body["invite"]["email_id"], int) and mailbox == []
+    run_jobs()
     assert [m["to"] for m in mailbox] == ["c1@x.com"]
     assert PORTAL in mailbox[0]["html"]
     assert "Dev" in mailbox[0]["subject"]
@@ -202,7 +205,7 @@ def test_creating_an_interview_emails_only_when_asked(client, mailbox):
     tok, _ = register(client, "c2@co.com")
     cid = _own_candidate(client, tok, "Cand\nc2@x.com")
     body = _create(client, tok, cid, "c2@x.com")
-    assert (body["invite_sent"], body["invite_error"]) == (False, None)
+    assert body["invite"] is None
     assert body["portal_link"] == PORTAL
     assert mailbox == []
 
@@ -211,33 +214,36 @@ def test_without_email_the_manager_gets_the_link_to_share(client, no_email):
     tok, _ = register(client, "c3@co.com")
     cid = _own_candidate(client, tok, "Cand\nc3@x.com")
     body = _create(client, tok, cid, "c3@x.com", send_invite=True)
-    assert body["invite_sent"] is False
-    assert "isn't set up" in body["invite_error"]
+    assert (body["invite"]["email_id"], body["invite"]["status"]) == (None, "refused")
+    assert "isn't set up" in body["invite"]["error"]
     assert body["portal_link"] == PORTAL
 
 
-def test_a_refused_invite_is_reported(client, monkeypatch):
+def test_a_refused_invite_is_reported(client, run_jobs, monkeypatch):
     from app.services.email_service import email_service
 
     async def refused(to_email, subject, html_body):
-        return False
+        return "refused"
     monkeypatch.setattr(email_service, "_sg", object())
-    monkeypatch.setattr(email_service, "send", refused)
+    monkeypatch.setattr(email_service, "deliver", refused)
     tok, _ = register(client, "c4@co.com")
     cid = _own_candidate(client, tok, "Cand\nc4@x.com")
-    body = _create(client, tok, cid, "c4@x.com", send_invite=True)
-    assert body["invite_sent"] is False
-    assert "didn't accept" in body["invite_error"]
+    email_id = _create(client, tok, cid, "c4@x.com", send_invite=True)["invite"]["email_id"]
+    run_jobs()
+    [email] = client.get("/api/emails", headers=auth_headers(tok), params={"ids": email_id}).json()["emails"]
+    assert (email["status"], email["error"]) == ("failed", "The email service refused it.")
 
 
-def test_a_name_with_markup_is_escaped_in_the_invite(client, mailbox):
+def test_a_name_with_markup_is_escaped_in_the_invite(client, run_jobs, mailbox):
     tok, _ = register(client, "c5@co.com")
-    cid = _own_candidate(client, tok, "Cand\nc5@x.com")
+    # The invitation names the candidate as their file does.
+    cid = _own_candidate(client, tok, "Cand\nc5@x.com", name="<b>Cand</b>")
     r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
         "candidate_id": cid, "candidate_email": "c5@x.com", "candidate_name": "<b>Cand</b>",
         "role": "R&D <Lead>", "send_invite": True,
     })
     assert r.status_code == 200, r.text
+    run_jobs()
     html = mailbox[0]["html"]
     assert "Hi &lt;b&gt;Cand&lt;/b&gt;," in html
     assert "R&amp;D &lt;Lead&gt;" in html

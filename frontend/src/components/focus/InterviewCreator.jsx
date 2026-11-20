@@ -3,6 +3,7 @@ import { Video, Loader, Check, Mic } from 'lucide-react';
 import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
 import { useAvatarInterviews } from '../../services/features';
+import { followEmails, pending } from '../../services/emailStatus';
 import PortalLink from '../shared/PortalLink';
 
 export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact }) {
@@ -18,8 +19,8 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   const [interviewMode, setInterviewMode] = useState('conversational');
   const [interviewCreating, setInterviewCreating] = useState(false);
   const [sendInvite, setSendInvite] = useState(true);
-  // What the server did: { mode, inviteSent, inviteError, portalLink,
-  // interviewId, questions }.
+  // What the server did: { mode, invite, portalLink, interviewId, questions },
+  // invite being { email_id, status, error }, or null when none was asked for.
   const [created, setCreated] = useState(null);
   // The questions being edited, one a line; null when not editing.
   const [questionsDraft, setQuestionsDraft] = useState(null);
@@ -29,6 +30,18 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   useEffect(() => {
     if (scanContact?.email) setInterviewEmail(current => current || scanContact.email);
   }, [scanContact]);
+
+  // The invitation goes a moment after it's queued, by the server's outbox:
+  // follow it until it has gone, or failed and why.
+  const inviteId = created?.invite?.email_id;
+  const inviteWaiting = pending(created?.invite);
+  useEffect(() => {
+    if (!inviteId || !inviteWaiting) return undefined;
+    return followEmails([inviteId], (emails) => {
+      const email = emails[inviteId];
+      if (email) setCreated(current => ({ ...current, invite: { ...current.invite, status: email.status, error: email.error } }));
+    });
+  }, [inviteId, inviteWaiting]);
 
   const createInterview = async () => {
     if (!focusCandidate || !interviewEmail.trim()) { toast('Please enter candidate email', 'error'); return; }
@@ -53,21 +66,22 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
       const data = await resp.json().catch(() => ({}));
       // A refusal used to end the spinner with no word at all.
       if (!resp.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Failed to create interview');
+      const invite = data.invite || null;
       setCreated({
         mode: data.interview_config?.mode || interviewMode,
-        inviteSent: !!data.invite_sent,
-        inviteError: data.invite_error || null,
+        invite,
         portalLink: data.portal_link || '',
         interviewId: data.interview_config?.interview_id || null,
         questions: data.interview_config?.questions || [],
       });
-      toast(data.invite_sent ? 'Interview created and invitation emailed.' : 'Interview created. Send the candidate the sign-in link.', 'success');
+      const sending = pending(invite);
+      toast(sending ? 'Interview created. Sending the invitation…' : 'Interview created. Send the candidate the sign-in link.', 'success');
       // The candidate takes the interview on their own time, so the result
       // arrives long after this screen is closed.
       notify(
         'Interview created',
-        data.invite_sent
-          ? `Invitation emailed to ${interviewEmail.trim()}`
+        sending
+          ? `Sending the invitation to ${interviewEmail.trim()}`
           : `${focusCandidate.name || interviewEmail.trim()} can start once you send them the sign-in link`,
         'success',
       );
@@ -108,14 +122,20 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
         <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
           <Check size={40} style={{ color: '#22C55E', marginBottom: '14px' }} />
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>Interview Created!</h3>
-          {created.inviteSent ? (
-            <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px' }}>
+          {created.invite?.status === 'sent' ? (
+            <p role="status" style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px' }}>
               Invitation emailed to <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>.
+            </p>
+          ) : pending(created.invite) ? (
+            <p role="status" style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <Loader size={14} className="spin" /> Sending the invitation to <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>…
             </p>
           ) : (
             <div style={{ textAlign: 'left', marginBottom: '12px' }}>
-              {created.inviteError && (
-                <p role="status" style={{ color: 'var(--warning)', fontSize: '14px', marginBottom: '8px' }}>{created.inviteError}</p>
+              {created.invite && (
+                <p role="status" style={{ color: 'var(--warning)', fontSize: '14px', marginBottom: '8px' }}>
+                  {created.invite.error || 'The invitation wasn’t sent.'}
+                </p>
               )}
               <p style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '8px' }}>
                 Send the candidate this link. They sign in with <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>.
