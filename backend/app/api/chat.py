@@ -1135,12 +1135,14 @@ async def _managers_interview(db: AsyncSession, manager_id: int, interview_id: i
 
 @router.get("/interviews/{interview_id}")
 async def interview_detail(interview_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """One of this manager's interviews, and where its report stands: the
-    pages ask this while a background job writes the report."""
+    """One of this manager's interviews, and where its questions and its
+    report stand: the pages ask this while background jobs write them."""
     interview = await _managers_interview(db, user.id, interview_id)
     return {
         "interview_id": interview.id,
         "status": interview.status,
+        "questions_status": db_service.questions_state(interview),
+        "questions": interview.questions or [],
         "report_status": db_service.report_state(interview),
         "report_error": interview.report_error,
         "completed_at": interview.completed_at.isoformat() if interview.completed_at else None,

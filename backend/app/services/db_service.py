@@ -256,6 +256,14 @@ def report_state(interview: Interview) -> Optional[str]:
     return "done" if (report_dict(interview.report).get("report") or "").strip() else "failed"
 
 
+def questions_state(interview: Interview) -> str:
+    """Where an interview's questions stand: "pending" while a background job
+    writes them, then "ready", or "failed" (the interviewer asks its own).
+    One made before there were such jobs has none stored: its questions came
+    with it."""
+    return interview.questions_status or "ready"
+
+
 async def update_interview_status(
     session: AsyncSession, email: str, status: str,
     report: str = None, scores: list = None, duration: int = None

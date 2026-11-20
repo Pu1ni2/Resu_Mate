@@ -102,6 +102,11 @@ class Interview(Base):
     # text. None for an interview finished before there were such jobs.
     report_status = Column(String(16), nullable=True)
     report_error = Column(String(200), nullable=True)
+    # Where its questions stand: a background job writes them for the
+    # candidate and role once the interview is made, "pending" until then,
+    # then "ready", or "failed" (the interviewer asks its own). None for an
+    # interview whose questions came with it.
+    questions_status = Column(String(16), nullable=True)
     status = Column(String(20), default="pending")  # pending, in_progress, interrupted, completed
     # Interview format: "avatar" (existing LiveKit + Simli flow with the
     # camera + lip-synced face) or "conversational" (audio-only OpenAI Realtime
