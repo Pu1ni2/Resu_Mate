@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 from typing import Awaitable, Callable, Dict, Optional, Tuple
 
-from sqlalchemy import insert, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.dialects import postgresql, sqlite
 
 from app.core import database
@@ -61,15 +61,20 @@ class EmailBusy(ConnectionError):
 
 async def queue(db, kind: str, *, manager_id: Optional[int] = None, interview_id: Optional[int] = None,
                 to_address: Optional[str] = None, subject: Optional[str] = None, body: Optional[str] = None,
-                counts_to_quota: bool = False, dedupe_key: Optional[str] = None) -> Optional[int]:
+                counts_to_quota: bool = False, dedupe_key: Optional[str] = None,
+                held: bool = False) -> Optional[int]:
     """Queue an email, and the job that sends it, in the caller's
-    transaction; its id, or None when one with this dedupe_key is queued or
-    sent already. Nothing is committed here."""
+    transaction; its id, or None when one with this dedupe_key is queued,
+    held or sent already. Nothing is committed here.
+
+    Held, it waits with no job until its interview's questions are written
+    (release): an invitation to an interview that would ask nothing of its
+    own yet. It counts toward the day's emails all the same."""
     if kind not in KINDS:
         raise ValueError("not a kind of email the outbox keeps")
     values = dict(kind=kind, manager_id=manager_id, interview_id=interview_id, to_address=to_address,
-                  subject=subject, body=body, counts_to_quota=counts_to_quota, status="queued",
-                  dedupe_key=dedupe_key, created_at=datetime.utcnow())
+                  subject=subject, body=body, counts_to_quota=counts_to_quota,
+                  status="held" if held else "queued", dedupe_key=dedupe_key, created_at=datetime.utcnow())
     table = EmailOutbox.__table__
     dialect = db.get_bind().dialect.name
     # A key already taken: nothing is queued, and no error spoils the
@@ -82,10 +87,26 @@ async def queue(db, kind: str, *, manager_id: Optional[int] = None, interview_id
     else:
         statement = insert(table).values(**values)
     email_id = (await db.execute(statement.returning(table.c.id))).scalar_one_or_none()
-    if email_id is not None:
-        await jobs.enqueue(db, SEND, {"email_id": email_id}, dedupe_key=f"email:{email_id}",
-                           priority=0 if kind in URGENT else 100, manager_id=manager_id)
+    if email_id is not None and not held:
+        await _send_later(db, email_id, kind, manager_id)
     return email_id
+
+
+async def _send_later(db, email_id: int, kind: str, manager_id: Optional[int]) -> None:
+    await jobs.enqueue(db, SEND, {"email_id": email_id}, dedupe_key=f"email:{email_id}",
+                       priority=0 if kind in URGENT else 100, manager_id=manager_id)
+
+
+async def release(db, interview_id: int) -> int:
+    """Send the emails held for an interview, its questions written: each
+    queued, with the job that sends it, in the caller's transaction. How
+    many."""
+    held = (await db.execute(select(EmailOutbox).where(
+        EmailOutbox.interview_id == interview_id, EmailOutbox.status == "held"))).scalars().all()
+    for email in held:
+        email.status = "queued"
+        await _send_later(db, email.id, email.kind, email.manager_id)
+    return len(held)
 
 
 async def _end(db, email_id: int, status: str, error: Optional[str] = None) -> None:

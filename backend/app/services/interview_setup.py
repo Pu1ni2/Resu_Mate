@@ -9,7 +9,9 @@ the video room had none to ask.
 
 The access and the interview are added together (add_interview), and the
 questions are made apart (make_questions, then keep_questions), so a
-background job can write them with no database session held.
+background job can write them with no database session held: a batch's
+(app/services/invite_batches.py), and a single interview's
+(interview.questions, below).
 """
 import logging
 from datetime import datetime
@@ -19,7 +21,9 @@ from sqlalchemy import insert
 from sqlalchemy.dialects import postgresql, sqlite
 
 from app.agents.technical_agent import clean_questions, technical_agent
-from app.models.candidate import CandidateAccess, Interview
+from app.core import database
+from app.models.candidate import Candidate, CandidateAccess, Interview
+from app.services import jobs, outbox
 from app.services.resume_rag import is_sample
 
 logger = logging.getLogger("resumate.interview_setup")
@@ -130,3 +134,66 @@ async def create_interview(db, *, manager_id, candidate, candidate_id, email, na
             await db.rollback()
             logger.warning("interview questions could not be kept: %s", type(e).__name__)
     return interview, resume_intel
+
+
+# ── a single interview's questions, by a background job ──────────────────────
+
+QUESTIONS = "interview.questions"
+
+
+class NoQuestions(ConnectionError):
+    """The AI wrote none: busy or out of reach, most often, so it's tried
+    again."""
+
+
+async def queue_questions(db, interview) -> None:
+    """Have the background job write an interview's questions, in the
+    caller's transaction: they're "pending" until then."""
+    interview.questions_status = "pending"
+    await jobs.enqueue(db, QUESTIONS, {"interview_id": interview.id}, manager_id=interview.manager_id)
+
+
+async def _questions_failed(db, job, code) -> None:
+    """Tried as often as they may be: the interviewer asks its own, and the
+    invitation held for them goes."""
+    interview = await db.get(Interview, job.payload["interview_id"])
+    if interview is None or interview.questions_status != "pending":
+        return
+    interview.questions_status = "failed"
+    await outbox.release(db, interview.id)
+
+
+@jobs.handler(QUESTIONS, max_attempts=3, backoff=(30, 600), on_failure=_questions_failed)
+async def write_questions(payload: dict) -> None:
+    """Write an interview's questions for its candidate and role, keep them,
+    and send the invitation held for them. The manager's own, set
+    meanwhile, are kept instead, and an interview already started is left as
+    it is. It waits while the candidate's résumé is still being read.
+
+    No database session is held while the AI writes, which can take a
+    while; the interview is read again before they're kept.
+    """
+    from app.services.resume_rag import reading, resume_rag
+    interview_id = payload["interview_id"]
+    async with database.async_session() as db:
+        interview = await db.get(Interview, interview_id)
+        if interview is None or interview.questions_status != "pending":
+            return
+        row = await db.get(Candidate, interview.candidate_id)
+        candidate = resume_rag.get_candidate(row.id, manager_id=row.manager_id) or resume_rag.record_from_row(row)
+        if reading(candidate):
+            raise jobs.Defer(30)
+        asked = (interview.role, interview.level, interview.num_questions, interview.focus_areas,
+                 candidate.get("name") or "the candidate", candidate)
+    questions, resume_intel = await make_questions(*asked)
+    if not questions:
+        raise NoQuestions("no questions were written")
+    async with database.async_session() as db:
+        interview = await db.get(Interview, interview_id)
+        if interview is None or interview.questions_status != "pending":
+            return
+        if interview.status == "pending":
+            keep_questions(interview, [] if interview.questions else questions, resume_intel)
+        interview.questions_status = "ready"
+        await outbox.release(db, interview.id)
+        await db.commit()
