@@ -48,7 +48,8 @@ describe('the screening results', () => {
 
   it('count the files they left out', () => {
     open(run({ assessed: ['role'], excluded: 2 }));
-    expect(screen.getByText(/2 files were left out: not a résumé, or its analysis failed\./)).toBeTruthy();
+    expect(screen.getByText(/2 files were left out: not a résumé, its analysis failed, or it’s still being read\./))
+      .toBeTruthy();
   });
 
   it('from an older run, without those fields, say neither', () => {

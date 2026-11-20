@@ -156,7 +156,7 @@ export default function ATSResultsView({ pipelineResult, onBack, onRunAgain, emb
         {pipelineResult.excluded > 0 && (
           <p className="mb-3 text-[12px] text-ink-subtle">
             {pipelineResult.excluded === 1 ? '1 file was' : `${pipelineResult.excluded} files were`} left
-            out: not a résumé, or its analysis failed.
+            out: not a résumé, its analysis failed, or it’s still being read.
           </p>
         )}
 

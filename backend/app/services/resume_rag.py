@@ -41,6 +41,11 @@ def analysis_status(status: Optional[str], failed) -> str:
     return status or ("failed" if failed else "done")
 
 
+def reading(candidate: Dict) -> bool:
+    """Whether the AI is still reading this candidate's résumé."""
+    return bool(candidate) and candidate.get("analysis_status") == "pending"
+
+
 def primary_email(candidate: Dict) -> str:
     """The resume's own contact address, lowercased, or "" if it has none.
 

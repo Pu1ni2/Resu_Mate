@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services.auth import get_current_user
 from app.services.ats_service import ats_service, assessed_parts, JDParseError
-from app.services.resume_rag import resume_rag
+from app.services.resume_rag import reading, resume_rag
 from app.services import email_kinds, email_quota, interview_modes, invite_batches, outbox, screening_runs
 from app.services.email_service import email_service
 from app.models.candidate import Interview
@@ -85,11 +85,14 @@ async def run_pipeline(request: Request, req: PipelineRunRequest, user=Depends(g
         raise HTTPException(400, "Name the role to screen for.")
 
     # Only analysed résumés are screened. A file that isn't a résumé, or whose
-    # analysis failed, was ranked like the rest from its empty fields.
-    screenable = [c for c in pool if c.get("is_resume") is not False and not c.get("analysis_failed")]
+    # analysis failed, was ranked like the rest from its empty fields, and so
+    # would one the AI is still reading (app/services/resume_analysis.py).
+    screenable = [c for c in pool if c.get("is_resume") is not False and not c.get("analysis_failed")
+                  and not reading(c)]
     excluded = len(pool) - len(screenable)
     if not screenable:
-        raise HTTPException(400, "None of these files can be screened: they aren't résumés, or their analysis failed.")
+        raise HTTPException(400, "None of these files can be screened: they aren't résumés, their analysis "
+                                 "failed, or they're still being read.")
     pool = screenable
 
     # 2. Parse JD (if provided)

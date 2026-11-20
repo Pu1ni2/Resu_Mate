@@ -377,9 +377,9 @@ export default function Dashboard() {
   useEffect(() => { loadCandidates(); }, [loadCandidates]);
 
   const resumeCandidates = candidates.filter(c => c.is_resume !== false);
-  // Ready to review: a résumé whose analysis didn't fail. A screening run
-  // takes these, or the ones among them that are selected.
-  const readyCandidates = resumeCandidates.filter(c => !c.analysis_failed);
+  // Ready to review: a résumé the AI has read, its analysis not failed. A
+  // screening run takes these, or the ones among them that are selected.
+  const readyCandidates = resumeCandidates.filter(c => !c.analysis_failed && !reading(c));
   const readyCount = readyCandidates.length;
   const screeningCandidates = selectedIds.length
     ? readyCandidates.filter(c => selectedIds.includes(c.id))
