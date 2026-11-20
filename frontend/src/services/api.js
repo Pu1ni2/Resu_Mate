@@ -74,6 +74,9 @@ export const candidatesAPI = {
   },
   getAll: () => api.get('/candidates'),
   getOne: id => api.get(`/candidates/${id}`),
+  // Have the AI read a résumé again, its reading failed: the answer is the
+  // candidate, "pending" until it has.
+  readAgain: id => api.post(`/candidates/${id}/analyze`),
   delete: id => api.delete(`/candidates/${id}`),
   deleteAll: () => api.delete('/candidates')  // This clears backend
 };

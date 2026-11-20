@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 
 from app.services.auth import get_current_user
-from app.services.resume_rag import resume_rag, MAX_FILE_SIZE, OLD_WORD_FILE, RESUME_EXTENSIONS
+from app.services.resume_rag import analysis_status, resume_rag, MAX_FILE_SIZE, OLD_WORD_FILE, RESUME_EXTENSIONS
 from app.core.database import get_db
 from app.core.errors import log_text
 from app.services import db_service, state_service
@@ -167,6 +167,34 @@ async def get_candidate(candidate_id: int, user=Depends(get_current_user)):
         # 404 (not 403) so we don't reveal that the id exists under another manager.
         raise HTTPException(404, "Candidate not found")
     return candidate
+
+
+@router.post("/{candidate_id}/analyze", status_code=202)
+@limiter.limit("30/hour")
+async def read_again(request: Request, candidate_id: int, user=Depends(get_current_user),
+                     db: AsyncSession = Depends(get_db)):
+    """Have the AI read a résumé again, its reading failed: the candidate is
+    "pending" until it has (app/services/resume_analysis.py), and this
+    answers with them at once. A failed reading said to delete the candidate
+    and upload the file again. One being read is left to it."""
+    from sqlalchemy import select as sql_select
+    from app.models.candidate import Candidate
+    from app.services import resume_analysis
+    row = (await db.execute(sql_select(Candidate).where(
+        Candidate.id == candidate_id, Candidate.manager_id == user.id))).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(404, "Candidate not found")
+    if row.is_resume is False:
+        raise HTTPException(400, "This file isn't a résumé, so there's nothing for the AI to read.")
+    if analysis_status(row.analysis_status, row.analysis_failed) == "done":
+        raise HTTPException(409, "This résumé has been read already.")
+    row.analysis_status, row.analysis_failed = "pending", False
+    await resume_analysis.queue(db, row.id, user.id)
+    await db.commit()
+    # The page asks after them here (GET /{candidate_id}), from the server's copy.
+    resume_rag.add_missing(user.id, [resume_rag.record_from_row(row)])
+    resume_rag.take_analysis(candidate_id, user.id, {"analysis_status": "pending", "analysis_failed": False})
+    return resume_rag.get_candidate(candidate_id, manager_id=user.id)
 
 
 @router.get("/{candidate_id}/file")

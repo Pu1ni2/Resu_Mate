@@ -47,7 +47,8 @@ describe("the manager's card", () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
     mocks.app = app({ candidates: [FAILED] });
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
-    expect(screen.getByText("Couldn't analyse this résumé. Delete it and upload it again.")).toBeTruthy();
+    expect(screen.getByText("Couldn't analyse this résumé.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: "Read Ada's résumé again" })).toBeTruthy();
     expect(screen.queryByText('Processing...')).toBeNull();
     expect(screen.queryByText('0y')).toBeNull();
   });

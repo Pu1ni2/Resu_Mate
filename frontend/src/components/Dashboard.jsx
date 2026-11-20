@@ -15,6 +15,7 @@ import {
   LayoutGrid, List
 } from 'lucide-react';
 import { API_BASE, authFetch, responseError } from '../services/authFetch';
+import { candidatesAPI, messageForApiError } from '../services/api';
 import { knownYears } from '../services/experience';
 import { reading } from '../services/resumeReading';
 
@@ -282,7 +283,7 @@ function RunUnavailable({ status, onRetry, onNew }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
-    candidates, candidatesStatus, selectedIds, selectedCandidates, uploadProgress, loading,
+    candidates, setCandidates, candidatesStatus, selectedIds, selectedCandidates, uploadProgress, loading,
     loadCandidates, uploadResume, deleteCandidate, clearAllCandidates, toggleSelection, selectAll, clearSelection,
     anonymize, setAnonymize, hideNamesSaving, analytics,
     messages, suggestions, isTyping, sendMessage, initChat, clearChat,
@@ -408,6 +409,18 @@ export default function Dashboard() {
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: scrollBehavior() });
   }, [messages, isTyping]);
+
+  // A résumé the AI couldn't read is read again: it shows as being read,
+  // and fills in once it has been (the app asks after it). It said to delete
+  // the candidate and upload the file again.
+  const readAgain = async (id) => {
+    try {
+      const { data } = await candidatesAPI.readAgain(id);
+      setCandidates(prev => prev.map(c => (c.id === id ? data : c)));
+    } catch (err) {
+      toast(messageForApiError(err, "The résumé couldn't be read again just now. Please try again."), 'error');
+    }
+  };
 
   const handleUpload = async (files) => {
     for (const file of Array.from(files)) {
@@ -955,7 +968,15 @@ export default function Dashboard() {
                                     {c.is_resume === false && <span className="badge badge-orange">Not a résumé</span>}
                                   </span>
                                 </th>
-                                <td>{reading(c) ? 'Reading the résumé…' : c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || '—')}</td>
+                                <td>
+                                  {reading(c) ? 'Reading the résumé…' : c.analysis_failed ? "Couldn't analyse this résumé" : (c.predicted_role || '—')}
+                                  {c.analysis_failed && (
+                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => readAgain(c.id)}
+                                      aria-label={`Read ${name}'s résumé again`}>
+                                      Try again
+                                    </button>
+                                  )}
+                                </td>
                                 <td>{c.total_experience_years != null ? `${c.total_experience_years}y` : '—'}</td>
                                 <td className="sd-list-level">{c.experience_level || '—'}</td>
                                 <td className="sd-list-more">{c.location || '—'}</td>
@@ -1010,13 +1031,19 @@ export default function Dashboard() {
                           <h3 className="candidate-name">{getDisplayName(c, i)}</h3>
                           {/* The AI reads the résumé after the upload has answered: it's
                               being read, or its role. The analysis failed: say so, rather
-                              than "Processing..." forever. The same file again is refused as
-                              a duplicate, so delete it first. */}
+                              than "Processing..." forever, and have it read again. */}
                           <p className="candidate-role">
                             {reading(c) ? 'Reading the résumé…'
-                              : c.analysis_failed ? "Couldn't analyse this résumé. Delete it and upload it again."
+                              : c.analysis_failed ? "Couldn't analyse this résumé."
                                 : (c.predicted_role || '—')}
                           </p>
+                          {c.analysis_failed && (
+                            <button type="button" className="btn btn-secondary btn-sm"
+                              onClick={e => { e.stopPropagation(); readAgain(c.id); }}
+                              aria-label={`Read ${getDisplayName(c, i)}'s résumé again`}>
+                              Try again
+                            </button>
+                          )}
                           
                           <div className="candidate-badges">
                             {/* The sample résumé offered for trying ResuMate: no one to invite. */}
