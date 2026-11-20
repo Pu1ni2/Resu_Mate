@@ -209,3 +209,78 @@ def test_a_reset_is_queued_alike_for_any_address_and_sent_only_to_an_account(cli
     # Ended, the typed addresses go.
     assert [(e["to"], e["status"]) for e in _run(_queued("password_reset"))] == [
         (None, "sent"), (None, "skipped"), (None, "skipped")]
+
+
+# ── codes, for whoever asks ──────────────────────────────────────────────────
+
+INVITED, STRANGER = "invited@x.com", "stranger@x.com"
+
+
+def _invite(client, manager_email):
+    """A manager's candidate at INVITED, given portal access."""
+    from app.core import database
+    from app.services import db_service
+    _, manager = register(client, manager_email)
+
+    async def grant():
+        async with database.async_session() as db:
+            cand = await db_service.create_candidate_db(db, {"name": "Cand", "email": INVITED}, manager_id=manager["id"])
+            await db_service.create_candidate_access(db, INVITED, "Cand", cand.id, manager_id=manager["id"])
+    _run(grant())
+
+
+def _code_in(html):
+    import re
+    return re.search(r"\b(\d{6})\b", html).group(1)
+
+
+def test_the_server_knows_what_the_codes_emails_say():
+    import main  # noqa: F401
+    from app.services import outbox
+    assert {"sign_in_code", "erasure_code"} <= set(outbox.COMPOSERS)
+
+
+def test_a_sign_in_code_is_queued_alike_for_anyone_and_sent_only_to_the_invited(client, run_jobs, mailbox):
+    _invite(client, "k8@co.com")
+    for address in (INVITED, STRANGER):
+        r = client.post("/api/auth/candidate/send-otp", json={"email": address})
+        assert r.status_code == 200 and "debug_code" not in r.json()
+    # The same for each: the address typed, and no code: it's issued as it's sent.
+    assert [(e["to"], e["subject"], e["body"]) for e in _run(_queued("sign_in_code"))] == [
+        (INVITED, None, None), (STRANGER, None, None)]
+    run_jobs()
+    assert [(mail["to"], mail["subject"]) for mail in mailbox] == [(INVITED, "Your ResuMate Interview Access Code")]
+    r = client.post("/api/auth/candidate/verify-otp", json={"email": INVITED, "code": _code_in(mailbox[0]["html"])})
+    assert r.status_code == 200, r.text
+    assert [(e["to"], e["status"]) for e in _run(_queued("sign_in_code"))] == [(None, "sent"), (None, "skipped")]
+
+
+def test_a_code_sent_on_a_second_try_is_the_one_that_works(client, run_jobs, mailbox, monkeypatch):
+    from datetime import datetime, timedelta
+    from app.services.email_service import email_service
+    _invite(client, "k9@co.com")
+    tries = []
+
+    async def busy_once(to_email, subject, html_body):
+        tries.append(_code_in(html_body))
+        return "busy" if len(tries) == 1 else "sent"
+    monkeypatch.setattr(email_service, "deliver", busy_once)
+    client.post("/api/auth/candidate/send-otp", json={"email": INVITED})
+    assert run_jobs() == ["retry"]
+    assert run_jobs(now=datetime.utcnow() + timedelta(minutes=5)) == ["done"]
+    first, second = tries
+    # Each try issued a code; the earlier one, never received, stopped working.
+    assert client.post("/api/auth/candidate/verify-otp", json={"email": INVITED, "code": first}).status_code == 400
+    assert client.post("/api/auth/candidate/verify-otp", json={"email": INVITED, "code": second}).status_code == 200
+
+
+def test_an_erasure_code_is_queued_alike_for_anyone_and_sent_only_where_data_is_held(client, run_jobs, mailbox):
+    _invite(client, "k10@co.com")
+    for address in (INVITED, STRANGER):
+        assert client.post("/api/privacy/erasure-code", json={"email": address}).status_code == 200
+    assert [(e["to"], e["body"]) for e in _run(_queued("erasure_code"))] == [(INVITED, None), (STRANGER, None)]
+    run_jobs()
+    assert [(mail["to"], mail["subject"]) for mail in mailbox] == [(INVITED, "Confirm deleting your ResuMate data")]
+    r = client.post("/api/privacy/erase", json={"email": INVITED, "code": _code_in(mailbox[0]["html"])})
+    assert r.status_code == 200, r.text
+    assert [(e["to"], e["status"]) for e in _run(_queued("erasure_code"))] == [(None, "sent"), (None, "skipped")]
