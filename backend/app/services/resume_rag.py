@@ -373,7 +373,31 @@ class ResumeRAGService:
                 "work_experience": [],
                 "badges": [{"label": "Not a Resume", "color": "orange"}]
             }
-        
+        try:
+            return await self.analyze(text)
+        except Exception as e:
+            print(f"Error analyzing resume: {type(e).__name__}")
+            # Unknown, and marked so. This used to say "Professional",
+            # "Entry" and 0 years, which the cards showed as fact.
+            return {
+                "analysis_failed": True,
+                "summary": f"{name}'s resume",
+                "total_experience_years": None,
+                "predicted_role": None,
+                "experience_level": None,
+                "location": None,
+                "skills": [],
+                "education": [],
+                "work_experience": [],
+                "badges": [],
+                "key_strengths": []
+            }
+
+    async def analyze(self, text: str) -> Dict:
+        """The AI's reading of a résumé's text: a summary, the role, level
+        and years, skills, education, work and badges. Raises when the AI
+        can't be reached, or answers with something else: the analysis job
+        (app/services/resume_analysis.py) tries again, or says it failed."""
         prompt = f"""Analyze this resume and extract information accurately.
 
 RESUME:
@@ -419,48 +443,38 @@ BADGES (pick 2-3):
 - "DevOps" (blue): CI/CD, Docker
 - "Leader" (orange): management"""
 
-        try:
-            response = await self.llm.ainvoke([HumanMessage(content=prompt)])
-            content = response.content.strip()
-            
-            if '```' in content:
-                parts = content.split('```')
-                for part in parts:
-                    part = part.strip()
-                    if part.startswith('json'):
-                        content = part[4:].strip()
-                        break
-                    elif part.startswith('{'):
-                        content = part
-                        break
-            
-            data = json.loads(content)
-            
-            # Years the model couldn't tell stay unknown. A null here used to
-            # fail the comparison below, which threw the whole analysis away.
-            exp = known_years(data.get('total_experience_years'))
-            data['total_experience_years'] = min(exp, 30) if exp is not None else None
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        content = response.content.strip()
 
-            return data
-            
-        except Exception as e:
-            print(f"Error analyzing resume: {type(e).__name__}")
-            # Unknown, and marked so. This used to say "Professional",
-            # "Entry" and 0 years, which the cards showed as fact.
-            return {
-                "analysis_failed": True,
-                "summary": f"{name}'s resume",
-                "total_experience_years": None,
-                "predicted_role": None,
-                "experience_level": None,
-                "location": None,
-                "skills": [],
-                "education": [],
-                "work_experience": [],
-                "badges": [],
-                "key_strengths": []
-            }
-    
+        if '```' in content:
+            parts = content.split('```')
+            for part in parts:
+                part = part.strip()
+                if part.startswith('json'):
+                    content = part[4:].strip()
+                    break
+                elif part.startswith('{'):
+                    content = part
+                    break
+
+        data = json.loads(content)
+
+        # Years the model couldn't tell stay unknown. A null here used to
+        # fail the comparison below, which threw the whole analysis away.
+        exp = known_years(data.get('total_experience_years'))
+        data['total_experience_years'] = min(exp, 30) if exp is not None else None
+        return data
+
+    def take_analysis(self, candidate_id: int, manager_id, values: Dict) -> bool:
+        """A résumé's reading, done by the background job, into this server's
+        copy of the candidate, when it has one; whether it had."""
+        with self._sync_lock:
+            record = self._drawer(manager_id).get(candidate_id)
+            if record is None:
+                return False
+            record.update(values)
+            return True
+
     def get_all_candidates(self, manager_id=None) -> List[Dict]:
         """Return only the given manager's candidates."""
         return list(self._drawer(manager_id).values())
