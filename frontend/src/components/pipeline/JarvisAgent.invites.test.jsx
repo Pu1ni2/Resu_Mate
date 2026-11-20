@@ -9,11 +9,14 @@ import JarvisAgent from './JarvisAgent';
  * made only once the manager says yes on screen, and "send it" sends nothing
  * itself: the draft goes from its Send button. */
 
-// Jarvis talks through the voice hook; here it says nothing and hears nothing.
+// Jarvis talks through the voice hook; here what it says is kept, and it
+// hears nothing.
+const spoken = vi.hoisted(() => []);
 vi.mock('../../hooks/useVoice', () => ({
   default: () => ({
     isRecording: false, isTranscribing: false, speakingMsgIndex: null,
-    speakText: async () => {}, startRecording: () => {}, stopRecording: () => {}, stopSpeaking: () => {},
+    speakText: async (text) => { spoken.push(text); },
+    startRecording: () => {}, stopRecording: () => {}, stopSpeaking: () => {},
   }),
 }));
 
@@ -34,6 +37,7 @@ let calls;
 let replies;
 let batchAnswer;
 let sendAnswer;
+let delivered;  // the invitation as the server's outbox has it
 
 function server() {
   calls = [];
@@ -43,10 +47,7 @@ function server() {
     if (path === '/api/jarvis/chat') return ok(replies.shift() || { reply: 'Okay.', action: null });
     if (path === '/api/pipeline/batches') return ok({ batch_id: 1, finished: true, ...batchAnswer });
     if (path === '/api/pipeline/send-invites') return sendAnswer;
-    // The server's outbox has sent it.
-    if (path.startsWith('/api/emails')) {
-      return ok({ emails: [{ id: 3, kind: 'invitation_draft', interview_id: 42, status: 'sent', error: null }] });
-    }
+    if (path.startsWith('/api/emails')) return ok({ emails: [delivered] });
     if (path === '/api/chat/create-interview') {
       return ok({ message: 'Interview created', interview_config: { role: 'Dev', mode: 'conversational' }, invite: null, portal_link: LINK });
     }
@@ -66,10 +67,14 @@ function say(text) {
 const yes = async () => fireEvent.click(await screen.findByRole('button', { name: 'Create the interview' }));
 
 async function draftForDana() {
-  render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
+  const shown = render(<JarvisAgent candidatesSummary={[]} onClose={vi.fn()} onComplete={vi.fn()} />);
+  // Its greeting first, on its own timer, so a test that counts what Jarvis
+  // says doesn't hear it late.
+  await screen.findByText(/Hey, I'm Jarvis/);
   say('invite Dana');
   await yes();
   await screen.findByText(/EMAIL DRAFT · TO: Dana/);
+  return shown;
 }
 
 beforeEach(() => {
@@ -79,6 +84,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   replies = [INVITE_DANA];
   batchAnswer = { total: 1, interviews_created: 1, emails_sent: 0, portal_link: LINK, outcomes: [DANA] };
+  delivered = { id: 3, kind: 'invitation_draft', interview_id: 42, status: 'sent', error: null };
   sendAnswer = ok({ emails_queued: 1, portal_link: LINK, outcomes: [
     { interview_id: 42, email: 'dana@x.com', email_id: 3, status: 'queued', error: null }] });
   server();
@@ -131,6 +137,32 @@ describe("sending Jarvis's invitation draft", () => {
     expect(screen.getByText(new RegExp(`couldn't send the invitations — ${why}`))).toBeTruthy();
     // Not marked sent, so it can be tried again.
     expect(screen.getByRole('button', { name: /send email/i }).disabled).toBe(false);
+  });
+});
+
+describe('what Jarvis says after sending', () => {
+  it('says nothing more once closed while the invitation goes', async () => {
+    delivered = { ...delivered, status: 'queued' };
+    const shown = await draftForDana();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /send email/i })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    const said = spoken.length;
+    shown.unmount();
+    await act(async () => { await vi.advanceTimersByTimeAsync(400000); });
+    expect(spoken.slice(said)).toEqual([]);
+    expect(calls.filter(c => c.path.startsWith('/api/emails'))).toHaveLength(1);
+  });
+
+  it('says why an invitation couldn’t go after all, with the sign-in link', async () => {
+    delivered = { ...delivered, status: 'failed', error: 'The email service refused it.' };
+    await draftForDana();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /send email/i })); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByText(/0 of 1 invitation emailed/)).toBeTruthy();
+    expect(screen.getByText(/I sent 0 of 1\. The email service refused it\./)).toBeTruthy();
+    expect(screen.getByText(new RegExp(`Candidate sign-in link: ${LINK}`))).toBeTruthy();
   });
 });
 

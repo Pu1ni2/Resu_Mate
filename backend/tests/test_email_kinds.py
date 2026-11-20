@@ -370,3 +370,82 @@ def test_an_interview_has_one_invitation(client, mailbox):
             return await outbox.queue(db, "invitation_draft", manager_id=m["id"], interview_id=iid,
                                       dedupe_key=f"invite:{iid}")
     assert _run(again()) is None
+
+
+# ── a reviewed draft ─────────────────────────────────────────────────────────
+
+async def _interview_for(manager_id, email):
+    """An interview of this manager's, made as a batch in draft mode makes
+    it: nothing emailed."""
+    from app.core import database
+    from app.models.candidate import Interview
+    cid = await _candidate(manager_id, "Ada", email)
+    async with database.async_session() as db:
+        interview = Interview(candidate_id=cid, manager_id=manager_id, candidate_email=email, role="Dev",
+                              mode="conversational")
+        db.add(interview)
+        await db.commit()
+        return interview.id
+
+
+def _send_drafts(client, tok, invites):
+    from conftest import auth_headers
+    r = client.post("/api/pipeline/send-invites", headers=auth_headers(tok), json={"invites": invites})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_the_server_knows_what_a_reviewed_draft_says():
+    import main  # noqa: F401
+    from app.services import outbox
+    assert "invitation_draft" in outbox.COMPOSERS
+
+
+def test_a_reviewed_draft_is_queued_with_its_words_and_sent_as_written(client, run_jobs, mailbox):
+    from app.services import email_quota
+    tok, m = register(client, "k14@co.com")
+    iid = _run(_interview_for(m["id"], "ada@x.com"))
+    body = _send_drafts(client, tok, [{"interview_id": iid, "subject": "A chat?", "body": "Ada,\nCould we talk?"}])
+    assert body["emails_queued"] == 1 and mailbox == []
+    # Its words kept until it goes, and its place in the day's limit taken at once.
+    assert _run(_queued("invitation_draft")) == [
+        {"manager": m["id"], "to": None, "subject": "A chat?", "body": "Ada,\nCould we talk?", "status": "queued"}]
+
+    async def counted():
+        from app.core import database
+        async with database.async_session() as db:
+            return await email_quota.sent_today(db, m["id"])
+    assert _run(counted()) == 1
+    run_jobs()
+    assert [(mail["to"], mail["subject"]) for mail in mailbox] == [("ada@x.com", "A chat?")]
+    assert "Ada,<br>Could we talk?" in mailbox[0]["html"]
+    # Gone, its words go too.
+    assert _run(_queued("invitation_draft")) == [
+        {"manager": m["id"], "to": None, "subject": None, "body": None, "status": "sent"}]
+
+
+def test_sending_again_queues_no_second_invitation(client, run_jobs, mailbox):
+    from app.api.pipeline import ALREADY_INVITED
+    tok, m = register(client, "k15@co.com")
+    iid = _run(_interview_for(m["id"], "ada@x.com"))
+    draft = {"interview_id": iid, "subject": "A chat?", "body": "Could we talk?"}
+    assert _send_drafts(client, tok, [draft])["emails_queued"] == 1
+    again = _send_drafts(client, tok, [draft])
+    assert again["emails_queued"] == 0
+    assert (again["outcomes"][0]["status"], again["outcomes"][0]["error"]) == ("refused", ALREADY_INVITED)
+    run_jobs()
+    assert len(mailbox) == 1
+
+
+def test_no_draft_goes_to_an_interview_finished_meanwhile(client, run_jobs, mailbox):
+    import sqlite3
+    from conftest import _TMP_DB
+    tok, m = register(client, "k16@co.com")
+    iid = _run(_interview_for(m["id"], "ada@x.com"))
+    _send_drafts(client, tok, [{"interview_id": iid, "subject": "A chat?", "body": "Could we talk?"}])
+    db = sqlite3.connect(_TMP_DB)
+    db.execute("UPDATE interviews SET status = 'completed' WHERE id = ?", (iid,))
+    db.commit()
+    db.close()
+    run_jobs()
+    assert mailbox == [] and [e["status"] for e in _run(_queued("invitation_draft"))] == ["skipped"]
