@@ -4,6 +4,7 @@ import { API_BASE, authFetch } from '../../services/authFetch';
 import { toast, notify } from '../../services/notify';
 import { useAvatarInterviews } from '../../services/features';
 import { followEmails, pending } from '../../services/emailStatus';
+import { followQuestions } from '../../services/interviewQuestions';
 import PortalLink from '../shared/PortalLink';
 
 export default function InterviewCreator({ focusCandidate, selectedRole, selectedLevel, selectedExperience, scanContact }) {
@@ -19,8 +20,9 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
   const [interviewMode, setInterviewMode] = useState('conversational');
   const [interviewCreating, setInterviewCreating] = useState(false);
   const [sendInvite, setSendInvite] = useState(true);
-  // What the server did: { mode, invite, portalLink, interviewId, questions },
-  // invite being { email_id, status, error }, or null when none was asked for.
+  // What the server did: { mode, invite, portalLink, interviewId, questions,
+  // questionsStatus }, invite being { email_id, status, error }, or null when
+  // none was asked for.
   const [created, setCreated] = useState(null);
   // The questions being edited, one a line; null when not editing.
   const [questionsDraft, setQuestionsDraft] = useState(null);
@@ -42,6 +44,18 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
       if (email) setCreated(current => ({ ...current, invite: { ...current.invite, status: email.status, error: email.error } }));
     });
   }, [inviteId, inviteWaiting]);
+
+  // The questions are written in the background, a moment after the
+  // interview is made: follow it until they are, then show them. Saving the
+  // manager's own ends it (they're ready).
+  const interviewId = created?.interviewId;
+  const questionsPending = created?.questionsStatus === 'pending';
+  useEffect(() => {
+    if (!questionsPending) return undefined;
+    return followQuestions(interviewId, (interview) => {
+      setCreated(current => ({ ...current, questions: interview.questions, questionsStatus: interview.questions_status }));
+    });
+  }, [interviewId, questionsPending]);
 
   const createInterview = async () => {
     if (!focusCandidate || !interviewEmail.trim()) { toast('Please enter candidate email', 'error'); return; }
@@ -73,16 +87,20 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
         portalLink: data.portal_link || '',
         interviewId: data.interview_config?.interview_id || null,
         questions: data.interview_config?.questions || [],
+        questionsStatus: data.interview_config?.questions_status,  // "pending" while they're written
       });
       const sending = pending(invite);
-      toast(sending ? 'Interview created. Sending the invitation…' : 'Interview created. Send the candidate the sign-in link.', 'success');
+      const held = invite?.status === 'held';  // until the questions are written
+      toast(held ? 'Interview created. The invitation goes once its questions are written.'
+        : sending ? 'Interview created. Sending the invitation…' : 'Interview created. Send the candidate the sign-in link.',
+      'success');
       // The candidate takes the interview on their own time, so the result
       // arrives long after this screen is closed.
       notify(
         'Interview created',
-        sending
-          ? `Sending the invitation to ${interviewEmail.trim()}`
-          : `${focusCandidate.name || interviewEmail.trim()} can start once you send them the sign-in link`,
+        held ? `The invitation goes to ${interviewEmail.trim()} once the questions are written`
+          : sending ? `Sending the invitation to ${interviewEmail.trim()}`
+            : `${focusCandidate.name || interviewEmail.trim()} can start once you send them the sign-in link`,
         'success',
       );
     } catch (err) {
@@ -106,7 +124,8 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'The questions couldn’t be saved.');
-      setCreated(current => ({ ...current, questions: data.questions }));
+      // The manager's are the ones asked: ready, and the invitation goes.
+      setCreated(current => ({ ...current, questions: data.questions, questionsStatus: 'ready' }));
       setQuestionsDraft(null);
       toast('Questions saved.', 'success');
     } catch (err) {
@@ -128,7 +147,10 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
             </p>
           ) : pending(created.invite) ? (
             <p role="status" style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <Loader size={14} className="spin" /> Sending the invitation to <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>…
+              <Loader size={14} className="spin" />
+              {created.invite.status === 'held'
+                ? <span>The invitation goes to <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong> once the questions are written.</span>
+                : <span>Sending the invitation to <strong style={{ color: 'var(--info)' }}>{interviewEmail}</strong>…</span>}
             </p>
           ) : (
             <div style={{ textAlign: 'left', marginBottom: '12px' }}>
@@ -152,7 +174,11 @@ export default function InterviewCreator({ focusCandidate, selectedRole, selecte
               <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '8px' }}>What Alex will ask</h4>
               {questionsDraft === null ? (
                 <>
-                  {created.questions.length > 0 ? (
+                  {created.questionsStatus === 'pending' ? (
+                    <p role="status" style={{ color: 'var(--text2)', fontSize: '14px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Loader size={14} className="spin" /> Writing the questions for this candidate… You can write your own instead.
+                    </p>
+                  ) : created.questions.length > 0 ? (
                     <ol style={{ paddingLeft: '20px', margin: '0 0 12px', color: 'var(--text2)', fontSize: '14px', lineHeight: 1.6 }}>
                       {created.questions.map((question, i) => <li key={i}>{question}</li>)}
                     </ol>
