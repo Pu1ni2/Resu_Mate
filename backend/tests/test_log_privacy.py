@@ -129,7 +129,7 @@ def test_an_agent_logs_its_steps_by_name_and_keeps_the_message_for_the_scan(caps
     assert "Jane Doe" not in logged
 
 
-def test_creating_an_interview_logs_nothing_of_the_candidate(client, capsys):
+def test_creating_an_interview_logs_nothing_of_the_candidate(client, capsys, caplog, run_jobs):
     from app.core import database
     from app.services import db_service
     from app.services.resume_rag import resume_rag
@@ -150,7 +150,11 @@ def test_creating_an_interview_logs_nothing_of_the_candidate(client, capsys):
         "candidate_id": cid, "candidate_email": "jane.doe@x.com", "candidate_name": "Jane Doe", "role": "Dev",
     })
     assert r.status_code == 200, r.text
-    logged = capsys.readouterr().out
+    # Nor the background job that writes its questions.
+    assert run_jobs() == ["retry"]
+    out, err = capsys.readouterr()
+    logged = out + err + caplog.text
+    assert "interview.questions" in logged
     assert "jane.doe@x.com" not in logged
     assert "Jane Doe" not in logged
 

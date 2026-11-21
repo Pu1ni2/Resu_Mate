@@ -313,6 +313,84 @@ def test_a_held_email_waits_with_no_job_until_released(client, run_jobs, mailbox
     assert (_run(_email(email_id)), _run(_email(others))) == ("sent", "held")
 
 
+# ── creating one ─────────────────────────────────────────────────────────────
+
+async def _candidate(manager_id, email="ada@x.com"):
+    """A candidate in the manager's list, as uploading one leaves them."""
+    from app.core import database
+    from app.models.candidate import Candidate
+    from app.services.resume_rag import resume_rag
+    async with database.async_session() as db:
+        cand = Candidate(manager_id=manager_id, name="Ada", email=email, full_text="Ada\nData engineer")
+        db.add(cand)
+        await db.commit()
+    resume_rag.candidates.setdefault(manager_id, {})[cand.id] = {
+        "id": cand.id, "manager_id": manager_id, "name": "Ada", "email": email, "text": "Ada\nData engineer",
+        "is_resume": True}
+    return cand.id
+
+
+def _create(client, token, candidate_id, **extra):
+    return client.post("/api/chat/create-interview", headers=auth_headers(token), json={
+        "candidate_id": candidate_id, "candidate_email": "ada@x.com", "candidate_name": "Ada", "role": "Dev",
+        "level": "Senior", "num_questions": 2, **extra})
+
+
+def test_creating_one_answers_at_once_its_questions_and_invitation_to_come(client, run_jobs, writer, mailbox):
+    token, m = register(client, "qj14@co.com")
+    r = _create(client, token, _run(_candidate(m["id"])), send_invite=True)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    iid, invite = body["interview_config"]["interview_id"], body["invite"]
+    # Nothing asked of the AI meanwhile: the questions are to come, and the
+    # invitation waits for them, its place in the day's emails taken.
+    assert writer == []
+    assert (body["interview_config"]["questions"], body["interview_config"]["questions_status"]) == ([], "pending")
+    assert (invite["status"], invite["error"], _run(_email(invite["email_id"]))) == ("held", None, "held")
+    assert _run(_read(iid))["status"] == "pending"
+    # The questions, written by the job; then the invitation.
+    assert run_jobs() == ["done", "done"]
+    assert _run(_read(iid))["questions"] == ["Why data?", "How do you test a pipeline?"]
+    assert _run(_email(invite["email_id"])) == "sent" and mailbox == ["ada@x.com"]
+
+
+def test_nothing_is_kept_of_one_that_cannot_be_saved(client, writer, mailbox, monkeypatch, caplog):
+    from app.core import database
+    from app.models.candidate import CandidateAccess, Interview
+    from app.models.job import Job
+    from app.services import outbox
+
+    async def refused(*args, **kwargs):
+        raise RuntimeError("the outbox is out of reach")
+    token, m = register(client, "qj15@co.com")
+    cid = _run(_candidate(m["id"]))
+    monkeypatch.setattr(outbox, "queue", refused)
+    r = _create(client, token, cid, send_invite=True)
+    assert (r.status_code, r.json()["detail"]) == (500, "Could not save the interview. Please try again.")
+    assert "interview could not be saved: RuntimeError" in caplog.text
+
+    async def kept():
+        # The interview, its portal access and its questions' job: together, or none.
+        async with database.async_session() as db:
+            return [(await db.execute(select(Interview))).scalars().all(),
+                    (await db.execute(select(CandidateAccess).where(CandidateAccess.email == "ada@x.com"))).scalars().all(),
+                    (await db.execute(select(Job).where(Job.kind == "interview.questions"))).scalars().all()]
+    assert _run(kept()) == [[], [], []]
+
+
+def test_one_whose_saving_fails_says_so(client, writer, monkeypatch):
+    # As it's committed: the database gone for a moment, say.
+    from sqlalchemy.ext.asyncio import AsyncSession
+    token, m = register(client, "qj16@co.com")
+    cid = _run(_candidate(m["id"]))
+
+    async def refused(self):
+        raise RuntimeError("the database is out of reach")
+    monkeypatch.setattr(AsyncSession, "commit", refused)
+    r = _create(client, token, cid)
+    assert (r.status_code, r.json()["detail"]) == (500, "Could not save the interview. Please try again.")
+
+
 # ── the manager's own ────────────────────────────────────────────────────────
 
 def test_the_managers_questions_are_ready_and_send_the_held_invitation(client, run_jobs, writer, mailbox):

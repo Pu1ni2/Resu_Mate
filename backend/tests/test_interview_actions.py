@@ -113,6 +113,19 @@ def test_a_finished_interview_can_be_reissued(client, ai, run_jobs):
     assert me.json()["interview_config"]["interview_id"] == second
 
 
+def test_a_reissue_that_cannot_be_saved_says_so(client, ai, monkeypatch):
+    from app.services import interview_setup
+    tok, m = register(client, "a7@co.com")
+    first, _ = _run(_interview(m["id"], "a7@x.com", status="completed", transcript=TRANSCRIPT))
+
+    async def refused(*args, **kwargs):
+        raise RuntimeError("the database is out of reach")
+    monkeypatch.setattr(interview_setup, "add_interview", refused)
+    r = client.post(f"/api/chat/interviews/{first}/reissue", headers=auth_headers(tok))
+    assert (r.status_code, r.json()["detail"]) == (500, "Could not save the interview. Please try again.")
+    assert [row[0] for row in _run(_interviews_of("a7@x.com"))] == [first]
+
+
 # ── the questions, seen and edited ────────────────────────────────────────────
 
 def test_a_new_interview_shows_its_questions(client, ai, run_jobs):
