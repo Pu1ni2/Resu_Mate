@@ -7,6 +7,7 @@ import re
 import sys
 import json
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Header, Request
@@ -839,18 +840,36 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
     # set up here (see app/services/interview_modes.py).
     mode = interview_modes.effective_mode(req.mode)
 
-    # Portal access, the interview and its questions, as every other place
-    # that creates an interview does (app/services/interview_setup.py).
-    interview, resume_intel = await interview_setup.create_interview(
-        db, manager_id=mgr, candidate=candidate, candidate_id=req.candidate_id, email=email,
-        name=req.candidate_name, role=req.role, level=req.level, num_questions=req.num_questions,
-        focus_areas=req.focus_areas, mode=mode, experience_required=req.experience_required,
-    )
-    # A failed insert used to be ignored, so a manager was told the interview
-    # was created, and the invitation went out, when nothing had been saved: a
-    # refused foreign key, for one.
-    if interview is None:
-        raise HTTPException(500, "Could not save the interview. Please try again.")
+    async with _saving_interview(db):
+        # Portal access, the interview and the background job that writes its
+        # questions, as every other place that creates an interview does
+        # (app/services/interview_setup.py). The request wrote them itself,
+        # and waited on the AI to.
+        interview = await interview_setup.create_interview(
+            db, manager_id=mgr, candidate=candidate, candidate_id=req.candidate_id, email=email,
+            name=req.candidate_name, role=req.role, level=req.level, num_questions=req.num_questions,
+            focus_areas=req.focus_areas, mode=mode, experience_required=req.experience_required,
+        )
+        # Nothing told the candidate before: the manager was told they "can
+        # now log in", with no email sent and no link to pass on. Then the
+        # invitation went inside this request, counted toward the day's limit
+        # only once it had gone. It's queued now, its place held at once, and
+        # held itself until the questions are written: the outbox's job then
+        # sends it (app/services/email_kinds.py), and the page follows it
+        # (GET /api/emails). None when not asked for.
+        invite = None
+        if req.send_invite:
+            from app.services.email_service import email_service
+            if not email_service.configured:
+                invite = {"email_id": None, "status": "refused",
+                          "error": "Email isn't set up on this server. Share the portal link instead."}
+            elif refused := await email_quota.reserve(db, user):
+                invite = {"email_id": None, "status": "refused", "error": refused}
+            else:
+                email_id = await outbox.queue(db, "interview_invitation", manager_id=mgr, interview_id=interview.id,
+                                              counts_to_quota=True, dedupe_key=email_kinds.invite_key(interview.id),
+                                              held=True)
+                invite = {"email_id": email_id, "status": "held", "error": None}
 
     config = {
         "candidate_id": req.candidate_id, "candidate_name": req.candidate_name or "",
@@ -858,10 +877,11 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         "num_questions": req.num_questions, "focus_areas": req.focus_areas or [],
         "status": "pending",
         "mode": mode,
-        "resume_intelligence": resume_intel,
-        # What the interviewer will ask, for the manager to see and edit.
+        # What the interviewer will ask, for the manager to see and edit, once
+        # they're written (GET /interviews/{id}): "pending" until then.
         "interview_id": interview.id,
-        "questions": interview.questions or [],
+        "questions": [],
+        "questions_status": interview.questions_status,
     }
     await db_service.log_event(
         db, action="interview.create", actor="manager",
@@ -869,30 +889,27 @@ async def create_interview(request: Request, req: CreateInterviewRequest, user=D
         detail=f"role={req.role or 'General'} mode={mode}",
     )
     print(f"[OK] Interview created for candidate {req.candidate_id}")
-
-    # Nothing told the candidate before: the manager was told they "can now
-    # log in", with no email sent and no link to pass on. Then the invitation
-    # went inside this request, counted toward the day's limit only once it
-    # had gone. It's queued now, its place held at once, and the outbox's job
-    # sends it (app/services/email_kinds.py); the page follows it
-    # (GET /api/emails). None when not asked for.
-    invite = None
-    if req.send_invite:
-        from app.services.email_service import email_service
-        if not email_service.configured:
-            invite = {"email_id": None, "status": "refused",
-                      "error": "Email isn't set up on this server. Share the portal link instead."}
-        elif refused := await email_quota.reserve(db, user):
-            invite = {"email_id": None, "status": "refused", "error": refused}
-        else:
-            email_id = await outbox.queue(db, "interview_invitation", manager_id=mgr, interview_id=interview.id,
-                                          counts_to_quota=True, dedupe_key=email_kinds.invite_key(interview.id))
-            invite = {"email_id": email_id, "status": "queued", "error": None}
-        await db.commit()
     return {
         "message": f"Interview created for {email}", "interview_config": config,
         "invite": invite, "portal_link": settings.candidate_login_url,
     }
+
+
+@asynccontextmanager
+async def _saving_interview(db):
+    """A new interview and what's added with it, committed together; or none
+    of it, and the manager told so (500). A failed insert used to be
+    ignored, so a manager was told the interview was created, and the
+    invitation went out, when nothing had been saved: a refused foreign key,
+    for one."""
+    try:
+        yield
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("interview could not be saved: %s", type(e).__name__)
+        raise HTTPException(500, "Could not save the interview. Please try again.") from None
 
 @router.get("/candidate/me")
 async def candidate_me(
@@ -1206,7 +1223,8 @@ async def edit_questions(request: Request, interview_id: int, req: QuestionsEdit
 @router.post("/interviews/{interview_id}/reissue")
 @limiter.limit("30/hour")
 async def reissue_interview(request: Request, interview_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Another interview for the same candidate, set up as this one was.
+    """Another interview for the same candidate, set up as this one was, its
+    questions written new by the background job.
 
     Nothing made one: a candidate whose interview went wrong couldn't be
     interviewed again. This one stays, with its report, as the earlier round.
@@ -1217,14 +1235,13 @@ async def reissue_interview(request: Request, interview_id: int, user=Depends(ge
     candidate = resume_rag.get_candidate(old.candidate_id, manager_id=user.id)
     if not candidate:
         raise HTTPException(404, "Candidate not found")
-    interview, _ = await interview_setup.create_interview(
-        db, manager_id=user.id, candidate=candidate, candidate_id=old.candidate_id,
-        email=old.candidate_email, name=candidate.get("name") or "", role=old.role, level=old.level,
-        num_questions=old.num_questions or 8, focus_areas=old.focus_areas or [],
-        mode=interview_modes.effective_mode(old.mode), experience_required=old.experience_required,
-    )
-    if interview is None:
-        raise HTTPException(500, "Could not save the interview. Please try again.")
+    async with _saving_interview(db):
+        interview = await interview_setup.create_interview(
+            db, manager_id=user.id, candidate=candidate, candidate_id=old.candidate_id,
+            email=old.candidate_email, name=candidate.get("name") or "", role=old.role, level=old.level,
+            num_questions=old.num_questions or 8, focus_areas=old.focus_areas or [],
+            mode=interview_modes.effective_mode(old.mode), experience_required=old.experience_required,
+        )
     await db_service.log_event(
         db, action="interview.reissue", actor="manager", manager_id=user.id,
         target_email=old.candidate_email, detail=f"from={old.id} to={interview.id}",

@@ -53,13 +53,16 @@ def _own_candidate(client, tok, email):
     return cid
 
 
-def _create(client, tok, email, **extra):
+def _create(client, run_jobs, tok, email, **extra):
+    """An interview for a new candidate, its questions then written by the
+    background job (interview.questions)."""
     cid = _own_candidate(client, tok, email)
     r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
         "candidate_id": cid, "candidate_email": email, "candidate_name": "Ada", "role": "Data Engineer",
         "num_questions": 3, "focus_areas": ["Kafka"], **extra,
     })
     assert r.status_code == 200, r.text
+    run_jobs()
     return r.json()
 
 
@@ -76,19 +79,19 @@ def _interview(email):
 
 # ── creating the interview ────────────────────────────────────────────────────
 
-def test_the_questions_and_resume_checks_are_kept(client, generator):
+def test_the_questions_and_resume_checks_are_kept(client, run_jobs, generator):
     tok, _ = register(client, "q1@co.com")
-    _create(client, tok, "q1@x.com")
+    _create(client, run_jobs, tok, "q1@x.com")
     iv = _interview("q1@x.com")
     # Cleaned of numbering and blanks, and as many as were asked for.
     assert iv.questions == ["Walk me through your Kafka work.", "How do you size partitions?", "Tell me about a hard bug."]
     assert iv.room_config["resume_intelligence"]["verification_targets"] == TARGETS
 
 
-def test_a_failed_analysis_is_not_kept(client, generator):
+def test_a_failed_analysis_is_not_kept(client, run_jobs, generator):
     generator["reply"] = {"questions": [], "resume_intelligence": {"analysis_failed": True, "verification_targets": []}}
     tok, _ = register(client, "q2@co.com")
-    _create(client, tok, "q2@x.com")
+    _create(client, run_jobs, tok, "q2@x.com")
     iv = _interview("q2@x.com")
     assert not iv.questions
     assert not (iv.room_config or {}).get("resume_intelligence")
@@ -106,19 +109,19 @@ def test_a_batch_interview_gets_the_candidates_own_questions(client, run_jobs, g
     assert iv.room_config["resume_intelligence"]["verification_targets"] == TARGETS
 
 
-def test_the_interview_stands_when_the_questions_cannot_be_made(client, generator):
+def test_the_interview_stands_when_the_questions_cannot_be_made(client, run_jobs, generator):
     generator["reply"] = RuntimeError("model unavailable")
     tok, _ = register(client, "q3@co.com")
-    assert _create(client, tok, "q3@x.com")["interview_config"]["role"] == "Data Engineer"
+    assert _create(client, run_jobs, tok, "q3@x.com")["interview_config"]["role"] == "Data Engineer"
     assert _interview("q3@x.com").status == "pending"
 
 
 # ── the voice interview ───────────────────────────────────────────────────────
 
-def test_the_voice_interview_asks_the_saved_questions(client, generator):
+def test_the_voice_interview_asks_the_saved_questions(client, run_jobs, generator):
     from app.services.interview_script import build_instructions
     tok, _ = register(client, "q4@co.com")
-    _create(client, tok, "q4@x.com")
+    _create(client, run_jobs, tok, "q4@x.com")
     instructions = build_instructions(_interview("q4@x.com"), "Ada", 8)
     assert "How do you size partitions?" in instructions
     assert "Ask about partitioning" in instructions
@@ -137,9 +140,9 @@ def livekit(monkeypatch):
         monkeypatch.setattr(livekit_routes, key, f"test-{key.lower()}-long-enough-for-hs256")
 
 
-def test_the_room_is_set_up_from_the_saved_interview_not_the_request(client, generator, livekit):
+def test_the_room_is_set_up_from_the_saved_interview_not_the_request(client, run_jobs, generator, livekit):
     tok, _ = register(client, "q5@co.com")
-    _create(client, tok, "q5@x.com", mode="avatar")
+    _create(client, run_jobs, tok, "q5@x.com", mode="avatar")
     r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q5@x.com')}"},
                     json={"candidate_email": "q5@x.com", "consent": True, "interview_config": {
                         "role": "Intern", "num_questions": 1, "focus_areas": ["anything easy"],
@@ -152,12 +155,12 @@ def test_the_room_is_set_up_from_the_saved_interview_not_the_request(client, gen
     assert config["questions"][1] == "How do you size partitions?"
 
 
-def test_the_room_carries_the_voice_interviews_script(client, generator, livekit):
+def test_the_room_carries_the_voice_interviews_script(client, run_jobs, generator, livekit):
     # The worker's own script had none of the voice script's rules: every
     # question in order, no stalling, a proper close.
     from app.services.interview_script import load_prompt
     tok, _ = register(client, "q6@co.com")
-    _create(client, tok, "q6@x.com", mode="avatar")
+    _create(client, run_jobs, tok, "q6@x.com", mode="avatar")
     r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q6@x.com')}"},
                     json={"candidate_email": "q6@x.com", "consent": True})
     assert r.status_code == 200, r.text
@@ -273,7 +276,7 @@ def test_the_worker_tries_its_second_address_only_when_the_first_cant_be_reached
                      "http://localhost:8006/api/chat/save-transcript"]
 
 
-def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, monkeypatch):
+def test_the_worker_sets_the_model_as_the_voice_session_does(client, run_jobs, generator, monkeypatch):
     # LiveKit's own turn-taking, at medium eagerness, cut Alex off; the voice
     # interview's session is set for a calmer conversation.
     import json
@@ -292,7 +295,7 @@ def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
 
     tok, _ = register(client, "q7@co.com")
-    _create(client, tok, "q7@x.com")
+    _create(client, run_jobs, tok, "q7@x.com")
     r = client.post("/api/realtime/session", headers={"Authorization": f"Bearer {create_candidate_token('q7@x.com')}"},
                     json={"interview_id": _interview("q7@x.com").id, "candidate_email": "q7@x.com", "consent": True})
     assert r.status_code == 200, r.text
@@ -303,12 +306,12 @@ def test_the_worker_sets_the_model_as_the_voice_session_does(client, generator, 
     assert worker["reasoning"].model_dump(exclude_none=True) == voice["reasoning"]
 
 
-def test_the_room_carries_the_interviews_time_limit(client, generator, livekit, monkeypatch):
+def test_the_room_carries_the_interviews_time_limit(client, run_jobs, generator, livekit, monkeypatch):
     # Video had none, and is billed by the minute.
     from app.core.config import settings
     monkeypatch.setattr(settings, "realtime_max_total_minutes", 12)
     tok, _ = register(client, "q9@co.com")
-    _create(client, tok, "q9@x.com", mode="avatar")
+    _create(client, run_jobs, tok, "q9@x.com", mode="avatar")
     r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q9@x.com')}"},
                     json={"candidate_email": "q9@x.com", "consent": True})
     assert r.status_code == 200, r.text
@@ -317,7 +320,7 @@ def test_the_room_carries_the_interviews_time_limit(client, generator, livekit, 
     assert '"remaining_minutes": 12' in config["instructions"]
 
 
-def test_the_worker_gets_the_rooms_settings_from_the_interview_itself(client, generator, livekit):
+def test_the_worker_gets_the_rooms_settings_from_the_interview_itself(client, run_jobs, generator, livekit):
     # A copy in the server's memory was served first: never cleared, holding
     # the candidate's name and address, and another process could have an
     # older one.
@@ -325,7 +328,7 @@ def test_the_worker_gets_the_rooms_settings_from_the_interview_itself(client, ge
     from app.core import database
     from app.models.candidate import Interview
     tok, _ = register(client, "q10@co.com")
-    _create(client, tok, "q10@x.com", mode="avatar")
+    _create(client, run_jobs, tok, "q10@x.com", mode="avatar")
     r = client.post("/api/livekit/create-room", headers={"Authorization": f"Bearer {create_candidate_token('q10@x.com')}"},
                     json={"candidate_email": "q10@x.com", "consent": True})
     assert r.status_code == 200, r.text

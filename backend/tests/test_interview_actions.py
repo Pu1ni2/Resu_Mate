@@ -96,13 +96,14 @@ def test_only_a_finished_interview_of_the_managers_own(client, ai):
 
 # ── another interview ─────────────────────────────────────────────────────────
 
-def test_a_finished_interview_can_be_reissued(client, ai):
+def test_a_finished_interview_can_be_reissued(client, ai, run_jobs):
     tok, m = register(client, "a4@co.com")
     first, _ = _run(_interview(m["id"], "a4@x.com", status="completed", transcript=TRANSCRIPT,
                                report=json.dumps({"report": "## Round one"})))
     r = client.post(f"/api/chat/interviews/{first}/reissue", headers=auth_headers(tok))
     assert r.status_code == 200, r.text
     second = r.json()["interview_id"]
+    run_jobs()  # its questions, written by the background job
     rows = _run(_interviews_of("a4@x.com"))
     # The first stays, with its report; the second is set up as it was, with new questions.
     assert rows[0] == (first, "completed", "Data Engineer", [], "## Round one")
@@ -114,8 +115,9 @@ def test_a_finished_interview_can_be_reissued(client, ai):
 
 # ── the questions, seen and edited ────────────────────────────────────────────
 
-def test_a_new_interview_shows_its_questions(client, ai):
-    # The manager couldn't see what the interviewer would ask.
+def test_a_new_interview_shows_its_questions(client, ai, run_jobs):
+    # The manager couldn't see what the interviewer would ask. They're
+    # written by the background job, a moment after it's made.
     tok, m = register(client, "a5@co.com")
     _, cid = _run(_interview(m["id"], "a5@x.com", status="completed"))
     r = client.post("/api/chat/create-interview", headers=auth_headers(tok), json={
@@ -124,8 +126,11 @@ def test_a_new_interview_shows_its_questions(client, ai):
     })
     assert r.status_code == 200, r.text
     config = r.json()["interview_config"]
-    assert config["questions"] == ["How do you size partitions?", "Tell me about a hard bug."]
+    assert (config["questions"], config["questions_status"]) == ([], "pending")
     assert config["interview_id"] == _run(_interviews_of("a5@x.com"))[-1][0]
+    run_jobs()
+    shown = client.get(f"/api/chat/interviews/{config['interview_id']}", headers=auth_headers(tok)).json()
+    assert shown["questions"] == ["How do you size partitions?", "Tell me about a hard bug."]
 
 
 def test_the_questions_can_be_edited_before_it_starts(client, ai):

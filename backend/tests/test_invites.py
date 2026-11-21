@@ -188,12 +188,13 @@ def _create(client, tok, cid, email, **extra):
     return r.json()
 
 
-def test_creating_an_interview_can_email_the_invite(client, run_jobs, mailbox):
+def test_creating_an_interview_can_email_the_invite(client, run_jobs, mailbox, question_writer):
     tok, _ = register(client, "c1@co.com")
     cid = _own_candidate(client, tok, "Cand\nc1@x.com")
     body = _create(client, tok, cid, "C1@x.com", send_invite=True)
-    # Queued, for the outbox to send: the page follows it.
-    assert body["invite"] == {"email_id": body["invite"]["email_id"], "status": "queued", "error": None}
+    # Held until its questions are written, then sent by the outbox: the page
+    # follows it.
+    assert body["invite"] == {"email_id": body["invite"]["email_id"], "status": "held", "error": None}
     assert isinstance(body["invite"]["email_id"], int) and mailbox == []
     run_jobs()
     assert [m["to"] for m in mailbox] == ["c1@x.com"]
@@ -219,7 +220,7 @@ def test_without_email_the_manager_gets_the_link_to_share(client, no_email):
     assert body["portal_link"] == PORTAL
 
 
-def test_a_refused_invite_is_reported(client, run_jobs, monkeypatch):
+def test_a_refused_invite_is_reported(client, run_jobs, monkeypatch, question_writer):
     from app.services.email_service import email_service
 
     async def refused(to_email, subject, html_body):
@@ -234,7 +235,7 @@ def test_a_refused_invite_is_reported(client, run_jobs, monkeypatch):
     assert (email["status"], email["error"]) == ("failed", "The email service refused it.")
 
 
-def test_a_name_with_markup_is_escaped_in_the_invite(client, run_jobs, mailbox):
+def test_a_name_with_markup_is_escaped_in_the_invite(client, run_jobs, mailbox, question_writer):
     tok, _ = register(client, "c5@co.com")
     # The invitation names the candidate as their file does.
     cid = _own_candidate(client, tok, "Cand\nc5@x.com", name="<b>Cand</b>")

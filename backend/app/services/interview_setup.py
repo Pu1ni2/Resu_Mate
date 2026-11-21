@@ -99,41 +99,23 @@ def keep_questions(interview, questions, resume_intel) -> bool:
 
 
 async def create_interview(db, *, manager_id, candidate, candidate_id, email, name, role, level,
-                           num_questions, focus_areas, mode, experience_required=None):
-    """Grant portal access, save the interview, and make its questions.
-
-    Returns (interview, résumé analysis); the interview is None when it
-    couldn't be saved, and then neither is the access. The questions are
-    best effort: without them the interview stands, and the interviewer
-    asks its own.
+                           num_questions, focus_areas, mode, experience_required=None) -> Interview:
+    """Grant portal access and add the interview, with the background job
+    that writes its questions (interview.questions, below): in the caller's
+    transaction, saved together when it commits, or none of it. The request
+    made them itself, and waited on the AI to.
 
     Refuses the sample résumé (400). A batch skips it before getting here.
     """
     if is_sample(candidate):
         raise HTTPException(400, SAMPLE_NOT_INVITED)
-    try:
-        interview = await add_interview(
-            db, manager_id=manager_id, candidate_id=candidate_id, email=email, name=name, role=role,
-            level=level, num_questions=num_questions, focus_areas=focus_areas, mode=mode,
-            experience_required=experience_required,
-        )
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        logger.warning("interview could not be saved: %s", type(e).__name__)
-        return None, None
-
-    questions, resume_intel = await make_questions(
-        interview.role, interview.level, num_questions, focus_areas,
-        name or candidate.get("name") or "the candidate", candidate,
+    interview = await add_interview(
+        db, manager_id=manager_id, candidate_id=candidate_id, email=email, name=name, role=role,
+        level=level, num_questions=num_questions, focus_areas=focus_areas, mode=mode,
+        experience_required=experience_required,
     )
-    if keep_questions(interview, questions, resume_intel):
-        try:
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            logger.warning("interview questions could not be kept: %s", type(e).__name__)
-    return interview, resume_intel
+    await queue_questions(db, interview)
+    return interview
 
 
 # ── a single interview's questions, by a background job ──────────────────────

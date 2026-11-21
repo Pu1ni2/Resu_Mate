@@ -130,29 +130,26 @@ async def _grants(email):
 
 
 def _make(manager_id, candidate_id, mode="conversational"):
+    """An interview made as the routes make one, committed with its portal
+    access; None when it couldn't be saved, and then neither is the access."""
     from app.core import database
     from app.services import interview_setup
 
     async def make():
         async with database.async_session() as db:
-            interview, _ = await interview_setup.create_interview(
+            interview = await interview_setup.create_interview(
                 db, manager_id=manager_id, candidate={"name": "Ada"}, candidate_id=candidate_id,
                 email="Ada@X.com", name="Ada", role="Dev", level="Mid-Level", num_questions=5,
                 focus_areas=[], mode=mode)
+            await db.commit()
             return interview
-    return _run(make())
+    try:
+        return _run(make())
+    except IntegrityError:
+        return None
 
 
-@pytest.fixture()
-def no_questions(monkeypatch):
-    from app.agents.technical_agent import technical_agent
-
-    async def none(*args, **kwargs):
-        return {}
-    monkeypatch.setattr(technical_agent, "generate_smart_questions", none)
-
-
-def test_an_interview_that_cant_be_saved_leaves_no_portal_access(client, no_questions):
+def test_an_interview_that_cant_be_saved_leaves_no_portal_access(client):
     # The access was committed on its own, and stayed.
     _, m = register(client, "ib6@co.com")
     # A candidate with no row (one only in the server's memory): the foreign
@@ -161,7 +158,7 @@ def test_an_interview_that_cant_be_saved_leaves_no_portal_access(client, no_ques
     assert _run(_grants("ada@x.com")) == 0
 
 
-def test_an_address_gets_its_portal_access_once_however_many_interviews(client, no_questions):
+def test_an_address_gets_its_portal_access_once_however_many_interviews(client):
     _, m = register(client, "ib7@co.com")
     cid = _run(_candidate(m["id"], "Ada"))
     assert _make(m["id"], cid) is not None and _make(m["id"], cid) is not None

@@ -319,7 +319,8 @@ def test_the_server_knows_what_the_invitation_says():
     assert "interview_invitation" in outbox.COMPOSERS
 
 
-def test_an_invitation_is_queued_at_once_and_sent_naming_the_candidate_and_company(client, run_jobs, mailbox):
+def test_an_invitation_is_held_for_its_questions_then_sent_naming_the_candidate_and_company(
+        client, run_jobs, mailbox, question_writer):
     import sqlite3
     from conftest import _TMP_DB
     tok, m = register(client, "k11@co.com")
@@ -329,9 +330,9 @@ def test_an_invitation_is_queued_at_once_and_sent_naming_the_candidate_and_compa
     db.close()
     cid = _run(_candidate(m["id"], "Ada", "ada@x.com"))
     body = _create(client, tok, cid, "Ada@X.com")
-    assert body["invite"]["status"] == "queued" and mailbox == []
+    assert body["invite"]["status"] == "held" and mailbox == []
     assert _run(_queued("interview_invitation")) == [
-        {"manager": m["id"], "to": None, "subject": None, "body": None, "status": "queued"}]
+        {"manager": m["id"], "to": None, "subject": None, "body": None, "status": "held"}]
     run_jobs()
     assert [(mail["to"], mail["subject"]) for mail in mailbox] == [
         ("ada@x.com", "Interview invitation from Acme: Data Engineer")]
@@ -342,13 +343,19 @@ def test_an_invitation_is_queued_at_once_and_sent_naming_the_candidate_and_compa
 def test_no_invitation_goes_to_an_interview_finished_or_gone_meanwhile(client, run_jobs, mailbox):
     import sqlite3
     from conftest import _TMP_DB
+    from conftest import auth_headers
     tok, m = register(client, "k12@co.com")
     finished = _create(client, tok, _run(_candidate(m["id"], "Ada", "ada@x.com")), "ada@x.com")
     gone = _create(client, tok, _run(_candidate(m["id"], "Bea", "bea@x.com")), "bea@x.com")
+    ids = [finished["interview_config"]["interview_id"], gone["interview_config"]["interview_id"]]
+    # Their questions written, by the manager say, the invitations go; and
+    # meanwhile one interview is finished, the other deleted.
+    for iid in ids:
+        assert client.put(f"/api/chat/interviews/{iid}/questions", headers=auth_headers(tok),
+                          json={"questions": ["Why data?"]}).status_code == 200
     db = sqlite3.connect(_TMP_DB)
-    db.execute("UPDATE interviews SET status = 'completed' WHERE id = ?",
-               (finished["interview_config"]["interview_id"],))
-    db.execute("DELETE FROM interviews WHERE id = ?", (gone["interview_config"]["interview_id"],))
+    db.execute("UPDATE interviews SET status = 'completed' WHERE id = ?", (ids[0],))
+    db.execute("DELETE FROM interviews WHERE id = ?", (ids[1],))
     db.commit()
     db.close()
     run_jobs()
@@ -361,7 +368,7 @@ def test_an_interview_has_one_invitation(client, mailbox):
     from app.services import outbox
     tok, m = register(client, "k13@co.com")
     body = _create(client, tok, _run(_candidate(m["id"], "Ada", "ada@x.com")), "ada@x.com")
-    assert body["invite"]["status"] == "queued"
+    assert body["invite"]["status"] == "held"
     iid = body["interview_config"]["interview_id"]
 
     async def again():
@@ -437,7 +444,7 @@ def test_sending_again_queues_no_second_invitation(client, run_jobs, mailbox):
     assert len(mailbox) == 1
 
 
-def test_no_draft_goes_to_an_interview_invited_from_its_own_page(client, run_jobs, mailbox):
+def test_no_draft_goes_to_an_interview_invited_from_its_own_page(client, run_jobs, mailbox, question_writer):
     # One invitation per interview, whichever way it goes.
     from app.services.email_kinds import ALREADY_INVITED
     tok, m = register(client, "k17@co.com")

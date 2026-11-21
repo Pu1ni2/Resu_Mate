@@ -86,11 +86,12 @@ async def _sent_count(manager_id):
         return await email_quota.sent_today(db, manager_id)
 
 
-def test_an_invitation_sent_is_counted(client, run_jobs, mailbox):
+def test_an_invitation_sent_is_counted(client, run_jobs, mailbox, question_writer):
     tok, _ = register(client, "count@co.com")
     cid, manager_id = _candidate(client, tok, "ada@x.com")
-    assert _invite(client, tok, cid, "ada@x.com")["invite"]["status"] == "queued"
-    # Counted as soon as it's queued, so another tab can't take its place.
+    assert _invite(client, tok, cid, "ada@x.com")["invite"]["status"] == "held"
+    # Counted as soon as it's queued, held for its questions, so another tab
+    # can't take its place.
     assert _run(_sent_count(manager_id)) == 1
     run_jobs()
     assert mailbox == ["ada@x.com"]

@@ -154,6 +154,23 @@ def run_jobs():
     return run
 
 
+WRITTEN_QUESTIONS = ["How do you size partitions?", "Tell me about a hard bug."]
+
+
+@pytest.fixture()
+def question_writer(monkeypatch):
+    """The AI, writing these questions for each interview: the background
+    job that writes them (interview.questions) keeps them, and sends the
+    invitation held for them. With no AI, as in tests, none are written, and
+    they're tried again later."""
+    from app.agents.technical_agent import technical_agent
+
+    async def generate_smart_questions(*args, **kwargs):
+        return {"questions": list(WRITTEN_QUESTIONS), "resume_intelligence": {}}
+    monkeypatch.setattr(technical_agent, "generate_smart_questions", generate_smart_questions)
+    return WRITTEN_QUESTIONS
+
+
 def register(client, email, password="pw12345678", name="Mgr", verified=True):
     """Register a hiring manager, return (token, user_dict).
 

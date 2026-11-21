@@ -102,10 +102,10 @@ def test_an_invitation_waits_until_the_address_is_confirmed(client, mailbox):
     assert mailbox == []
 
 
-def test_a_confirmed_manager_invites_as_before(client, run_jobs, mailbox):
+def test_a_confirmed_manager_invites_as_before(client, run_jobs, mailbox, question_writer):
     tok, _ = register(client, "sure@co.com")
     cid = _candidate(client, tok, "ada@x.com")
-    assert _invite(client, tok, cid, "ada@x.com")["invite"]["status"] == "queued"
+    assert _invite(client, tok, cid, "ada@x.com")["invite"]["status"] == "held"
     run_jobs()
     assert mailbox == ["ada@x.com"]
 
