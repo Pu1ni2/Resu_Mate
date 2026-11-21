@@ -1,32 +1,25 @@
 """
 Candidate sourcer API
-Streams a sourcing run (find people, write a judgement on every one) and keeps
-its results for the manager who ran it.
+Starts a sourcing run (find people, write a judgement on every one), which a
+background job runs and writes as it goes (app/services/sourcing_search.py),
+and keeps its results for the manager who ran it.
 """
-import asyncio
-import json
 from datetime import datetime
-from typing import Dict, Literal, Tuple
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from app.core.rate_limit import limiter
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.hr_agent import hr_agent
-from app.agents.sourcer_agent import sourcer_agent
-from app.core.database import async_session, get_db
-from app.core.errors import log_text
+from app.core.database import get_db
 from app.models.sourcing import SourcingRun, SourcedProfile
-from app.services import db_service
+from app.services import db_service, jobs, sourcing_search
 from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/sourcer", tags=["sourcer"])
-
-# Saves of stopped runs finish after their request is gone; holding them here
-# keeps them from being garbage-collected half way.
-_pending_saves: set = set()
 
 
 # ── Request models ────────────────────────────────────────────────────────────
@@ -46,45 +39,6 @@ class StatusRequest(BaseModel):
     status: Literal["new", "saved", "dismissed"]
 
 
-# ── Persistence ───────────────────────────────────────────────────────────────
-
-async def _save_run(manager_id: int, description: str, plan: Dict, stats: Dict,
-                    people: Dict[str, Dict], results: Dict[str, Dict], status: str) -> Tuple[int, Dict[str, int]]:
-    """Save a run and everyone it judged. Returns (run_id, {pid: profile_id}).
-
-    Opens its own session: this runs as the response streams, or after the
-    client has gone, when the request's session can no longer be relied on.
-    """
-    async with async_session() as db:
-        run = SourcingRun(manager_id=manager_id, description=description, plan=plan, stats=stats, status=status)
-        db.add(run)
-        await db.flush()
-        saved = []
-        for pid, r in results.items():
-            p = people.get(pid, {})
-            source, _, external_id = pid.partition(":")
-            profile = SourcedProfile(
-                run_id=run.id, manager_id=manager_id,
-                source=p.get("source") or source, external_id=p.get("external_id") or external_id,
-                name=p.get("name") or "Unknown", url=p.get("url"), avatar_url=p.get("avatar_url"),
-                email=p.get("email") or None, location=p.get("location"), headline=p.get("headline"),
-                verdict=r["verdict"], score=r["score"], criteria=r["criteria"], judgement=r["judgement"],
-                filter_match=r["filter_match"], miss_reason=r.get("miss_reason"),
-            )
-            db.add(profile)
-            saved.append((pid, profile))
-        await db.commit()
-        return run.id, {pid: profile.id for pid, profile in saved}
-
-
-async def _save_stopped_run(*args) -> None:
-    """_save_run for a run that was stopped. Nothing awaits it, so it logs its own failure."""
-    try:
-        await _save_run(*args)
-    except Exception as e:
-        print(f"[WARN] could not save stopped sourcing run: {log_text(e)}")
-
-
 async def _own_run(db: AsyncSession, run_id: int, manager_id: int) -> SourcingRun:
     """The run if this manager owns it. Another manager's run is a 404, not a
     403, so ids can't be probed for existence."""
@@ -99,14 +53,16 @@ async def _own_run(db: AsyncSession, run_id: int, manager_id: int) -> SourcingRu
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.post("/runs")
+@router.post("/runs", status_code=202)
 @limiter.limit("10/hour")
-async def start_run(request: Request, req: RunRequest, user=Depends(get_current_user)):
-    """Find people for a description and judge every one, streamed live.
+async def start_run(request: Request, req: RunRequest, user=Depends(get_current_user),
+                    db: AsyncSession = Depends(get_db)):
+    """Find people for a description and judge every one: answered at once
+    with the run, queued, which a background job runs, writing it as it goes
+    (sourcing.search); the page follows it (GET /runs/{id}/progress). It ran
+    inside this request, streamed, and stopped when the page closed.
 
-    The body is NDJSON, one event per line (see SourcerAgent.run_stream). It is a
-    POST read with fetch rather than Server-Sent Events because the browser's
-    EventSource cannot send the Authorization header.
+    One at a time for each manager: while one is under way, 409 with its id.
     """
     description = req.description.strip()
     if len(description) < 3:
@@ -114,51 +70,20 @@ async def start_run(request: Request, req: RunRequest, user=Depends(get_current_
     sources = req.sources.model_dump()
     if not any(sources.values()):
         raise HTTPException(400, "Choose at least one place to look.")
-    manager_id = user.id
-
-    async def events():
-        plan: Dict = {}
-        stats: Dict = {}
-        people: Dict[str, Dict] = {}
-        results: Dict[str, Dict] = {}
-        finished = False
-        try:
-            async for event in sourcer_agent.run_stream(description, manager_id, sources):
-                kind = event["type"]
-                if kind == "plan":
-                    plan = event["plan"]
-                elif kind == "found":
-                    people[event["person"]["pid"]] = event["person"]
-                elif kind == "judged":
-                    results[event["pid"]] = event
-                elif kind == "stats":
-                    stats = {k: v for k, v in event.items() if k != "type"}
-                elif kind == "done":
-                    finished = True
-                    # Saved before "done" goes out, so the page has ids to act on
-                    # (save, dismiss, draft) by the time the run ends.
-                    run_id, profile_ids = await _save_run(
-                        manager_id, description, plan, event["stats"], people, results, "complete"
-                    )
-                    yield json.dumps({"type": "saved", "run_id": run_id, "profile_ids": profile_ids}) + "\n"
-                yield json.dumps(event, default=str) + "\n"
-        finally:
-            if not finished and results:
-                # Stopped part way (Stop, a closed tab, an error): keep everyone
-                # already judged. The save is its own task because the stream is
-                # being cancelled; it finishes even though nothing awaits it.
-                task = asyncio.create_task(
-                    _save_stopped_run(manager_id, description, plan, stats, people, results, "stopped")
-                )
-                _pending_saves.add(task)
-                task.add_done_callback(_pending_saves.discard)
-
-    return StreamingResponse(
-        events(),
-        media_type="application/x-ndjson",
-        # Proxies that buffer would hold every event until the run ends.
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    under_way = (await db.execute(
+        select(SourcingRun.id).where(SourcingRun.manager_id == user.id, SourcingRun.status.in_(sourcing_search.ACTIVE))
+    )).scalars().first()
+    if under_way is not None:
+        return JSONResponse(status_code=409, content={
+            "detail": "A search is already running. It’s in Past searches, where you can open or stop it.",
+            "run_id": under_way,
+        })
+    run = SourcingRun(manager_id=user.id, description=description, status="queued", sources=sources)
+    db.add(run)
+    await db.flush()
+    await jobs.enqueue(db, sourcing_search.SEARCH, {"run_id": run.id}, manager_id=user.id)
+    await db.commit()
+    return {"run_id": run.id, "status": run.status}
 
 
 @router.get("/runs")

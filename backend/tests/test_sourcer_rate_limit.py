@@ -7,25 +7,18 @@ which it used to report for every non-200.
 import httpx
 import pytest
 
-from conftest import register, auth_headers
+from conftest import register
 import sourcer_fakes as fakes
 from app.tools.github_tool import GitHubTool
-
-
-def _run(client, token):
-    r = client.post("/api/sourcer/runs", json={"description": "Backend engineer in Boston, strong Python"},
-                    headers=auth_headers(token))
-    assert r.status_code == 200, r.text
-    return fakes.events(r)
 
 
 def test_a_rate_limited_search_warns_once_and_the_run_completes(client, monkeypatch):
     from app.services.resume_rag import resume_rag
     fakes.install(monkeypatch, github_rate_limited=True, web_people=2)
-    token, user = register(client, "rl@co.com")
+    _, user = register(client, "rl@co.com")
     fakes.seed_upload(resume_rag, user["id"], 1, "Maya Chen")
 
-    evs = _run(client, token)
+    evs = fakes.events_of(user["id"])
     warnings = [e["message"] for e in evs if e["type"] == "warning"]
     assert len(warnings) == 1 and "rate limit" in warnings[0]
     # The other sources were still read in full.
@@ -45,9 +38,9 @@ def test_hitting_the_limit_mid_enrichment_keeps_everyone_already_read(client, mo
         return await real_profile(params)
 
     monkeypatch.setattr(github_tool, "call", limited_after_three)
-    token, _ = register(client, "rl2@co.com")
+    _, user = register(client, "rl2@co.com")
 
-    evs = _run(client, token)
+    evs = fakes.events_of(user["id"])
     assert sorted(e["pid"] for e in evs if e["type"] == "judged") == ["github:dev0", "github:dev1", "github:dev2"]
     assert sum(e["type"] == "warning" for e in evs) == 1
 

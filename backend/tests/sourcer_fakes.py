@@ -91,6 +91,22 @@ def seed_upload(resume_rag, manager_id, candidate_id, name, **fields):
     }
 
 
-def events(response) -> list:
-    """The NDJSON events of a streamed run."""
-    return [json.loads(line) for line in response.text.splitlines() if line.strip()]
+def events_of(manager_id, description="Backend engineer in Boston, strong Python", sources=None) -> list:
+    """Every event of a search, in order, as the background job reads them."""
+    import asyncio
+    from app.agents.sourcer_agent import sourcer_agent
+
+    async def collect():
+        return [event async for event in sourcer_agent.run_stream(
+            description, manager_id, sources or {"uploads": True, "github": True, "web": True})]
+    return asyncio.get_event_loop().run_until_complete(collect())
+
+
+def search(client, run_jobs, token, description="Backend engineer in Boston, strong Python") -> dict:
+    """Start a search, and let the background job run it: the run and
+    everyone it found, as reopening it answers."""
+    from conftest import auth_headers
+    r = client.post("/api/sourcer/runs", json={"description": description}, headers=auth_headers(token))
+    assert r.status_code == 202, r.text
+    assert run_jobs() == ["done"]
+    return client.get(f"/api/sourcer/runs/{r.json()['run_id']}", headers=auth_headers(token)).json()

@@ -6,19 +6,19 @@ from conftest import register, auth_headers
 import sourcer_fakes as fakes
 
 
-def _finish_run(client, token, description="Backend engineer in Boston, strong Python"):
-    r = client.post("/api/sourcer/runs", json={"description": description}, headers=auth_headers(token))
-    assert r.status_code == 200, r.text
-    return next(e for e in fakes.events(r) if e["type"] == "saved")
+def _finish_run(client, run_jobs, token, description="Backend engineer in Boston, strong Python"):
+    """A search run to its end: its id, and everyone it found, by pid."""
+    body = fakes.search(client, run_jobs, token, description)
+    return {"run_id": body["run"]["id"], "profile_ids": {p["pid"]: p["id"] for p in body["profiles"]}}
 
 
-def test_history_lists_only_my_runs(client, monkeypatch):
+def test_history_lists_only_my_runs(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=1, web_people=0)
     tok_a, _ = register(client, "hist-a@co.com")
     tok_b, _ = register(client, "hist-b@co.com")
-    _finish_run(client, tok_a, "First search for A")
-    _finish_run(client, tok_a, "Second search for A")
-    _finish_run(client, tok_b, "B's search")
+    _finish_run(client, run_jobs, tok_a, "First search for A")
+    _finish_run(client, run_jobs, tok_a, "Second search for A")
+    _finish_run(client, run_jobs, tok_b, "B's search")
 
     runs = client.get("/api/sourcer/runs", headers=auth_headers(tok_a)).json()["runs"]
     # Newest first, and nothing of B's.
@@ -26,10 +26,10 @@ def test_history_lists_only_my_runs(client, monkeypatch):
     assert all(r["status"] == "complete" and r["judged"] == 1 for r in runs)
 
 
-def test_a_run_reopens_with_everyone_it_judged(client, monkeypatch):
+def test_a_run_reopens_with_everyone_it_judged(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=2, web_people=1)
     token, _ = register(client, "reopen@co.com")
-    saved = _finish_run(client, token)
+    saved = _finish_run(client, run_jobs, token)
 
     body = client.get(f"/api/sourcer/runs/{saved['run_id']}", headers=auth_headers(token)).json()
     assert body["run"]["plan"]["criteria"]
@@ -39,20 +39,20 @@ def test_a_run_reopens_with_everyone_it_judged(client, monkeypatch):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_another_managers_run_is_not_found(client, monkeypatch):
+def test_another_managers_run_is_not_found(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=1, web_people=0)
     tok_a, _ = register(client, "own-a@co.com")
     tok_b, _ = register(client, "own-b@co.com")
-    saved = _finish_run(client, tok_a)
+    saved = _finish_run(client, run_jobs, tok_a)
 
     r = client.get(f"/api/sourcer/runs/{saved['run_id']}", headers=auth_headers(tok_b))
     assert r.status_code == 404
 
 
-def test_i_can_save_and_dismiss_my_profiles(client, monkeypatch):
+def test_i_can_save_and_dismiss_my_profiles(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=2, web_people=0)
     token, _ = register(client, "status@co.com")
-    saved = _finish_run(client, token)
+    saved = _finish_run(client, run_jobs, token)
     first, second = saved["profile_ids"].values()
 
     r = client.post(f"/api/sourcer/profiles/{first}/status", json={"status": "saved"}, headers=auth_headers(token))
@@ -65,22 +65,22 @@ def test_i_can_save_and_dismiss_my_profiles(client, monkeypatch):
     assert bad.status_code == 422
 
 
-def test_i_cannot_change_another_managers_profile(client, monkeypatch):
+def test_i_cannot_change_another_managers_profile(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=1, web_people=0)
     tok_a, _ = register(client, "st-a@co.com")
     tok_b, _ = register(client, "st-b@co.com")
-    [profile_id] = _finish_run(client, tok_a)["profile_ids"].values()
+    [profile_id] = _finish_run(client, run_jobs, tok_a)["profile_ids"].values()
 
     r = client.post(f"/api/sourcer/profiles/{profile_id}/status", json={"status": "dismissed"}, headers=auth_headers(tok_b))
     assert r.status_code == 404
 
 
-def test_deleting_a_run_removes_its_profiles_and_is_audited(client, monkeypatch):
+def test_deleting_a_run_removes_its_profiles_and_is_audited(client, run_jobs, monkeypatch):
     import sqlite3
     from conftest import _TMP_DB
     fakes.install(monkeypatch, github_people=2, web_people=1)
     token, user = register(client, "del@co.com")
-    saved = _finish_run(client, token)
+    saved = _finish_run(client, run_jobs, token)
 
     r = client.delete(f"/api/sourcer/runs/{saved['run_id']}", headers=auth_headers(token))
     assert r.status_code == 200
@@ -93,23 +93,23 @@ def test_deleting_a_run_removes_its_profiles_and_is_audited(client, monkeypatch)
     assert detail == f"run {saved['run_id']}, 3 profiles"
 
 
-def test_i_cannot_delete_another_managers_run(client, monkeypatch):
+def test_i_cannot_delete_another_managers_run(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=1, web_people=0)
     tok_a, _ = register(client, "del-a@co.com")
     tok_b, _ = register(client, "del-b@co.com")
-    saved = _finish_run(client, tok_a)
+    saved = _finish_run(client, run_jobs, tok_a)
 
     assert client.delete(f"/api/sourcer/runs/{saved['run_id']}", headers=auth_headers(tok_b)).status_code == 404
     assert client.get(f"/api/sourcer/runs/{saved['run_id']}", headers=auth_headers(tok_a)).status_code == 200
 
 
-def test_an_outreach_draft_cites_what_the_judge_saw(client, monkeypatch):
+def test_an_outreach_draft_cites_what_the_judge_saw(client, run_jobs, monkeypatch):
     from app.services.resume_rag import resume_rag
     from app.tools.openai_tool import openai_tool
     fakes.install(monkeypatch, github_people=0, web_people=0)
     token, user = register(client, "draft@co.com")
     fakes.seed_upload(resume_rag, user["id"], 1, "Maya Chen")
-    [profile_id] = _finish_run(client, token)["profile_ids"].values()
+    [profile_id] = _finish_run(client, run_jobs, token)["profile_ids"].values()
 
     prompts = []
 
@@ -127,11 +127,11 @@ def test_an_outreach_draft_cites_what_the_judge_saw(client, monkeypatch):
     assert "has not applied" in prompts[0]
 
 
-def test_an_outreach_draft_without_a_model_is_a_plain_note(client, monkeypatch):
+def test_an_outreach_draft_without_a_model_is_a_plain_note(client, run_jobs, monkeypatch):
     from app.tools.openai_tool import openai_tool
     fakes.install(monkeypatch, github_people=1, web_people=0)
     token, _ = register(client, "draft2@co.com")
-    [profile_id] = _finish_run(client, token)["profile_ids"].values()
+    [profile_id] = _finish_run(client, run_jobs, token)["profile_ids"].values()
 
     async def nothing(prompt, system="", json_mode=False):
         return ""
@@ -142,11 +142,11 @@ def test_an_outreach_draft_without_a_model_is_a_plain_note(client, monkeypatch):
     assert body["profile_url"] == "https://github.com/dev0"
 
 
-def test_i_cannot_draft_to_another_managers_profile(client, monkeypatch):
+def test_i_cannot_draft_to_another_managers_profile(client, run_jobs, monkeypatch):
     fakes.install(monkeypatch, github_people=1, web_people=0)
     tok_a, _ = register(client, "dr-a@co.com")
     tok_b, _ = register(client, "dr-b@co.com")
-    [profile_id] = _finish_run(client, tok_a)["profile_ids"].values()
+    [profile_id] = _finish_run(client, run_jobs, tok_a)["profile_ids"].values()
     assert client.post(f"/api/sourcer/profiles/{profile_id}/draft-outreach", headers=auth_headers(tok_b)).status_code == 404
 
 
@@ -166,7 +166,7 @@ def test_every_sourcer_route_needs_a_manager(client):
         assert r.status_code == 401, (method, path, r.status_code)
 
 
-def test_a_run_never_reads_another_managers_uploads(client, monkeypatch):
+def test_a_run_never_reads_another_managers_uploads(client, run_jobs, monkeypatch):
     from app.services.resume_rag import resume_rag
     fakes.install(monkeypatch, github_people=0, web_people=0)
     tok_a, user_a = register(client, "pool-a@co.com")
@@ -174,10 +174,9 @@ def test_a_run_never_reads_another_managers_uploads(client, monkeypatch):
     fakes.seed_upload(resume_rag, user_a["id"], 1, "Alice Mine")
     fakes.seed_upload(resume_rag, user_b["id"], 2, "Bob Theirs")
 
-    r = client.post("/api/sourcer/runs", json={"description": "Backend engineer"}, headers=auth_headers(tok_a))
-    names = [e["person"]["name"] for e in fakes.events(r) if e["type"] == "found"]
-    assert names == ["Alice Mine"]
-    assert "Bob Theirs" not in r.text
+    body = fakes.search(client, run_jobs, tok_a, "Backend engineer")
+    assert [p["name"] for p in body["profiles"]] == ["Alice Mine"]
+    assert "Bob Theirs" not in str(body)
 
 
 def test_a_run_needs_a_description_and_somewhere_to_look(client, monkeypatch):
