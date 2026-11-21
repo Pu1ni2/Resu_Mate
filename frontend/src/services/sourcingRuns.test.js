@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 
 import { RUN_WAITS, active, followRun, progressEvents } from './sourcingRuns';
+import { initialState, talentMapReducer as reduce } from '../components/sourcer/talentMapModel';
 
 /* A Find Candidates search runs on the server, in the background; the page
  * follows it by its id, asking what it wrote since the last write it saw. */
@@ -145,5 +146,16 @@ describe("a followed search's answers, as the talent map's events", () => {
                                       { type: 'done', stats: { found: 0 } }]);
     expect(ending('stopped')).toEqual([]);
     expect(ending('stopping')).toEqual([]);
+  });
+});
+
+describe('someone found and judged between two answers', () => {
+  it('is counted as read, and shortlisted, on the map', () => {
+    const answer = progress('running', 1, [{ id: 92, pid: 'web:ada', source: 'web', name: 'Ada', verdict: 'shortlist',
+                                            score: 88, criteria: [], judgement: 'Strong.', filter_match: false }]);
+    const map = reduce(reduce(initialState, { type: 'start', description: 'Backend engineer' }),
+                       { type: 'events', events: progressEvents(answer) });
+    expect(map.counts).toMatchObject({ found: 1, judged: 1, shortlisted: 1 });
+    expect([map.current, map.people['web:ada'].verdict]).toEqual(['web:ada', 'shortlist']);
   });
 });
