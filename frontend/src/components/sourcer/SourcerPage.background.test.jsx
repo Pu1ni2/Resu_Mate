@@ -127,7 +127,7 @@ describe('a search run in the background', () => {
 
   it('says so when it could not be stopped, and Stop can be tried again', async () => {
     startedInTheBackground();
-    vi.spyOn(api, 'post').mockRejectedValue({ response: { status: 500, data: {} } });
+    const post = vi.spyOn(api, 'post').mockRejectedValue({ response: { status: 500, data: {} } });
     const toasts = [];
     const listen = e => toasts.push(e.detail.message);
     window.addEventListener(TOAST_EVENT, listen);
@@ -136,6 +136,8 @@ describe('a search run in the background', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Stop$/ }));
     await vi.waitFor(() => expect(toasts).toEqual(['The search couldn’t be stopped. Please try again.']));
     window.removeEventListener(TOAST_EVENT, listen);
+    // Asked of this search, though nothing was heard of it yet.
+    expect(post).toHaveBeenCalledWith('/sourcer/runs/9/stop');
     expect(screen.getByRole('button', { name: /^Stop$/ }).disabled).toBe(false);
   });
 

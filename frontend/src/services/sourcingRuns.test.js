@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 
-import { RUN_WAITS, active, followRun, progressEvents } from './sourcingRuns';
+import { RUN_WAITS, active, followRun, progressEvents, startRun } from './sourcingRuns';
+import { TOKEN_KEY } from './session';
 import { initialState, talentMapReducer as reduce } from '../components/sourcer/talentMapModel';
 
 /* A Find Candidates search runs on the server, in the background; the page
@@ -157,5 +158,31 @@ describe('someone found and judged between two answers', () => {
                        { type: 'events', events: progressEvents(answer) });
     expect(map.counts).toMatchObject({ found: 1, judged: 1, shortlisted: 1 });
     expect([map.current, map.people['web:ada'].verdict]).toEqual(['web:ada', 'shortlist']);
+  });
+});
+
+describe('starting a search', () => {
+  it('posts what to look for with the manager token, and passes on the id to follow', async () => {
+    localStorage.setItem(TOKEN_KEY, 'jwt-abc');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(answer({ run_id: 9, status: 'queued' }, 202));
+    await expect(startRun({ description: 'Backend engineer' })).resolves.toBe(9);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/sourcer\/runs$/);
+    expect([options.method, options.headers.Authorization, JSON.parse(options.body)])
+      .toEqual(['POST', 'Bearer jwt-abc', { description: 'Backend engineer' }]);
+  });
+
+  it("says the server's reason when one can't start: one running already, say", async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(answer({ detail: 'A search is already running.', run_id: 4 }, 409));
+    await expect(startRun({})).rejects.toThrow('A search is already running.');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 502, json: async () => { throw new SyntaxError('not JSON'); } });
+    await expect(startRun({})).rejects.toThrow('The search could not start.');
+  });
+
+  it("says so when the hour's searches are used, or the server is out of reach", async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(answer({}, 429));
+    await expect(startRun({})).rejects.toThrow('Too many searches this hour. Please wait and try again.');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(startRun({})).rejects.toThrow('Could not reach the server. Please check your connection.');
   });
 });
