@@ -1979,7 +1979,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
               {/* Interview setup expanded */}
               {iv && (() => {
                 const config = iv.config || {};
-                const intel = config.resume_intelligence || {};
                 const focusAreas = config.focus_areas || config.focusAreas || [];
                 return (
                   <>
@@ -2004,19 +2003,6 @@ export default function JarvisAgent({ candidatesSummary = [], onClose, onComplet
                             </span>
                           ))}
                         </div>
-                      </div>
-                    )}
-                    {intel && Object.keys(intel).length > 0 && (
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#68705e', letterSpacing: '0.1em', marginBottom: 10 }}>ATTACHED RESUME INTELLIGENCE</div>
-                        <div style={{ fontSize: 14, color: '#596150', lineHeight: 1.7, marginBottom: 8 }}>
-                          Verification targets: {(intel.verification_targets || []).length}. Red flags: {(intel.red_flags || []).length}.
-                        </div>
-                        {(intel.verification_targets || []).slice(0, 4).map((target, i) => (
-                          <div key={i} style={{ fontSize: 12, color: '#68705e', lineHeight: 1.6, padding: '3px 0' }}>
-                            {target.skill || target.claim || `Target ${i + 1}`}
-                          </div>
-                        ))}
                       </div>
                     )}
                   </>
