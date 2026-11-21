@@ -311,3 +311,20 @@ def test_a_held_email_waits_with_no_job_until_released(client, run_jobs, mailbox
     assert run_jobs() == ["done"] and mailbox == ["ada@x.com"]
     # Another interview's stays held.
     assert (_run(_email(email_id)), _run(_email(others))) == ("sent", "held")
+
+
+# ── the manager's own ────────────────────────────────────────────────────────
+
+def test_the_managers_questions_are_ready_and_send_the_held_invitation(client, run_jobs, writer, mailbox):
+    token, m = register(client, "qj13@co.com")
+    iid = _run(_waiting(m["id"]))
+    email_id = _run(_held_invitation(m["id"], iid))
+    r = client.put(f"/api/chat/interviews/{iid}/questions", headers=auth_headers(token),
+                   json={"questions": ["Tell me about a hard bug."]})
+    assert r.status_code == 200, r.text
+    assert r.json()["questions_status"] == "ready"
+    assert _run(_read(iid))["status"] == "ready"
+    # The job, running after, leaves theirs, and the invitation goes.
+    assert run_jobs() == ["done", "done"]
+    assert writer == [] and _run(_read(iid))["questions"] == ["Tell me about a hard bug."]
+    assert _run(_email(email_id)) == "sent" and mailbox == ["ada@x.com"]
