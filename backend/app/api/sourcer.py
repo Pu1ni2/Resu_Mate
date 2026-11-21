@@ -5,12 +5,13 @@ its results for the manager who ran it.
 """
 import asyncio
 import json
+from datetime import datetime
 from typing import Dict, Literal, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from app.core.rate_limit import limiter
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.hr_agent import hr_agent
@@ -192,6 +193,40 @@ async def get_run(run_id: int, user=Depends(get_current_user), db: AsyncSession 
         .order_by(SourcedProfile.score.desc(), SourcedProfile.id)
     )
     return {"run": run.to_dict(), "profiles": [p.to_dict() for p in result.scalars().all()]}
+
+
+@router.get("/runs/{run_id}/progress")
+async def run_progress(run_id: int, after: int = 0, user=Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
+    """Where a run stands, and the people it found or judged since its write
+    `after` (SourcingRun.seq), in the order written: everyone, when `after`
+    is 0. The background job writes a run as it goes (sourcing.search),
+    and a page following one asks after the last write it saw, until the
+    run has ended."""
+    run = await _own_run(db, run_id, user.id)
+    since = (SourcedProfile.seq > after,) if after else ()
+    result = await db.execute(
+        select(SourcedProfile)
+        .where(SourcedProfile.run_id == run.id, *since)
+        .order_by(SourcedProfile.seq, SourcedProfile.id)
+    )
+    return {"run": run.to_dict(), "profiles": [p.to_dict() for p in result.scalars().all()]}
+
+
+@router.post("/runs/{run_id}/stop")
+async def stop_run(run_id: int, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Stop a search: one waiting to run never runs, and a running one ends
+    at its next write, within a second or so, keeping everyone it found.
+    One that has ended, or was asked already, is left as it is. Answers
+    where it stands."""
+    run = await _own_run(db, run_id, user.id)
+    for was, now in (("queued", {"status": "stopped", "finished_at": datetime.utcnow()}),
+                     ("running", {"status": "stopping"})):
+        await db.execute(update(SourcingRun).where(SourcingRun.id == run.id, SourcingRun.status == was)
+                         .values(**now).execution_options(synchronize_session=False))
+    await db.commit()
+    await db.refresh(run)
+    return {"run_id": run.id, "status": run.status}
 
 
 async def _own_profile(db: AsyncSession, profile_id: int, manager_id: int) -> SourcedProfile:
