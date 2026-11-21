@@ -7,8 +7,7 @@ import { Label, Textarea } from '../ui/Input';
 import { cn } from '../ui/cn';
 import { messageForApiError, sourcerAPI } from '../../services/api';
 import { toast } from '../../services/notify';
-import { streamRun } from '../../services/sourcerStream';
-import { active, followRun, progressEvents } from '../../services/sourcingRuns';
+import { active, followRun, progressEvents, startRun } from '../../services/sourcingRuns';
 import { formatCount } from './format';
 import { initialState, shortlistOf, talentMapReducer } from './talentMapModel';
 import StatTiles from './StatTiles';
@@ -25,9 +24,10 @@ import WorkspaceShell from '../studio/WorkspaceShell';
 
 /* Find candidates: describe who you want, and watch the whole pool be read.
  *
- * The run streams hundreds of events a minute. They are queued as they arrive
- * and applied once per animation frame, so the page renders at most sixty times
- * a second however fast the stream is. */
+ * The server runs the search in the background, and the page follows it: an
+ * answer can bring hundreds of events. They are queued as they arrive and
+ * applied once per animation frame, so the page renders at most sixty times a
+ * second however many come. */
 
 const SOURCES = [
   ['uploads', 'Your uploads'],
@@ -36,12 +36,6 @@ const SOURCES = [
 ];
 
 const EXAMPLE = 'Backend engineer in Boston, strong Python, has shipped a real product. Ex-founder is a plus.';
-
-// A stopped run is saved by the server after the request ends, so reopening it
-// may take a moment: try a few times before giving up.
-const REOPEN_TRIES = 4;
-const REOPEN_WAIT_MS = 600;
-const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // jsdom and old browsers may lack requestAnimationFrame; a 16ms timer is a frame.
 const nextFrame = cb => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(cb) : setTimeout(cb, 16));
@@ -115,13 +109,10 @@ function RunHeader({ state, onStop, onNewSearch }) {
             GitHub reports {formatCount(githubTotal)} matches; this run reads {formatCount(readFromGithub)} of them.
           </p>
         )}
-        {/* A search the server runs in the background goes on without the
-            page; one an older server streamed stopped with it. */}
+        {/* The server runs it in the background: it goes on without the page. */}
         {running && (
           <p className="mt-0.5 text-[12px] text-ink-faint">
-            {state.runId
-              ? 'The search goes on if you leave this page. It’s in Past searches when you come back.'
-              : 'Leaving this page stops the search. Everyone judged by then is saved, and opens again from Past searches.'}
+            The search goes on if you leave this page. It’s in Past searches when you come back.
           </p>
         )}
       </div>
@@ -177,8 +168,6 @@ export default function SourcerPage() {
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
   async function openRun(id) {
-    abortRef.current?.abort();
-    runTokenRef.current += 1;
     try {
       const { data } = await sourcerAPI.getRun(id);
       dispatch({ type: 'loaded', run: data.run, profiles: data.profiles });
@@ -200,27 +189,9 @@ export default function SourcerPage() {
     }
   }
 
-  /* After Stop the server saves what was judged, a moment after the request
-   * ends. Reopen that saved run so its people can be saved, dismissed and
-   * written to, like a finished one. */
-  async function reopenStopped(text, token) {
-    for (let i = 0; i < REOPEN_TRIES; i += 1) {
-      await wait(REOPEN_WAIT_MS);
-      // A newer search has started since; this one must not replace it.
-      if (runTokenRef.current !== token) return;
-      const latest = (await loadHistory())[0];
-      if (runTokenRef.current !== token) return;
-      if (latest && latest.description === text && latest.status === 'stopped') {
-        await openRun(latest.id);
-        return;
-      }
-    }
-  }
-  const abortRef = useRef(null);
   const followRef = useRef(null); // stops following the search on screen
   const queueRef = useRef([]);
   const frameRef = useRef(0);
-  const runTokenRef = useRef(0); // which search is current, for late async work
 
   const flush = useCallback(() => {
     frameRef.current = 0;
@@ -234,23 +205,11 @@ export default function SourcerPage() {
     if (!frameRef.current) frameRef.current = nextFrame(flush);
   }, [flush]);
 
-  // Leaving the page stops a streamed search, and following one the server
-  // runs in the background, which goes on.
+  // Leaving the page stops following the search, which goes on.
   useEffect(() => () => {
-    abortRef.current?.abort();
     followRef.current?.();
     if (frameRef.current) cancelFrame(frameRef.current);
   }, []);
-
-  // Closing or reloading the tab mid-search asks first, for a search an
-  // older server streams: it stops with the page, and the people not yet
-  // judged are lost. One run in the background goes on.
-  useEffect(() => {
-    if (state.status !== 'running' || state.runId) return undefined;
-    const ask = e => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', ask);
-    return () => window.removeEventListener('beforeunload', ask);
-  }, [state.status, state.runId]);
 
   async function start(e) {
     e?.preventDefault();
@@ -259,30 +218,13 @@ export default function SourcerPage() {
     if (!Object.values(sources).some(Boolean)) return setFormError('Choose at least one place to look.');
     setFormError('');
     setEditing(false);
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    queueRef.current = [];
-    runTokenRef.current += 1;
-    const token = runTokenRef.current;
     dispatch({ type: 'start', description: text });
     try {
-      const result = await streamRun({ description: text, sources }, enqueue, controller.signal);
-      flush();
-      if (result.runId) {
-        enqueue({ type: 'saved', run_id: result.runId, profile_ids: {} });
-        follow(result.runId);
-      } else if (result.stopped) {
-        dispatch({ type: 'stopped' });
-        reopenStopped(text, token);
-      } else {
-        loadHistory();
-      }
+      const runId = await startRun({ description: text, sources });
+      enqueue({ type: 'saved', run_id: runId, profile_ids: {} });
+      follow(runId);
     } catch (err) {
-      flush();
       dispatch({ type: 'failed', message: err.message });
-    } finally {
-      if (abortRef.current === controller) abortRef.current = null;
     }
   }
 
@@ -296,18 +238,14 @@ export default function SourcerPage() {
     }, after);
   }
 
-  // Stop: a streamed search stops as its request ends; one the server
-  // runs is asked to, and ends at its next write, keeping everyone found.
+  // Stop: the server is asked to, and ends the search at its next write,
+  // keeping everyone found.
   async function stop() {
-    if (!state.runId) {
-      abortRef.current?.abort();
-    } else {
-      try {
-        await sourcerAPI.stopRun(state.runId);
-        dispatch({ type: 'stopping' });
-      } catch (err) {
-        toast(messageForApiError(err, 'The search couldn’t be stopped. Please try again.'), 'error');
-      }
+    try {
+      await sourcerAPI.stopRun(state.runId);
+      dispatch({ type: 'stopping' });
+    } catch (err) {
+      toast(messageForApiError(err, 'The search couldn’t be stopped. Please try again.'), 'error');
     }
   }
 
@@ -317,10 +255,8 @@ export default function SourcerPage() {
   }
 
   async function setStatus(pid, status) {
-    const id = state.profileIds[pid];
-    if (!id) return;
     try {
-      await sourcerAPI.setStatus(id, status);
+      await sourcerAPI.setStatus(state.profileIds[pid], status);
       dispatch({ type: 'profileStatus', pid, status });
     } catch (err) {
       toast(messageForApiError(err, 'Could not update that person. Please try again.'), 'error');
@@ -430,7 +366,7 @@ export default function SourcerPage() {
                 </details>
               </>
             )}
-            {outreachPid && state.profileIds[outreachPid] && (
+            {outreachPid && (
               <OutreachModal
                 person={state.people[outreachPid]}
                 profileId={state.profileIds[outreachPid]}

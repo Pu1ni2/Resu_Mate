@@ -2,11 +2,31 @@ import { API_BASE, authFetch } from './authFetch';
 
 /* Find Candidates' searches run on the server, in the background (its
  * sourcing.search job), which writes each one as it goes: leaving the page
- * no longer stops one. The page follows a search by its id, asking what it
- * wrote since the last write the page saw
+ * doesn't stop one. The page starts a search, then follows it by its id,
+ * asking what it wrote since the last write the page saw
  * (GET /api/sourcer/runs/{id}/progress?after=), and turns each answer into
- * the events the talent map is built from (talentMapModel.js), the same
- * ones a streamed search sent. */
+ * the events the talent map is built from (talentMapModel.js). A search
+ * ran inside one request, streamed, and stopped when the page closed. */
+
+// Start a search: the server queues it, and answers with its id for the
+// page to follow. Rejects with what to tell the manager when it can't
+// start: one already running, say, or the hour's searches used.
+export async function startRun(body) {
+  let response;
+  try {
+    response = await authFetch(`${API_BASE}/api/sourcer/runs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new Error('Could not reach the server. Please check your connection.', { cause: err });
+  }
+  if (response.status === 429) throw new Error('Too many searches this hour. Please wait and try again.');
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.detail === 'string' && data.detail ? data.detail : 'The search could not start.');
+  return data.run_id;
+}
 
 // Every second and a half, for as long as a search can run (half an hour)
 // and a little more.

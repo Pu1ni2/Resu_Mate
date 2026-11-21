@@ -67,9 +67,6 @@ function applyEvent(draft, event) {
     case 'plan':
       draft.plan = event.plan;
       break;
-    case 'pool':
-      draft.sources = { ...draft.sources, ...event.sources };
-      break;
     case 'found': {
       const person = event.person;
       if (!person?.pid || draft.people[person.pid]) break;

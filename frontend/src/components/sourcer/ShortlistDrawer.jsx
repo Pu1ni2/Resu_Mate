@@ -5,24 +5,22 @@ import RankedCandidates from '../ranked/RankedCandidates';
 import { fromSourcedProfile } from '../ranked/adapters';
 import { shortlistOf } from './talentMapModel';
 
-/* Save, dismiss and (when offered) draft for one person. They act on the saved
- * profile, so they wait until the run has been saved and has ids. */
-function RowActions({ person, profileId, onStatus, onDraft }) {
-  const ready = Boolean(profileId);
+/* Save, dismiss and (when offered) draft for one person, by their saved
+ * profile: a followed search's people come with it. */
+function RowActions({ person, onStatus, onDraft }) {
   const saved = person.status === 'saved';
   const dismissed = person.status === 'dismissed';
-  const why = ready ? undefined : 'Available once the run is saved';
   return (
     <>
       <Button
-        size="sm" variant={saved ? 'accentGhost' : 'ghost'} disabled={!ready} title={why}
+        size="sm" variant={saved ? 'accentGhost' : 'ghost'}
         aria-pressed={saved} aria-label={`${saved ? 'Unsave' : 'Save'} ${person.name}`}
         onClick={() => onStatus(person.pid, saved ? 'new' : 'saved')}
       >
         {saved ? 'Saved' : 'Save'}
       </Button>
       <Button
-        size="sm" variant="ghost" disabled={!ready} title={why}
+        size="sm" variant="ghost"
         aria-pressed={dismissed} aria-label={`${dismissed ? 'Restore' : 'Dismiss'} ${person.name}`}
         onClick={() => onStatus(person.pid, dismissed ? 'new' : 'dismissed')}
       >
@@ -30,7 +28,7 @@ function RowActions({ person, profileId, onStatus, onDraft }) {
       </Button>
       {onDraft && (
         <Button
-          size="sm" variant="ghost" disabled={!ready} title={why}
+          size="sm" variant="ghost"
           aria-label={`Draft outreach to ${person.name}`}
           onClick={() => onDraft(person.pid)}
         >
@@ -49,14 +47,11 @@ export function ShortlistList({ state, onStatus, onDraft }) {
   const rows = people.map(p => fromSourcedProfile(p, state.plan));
   return (
     <>
-      {!state.runId && (
-        <p className="mb-3 text-[12px] text-ink-subtle">Save, dismiss and outreach are available once the run is saved.</p>
-      )}
       <RankedCandidates
         rows={rows}
         emptyMessage="No one has cleared the shortlist line yet."
         renderActions={row => (
-          <RowActions person={byPid[row.id]} profileId={state.profileIds[row.id]} onStatus={onStatus} onDraft={onDraft} />
+          <RowActions person={byPid[row.id]} onStatus={onStatus} onDraft={onDraft} />
         )}
       />
     </>

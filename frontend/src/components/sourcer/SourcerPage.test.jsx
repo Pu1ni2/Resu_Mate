@@ -5,13 +5,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 import SourcerPage from './SourcerPage';
 import api from '../../services/api';
+import { followRun } from '../../services/sourcingRuns';
 
-/* The whole page against a streamed run. fetch is faked with a real
- * ReadableStream of NDJSON, so the page is exercised the way the browser
- * exercises it: events arrive in chunks, are batched per frame, and every panel
- * fills from them. jsdom has no canvas and needs none; the map is a grid. */
+vi.mock('../../services/sourcingRuns', async importOriginal => ({ ...(await importOriginal()), followRun: vi.fn() }));
 
-const encoder = new TextEncoder();
+/* The whole page against a search the server runs in the background: started
+ * with fetch, then followed (the follower stands in here, answering with the
+ * search as `events` leave it). Its events are batched per frame, and every
+ * panel fills from them. jsdom has no canvas and needs none; the map is a grid. */
 
 const PLAN = {
   type: 'plan',
@@ -33,8 +34,6 @@ const RUN = [
   person('upload:1', 'Maya Chen', { email: 'maya@example.com' }),
   person('github:ada', 'Ada Lovelace'),
   person('github:bob', 'Bob Stone'),
-  // The server counts only the people it has announced.
-  { type: 'pool', sources: { upload: 1, github: 2, web: 0 }, github_total: 5000 },
   judged('upload:1', 'shortlist', true),
   judged('github:ada', 'shortlist', false, { miss_reason: 'non_standard_title' }),
   judged('github:bob', 'passed', false),
@@ -43,23 +42,34 @@ const RUN = [
   { type: 'done', stats: { judged: 3, found: 3, per_sec: 1.5, elapsed_s: 62, tokens_in: 900, tokens_out: 100, cost_usd: null, github_total: 5000 } },
 ];
 
-/* NDJSON split awkwardly across chunks, as a network would. */
-function streamOf(events) {
-  const text = events.map(e => JSON.stringify(e)).join('\n') + '\n';
-  const cut = Math.floor(text.length / 3);
-  const chunks = [text.slice(0, cut), text.slice(cut, 2 * cut), text.slice(2 * cut)];
-  return new ReadableStream({
-    start(c) {
-      for (const chunk of chunks) c.enqueue(encoder.encode(chunk));
-      c.close();
-    },
-  });
+/* The search as `events` leave it, as the server answers a page following it:
+ * the run, ended when they end with done, and everyone found, judged or not. */
+function progressOf(events) {
+  const people = {};
+  let ids = {};
+  const run = { id: 9, status: 'running', seq: 1, plan: {}, stats: {}, warnings: [], error: null };
+  for (const { type, ...event } of events) {
+    if (type === 'plan') run.plan = event.plan;
+    if (type === 'found') people[event.person.pid] = { ...event.person, verdict: null };
+    if (type === 'judged') people[event.pid] = { ...people[event.pid], ...event };
+    if (type === 'stats') run.stats = event;
+    if (type === 'warning') run.warnings.push(event.message);
+    if (type === 'saved') ids = event.profile_ids;
+    if (type === 'done') Object.assign(run, { status: 'complete', stats: event.stats });
+  }
+  return { run, profiles: Object.values(people).map((person, i) => ({ id: ids[person.pid] ?? 80 + i, ...person })) };
 }
 
+/* The server: a search starts at once, and the page, following it, is told
+ * how it stands once. */
 function fakeServer(events = RUN) {
+  followRun.mockImplementation((runId, onProgress) => {
+    Promise.resolve().then(() => onProgress(progressOf(events)));
+    return vi.fn();
+  });
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
     if (String(url).endsWith('/api/sourcer/runs') && options.method === 'POST') {
-      return { ok: true, status: 200, body: streamOf(events) };
+      return { ok: true, status: 202, json: async () => ({ run_id: 9, status: 'queued' }) };
     }
     return { ok: true, status: 200, json: async () => ({ runs: [] }) };
   });
@@ -89,6 +99,8 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('resumate_hm_token', 'jwt-test');
   vi.restoreAllMocks();
+  followRun.mockReset();
+  followRun.mockReturnValue(vi.fn());
   fakeHistory();
 });
 afterEach(cleanup);
@@ -109,7 +121,7 @@ describe('SourcerPage', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/at least one place/);
   });
 
-  it('fills the tiles, the map and the panels from the stream', async () => {
+  it('fills the tiles, the map and the panels from the search', async () => {
     const server = fakeServer();
     renderPage();
     await search();
@@ -149,25 +161,6 @@ describe('SourcerPage', () => {
     expect(await screen.findByText(/rate limit was reached/)).toBeTruthy();
   });
 
-  it('stops when asked, and says what was kept', async () => {
-    let signal;
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
-      signal = options.signal;
-      const body = new ReadableStream({
-        start(c) {
-          c.enqueue(encoder.encode(`${JSON.stringify(PLAN)}\n${JSON.stringify(person('github:ada', 'Ada'))}\n`));
-          signal.addEventListener('abort', () => c.error(Object.assign(new Error('aborted'), { name: 'AbortError' })));
-        },
-      });
-      return { ok: true, status: 200, body };
-    });
-    renderPage();
-    await search();
-    fireEvent.click(await screen.findByRole('button', { name: /Stop/ }));
-    expect(await screen.findByText('Stopped. Everyone judged so far is saved')).toBeTruthy();
-    expect(signal.aborted).toBe(true);
-  });
-
   it('goes back to the form for a new search, keeping the description', async () => {
     fakeServer();
     renderPage();
@@ -177,25 +170,9 @@ describe('SourcerPage', () => {
   });
 });
 
-/* A search still running: its events, and the stream left open. */
-function runningServer(events) {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
-    if (String(url).endsWith('/api/sourcer/runs') && options.method === 'POST') {
-      const body = new ReadableStream({
-        start(c) {
-          c.enqueue(encoder.encode(events.map(e => JSON.stringify(e)).join('\n') + '\n'));
-          options.signal?.addEventListener('abort', () => c.error(Object.assign(new Error('aborted'), { name: 'AbortError' })));
-        },
-      });
-      return { ok: true, status: 200, body };
-    }
-    return { ok: true, status: 200, json: async () => ({ runs: [] }) };
-  });
-}
-
 describe('the shortlist', () => {
   it('opens, while the search runs, from the top of the shortlist, best first, and closes on Escape', async () => {
-    runningServer(RUN.filter(e => e.type !== 'done'));
+    fakeServer(RUN.filter(e => e.type !== 'done'));
     renderPage();
     await search();
 
@@ -222,14 +199,6 @@ describe('the shortlist', () => {
     expect(await screen.findByRole('button', { name: 'Unsave Ada Lovelace' })).toBeTruthy();
   });
 
-  it('waits for the run to be saved before offering actions', async () => {
-    fakeServer(RUN.filter(e => e.type !== 'saved'));
-    renderPage();
-    await search();
-    await screen.findByText('Every person found has been read');
-    expect(screen.getByRole('button', { name: 'Save Maya Chen' }).disabled).toBe(true);
-    expect(screen.getByText(/available once the run is saved/)).toBeTruthy();
-  });
 });
 
 /* Once a search had ended, its people were one panel among six, chips under
@@ -264,7 +233,7 @@ describe('a search that has ended', () => {
   });
 
   it('while it runs, shows the live panels instead, with the shortlist so far', async () => {
-    runningServer(RUN.filter(e => e.type !== 'done'));
+    fakeServer(RUN.filter(e => e.type !== 'done'));
     renderPage();
     await search();
     expect(await screen.findByRole('region', { name: 'Top of shortlist' })).toBeTruthy();
@@ -344,33 +313,6 @@ describe('past searches', () => {
     await waitForGone(() => screen.queryByRole('region', { name: 'Past searches' }));
   });
 
-  it('a stopped run is reopened from what the server saved', async () => {
-    const text = 'Backend engineer in Boston, strong Python';
-    let listed = [];
-    fakeHistory({
-      runs: () => listed,
-      saved: { 5: { run: { id: 5, description: text, status: 'stopped', plan: PLAN.plan, stats: {} },
-        profiles: [{ id: 51, pid: 'github:ada', source: 'github', name: 'Ada Lovelace', verdict: 'shortlist', score: 90, filter_match: false, criteria: [], judgement: 'Kept.' }] } },
-    });
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
-      const body = new ReadableStream({
-        start(c) {
-          c.enqueue(encoder.encode(`${JSON.stringify(PLAN)}\n`));
-          options.signal.addEventListener('abort', () => {
-            listed = [{ id: 5, description: text, status: 'stopped', created_at: '2026-09-27T10:00:00', judged: 1, shortlisted: 1 }];
-            c.error(Object.assign(new Error('aborted'), { name: 'AbortError' }));
-          });
-        },
-      });
-      return { ok: true, status: 200, body };
-    });
-    renderPage();
-    await search(text);
-    fireEvent.click(await screen.findByRole('button', { name: /Stop/ }));
-    // The saved partial run comes back with ids, so its people can be acted on.
-    await screen.findAllByText('Kept.', {}, { timeout: 3000 });
-    expect(screen.getByRole('button', { name: 'Save Ada Lovelace' }).disabled).toBe(false);
-  });
 });
 
 describe('in the Studio design', () => {
@@ -400,50 +342,3 @@ async function waitForGone(query) {
   for (let i = 0; i < 20 && query(); i += 1) await new Promise(r => setTimeout(r, 25));
   expect(query()).toBeNull();
 }
-
-describe('leaving mid-search', () => {
-  // The search runs only while the page is open, and nothing said so.
-  const NOTE = 'Leaving this page stops the search. Everyone judged by then is saved, and opens again from Past searches.';
-
-  // A stream that runs until the page stops it.
-  function endlessServer() {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
-      const { signal } = options;
-      const body = new ReadableStream({
-        start(c) {
-          c.enqueue(encoder.encode(`${JSON.stringify(PLAN)}\n${JSON.stringify(person('github:ada', 'Ada'))}\n`));
-          signal?.addEventListener('abort', () => c.error(Object.assign(new Error('aborted'), { name: 'AbortError' })));
-        },
-      });
-      return { ok: true, status: 200, body };
-    });
-  }
-
-  const closing = () => {
-    const event = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(event);
-    return event.defaultPrevented;
-  };
-
-  it('is explained while the search runs, and not once it has stopped', async () => {
-    endlessServer();
-    renderPage();
-    await search();
-    expect(await screen.findByText(NOTE)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
-    await screen.findByText('Stopped. Everyone judged so far is saved');
-    expect(screen.queryByText(NOTE)).toBeNull();
-  });
-
-  it('asks first when the tab closes during a search, and not before or after it', async () => {
-    endlessServer();
-    renderPage();
-    expect(closing()).toBe(false);
-    await search();
-    await screen.findByText(NOTE);
-    expect(closing()).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
-    await screen.findByText('Stopped. Everyone judged so far is saved');
-    expect(closing()).toBe(false);
-  });
-});
