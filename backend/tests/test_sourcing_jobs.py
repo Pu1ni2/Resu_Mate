@@ -515,3 +515,58 @@ def test_stopping_a_run_ended_or_asked_already_leaves_it_as_it_is(client):
         r = client.post(f"/api/sourcer/runs/{run_id}/stop", headers=auth_headers(token))
         assert r.json() == {"run_id": run_id, "status": status}
         assert _run(_written(run_id))[0].finished_at is None
+
+
+# ── starting one ─────────────────────────────────────────────────────────────
+
+def test_starting_one_answers_at_once_with_it_queued_for_the_job(client, run_jobs, monkeypatch):
+    from conftest import auth_headers
+    from app.core import database
+    from app.models.job import Job
+    asked = []
+
+    async def search(description, manager_id, sources):
+        asked.append((description, manager_id, sources))
+        yield _found(0)
+    _search(monkeypatch, search)
+    token, m = register(client, "sj20@co.com")
+    r = client.post("/api/sourcer/runs", headers=auth_headers(token), json={
+        "description": "  Backend engineer in Boston  ", "sources": {"uploads": False, "github": True, "web": True}})
+    assert (r.status_code, r.json()["status"]) == (202, "queued")
+    run_id = r.json()["run_id"]
+    # Nothing searched inside the request: the job does it.
+    assert asked == []
+    run, _ = _run(_written(run_id))
+    assert (run.manager_id, run.description, run.status, run.sources) == (
+        m["id"], "Backend engineer in Boston", "queued", {"uploads": False, "github": True, "web": True})
+
+    async def queued():
+        async with database.async_session() as db:
+            return [(job.kind, job.payload, job.manager_id) for job in (await db.execute(select(Job))).scalars()]
+    assert _run(queued()) == [("sourcing.search", {"run_id": run_id}, m["id"])]
+    assert run_jobs() == ["done"]
+    assert asked == [("Backend engineer in Boston", m["id"], {"uploads": False, "github": True, "web": True})]
+    run, people = _run(_written(run_id))
+    assert (run.status, sorted(people)) == ("complete", ["web:p0"])
+
+
+def test_one_search_at_a_time_for_each_manager(client):
+    from conftest import auth_headers
+    token, m = register(client, "sj21@co.com")
+    other, _ = register(client, "sj22@co.com")
+
+    def start(who=token):
+        return client.post("/api/sourcer/runs", headers=auth_headers(who), json={"description": "Backend engineer"})
+    for status in ("queued", "running", "stopping"):
+        under_way = _run(_queued(m["id"], status=status))
+        r = start()
+        assert (r.status_code, r.json()) == (409, {
+            "detail": "A search is already running. It’s in Past searches, where you can open or stop it.",
+            "run_id": under_way})
+        _run(_set(under_way, status="stopped"))
+    # Once the last has ended, another starts.
+    for status in ("complete", "failed"):
+        _run(_queued(m["id"], status=status))
+    assert start().status_code == 202
+    # And another manager's goes ahead of this one's.
+    assert start(other).status_code == 202
