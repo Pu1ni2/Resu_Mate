@@ -65,6 +65,8 @@ between interviews.
   the server then deletes, daily, the candidates untouched that long (the
   Retention note below).
 - An always-on plan, so the API no longer sleeps after 15 idle minutes.
+- Keep the API at one instance, whatever the plan allows (Background jobs
+  below).
 
 ## Python version — keep it at 3.12
 
@@ -263,6 +265,40 @@ removes the object too.
   files. Untouched: their record unchanged, and no interview of theirs made,
   started or finished in that time. `python cleanup_stale.py --days <N>` lists
   whom that would delete, without deleting; `--apply` deletes them now.
+
+## Background jobs
+
+The slow work runs in the background, in the API's own process
+(`app/services/job_runner.py`), from the `jobs` table: the emails, the
+interview reports, reading uploaded résumés, an interview's questions,
+evaluations, batch invitations, Find Candidates' searches, and the clean-up
+on its schedules. A request queues the job and answers at once; the page
+follows it.
+
+- **One instance.** Two processes share the jobs safely (each claims with
+  `FOR UPDATE SKIP LOCKED`), but not the server's in-memory copy of the
+  candidates, which uploads, deletions and Find Candidates read. Keep the API
+  at one instance until that moves to the database.
+- **A deploy or a restart.** The jobs under way get 15 seconds to end; the
+  rest go back in the queue, their try not counted, and the new version runs
+  them. A Find Candidates search ends stopped instead, keeping everyone it
+  found. An email being sent has time to go (a send takes at most 10
+  seconds); one cut off all the same can go twice.
+- **The free plan's sleep.** Nothing runs while the API sleeps: queued jobs,
+  and the clean-up, wait for the next request to wake it.
+- **What went wrong.** A job that failed keeps a short code in
+  `jobs.last_error` (never anyone's data), for `JOBS_KEEP_DAYS`; the log has
+  a line for each, `job <id> <kind> <outcome> <code>`.
+
+The settings, each with its default:
+
+- `JOBS_RUNNER=true`: `false` leaves the jobs queued, as the tests do;
+- `JOBS_WORK_CONCURRENCY=2` and `JOBS_EMAIL_CONCURRENCY=2`: the slots in each
+  lane (one search, and two résumé readings, at a time whatever these say);
+- `JOBS_SHUTDOWN_GRACE_SECONDS=15`: with uvicorn's 10, within the 30 seconds
+  Render allows a shutdown (`maxShutdownDelaySeconds`);
+- `JOBS_KEEP_DAYS=14`: how long a job that ended is kept;
+- `RETENTION_DAYS=0` (Retention above).
 
 ## CI
 

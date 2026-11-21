@@ -41,8 +41,9 @@ services:
     buildCommand: pip install -r requirements.txt && alembic upgrade head
     # On a deploy or restart, Render asks the process to stop, then ends it
     # after maxShutdownDelaySeconds. Uvicorn gives the requests under way up
-    # to 10 seconds to finish; the app's own shutdown then runs, all within
-    # Render's 30.
+    # to 10 seconds to finish; the app's own shutdown then gives the
+    # background jobs under way up to 15 (JOBS_SHUTDOWN_GRACE_SECONDS) and
+    # puts the rest back in the queue, all within Render's 30.
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --timeout-graceful-shutdown 10
     maxShutdownDelaySeconds: 30
     # Answers 503 when the database can't be reached, so a broken deploy shows.
