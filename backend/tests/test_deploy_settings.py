@@ -78,3 +78,28 @@ def test_deploy_md_names_every_ci_job_and_says_email_is_required():
     assert [job for job in ci["jobs"] if f"**{job}**" not in listed] == []
     # It said production ran without email: it doesn't start without it.
     assert "Production doesn't start without email" in _deploy_section("Email")
+
+
+def test_a_deploy_lets_the_background_jobs_under_way_end_too():
+    # The app's own shutdown gives them JOBS_SHUTDOWN_GRACE_SECONDS, after
+    # uvicorn's wait for the requests: both, and a moment for the jobs put
+    # back to be written, before Render ends the process.
+    from app.core.config import Settings
+    api = _service("resumate-backend")
+    requests = int(re.search(r"--timeout-graceful-shutdown (\d+)", api["startCommand"]).group(1))
+    jobs = Settings.model_fields["jobs_shutdown_grace_seconds"].default
+    assert requests + jobs + 5 <= api["maxShutdownDelaySeconds"]
+    assert "JOBS_SHUTDOWN_GRACE_SECONDS" in _render_text()
+
+
+def test_deploy_md_says_how_the_background_jobs_run_with_every_setting():
+    from app.core.config import Settings
+    notes = _deploy_section("Background jobs")
+    assert "One instance" in notes and "Keep the API at one instance" in _deploy_section("Going live: the checklist")
+    shown = {"jobs_runner": "true", "jobs_work_concurrency": "2", "jobs_email_concurrency": "2",
+             "jobs_shutdown_grace_seconds": "15", "jobs_keep_days": "14", "retention_days": "0"}
+    # Every setting of theirs, with its default as it is.
+    assert sorted(shown) == sorted(name for name in Settings.model_fields if name.startswith("jobs_")) + ["retention_days"]
+    for name, default in shown.items():
+        assert str(Settings.model_fields[name].default).lower().removesuffix(".0") == default
+        assert f"`{name.upper()}={default}`" in notes, name
