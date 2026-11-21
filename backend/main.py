@@ -239,8 +239,9 @@ from app.api.privacy import router as privacy_router
 from app.api.emails import router as emails_router
 # The kinds of background job, registered for the job runner by importing
 # them: the clean-up tasks, on schedules, the interview report writer, the
-# batch invitations' preparer, the outbox's sender, and the résumé reader.
-from app.services import cleanup, interview_report, invite_batches, outbox, resume_analysis  # noqa: F401
+# batch invitations' preparer, the outbox's sender, the résumé reader, and
+# Find Candidates' searches.
+from app.services import cleanup, interview_report, invite_batches, outbox, resume_analysis, sourcing_search  # noqa: F401
 
 # Each router's prefix is its whole address (/api/...), and each is
 # included as it is. FastAPI from 0.16x keeps an included router's routes
