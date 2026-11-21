@@ -142,3 +142,61 @@ describe('a reopened run', () => {
     expect(s.people['web:b'].status).toBe('dismissed');
   });
 });
+
+/* A search the server runs in the background, followed by its id: its people
+ * and their ids come a few at a time, and a run reopened may still be under
+ * way. */
+describe('a followed run', () => {
+  it('counts each person found for their source', () => {
+    const s = run([found('github:a'), found('github:b'), found('web:c')]);
+    expect(s.sources).toEqual({ upload: 0, github: 2, web: 1 });
+  });
+
+  it('gathers the ids to act on people by as they come', () => {
+    const s = run([
+      found('github:a'), found('web:b'),
+      { type: 'saved', run_id: 9, profile_ids: { 'github:a': 91 } },
+      { type: 'saved', run_id: 9, profile_ids: { 'web:b': 92 } },
+    ]);
+    expect((({ runId, profileIds }) => ({ runId, profileIds }))(s)).toEqual({ runId: 9, profileIds: { 'github:a': 91, 'web:b': 92 } });
+  });
+
+  it('says it was asked to stop, while it runs, until it has', () => {
+    const asked = reduce(run([found('github:a')]), { type: 'stopping' });
+    expect(asked.stopping).toBe(true);
+    expect(reduce(asked, { type: 'stopped' })).toMatchObject({ status: 'stopped', stopping: false });
+    expect(reduce(initialState, { type: 'stopping' }).stopping).toBe(false);
+  });
+});
+
+describe('a reopened run still under way, or failed', () => {
+  const profiles = [
+    { id: 31, pid: 'github:a', source: 'github', name: 'A', verdict: 'shortlist', score: 90, filter_match: false },
+    // Found, not yet judged.
+    { id: 32, pid: 'web:b', source: 'web', name: 'B', verdict: null, score: 0 },
+  ];
+  const reopened = (status, extra = {}) => reduce(initialState, {
+    type: 'loaded', run: { id: 4, description: 'Designer', status, plan: { criteria: [] }, stats: {}, ...extra }, profiles,
+  });
+
+  it('runs on while waiting to run, running or asked to stop', () => {
+    expect(['queued', 'running', 'stopping', 'complete', 'stopped'].map(status => reopened(status).status))
+      .toEqual(['running', 'running', 'running', 'done', 'stopped']);
+    expect([reopened('running').stopping, reopened('stopping').stopping]).toEqual([false, true]);
+  });
+
+  it('keeps someone found but not yet judged on the map, not counted as read', () => {
+    const s = reopened('running');
+    expect(s.order).toEqual(['github:a', 'web:b']);
+    expect(s.counts).toEqual({ found: 2, judged: 1, shortlisted: 1, byFilter: 0, filterWouldShow: 0 });
+    expect([s.sample, s.log, s.current]).toEqual([['github:a'], ['github:a'], 'github:a']);
+    expect(s.profileIds).toEqual({ 'github:a': 31, 'web:b': 32 });
+  });
+
+  it('says why one failed, with its warnings', () => {
+    const s = reopened('failed', { error: 'The search stopped unexpectedly.', warnings: ['Searching GitHub failed; carrying on without it.'] });
+    expect([s.status, s.error, s.warnings]).toEqual(['error', 'The search stopped unexpectedly.', ['Searching GitHub failed; carrying on without it.']]);
+    expect(reopened('failed').error).toBe('The search stopped unexpectedly.');
+    expect([reopened('complete').error, reopened('complete').warnings]).toEqual(['', []]);
+  });
+});

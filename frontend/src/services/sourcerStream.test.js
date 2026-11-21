@@ -117,4 +117,11 @@ describe('streamRun', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(streamRun({}, () => {})).rejects.toThrow(/Could not reach the server/);
   });
+
+  it('passes on the id of a search the server runs in the background, reading nothing more', async () => {
+    const events = [];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 202, json: async () => ({ run_id: 9, status: 'queued' }) });
+    await expect(streamRun({}, e => events.push(e))).resolves.toEqual({ stopped: false, runId: 9 });
+    expect(events).toEqual([]);
+  });
 });
