@@ -1183,7 +1183,9 @@ async def edit_questions(request: Request, interview_id: int, req: QuestionsEdit
     """The questions an interview not yet started will ask, as the manager edits them.
 
     They were made with the interview and kept on it, and the manager could
-    neither see them nor change one.
+    neither see them nor change one. The manager's are the ones asked, ready
+    whatever the background job was writing (interview.questions), which then
+    leaves them be, and the invitation held for them goes.
     """
     interview = await _managers_interview(db, user.id, interview_id)
     if interview.status != "pending":
@@ -1195,8 +1197,10 @@ async def edit_questions(request: Request, interview_id: int, req: QuestionsEdit
         raise HTTPException(422, "Keep each question under 600 characters.")
     interview.questions = questions
     interview.num_questions = len(questions)
+    interview.questions_status = "ready"
+    await outbox.release(db, interview.id)
     await db.commit()
-    return {"interview_id": interview.id, "questions": questions}
+    return {"interview_id": interview.id, "questions": questions, "questions_status": "ready"}
 
 
 @router.post("/interviews/{interview_id}/reissue")
