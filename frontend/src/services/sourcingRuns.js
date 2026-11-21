@@ -18,14 +18,16 @@ export const active = run => ['queued', 'running', 'stopping'].includes(run?.sta
 // The talent map's events for one answer: the plan; each person, found, then
 // judged once they are; the ids to act on them by; the stats and warnings;
 // and, once the search has ended, how. The map takes each person and each
-// warning once, however often they come.
+// warning once, however often they come. Someone found and judged between
+// two answers comes as both, found first: found already judged, the map would
+// take the judgement as one it had, and never count it.
 export function progressEvents({ run, profiles }) {
   const events = [];
   if (run.plan.criteria) events.push({ type: 'plan', plan: run.plan });
   const ids = {};
   for (const { id, ...person } of profiles) {
     ids[person.pid] = id;
-    events.push({ type: 'found', person });
+    events.push({ type: 'found', person: { ...person, verdict: null } });
     if (person.verdict) events.push({ type: 'judged', ...person });
   }
   events.push({ type: 'saved', run_id: run.id, profile_ids: ids });

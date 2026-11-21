@@ -125,7 +125,7 @@ describe("a followed search's answers, as the talent map's events", () => {
     expect(events).toEqual([
       { type: 'plan', plan },
       { type: 'found', person: lee },
-      { type: 'found', person: ada },
+      { type: 'found', person: { ...ada, verdict: null } },
       { type: 'judged', ...ada },
       { type: 'saved', run_id: 9, profile_ids: { 'web:lee': 91, 'web:ada': 92 } },
       { type: 'stats', found: 2, judged: 1 },
