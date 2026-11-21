@@ -1,13 +1,17 @@
 """Sourcing models: a search for people, and the people it judged"""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, Index, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
 class SourcingRun(Base):
     """One "find candidates" run: what the manager asked for, the plan it
-    became (criteria, keyword-filter baseline, searches) and the final stats."""
+    became (criteria, keyword-filter baseline, searches) and the stats.
+
+    A background job runs it, writing as it goes: queued, running, stopping
+    (asked to), then complete, stopped or failed. Runs from before ended
+    complete or stopped."""
     __tablename__ = "sourcing_runs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -15,8 +19,18 @@ class SourcingRun(Base):
     description = Column(Text, nullable=False)
     plan = Column(JSON, default=dict)
     stats = Column(JSON, default=dict)
-    status = Column(String(20), default="complete")  # complete | stopped
+    status = Column(String(20), default="complete")
+    # Where it was asked to look ({uploads, github, web}), what it warned of
+    # on the way, and why it failed, in plain words.
+    sources = Column(JSON)
+    warnings = Column(JSON)
+    error = Column(Text)
+    # Its writes, counted: a page following it asks for what changed after
+    # the last one it saw.
+    seq = Column(Integer, nullable=False, server_default="0")
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime)
 
     profiles = relationship("SourcedProfile", back_populates="run", cascade="all, delete-orphan")
 
@@ -32,12 +46,14 @@ class SourcingRun(Base):
 
 
 class SourcedProfile(Base):
-    """A person a run judged, with the written judgement.
+    """A person a run found, and once judged, the written judgement: no
+    verdict yet is someone found but not judged.
 
     Only what the page shows is kept: the scraped profile text the judgement was
     written from is not stored.
     """
     __tablename__ = "sourced_profiles"
+    __table_args__ = (Index("ix_sourced_profiles_run_id_seq", "run_id", "seq"),)
 
     id = Column(Integer, primary_key=True, index=True)
     run_id = Column(Integer, ForeignKey("sourcing_runs.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -58,6 +74,11 @@ class SourcedProfile(Base):
     miss_reason = Column(String(40))                     # why a filter would have missed them
     status = Column(String(20), default="new")           # new | saved | dismissed
     created_at = Column(DateTime, default=datetime.utcnow)
+    # The run's write that last changed them (SourcingRun.seq), and what
+    # judging them took: their share of their batch's time and tokens.
+    seq = Column(Integer)
+    judge_ms = Column(Integer)
+    judge_tokens = Column(Integer)
 
     run = relationship("SourcingRun", back_populates="profiles")
 
