@@ -2,7 +2,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import String, cast, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.candidate import Candidate, Interview, CandidateAccess, AuditLog
@@ -10,6 +10,7 @@ from app.models.email_outbox import EmailOutbox
 from app.models.evaluation import CandidateEvaluation, EvaluationRequest
 from app.models.invite_batch import InviteBatch, InviteBatchItem
 from app.models.job import Job
+from app.models.sourcing import SourcedProfile
 from app.services.scores import is_number, average_score
 
 
@@ -115,7 +116,7 @@ async def delete_manager(session: AsyncSession, manager_id: int) -> list:
     """
     from app.models.auth import HiringManager
     from app.models.screening import ScreeningRun
-    from app.models.sourcing import SourcedProfile, SourcingRun
+    from app.models.sourcing import SourcingRun
     from app.models.state import ChatHistory
     files = await stored_file_keys(session, Candidate.manager_id == manager_id)
     for model in (Interview, CandidateAccess):
@@ -143,7 +144,8 @@ async def stored_file_keys(session: AsyncSession, *where) -> list:
 
 async def delete_candidates(session: AsyncSession, *where) -> None:
     """Delete the candidates matching `where`, their interviews, portal
-    grants, kept evaluations and evaluations asked for first.
+    grants, kept evaluations and evaluations asked for first, and the
+    searches' results that found them among the uploads.
 
     Neither foreign key to candidates has ON DELETE CASCADE, and the ORM cascade
     on Candidate.interviews covers only deletes made through the session, not a
@@ -175,6 +177,17 @@ async def delete_candidates(session: AsyncSession, *where) -> None:
     # Their place in batch invitations, and the drafts written to them.
     await session.execute(delete(InviteBatchItem).where(
         InviteBatchItem.candidate_id.in_(select(Candidate.id).where(*where))
+    ))
+    # Find Candidates' results that found them among the manager's uploads,
+    # by their id: each kept their name, address and what the search made of
+    # them, after the candidate was gone.
+    await session.execute(delete(SourcedProfile).where(
+        SourcedProfile.source == "upload",
+        select(Candidate.id).where(
+            *where,
+            Candidate.manager_id == SourcedProfile.manager_id,
+            cast(Candidate.id, String) == SourcedProfile.external_id,
+        ).correlate(SourcedProfile).exists(),
     ))
     await session.execute(delete(Candidate).where(*where))
 
