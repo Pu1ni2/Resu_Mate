@@ -245,6 +245,36 @@ def test_a_candidate_untouched_for_the_retention_days_goes_with_everything_of_th
     assert _run(_left(ChatHistory)) == 2  # only the old manager's went
 
 
+def test_retention_takes_the_searches_results_that_found_a_stale_candidate(client, monkeypatch):
+    from conftest import register
+    from app.core import database
+    from app.core.config import settings
+    from app.models.sourcing import SourcedProfile, SourcingRun
+    from app.services import cleanup
+    monkeypatch.setattr(settings, "retention_days", 180)
+    _, m = register(client, "retain1@co.com")
+    stale = _run(_candidate(m["id"], "Ada", 200))
+    current = _run(_candidate(m["id"], "Bo", 10))
+
+    async def found(*candidate_ids):
+        # A Find Candidates search that read both among the uploads.
+        async with database.async_session() as db:
+            run = SourcingRun(manager_id=m["id"], description="Data engineers", status="complete")
+            db.add(run)
+            await db.flush()
+            for cid in candidate_ids:
+                db.add(SourcedProfile(run_id=run.id, manager_id=m["id"], source="upload", external_id=str(cid),
+                                      name="Someone", verdict="shortlist"))
+            await db.commit()
+
+    async def left():
+        async with database.async_session() as db:
+            return [p.external_id for p in (await db.execute(select(SourcedProfile))).scalars()]
+    _run(found(stale, current))
+    _run(cleanup.apply_retention({}))
+    assert _run(left()) == [str(current)]
+
+
 def test_a_big_first_run_goes_in_batches(client, monkeypatch):
     from conftest import register
     from app.core.config import settings

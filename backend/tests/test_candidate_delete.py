@@ -191,6 +191,47 @@ def test_deleting_one_candidate_leaves_the_others(client):
     assert resume_rag.get_candidate(grace, manager_id=user["id"]) is not None
 
 
+async def _found(manager_id, source, external_id):
+    """Someone a Find Candidates search found and judged."""
+    from app.core import database
+    from app.models.sourcing import SourcedProfile, SourcingRun
+    async with database.async_session() as db:
+        run = SourcingRun(manager_id=manager_id, description="Data engineers", status="complete")
+        db.add(run)
+        await db.flush()
+        db.add(SourcedProfile(run_id=run.id, manager_id=manager_id, source=source, external_id=str(external_id),
+                              name="Ada", email="ada@x.com", verdict="shortlist", judgement="Strong on Kafka."))
+        await db.commit()
+
+
+async def _found_left():
+    from app.core import database
+    from app.models.sourcing import SourcedProfile
+    async with database.async_session() as db:
+        return sorted((p.manager_id, p.source, p.external_id) for p in (await db.execute(select(SourcedProfile))).scalars())
+
+
+def test_deleting_a_candidate_takes_the_searches_results_that_found_them_among_the_uploads(client):
+    # Each kept their name, address and the judgement, after the candidate was gone.
+    tok, user = register(client, "found1@co.com")
+    _, other = register(client, "found2@co.com")
+    ada = _run(_candidate_with_interview(user["id"], "Ada", "ada@x.com"))
+    grace = _run(_candidate_with_interview(user["id"], "Grace", "grace@x.com"))
+    for manager_id, source, external_id in [(user["id"], "upload", ada), (user["id"], "upload", grace),
+                                            # A GitHub login that reads like the id: someone else.
+                                            (user["id"], "github", ada),
+                                            # Another manager's, under the same id from before ids were unified.
+                                            (other["id"], "upload", ada)]:
+        _run(_found(manager_id, source, external_id))
+    r = client.delete(f"/api/candidates/{ada}", headers=auth_headers(tok))
+    assert r.status_code == 200, r.text
+    assert _run(_found_left()) == sorted([(user["id"], "upload", str(grace)), (user["id"], "github", str(ada)),
+                                          (other["id"], "upload", str(ada))])
+    # And all of them, with all the manager's candidates.
+    assert client.delete("/api/candidates", headers=auth_headers(tok)).status_code == 200
+    assert _run(_found_left()) == sorted([(user["id"], "github", str(ada)), (other["id"], "upload", str(ada))])
+
+
 def test_a_candidate_this_servers_memory_lacks_is_still_deleted(client):
     # Only memory was asked: one it didn't hold answered 404, which the page
     # takes as already gone, and the row stayed.
