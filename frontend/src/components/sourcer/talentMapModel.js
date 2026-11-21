@@ -37,6 +37,7 @@ export const initialState = {
   error: '',
   runId: null,
   profileIds: {}, // pid -> saved profile id, once the run is saved
+  stopping: false, // asked to stop, until it has
 };
 
 /* Which colour a person's map cell is. */
@@ -75,6 +76,7 @@ function applyEvent(draft, event) {
       draft.people[person.pid] = { ...person };
       draft.order.push(person.pid);
       draft.counts.found += 1;
+      draft.sources = { ...draft.sources, [person.source]: (draft.sources[person.source] || 0) + 1 };
       break;
     }
     case 'judged': {
@@ -102,7 +104,7 @@ function applyEvent(draft, event) {
       break;
     case 'saved':
       draft.runId = event.run_id;
-      draft.profileIds = { ...event.profile_ids };
+      draft.profileIds = { ...draft.profileIds, ...event.profile_ids };
       break;
     case 'done':
       draft.stats = event.stats || draft.stats;
@@ -124,9 +126,13 @@ function draftOf(state) {
   };
 }
 
-/* Rebuild the final state of a saved run: GET /api/sourcer/runs/{id}. */
+// How a saved run stands, as the map shows it: one still under way (waiting
+// to run, running, or asked to stop) is running.
+const SHOWN = { queued: 'running', running: 'running', stopping: 'running', stopped: 'stopped', failed: 'error' };
+
+/* Rebuild a saved run as it stands: GET /api/sourcer/runs/{id}. */
 function fromSavedRun(run, profiles) {
-  const draft = draftOf({ ...initialState, status: run.status === 'stopped' ? 'stopped' : 'done' });
+  const draft = draftOf({ ...initialState, status: SHOWN[run.status] || 'done' });
   // Fresh containers: these are filled in place below, and must not be the
   // ones initialState holds.
   draft.sources = { upload: 0, github: 0, web: 0 };
@@ -135,6 +141,9 @@ function fromSavedRun(run, profiles) {
   draft.plan = run.plan || null;
   draft.stats = run.stats || {};
   draft.runId = run.id;
+  draft.warnings = [...(run.warnings || [])];
+  draft.error = run.status === 'failed' ? run.error || 'The search stopped unexpectedly.' : '';
+  draft.stopping = run.status === 'stopping';
   const judgedOrder = [];
   for (const p of profiles) {
     const person = { ...p };
@@ -144,6 +153,7 @@ function fromSavedRun(run, profiles) {
     draft.profileIds[p.pid] = p.id;
     draft.sources[p.source] = (draft.sources[p.source] || 0) + 1;
     draft.counts.found += 1;
+    if (!p.verdict) continue; // found, not yet judged
     countJudgement(draft, person);
     judgedOrder.push(p.pid);
   }
@@ -164,8 +174,10 @@ export function talentMapReducer(state, action) {
       for (const event of action.events) applyEvent(draft, event);
       return draft;
     }
+    case 'stopping':
+      return state.status === 'running' ? { ...state, stopping: true } : state;
     case 'stopped':
-      return state.status === 'running' ? { ...state, status: 'stopped' } : state;
+      return state.status === 'running' ? { ...state, status: 'stopped', stopping: false } : state;
     case 'failed':
       return { ...state, status: 'error', error: action.message || 'The search failed.' };
     case 'loaded':

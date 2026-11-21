@@ -56,6 +56,9 @@ export async function streamRun(body, onEvent, signal) {
     throw new Error('Could not reach the server. Please check your connection.', { cause: err });
   }
   if (!resp.ok) throw new Error(await messageFor(resp));
+  // A server that runs searches in the background answers at once with the
+  // run's id, for the page to follow (services/sourcingRuns.js).
+  if (resp.status === 202) return { stopped: false, runId: (await resp.json()).run_id };
 
   const reader = resp.body.getReader();
   // stream: true keeps a character whose bytes are split across two chunks

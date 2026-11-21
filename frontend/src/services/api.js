@@ -112,6 +112,7 @@ export const sourcerAPI = {
   setStatus: (profileId, status) => api.post(`/sourcer/profiles/${profileId}/status`, { status }),
   draftOutreach: profileId => api.post(`/sourcer/profiles/${profileId}/draft-outreach`),
   deleteRun: id => api.delete(`/sourcer/runs/${id}`),
+  stopRun: id => api.post(`/sourcer/runs/${id}/stop`),
 };
 
 export default api;

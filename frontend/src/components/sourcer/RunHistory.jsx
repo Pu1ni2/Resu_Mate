@@ -39,7 +39,9 @@ export default function RunHistory({ runs, onOpen, onDelete }) {
                 <span className="font-mono">{formatCount(run.judged)}</span> read
                 {' · '}
                 <span className="font-mono">{formatCount(run.shortlisted)}</span> shortlisted
+                {['queued', 'running', 'stopping'].includes(run.status) && ' · running'}
                 {run.status === 'stopped' && ' · stopped'}
+                {run.status === 'failed' && ' · failed'}
               </span>
             </button>
             <Button

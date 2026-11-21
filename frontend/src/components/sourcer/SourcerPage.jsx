@@ -8,6 +8,7 @@ import { cn } from '../ui/cn';
 import { messageForApiError, sourcerAPI } from '../../services/api';
 import { toast } from '../../services/notify';
 import { streamRun } from '../../services/sourcerStream';
+import { active, followRun, progressEvents } from '../../services/sourcingRuns';
 import { formatCount } from './format';
 import { initialState, shortlistOf, talentMapReducer } from './talentMapModel';
 import StatTiles from './StatTiles';
@@ -114,10 +115,13 @@ function RunHeader({ state, onStop, onNewSearch }) {
             GitHub reports {formatCount(githubTotal)} matches; this run reads {formatCount(readFromGithub)} of them.
           </p>
         )}
-        {/* The search runs only while this page is open, and nothing said so. */}
+        {/* A search the server runs in the background goes on without the
+            page; one an older server streamed stopped with it. */}
         {running && (
           <p className="mt-0.5 text-[12px] text-ink-faint">
-            Leaving this page stops the search. Everyone judged by then is saved, and opens again from Past searches.
+            {state.runId
+              ? 'The search goes on if you leave this page. It’s in Past searches when you come back.'
+              : 'Leaving this page stops the search. Everyone judged by then is saved, and opens again from Past searches.'}
           </p>
         )}
       </div>
@@ -138,7 +142,9 @@ function RunHeader({ state, onStop, onNewSearch }) {
           </span>
         </span>
         {running ? (
-          <Button size="sm" onClick={onStop}><Square size={13} /> Stop</Button>
+          <Button size="sm" onClick={onStop} disabled={state.stopping}>
+            <Square size={13} /> {state.stopping ? 'Stopping…' : 'Stop'}
+          </Button>
         ) : (
           <Button size="sm" onClick={onNewSearch}><Search size={13} /> New search</Button>
         )}
@@ -178,6 +184,7 @@ export default function SourcerPage() {
       dispatch({ type: 'loaded', run: data.run, profiles: data.profiles });
       setDescription(data.run.description || '');
       setEditing(false);
+      if (active(data.run)) follow(id, data.run.seq);
     } catch (err) {
       toast(messageForApiError(err, 'Could not open that search.'), 'error');
     }
@@ -210,6 +217,7 @@ export default function SourcerPage() {
     }
   }
   const abortRef = useRef(null);
+  const followRef = useRef(null); // stops following the search on screen
   const queueRef = useRef([]);
   const frameRef = useRef(0);
   const runTokenRef = useRef(0); // which search is current, for late async work
@@ -226,20 +234,23 @@ export default function SourcerPage() {
     if (!frameRef.current) frameRef.current = nextFrame(flush);
   }, [flush]);
 
-  // Leaving the page stops the run; the server keeps what it judged.
+  // Leaving the page stops a streamed search, and following one the server
+  // runs in the background, which goes on.
   useEffect(() => () => {
     abortRef.current?.abort();
+    followRef.current?.();
     if (frameRef.current) cancelFrame(frameRef.current);
   }, []);
 
-  // Closing or reloading the tab mid-search asks first: it stops the search,
-  // and the people not yet judged are lost.
+  // Closing or reloading the tab mid-search asks first, for a search an
+  // older server streams: it stops with the page, and the people not yet
+  // judged are lost. One run in the background goes on.
   useEffect(() => {
-    if (state.status !== 'running') return undefined;
+    if (state.status !== 'running' || state.runId) return undefined;
     const ask = e => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', ask);
     return () => window.removeEventListener('beforeunload', ask);
-  }, [state.status]);
+  }, [state.status, state.runId]);
 
   async function start(e) {
     e?.preventDefault();
@@ -258,7 +269,10 @@ export default function SourcerPage() {
     try {
       const result = await streamRun({ description: text, sources }, enqueue, controller.signal);
       flush();
-      if (result.stopped) {
+      if (result.runId) {
+        enqueue({ type: 'saved', run_id: result.runId, profile_ids: {} });
+        follow(result.runId);
+      } else if (result.stopped) {
         dispatch({ type: 'stopped' });
         reopenStopped(text, token);
       } else {
@@ -272,8 +286,29 @@ export default function SourcerPage() {
     }
   }
 
-  function stop() {
-    abortRef.current?.abort();
+  // A search the server runs in the background: followed until it ends.
+  function follow(runId, after = 0) {
+    followRef.current = followRun(runId, (progress) => {
+      for (const event of progressEvents(progress)) enqueue(event);
+      if (progress.run.status === 'stopping') dispatch({ type: 'stopping' });
+      if (progress.run.status === 'stopped') dispatch({ type: 'stopped' });
+      if (!active(progress.run)) loadHistory();
+    }, after);
+  }
+
+  // Stop: a streamed search stops as its request ends; one the server
+  // runs is asked to, and ends at its next write, keeping everyone found.
+  async function stop() {
+    if (!state.runId) {
+      abortRef.current?.abort();
+    } else {
+      try {
+        await sourcerAPI.stopRun(state.runId);
+        dispatch({ type: 'stopping' });
+      } catch (err) {
+        toast(messageForApiError(err, 'The search couldn’t be stopped. Please try again.'), 'error');
+      }
+    }
   }
 
   function newSearch() {

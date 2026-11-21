@@ -30,10 +30,11 @@ const judged = (pid, verdict, filter_match, extra = {}) => ({
 
 const RUN = [
   PLAN,
-  { type: 'pool', sources: { upload: 1, github: 2, web: 0 }, github_total: 5000 },
   person('upload:1', 'Maya Chen', { email: 'maya@example.com' }),
   person('github:ada', 'Ada Lovelace'),
   person('github:bob', 'Bob Stone'),
+  // The server counts only the people it has announced.
+  { type: 'pool', sources: { upload: 1, github: 2, web: 0 }, github_total: 5000 },
   judged('upload:1', 'shortlist', true),
   judged('github:ada', 'shortlist', false, { miss_reason: 'non_standard_title' }),
   judged('github:bob', 'passed', false),
