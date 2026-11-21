@@ -413,3 +413,105 @@ def test_a_found_persons_long_details_are_cut_to_their_columns(client, run_jobs,
     assert unnamed.name == "Unknown"
     assert [len(getattr(person, column)) for column in (
         "external_id", "url", "avatar_url", "headline", "name", "location", "email")] == [300, 500, 500, 300, 200, 200, 200]
+
+
+# ── following one, and stopping it ───────────────────────────────────────────
+
+async def _set(run_id, **values):
+    from sqlalchemy import update
+    from app.core import database
+    from app.models.sourcing import SourcingRun
+    async with database.async_session() as db:
+        await db.execute(update(SourcingRun).where(SourcingRun.id == run_id).values(**values))
+        await db.commit()
+
+
+async def _people(run_id, manager_id, *people):
+    """People a run wrote: (i, seq, verdict), the verdict None while unjudged."""
+    from app.core import database
+    from app.models.sourcing import SourcedProfile
+    async with database.async_session() as db:
+        for i, seq, verdict in people:
+            db.add(SourcedProfile(run_id=run_id, manager_id=manager_id, source="web", external_id=f"p{i}",
+                                  name=f"Person {i}", seq=seq, verdict=verdict, score=70 if verdict else 0,
+                                  judge_ms=120 if verdict else None, judge_tokens=400 if verdict else None))
+        await db.commit()
+
+
+def test_a_page_following_a_run_gets_what_changed_since_the_last_write_it_saw(client):
+    from conftest import auth_headers
+    token, m = register(client, "sj14@co.com")
+    run_id = _run(_queued(m["id"], status="running", sources={"uploads": False, "github": True, "web": True}))
+    started = datetime(2026, 11, 21, 9, 0, 0)
+    _run(_set(run_id, seq=3, plan={"criteria": []}, stats={"found": 4, "judged": 1}, started_at=started,
+              warnings=["Searching GitHub failed; carrying on without it."]))
+    # One from before writes were counted; two found; one judged since.
+    _run(_people(run_id, m["id"], (0, None, "passed"), (1, 1, None), (3, 3, None), (2, 2, "shortlist")))
+
+    def progress(after=None):
+        r = client.get(f"/api/sourcer/runs/{run_id}/progress", headers=auth_headers(token),
+                       params={} if after is None else {"after": after})
+        assert r.status_code == 200, r.text
+        return r.json()
+    since = progress(after=1)
+    # In the order written.
+    assert [p["pid"] for p in since["profiles"]] == ["web:p2", "web:p3"]
+    judged = since["profiles"][0]
+    assert (judged["verdict"], judged["seq"], judged["ms"], judged["tokens"]) == ("shortlist", 2, 120, 400)
+    assert since["profiles"][1]["verdict"] is None
+    run = since["run"]
+    assert (run["status"], run["seq"], run["sources"], run["warnings"], run["error"], run["stats"]) == (
+        "running", 3, {"uploads": False, "github": True, "web": True},
+        ["Searching GitHub failed; carrying on without it."], None, {"found": 4, "judged": 1})
+    assert (run["started_at"], run["finished_at"]) == ("2026-11-21T09:00:00", None)
+    # Everyone, from the start.
+    assert sorted(p["pid"] for p in progress()["profiles"]) == ["web:p0", "web:p1", "web:p2", "web:p3"]
+    # Nothing new.
+    assert progress(after=3)["profiles"] == []
+
+
+def test_only_the_managers_own_run_is_followed_or_stopped(client):
+    from conftest import auth_headers
+    _, m = register(client, "sj15@co.com")
+    other, _ = register(client, "sj16@co.com")
+    run_id = _run(_queued(m["id"]))
+    assert client.get(f"/api/sourcer/runs/{run_id}/progress", headers=auth_headers(other)).status_code == 404
+    assert client.post(f"/api/sourcer/runs/{run_id}/stop", headers=auth_headers(other)).status_code == 404
+    assert _run(_written(run_id))[0].status == "queued"
+
+
+def test_a_run_waiting_to_run_stops_at_once_and_is_never_searched(client, run_jobs, monkeypatch):
+    from conftest import auth_headers
+    searched = []
+
+    async def search(description, manager_id, sources):
+        searched.append(description)
+        yield _found(0)
+    _search(monkeypatch, search)
+    token, m = register(client, "sj17@co.com")
+    run_id = _run(_queued(m["id"]))
+    r = client.post(f"/api/sourcer/runs/{run_id}/stop", headers=auth_headers(token))
+    assert (r.status_code, r.json()) == (200, {"run_id": run_id, "status": "stopped"})
+    ended = client.get(f"/api/sourcer/runs/{run_id}/progress", headers=auth_headers(token)).json()["run"]
+    assert (ended["status"], ended["finished_at"] is not None) == ("stopped", True)
+    assert run_jobs() == ["done"] and searched == []
+
+
+def test_a_running_search_is_asked_to_stop(client):
+    # It ends at its next write (the job's own tests): stopping until then.
+    from conftest import auth_headers
+    token, m = register(client, "sj18@co.com")
+    run_id = _run(_queued(m["id"], status="running"))
+    r = client.post(f"/api/sourcer/runs/{run_id}/stop", headers=auth_headers(token))
+    assert (r.status_code, r.json()) == (200, {"run_id": run_id, "status": "stopping"})
+    assert _run(_written(run_id))[0].finished_at is None
+
+
+def test_stopping_a_run_ended_or_asked_already_leaves_it_as_it_is(client):
+    from conftest import auth_headers
+    token, m = register(client, "sj19@co.com")
+    for status in ("complete", "stopped", "failed", "stopping"):
+        run_id = _run(_queued(m["id"], status=status))
+        r = client.post(f"/api/sourcer/runs/{run_id}/stop", headers=auth_headers(token))
+        assert r.json() == {"run_id": run_id, "status": status}
+        assert _run(_written(run_id))[0].finished_at is None

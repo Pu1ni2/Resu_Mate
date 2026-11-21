@@ -158,6 +158,8 @@ def test_every_sourcer_route_needs_a_manager(client):
         ("delete", "/api/sourcer/runs/1", None),
         ("post", "/api/sourcer/profiles/1/status", {"status": "saved"}),
         ("post", "/api/sourcer/profiles/1/draft-outreach", None),
+        ("get", "/api/sourcer/runs/1/progress", None),
+        ("post", "/api/sourcer/runs/1/stop", None),
     ]
     for method, path, body in routes:
         r = getattr(client, method)(path, json=body) if body else getattr(client, method)(path)
