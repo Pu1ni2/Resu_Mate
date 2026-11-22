@@ -129,6 +129,20 @@ def test_an_email_the_service_never_takes_fails_saying_so(client, run_jobs, serv
                                       "body": None, "key": None, "finished": True}
 
 
+def test_an_email_the_server_fails_on_says_so_not_that_the_service_didnt_answer(client, run_jobs, service,
+                                                                                monkeypatch):
+    from app.services import outbox
+
+    async def broken(db, email):
+        raise KeyError("a field the email needs")
+    monkeypatch.setitem(outbox.COMPOSERS, "interview_done", broken)
+    email_id = _run(_queue(dedupe_key="done:8"))
+    # Not the service's doing: no try again, and no blaming it.
+    assert run_jobs() == ["failed"] and service == []
+    email = _run(_email(email_id))
+    assert (email["status"], email["error"], email["key"]) == ("failed", outbox.BROKE, None)
+
+
 @pytest.mark.parametrize("answer, said", [("refused", "REFUSED"), ("off", "NOT_SET_UP")])
 def test_an_email_refused_or_with_email_not_set_up_fails_at_once(client, run_jobs, service, done_email,
                                                                   answer, said):
