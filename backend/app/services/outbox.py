@@ -35,6 +35,7 @@ PENDING = ("held", "queued")
 NOT_SET_UP = "Email isn't set up on this server."
 REFUSED = "The email service refused it."
 NO_ANSWER = "The email service didn't answer, so it wasn't sent."
+BROKE = "Something went wrong on the server, so it wasn't sent."
 UNKNOWN = "This kind of email can't be sent yet."
 
 # What each kind of email says, and to whom: (address, subject, html), made
@@ -121,13 +122,16 @@ async def _end(db, email_id: int, status: str, error: Optional[str] = None) -> N
                      .values(**values))
 
 
-async def _never_answered(db, job, code) -> None:
-    """Tried as often as it may be, the service busy each time."""
-    await _end(db, job.payload["email_id"], "failed", NO_ANSWER)
+async def _failed(db, job, code) -> None:
+    """Tried as often as it may be, the service busy, slow or out of reach
+    each time; or stopped by a fault of the server's own, which isn't the
+    service's doing. It said the service didn't answer for either."""
+    busy = code == jobs.error_code("error", EmailBusy())
+    await _end(db, job.payload["email_id"], "failed", NO_ANSWER if busy else BROKE)
 
 
 @jobs.handler(SEND, max_attempts=6, lease_seconds=60, timeout_seconds=60, backoff=(10, 600),
-              on_failure=_never_answered)
+              on_failure=_failed)
 async def send_email(payload: dict) -> None:
     """Make one queued email, send it with no database session held, and
     record how it went."""
