@@ -91,15 +91,6 @@ class EmailService:
         logger.warning("SendGrid rejected message: status=%s", status)
         return BUSY if status == 429 or status >= 500 else REFUSED
 
-    async def send(self, to_email: str, subject: str, html_body: str) -> bool:
-        """Send an email. Returns True only if SendGrid accepted it.
-
-        Without SendGrid (local development: production doesn't start without
-        it), it says so in the log and returns False, so callers can tell and
-        answer accordingly, e.g. with the code in a DEBUG response.
-        """
-        return await self.deliver(to_email, subject, html_body) == SENT
-
 
 def reviewed_draft_email(subject: str, body: str, login_url: str = "") -> tuple:
     """A plain-text email the manager reviewed, as written: its words

@@ -56,7 +56,6 @@ def test_a_delivery_says_how_it_went(monkeypatch, sendgrid, outcome):
     client.send = send
     monkeypatch.setattr(email_service, "_sg", client)
     assert _run(email_service.deliver("ada@x.com", "Hi", "<p>Hello</p>")) == outcome
-    assert _run(email_service.send("ada@x.com", "Hi", "<p>Hello</p>")) is (outcome == "sent")
 
 
 def test_a_delivery_without_email_set_up_isnt_tried(monkeypatch):

@@ -22,11 +22,11 @@ def no_email(monkeypatch):
 
 
 def test_an_email_not_sent_leaves_nothing_of_itself_in_the_log(no_email, capsys):
-    from app.services.email_service import email_service
-    sent = asyncio.get_event_loop().run_until_complete(email_service.send(
+    from app.services.email_service import OFF, email_service
+    outcome = asyncio.get_event_loop().run_until_complete(email_service.deliver(
         "dana@x.com", "Your code for Acme", "<p>Your code is 482913, or open https://app.test/reset?token=abc</p>",
     ))
-    assert sent is False
+    assert outcome == OFF
     logged = capsys.readouterr().out
     assert "not sent" in logged
     for kept in ("dana@x.com", "Acme", "482913", "token=abc"):

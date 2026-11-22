@@ -135,7 +135,7 @@ def test_the_voice_tool_reports_a_missing_key(monkeypatch, name):
 # ── the rest of what waits on something slow ──────────────────────────────────
 
 def test_email_is_sent_off_the_event_loop():
-    from app.services.email_service import EmailService
+    from app.services.email_service import SENT, EmailService
     seen = {}
 
     class FakeSendGrid:
@@ -148,16 +148,16 @@ def test_email_is_sent_off_the_event_loop():
 
     async def send():
         seen["loop"] = threading.get_ident()
-        return await service.send("ada@x.com", "Your code", "<p>123456</p>")
+        return await service.deliver("ada@x.com", "Your code", "<p>123456</p>")
 
-    assert _run(send()) is True
+    assert _run(send()) == SENT
     assert seen["thread"] != seen["loop"]
 
 
 def test_an_email_gives_up_when_sendgrid_is_slow(monkeypatch):
     # SendGrid's client waited for ever, holding up whatever was sending.
     from app.core.config import settings
-    from app.services.email_service import EmailService
+    from app.services.email_service import BUSY, EmailService
     monkeypatch.setattr(settings, "sendgrid_timeout_seconds", 0.2)
 
     class SlowSendGrid:
@@ -168,7 +168,8 @@ def test_an_email_gives_up_when_sendgrid_is_slow(monkeypatch):
     service = EmailService()
     service._sg = SlowSendGrid()
     started = time.monotonic()
-    assert _run(service.send("ada@x.com", "Your code", "<p>123456</p>")) is False
+    # Busy: the outbox tries it again later.
+    assert _run(service.deliver("ada@x.com", "Your code", "<p>123456</p>")) == BUSY
     assert time.monotonic() - started < 0.8
 
 
