@@ -254,19 +254,21 @@ def test_a_batchs_interviews_and_emails(client, run_jobs, monkeypatch):
         "id": cid, "manager_id": m["id"], "name": "Cand", "text": "Cand\ncand.one@x.com", "is_resume": True,
     }
 
-    def batch(role):
-        body = batch_invite(client, run_jobs, tok, [cid], role=role, send_emails=True)
+    def batch(role, send_emails=True):
+        body = batch_invite(client, run_jobs, tok, [cid], role=role, send_emails=send_emails)
         assert SECRET not in json.dumps(body)
         return body["outcomes"][0]
 
     monkeypatch.setattr(hr_agent, "draft_email", _aboom)
     monkeypatch.setattr(email_service, "_sg", object())
     monkeypatch.setattr(email_service, "deliver", _aboom)
-    drafted_and_sent = batch("Dev")
+    drafted = batch("Dev", send_emails=False)
     # The standard one stands in: nothing to try again.
-    assert drafted_and_sent["email_error"] == "The email couldn't be drafted, so a standard one is here instead."
-    # The outbox's own words, whatever went wrong.
-    assert drafted_and_sent["email_send_error"] == "Something went wrong on the server, so it wasn't sent."
+    assert drafted["email_error"] == "The email couldn't be drafted, so a standard one is here instead."
+    # The same open interview, its invitation emailed this time: the
+    # outbox's own words, whatever went wrong.
+    sent = batch("Dev")
+    assert sent["email_send_error"] == "Something went wrong on the server, so it wasn't sent."
 
     from app.services import interview_setup
     monkeypatch.setattr(interview_setup, "add_interview", _aboom)

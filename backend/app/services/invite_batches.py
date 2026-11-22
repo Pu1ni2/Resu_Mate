@@ -307,14 +307,19 @@ def _drafting(found) -> bool:
 
 
 async def _write_draft(item_id: int) -> None:
-    """The invitation's draft, for the manager to read or send, signed by
+    """The invitation's draft, for the manager to read and send, signed by
     them: the AI's, written with no session held and without the name
-    while names are hidden, or the standard one when it couldn't write it."""
+    while names are hidden, or the standard one when it couldn't write it.
+
+    None for a batch that emails the invitation itself: the standard one
+    goes (_send). The AI wrote one all the same, which nobody saw."""
     async with database.async_session() as db:
         found = await _unfinished(db, item_id)
         if not _drafting(found):
             return
         item, batch = found
+        if batch.send_emails:
+            return
         candidate = await _candidate(db, item, batch)
         if candidate is None:
             raise jobs.PermanentError("candidate_not_found")
@@ -339,8 +344,7 @@ async def _write_draft(item_id: int) -> None:
             return
         item, batch = found
         item.email_subject, item.email_body, item.email_drafted = subject[:300], body, by_ai
-        if not batch.send_emails:
-            item.status, item.finished_at = "done", datetime.utcnow()
+        item.status, item.finished_at = "done", datetime.utcnow()
         await db.commit()
 
 
@@ -358,7 +362,7 @@ async def _send(item_id: int) -> None:
     had gone."""
     async with database.async_session() as db:
         found = await _unfinished(db, item_id)
-        if found is None or found[0].status != "drafting" or found[0].email_subject is None:
+        if found is None or found[0].status != "drafting":
             return
         item, batch = found
         ended = (await db.execute(update(InviteBatchItem).where(

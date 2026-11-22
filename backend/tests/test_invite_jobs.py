@@ -441,7 +441,7 @@ def test_the_invitation_is_queued_as_its_item_ends_and_goes_once(client, run_job
     # Its job queued again, as a retry would, queues nothing more and writes nothing again.
     _run(_requeue(item, m["id"]))
     assert run_jobs() == ["done"]
-    assert (len(mailbox), len(drafts), len(questions), len(_run(_outbox(m["id"])))) == (1, 1, 1, 1)
+    assert (len(mailbox), len(drafts), len(questions), len(_run(_outbox(m["id"])))) == (1, 0, 1, 1)
 
 
 def test_the_items_end_and_its_invitation_are_kept_together_or_not_at_all(client, run_jobs, questions, mailbox):
@@ -472,15 +472,21 @@ def test_a_run_at_the_same_time_neither_queues_again_nor_says_otherwise(client, 
     _, m = register(client, "ij17@co.com")
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
-    real, other = invite_batches._unfinished, []
+    real, other, ready = invite_batches._unfinished, [], []
+    real_draft = invite_batches._write_draft
+
+    async def drafted(item_id):
+        await real_draft(item_id)
+        ready.append(item_id)
 
     async def the_other_run_first(db, item_id):
         found = await real(db, item_id)
-        if found is not None and found[0].email_subject is not None and not other:
+        if found is not None and ready and not other:
             # This run has read the item, ready to send; the other ends it first.
             other.append(item_id)
             await invite_batches._send(item_id)
         return found
+    monkeypatch.setattr(invite_batches, "_write_draft", drafted)
     monkeypatch.setattr(invite_batches, "_unfinished", the_other_run_first)
     assert run_jobs() == ["done", "done"]
     assert other == [item] and len(mailbox) == 1
@@ -535,8 +541,9 @@ def test_an_invitation_that_may_not_go_says_why(client, run_jobs, questions, mai
     # (The unconfirmed account had its link to confirm, by the outbox.)
     assert [mail for mail in mailbox if mail["to"] == "ada@x.com"] == []
     assert [e for e in _run(_outbox(m["id"])) if e["kind"] == "interview_invitation"] == []
-    # The interview and the draft stand: the manager can share the portal link.
-    assert email["subject"] == "Interview" and len(_run(_interviews(m["id"]))) == 1
+    # The interview stands: the manager can share the portal link. No draft:
+    # the standard invitation was to go.
+    assert email["subject"] is None and len(_run(_interviews(m["id"]))) == 1
 
 
 def test_an_invitation_the_email_service_refuses_counts_for_nothing(client, run_jobs, questions, mailbox):
@@ -554,7 +561,8 @@ def test_an_invitation_the_email_service_refuses_counts_for_nothing(client, run_
     assert len(mailbox) == 1 and _run(_sent_today(m["id"])) == 0
 
 
-def test_an_interview_deleted_before_its_invitation_goes_gets_none(client, run_jobs, questions, drafts, mailbox):
+def test_an_interview_deleted_before_its_invitation_goes_gets_none(client, run_jobs, questions, mailbox,
+                                                                   monkeypatch):
     from app.core import database
     from app.models.candidate import Interview
     from app.services import invite_batches
@@ -562,13 +570,15 @@ def test_an_interview_deleted_before_its_invitation_goes_gets_none(client, run_j
     cid = _run(_candidate(m["id"]))
     [item] = _run(_queued(m["id"], [cid], send_emails=True))
 
-    async def deleted_meanwhile():
+    real_draft = invite_batches._write_draft
+
+    async def deleted_meanwhile(item_id):
+        await real_draft(item_id)
         async with database.async_session() as db:
             for interview in (await db.execute(select(Interview))).scalars():
                 await db.delete(interview)
             await db.commit()
-        return {"subject": "Interview", "body": "Hello"}
-    drafts.stub.answer = deleted_meanwhile
+    monkeypatch.setattr(invite_batches, "_write_draft", deleted_meanwhile)
     assert run_jobs() == ["done"]
     assert mailbox == [] and _run(_outbox(m["id"])) == []
     email = _run(_email(item))

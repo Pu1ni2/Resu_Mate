@@ -104,10 +104,11 @@ def test_a_batch_answers_at_once_and_its_jobs_do_the_rest(client, run_jobs, no_a
     assert done["portal_link"] == settings.candidate_login_url
     first = done["outcomes"][0]
     assert {key: first[key] for key in ("candidate_id", "name", "email", "status", "reused", "interview_created",
-                                        "mode", "email_subject", "email_body", "email_drafted", "email_sent")} == {
+                                        "mode", "email_sent")} == {
         "candidate_id": ada, "name": "Ada", "email": "ada@x.com", "status": "done", "reused": False,
-        "interview_created": True, "mode": "conversational", "email_subject": "Interview", "email_body": "Hello",
-        "email_drafted": True, "email_sent": True}
+        "interview_created": True, "mode": "conversational", "email_sent": True}
+    # The standard invitation went: no draft.
+    assert "email_subject" not in first
     assert isinstance(first["interview_id"], int) and isinstance(first["item_id"], int)
     assert sorted(mail["to"] for mail in mailbox) == ["ada@x.com", "bo@x.com"]
 
@@ -211,9 +212,8 @@ def test_outcomes_say_why_an_interview_a_draft_or_an_email_didnt_happen(client, 
     assert sorted(run_jobs()) == ["done", "failed"]
     done = _progress(client, tok, started["batch_id"])
     ada_said, bo_said = done["outcomes"]
-    assert (ada_said["interview_created"], ada_said["email_drafted"], ada_said["email_error"],
-            ada_said["email_sent"], ada_said["email_send_error"]) == (
-        True, False, invite_batches.DRAFT_FAILED, False, invite_batches.NOT_SET_UP)
+    assert (ada_said["interview_created"], ada_said["email_sent"], ada_said["email_send_error"]) == (
+        True, False, invite_batches.NOT_SET_UP)
     assert (bo_said["status"], bo_said["interview_created"], bo_said["error"]) == (
         "failed", False, invite_batches.INTERVIEW_FAILED)
     assert "email_subject" not in bo_said

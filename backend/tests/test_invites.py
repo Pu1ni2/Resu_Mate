@@ -339,7 +339,7 @@ def test_a_batch_goes_on_after_an_interview_that_couldnt_be_saved(client, run_jo
     # The failed one rolled the request back, which left the manager's row
     # stale: the drafts lost the hidden names, and the next invite was a 500.
     # Each is its own job now: the one that failed has no draft, and the
-    # others go on without the names.
+    # others' drafts, for the manager to send, go on without the names.
     from app.agents.hr_agent import hr_agent
     from app.services import interview_setup
     hidden = []
@@ -359,7 +359,7 @@ def test_a_batch_goes_on_after_an_interview_that_couldnt_be_saved(client, run_jo
     tok, _ = register(client, "b13@co.com")
     assert client.put("/api/auth/preferences", headers=auth_headers(tok), json={"hide_names": True}).status_code == 200
     ids = [_own_candidate(client, tok, "Cand\ncand13a@x.com"), _own_candidate(client, tok, "Cand\ncand13b@x.com")]
-    body = _batch(client, run_jobs, tok, ids, send_emails=True)
+    body = _batch(client, run_jobs, tok, ids)
     assert [o["interview_created"] for o in body["outcomes"]] == [False, True]
     assert hidden == [True]
-    assert [m["to"] for m in mailbox] == ["cand13b@x.com"]
+    assert [o.get("email_body") for o in body["outcomes"]] == [None, "Hello"] and mailbox == []
