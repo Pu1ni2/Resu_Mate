@@ -320,3 +320,18 @@ def test_the_batch_route_that_did_it_all_in_the_request_is_gone(client, no_ai):
                     json={"candidate_ids": [ada], "role": "Dev"})
     assert r.status_code == 404
     assert (no_ai, _run(_count(Interview))) == ([], 0)
+
+
+def test_only_a_batch_for_the_manager_to_send_asks_the_ai_for_drafts(client, run_jobs, no_ai, mailbox):
+    # One that emails the standard invitation had the AI write a draft all
+    # the same, which nobody saw.
+    tok, m = register(client, "bi20@co.com")
+    ada, bo = _run(_candidate(m["id"], "Ada", "ada@x.com")), _run(_candidate(m["id"], "Bo", "bo@x.com"))
+    emailed = _start(client, tok, [ada], key="confirm-0020", send_emails=True)
+    assert run_jobs() == ["done", "done"]
+    assert no_ai == ["questions"] and [mail["to"] for mail in mailbox] == ["ada@x.com"]
+    assert "email_subject" not in _progress(client, tok, emailed["batch_id"])["outcomes"][0]
+    drafted = _start(client, tok, [bo], key="confirm-0021")
+    assert run_jobs() == ["done"]
+    assert no_ai == ["questions", "questions", "draft"]
+    assert _progress(client, tok, drafted["batch_id"])["outcomes"][0]["email_body"] == "Hello"
