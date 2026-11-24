@@ -21,8 +21,10 @@ from sqlalchemy import update
 
 from app.agents.sourcer_agent import sourcer_agent
 from app.core import database
+from app.models.auth import HiringManager
 from app.models.sourcing import SourcedProfile, SourcingRun
 from app.services import jobs
+from app.services.hidden_names import hides_names
 
 SEARCH = "sourcing.search"
 ACTIVE = ("queued", "running", "stopping")
@@ -109,10 +111,11 @@ class _Writes:
 
 
 async def _start(run_id: int):
-    """Take up a queued run: running, from now; what it searches for. One
-    that isn't queued was stopped while it waited, or was begun by a try
-    that didn't end (the server stopped part way): that one ends stopped
-    now, with what it wrote. None for either."""
+    """Take up a queued run: running, from now; what it searches for, and
+    whether its manager hides names, as the account says now. One that
+    isn't queued was stopped while it waited, or was begun by a try that
+    didn't end (the server stopped part way): that one ends stopped now,
+    with what it wrote. None for either."""
     now = datetime.utcnow()
     async with database.async_session() as db:
         started = (await db.execute(
@@ -127,7 +130,8 @@ async def _start(run_id: int):
             await db.commit()
             return None
         run = await db.get(SourcingRun, run_id)
-        asked = (run.description, run.manager_id, run.sources)
+        manager = await db.get(HiringManager, run.manager_id)
+        asked = (run.description, run.manager_id, run.sources, hides_names(manager))
         await db.commit()
     return asked
 
@@ -152,8 +156,9 @@ async def run_search(payload: dict) -> None:
     asked = await _start(run_id)
     if asked is None:
         return
+    description, manager_id, sources, hidden = asked
     writes = _Writes(run_id)
-    events = sourcer_agent.run_stream(*asked)
+    events = sourcer_agent.run_stream(description, manager_id, sources, hide_names=hidden)
     ending = None
     try:
         async for event in events:

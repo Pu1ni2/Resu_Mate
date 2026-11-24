@@ -119,11 +119,12 @@ async def _written(run_id):
 
 def _search(monkeypatch, script):
     """The search, played by `script`: (description, manager_id, sources) to its
-    events. Each one is held here, so the job closes it, not the garbage collector."""
+    events, whether names are hidden aside. Each one is held here, so the job
+    closes it, not the garbage collector."""
     from app.agents.sourcer_agent import sourcer_agent
     held = []
 
-    def run_stream(*asked):
+    def run_stream(*asked, hide_names=False):
         held.append(script(*asked))
         return held[-1]
     monkeypatch.setattr(sourcer_agent, "run_stream", run_stream)

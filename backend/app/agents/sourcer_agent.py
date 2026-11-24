@@ -17,6 +17,7 @@ from typing import AsyncIterator, Dict, List, Tuple
 
 from app.core.config import settings
 from app.core.errors import log_text
+from app.services.hidden_names import scrub
 from app.services.resume_rag import resume_rag
 from app.tools.github_tool import github_tool
 from app.tools.openai_tool import openai_tool
@@ -386,6 +387,22 @@ def people_from_uploads(manager_id) -> List[Dict]:
     return people
 
 
+def _for_the_judge(key: str, person: Dict, hide_names: bool) -> str:
+    """One person as the judge's prompt says them. With names hidden: this
+    batch's id and "Person N", their headline and text without their name,
+    nor their GitHub login, which can be one, nor any address, number or
+    link (hidden_names.scrub). Their location stays, as the rest of the app
+    keeps it."""
+    if not hide_names:
+        return f"[{key}] {person['name']} | {person['headline']} | {person['location']}\n{person['text']}"
+    stand_in = f"Person {key[1:]}"
+
+    def clean(text: str) -> str:
+        text = scrub(text, person["name"], stand_in)
+        return scrub(text, person["external_id"], stand_in) if person["source"] == "github" else text
+    return f"[{key}] {stand_in} | {clean(person['headline'])} | {person['location']}\n{clean(person['text'])}"
+
+
 def _github_person(item: Dict, prof: Dict) -> Dict:
     repos = "; ".join(
         f"{r.get('name', '')} ({r.get('language', 'N/A')}, {r.get('stars', 0)} stars): {(r.get('description') or '')[:120]}"
@@ -632,7 +649,7 @@ class SourcerAgent:
             plan = _fallback_plan(description)
         return plan, usage
 
-    async def judge(self, plan: Dict, people: List[Dict]) -> Tuple[List[Dict], Dict]:
+    async def judge(self, plan: Dict, people: List[Dict], hide_names: bool = False) -> Tuple[List[Dict], Dict]:
         """Write a judgement on each of a batch of people, in one LLM call.
 
         Returns (results, usage). Each result carries the per-criterion answers,
@@ -640,20 +657,24 @@ class SourcerAgent:
         the keyword filter would have found the person. A failed or unreadable
         call still returns a result per person, marked as not judged, so the
         run's counts always add up.
+
+        With names hidden (the manager's "Hide names"), the model is told each
+        person as an id of this batch's and "Person N", their text without
+        their name, addresses, numbers or links (_for_the_judge).
         """
         start = time.monotonic()
         usage = {"input_tokens": 0, "output_tokens": 0}
         read: Dict[str, Tuple[List[Dict], str, str]] = {}
         failure = ""
         if openai_tool.llm:
+            # Who each id in the prompt is: their own, or this batch's.
+            told = {f"P{i + 1}" if hide_names else p["pid"]: p for i, p in enumerate(people)}
             prompt = _JUDGE_PROMPT.format(
                 title=plan["req"]["title"] or "Open role",
                 location=f" in {plan['req']['location']}" if plan["req"]["location"] else "",
                 summary=plan["req"]["summary"],
                 criteria="\n".join(f"- {c['id']} ({c['kind']}): {c['label']}" for c in plan["criteria"]),
-                people="\n---\n".join(
-                    f"[{p['pid']}] {p['name']} | {p['headline']} | {p['location']}\n{p['text']}" for p in people
-                ),
+                people="\n---\n".join(_for_the_judge(key, p, hide_names) for key, p in told.items()),
             )
             try:
                 raw, usage = await openai_tool.structured_call_with_usage(
@@ -674,8 +695,9 @@ class SourcerAgent:
                 read = dict(parsed)
                 # Models sometimes rewrite the ids. When none match but the
                 # count does, the answers are in the order the people were given.
-                if parsed and not any(p["pid"] in read for p in people) and len(parsed) == len(people):
-                    read = {p["pid"]: value for p, (_, value) in zip(people, parsed)}
+                if parsed and not any(key in read for key in told) and len(parsed) == len(people):
+                    read = {key: value for key, (_, value) in zip(told, parsed)}
+                read = {told[key]["pid"]: value for key, value in read.items() if key in told}
             except (ValueError, TypeError) as e:
                 print(f"[WARN] sourcer judge reply unreadable: {type(e).__name__}")
                 failure = "Could not be judged: the model's reply was unreadable."
@@ -716,7 +738,8 @@ class SourcerAgent:
             })
         return results, usage
 
-    async def run_stream(self, description: str, manager_id, sources: Dict) -> AsyncIterator[Dict]:
+    async def run_stream(self, description: str, manager_id, sources: Dict,
+                         hide_names: bool = False) -> AsyncIterator[Dict]:
         """Run one search and yield its events as they happen.
 
           plan     {plan}                   criteria, keyword-filter baseline, searches
@@ -791,7 +814,7 @@ class SourcerAgent:
             while True:
                 batch, finished = await _take_batch(todo, BATCH, BATCH_WAIT_S)
                 if batch:
-                    results, batch_usage = await self.judge(plan, batch)
+                    results, batch_usage = await self.judge(plan, batch, hide_names)
                     stats.add_usage(batch_usage)
                     for result in results:
                         stats.add_result(result)
