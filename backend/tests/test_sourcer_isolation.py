@@ -188,3 +188,38 @@ def test_a_run_needs_a_description_and_somewhere_to_look(client, monkeypatch):
         "description": "Backend engineer", "sources": {"uploads": False, "github": False, "web": False},
     }, headers=auth_headers(token))
     assert nowhere.status_code == 400
+
+
+def test_a_plain_note_is_signed_by_the_manager_not_left_for_them_to_fill_in(client, run_jobs, monkeypatch):
+    import sqlite3
+    from conftest import _TMP_DB
+    from app.tools.openai_tool import openai_tool
+    fakes.install(monkeypatch, github_people=1, web_people=0)
+    token, user = register(client, "draft3@co.com", name="Grace Hopper")
+    db = sqlite3.connect(_TMP_DB)
+    db.execute("UPDATE hiring_managers SET company = 'Acme' WHERE id = ?", (user["id"],))
+    db.commit()
+    db.close()
+    [profile_id] = _finish_run(client, run_jobs, token)["profile_ids"].values()
+
+    async def nothing(prompt, system="", json_mode=False):
+        return ""
+
+    monkeypatch.setattr(openai_tool, "structured_call", nothing)
+    body = client.post(f"/api/sourcer/profiles/{profile_id}/draft-outreach", headers=auth_headers(token)).json()["body"]
+    assert body.endswith("timing isn't right.\n\nGrace Hopper, Acme") and "[" not in body
+
+
+def test_a_plain_note_with_no_one_to_sign_it_ends_with_the_note(client, run_jobs, monkeypatch):
+    from app.tools.openai_tool import openai_tool
+    fakes.install(monkeypatch, github_people=1, web_people=0)
+    # Sign-up keeps a name of spaces as no name, and asks for no company.
+    token, _ = register(client, "draft4@co.com", name="   ")
+    [profile_id] = _finish_run(client, run_jobs, token)["profile_ids"].values()
+
+    async def nothing(prompt, system="", json_mode=False):
+        return ""
+
+    monkeypatch.setattr(openai_tool, "structured_call", nothing)
+    body = client.post(f"/api/sourcer/profiles/{profile_id}/draft-outreach", headers=auth_headers(token)).json()["body"]
+    assert body.endswith("No pressure if the timing isn't right.")
