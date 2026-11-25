@@ -244,3 +244,64 @@ def test_a_search_reads_hide_names_from_the_account_as_it_starts(client, run_job
                       json={"hide_names": False}).status_code == 200
     searched()
     assert told == [True, False]
+
+
+def _found_by_a_search(manager_id, source="upload", external_id="1"):
+    """Ada, as a search found and judged her."""
+    from app.core import database
+    from app.models.sourcing import SourcedProfile, SourcingRun
+
+    async def found():
+        async with database.async_session() as db:
+            run = SourcingRun(manager_id=manager_id, description="Python engineer", status="complete",
+                              plan={"req": {"title": "Engineer"}, "criteria": [{"id": "c1", "label": "Python"}]})
+            db.add(run)
+            await db.flush()
+            profile = SourcedProfile(
+                run_id=run.id, manager_id=manager_id, source=source, external_id=external_id, name=ADA["name"],
+                email=ADA["email"], headline="Ada Lovelace, engines", verdict="shortlist",
+                judgement="Ada Lovelace builds engines; see github.com/adal-dev.",
+                criteria=[{"id": "c1", "value": "adal-dev's Python engines", "level": "strong"}])
+            db.add(profile)
+            await db.commit()
+            return profile.id
+    return _run_async(found())
+
+
+def _drafts_asked(monkeypatch):
+    """What the AI is asked for a draft; it greets "Hi there", as told to
+    while names are hidden."""
+    from app.tools.openai_tool import openai_tool
+    prompts = []
+
+    async def structured_call(prompt, system="", json_mode=False):
+        prompts.append(prompt)
+        return "SUBJECT: Your engines\nBODY:\nHi there,\nWould you be open to a chat?"
+    monkeypatch.setattr(openai_tool, "structured_call", structured_call)
+    return prompts
+
+
+def test_an_outreach_draft_tells_the_ai_no_name_and_greets_them_by_theirs(client, monkeypatch):
+    prompts = _drafts_asked(monkeypatch)
+    token, user = _hiding(client, "reach1@x.com")
+    profile_id = _found_by_a_search(user["id"], source="github", external_id="adal-dev")
+    r = client.post(f"/api/sourcer/profiles/{profile_id}/draft-outreach", headers=auth_headers(token))
+    assert r.status_code == 200, r.text
+    [prompt] = prompts
+    for kept in ("Ada", "Lovelace", "adal-dev", "github.com", "ada.lovelace@x.com"):
+        assert kept not in prompt, kept
+    # What the judge found still reaches it.
+    assert "This person builds engines" in prompt and 'Greet them as "Hi there"' in prompt
+    # The name goes in afterwards, and the address to send it to comes back.
+    assert r.json()["body"].startswith("Hi Ada,\nWould you be open to a chat?")
+    assert r.json()["to"] == ADA["email"]
+
+
+def test_an_outreach_draft_names_them_to_the_ai_while_names_show(client, monkeypatch):
+    prompts = _drafts_asked(monkeypatch)
+    token, user = register(client, "reach2@x.com")
+    profile_id = _found_by_a_search(user["id"])
+    r = client.post(f"/api/sourcer/profiles/{profile_id}/draft-outreach", headers=auth_headers(token))
+    assert "Ada Lovelace" in prompts[0]
+    # A greeting the AI wrote is left as it is.
+    assert r.json()["body"].startswith("Hi there,")
