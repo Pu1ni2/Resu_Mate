@@ -4,6 +4,7 @@ Starts a sourcing run (find people, write a judgement on every one), which a
 background job runs and writes as it goes (app/services/sourcing_search.py),
 and keeps its results for the manager who ran it.
 """
+import re
 from datetime import datetime
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,6 +19,7 @@ from app.core.database import get_db
 from app.models.sourcing import SourcingRun, SourcedProfile
 from app.services import db_service, jobs, sourcing_search
 from app.services.auth import get_current_user
+from app.services.hidden_names import hides_names, scrub
 
 router = APIRouter(prefix="/api/sourcer", tags=["sourcer"])
 
@@ -197,7 +199,12 @@ async def delete_run(run_id: int, user=Depends(get_current_user), db: AsyncSessi
 @limiter.limit("30/hour")
 async def draft_outreach(request: Request, profile_id: int,
                          user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Draft a first message to someone a run found. A draft only: nothing is sent."""
+    """Draft a first message to someone a run found. A draft only: nothing is sent.
+
+    With names hidden, the AI is told neither their name nor anything that
+    names them: what it reads of them is cleaned as the judge's is, and it
+    greets them "Hi there". Their first name goes into the greeting here,
+    after it has written it."""
     profile = await _own_profile(db, profile_id, user.id)
     run = await _own_run(db, profile.run_id, user.id)
     plan = run.plan or {}
@@ -210,11 +217,19 @@ async def draft_outreach(request: Request, profile_id: int,
         if a.get("level") in ("strong", "partial") and a.get("value")
     ]
     context = "\n".join(part for part in (profile.headline or "", profile.judgement or "", *evidence) if part)
+    hidden = hides_names(user)
+    if hidden:
+        context = scrub(context, profile.name or "", "This person")
+        if profile.source == "github":
+            context = scrub(context, profile.external_id, "This person")
 
     draft = await hr_agent.draft_email(
         {"name": profile.name, "predicted_role": title, "skills": []}, "outreach", context,
-        sender={"name": user.name, "company": user.company},
+        anonymize=hidden, sender={"name": user.name, "company": user.company},
     )
+    first = (profile.name or "").split()[:1]
+    if hidden and draft.get("body") and first:
+        draft["body"] = re.sub(r"^Hi there\b", f"Hi {first[0]}", draft["body"], count=1)
     if not draft.get("body"):
         # No language model configured: a plain note is still better than nothing.
         first = (profile.name or "there").split()[0]
