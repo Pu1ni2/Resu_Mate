@@ -140,3 +140,107 @@ async def test_a_draft_without_the_name_greets_without_one(monkeypatch):
     await hr_agent.draft_email(ADA, "interest", anonymize=True)
     assert "Ada" not in prompts[0]
     assert 'Greet them as "Hi there"' in prompts[0]
+
+
+# ── Find Candidates ──────────────────────────────────────────────────────────
+# It read neither the account nor the request: the judge was told each
+# person's name and text, a résumé's address and number included.
+
+PLAN = {"req": {"title": "Engineer", "location": "", "summary": "Python"},
+        "criteria": [{"id": "c1", "label": "Python", "kind": "must"}],
+        "filter": {"title_terms": [], "keyword_terms": [], "location_terms": []}}
+
+
+def _judge_asked(monkeypatch, levels, stray=None):
+    """What the AI is asked; it answers each id in brackets with the next of
+    `levels` for the one criterion, and, given `stray`, one more for an id
+    it wasn't given."""
+    import re
+    from app.tools.openai_tool import openai_tool
+    prompts = []
+
+    async def llm(prompt, system="", model=None):
+        prompts.append(prompt)
+        # Each person's line: "[id] name | ...", not a cleaned "[email] | [phone]".
+        ids = re.findall(r"^\[([^\]]+)\] [^|\n]+ \|", prompt, re.M)
+        people = [{"pid": pid, "criteria": [{"id": "c1", "value": "Python", "level": level}], "judgement": "Read."}
+                  for pid, level in zip(ids, levels)]
+        if stray:
+            people.append({"pid": stray, "criteria": [], "judgement": "Someone else."})
+        return json.dumps({"people": people}), {"input_tokens": 1, "output_tokens": 1}
+    monkeypatch.setattr(openai_tool, "llm", object())
+    monkeypatch.setattr(openai_tool, "structured_call_with_usage", llm)
+    return prompts
+
+
+def _found():
+    """Ada among the uploads, and someone on GitHub whose login is a name."""
+    from app.agents.sourcer_agent import _person
+    upload = _person("upload", 1, ADA["name"], email=ADA["email"], headline="Engineer", location="London",
+                     text=ADA["text"])
+    github = _person("github", "adal-dev", "Ada Byron", headline="Ada Byron, engines", location="London",
+                     text="Ada Byron writes engines.\nRepos: adal-dev/engine (Python)\nSite https://github.com/adal-dev")
+    return [upload, github]
+
+
+def _run_async(coro):
+    import asyncio
+    return asyncio.get_event_loop().run_until_complete(coro)
+
+
+def test_find_candidates_judges_with_names_hidden_telling_the_ai_no_name_or_contact(monkeypatch):
+    from app.agents.sourcer_agent import sourcer_agent
+    # With an answer about someone it wasn't asked about, which is left out.
+    prompts = _judge_asked(monkeypatch, ["strong", "none"], stray="P9")
+    results, _ = _run_async(sourcer_agent.judge(PLAN, _found(), hide_names=True))
+    [prompt] = prompts
+    for kept in ("Ada", "Lovelace", "Byron", "ada.lovelace@x.com", "010-1234", "github.com", "adal-dev",
+                 "upload:1", "github:"):
+        assert kept not in prompt, kept
+    assert "[P1] Person 1 | Engineer | London" in prompt and "[P2] Person 2 | Person 2, engines | London" in prompt
+    # Each answer still reaches the one it was about.
+    assert {r["pid"]: r["criteria"][0]["level"] for r in results} == {"upload:1": "strong", "github:adal-dev": "none"}
+
+
+def test_find_candidates_judges_as_before_while_names_show(monkeypatch):
+    from app.agents.sourcer_agent import sourcer_agent
+    prompts = _judge_asked(monkeypatch, ["strong", "none"])
+    results, _ = _run_async(sourcer_agent.judge(PLAN, _found()))
+    assert "[upload:1] Ada Lovelace | Engineer | London" in prompts[0]
+    assert "[github:adal-dev] Ada Byron" in prompts[0]
+    assert {r["pid"]: r["criteria"][0]["level"] for r in results} == {"upload:1": "strong", "github:adal-dev": "none"}
+
+
+def test_a_search_with_names_hidden_judges_its_people_so(client, monkeypatch):
+    from app.agents.sourcer_agent import sourcer_agent
+    prompts = _judge_asked(monkeypatch, ["strong"])
+    _, user = register(client, "find1@x.com")
+    resume_rag.candidates.setdefault(user["id"], {})[1] = dict(ADA, manager_id=user["id"])
+
+    async def search():
+        return [event async for event in sourcer_agent.run_stream(
+            "Python engineer", user["id"], {"uploads": True, "github": False, "web": False}, hide_names=True)]
+    _run_async(search())
+    [judging] = [prompt for prompt in prompts if "People:" in prompt]
+    assert "Ada" not in judging and "[P1] Person 1" in judging
+
+
+def test_a_search_reads_hide_names_from_the_account_as_it_starts(client, run_jobs, monkeypatch):
+    from app.agents.sourcer_agent import sourcer_agent
+    told = []
+
+    async def search(description, manager_id, sources, hide_names=False):
+        told.append(hide_names)
+        yield {"type": "done", "stats": {}}
+    monkeypatch.setattr(sourcer_agent, "run_stream", search)
+    token, _ = _hiding(client, "find2@x.com")
+
+    def searched():
+        r = client.post("/api/sourcer/runs", headers=auth_headers(token), json={"description": "Python engineer"})
+        assert r.status_code == 202, r.text
+        assert run_jobs() == ["done"]
+    searched()
+    assert client.put("/api/auth/preferences", headers=auth_headers(token),
+                      json={"hide_names": False}).status_code == 200
+    searched()
+    assert told == [True, False]
