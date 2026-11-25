@@ -231,13 +231,17 @@ async def draft_outreach(request: Request, profile_id: int,
     if hidden and draft.get("body") and first:
         draft["body"] = re.sub(r"^Hi there\b", f"Hi {first[0]}", draft["body"], count=1)
     if not draft.get("body"):
-        # No language model configured: a plain note is still better than nothing.
+        # No language model configured: a plain note is still better than
+        # nothing. It's signed by the manager, as the AI's drafts are, rather
+        # than ending "[Your Name]" for them to fill in.
         first = (profile.name or "there").split()[0]
+        signer = ", ".join(part for part in (user.name, user.company) if part)
         draft = {
             "subject": f"{title}: would you be open to a conversation?",
             "body": (
                 f"Hi {first},\n\nI came across your work and thought of a {title} role we're hiring for. "
-                "Would you be open to a short conversation? No pressure if the timing isn't right.\n\n[Your Name]"
+                "Would you be open to a short conversation? No pressure if the timing isn't right."
+                + (f"\n\n{signer}" if signer else "")
             ),
         }
     return {**draft, "to": profile.email or "", "profile_url": profile.url or ""}
